@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目关系图谱 - GitHub Stash</title>
+<style>
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --border: #30363d;
+  --accent: #58a6ff;
+  --accent-dim: rgba(88, 166, 255, 0.15);
+  --danger: #f85149;
+  --radius: 8px;
+  --shadow: 0 0 24px rgba(0,0,0,0.4);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  height: 44px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.topbar-left { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.topbar-left h2 { font-size: 0.92rem; font-weight: 600; white-space: nowrap; }
+.topbar-left .badge {
+  background: var(--accent-dim); color: var(--accent);
+  padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 600;
+}
+
+/* 搜索框 */
+.search-wrap {
+  flex: 1;
+  max-width: 320px;
+  position: relative;
+}
+.search-wrap input {
+  width: 100%;
+  padding: 5px 10px 5px 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.search-wrap input:focus { border-color: var(--accent); }
+.search-wrap i {
+  position: absolute;
+  left: 10px; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); font-size: 0.75rem; pointer-events: none;
+}
+.search-results {
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+.search-results.visible { display: block; }
+.search-result-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: var(--accent-dim); }
+.search-result-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+
+.topbar-right {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.topbar-right .hint {
+  font-size: 0.7rem; color: var(--text-muted);
+}
+
+.btn-sm {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-sm:hover { background: var(--accent-dim); color: var(--accent); }
+
+.graph-container {
+  flex: 1;
+  width: 100%;
+  cursor: grab;
+  position: relative;
+}
+.graph-container:active { cursor: grabbing; }
+.graph-container svg { width: 100%; height: 100%; }
+
+.link {
+  stroke: rgba(139, 148, 158, 0.4);
+  stroke-opacity: 0.45;
+  transition: stroke-opacity 0.2s, stroke 0.2s;
+}
+
+.tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  max-width: 280px;
+  box-shadow: var(--shadow);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  opacity: 0;
+  transition: opacity 0.12s;
+  z-index: 1000;
+}
+.tooltip.visible { opacity: 1; }
+.tooltip .tt-name { font-weight: 700; font-size: 0.88rem; margin-bottom: 3px; }
+.tooltip .tt-row { display: flex; gap: 6px; color: var(--text-secondary); font-size: 0.75rem; }
+.tooltip .tt-row .tt-label { color: var(--text-muted); min-width: 28px; flex-shrink: 0; }
+.tooltip .tt-desc { margin-top: 4px; color: var(--text-secondary); font-size: 0.73rem; }
+.tooltip .tt-link { display: inline-block; margin-top: 4px; color: var(--accent); font-size: 0.72rem; text-decoration: none; }
+
+.legend {
+  position: absolute;
+  bottom: 12px; left: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: 0.68rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  max-width: 90vw;
+  box-shadow: var(--shadow);
+}
+.legend-item { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.legend-swatch { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.loading-overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-primary);
+  z-index: 500;
+  transition: opacity 0.3s;
+}
+.loading-overlay.hidden { opacity: 0; pointer-events: none; }
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 缩放提示 */
+.zoom-indicator {
+  position: absolute;
+  bottom: 12px; right: 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.zoom-indicator.visible { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading"><div class="spinner"></div></div>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <h2>项目关系图谱</h2>
+    <span class="badge" id="statsBadge"></span>
+  </div>
+  <div class="search-wrap">
+    <i class="fa-solid fa-search"></i>
+    <input type="text" id="searchInput" placeholder="搜索节点..." autocomplete="off">
+    <div class="search-results" id="searchResults"></div>
+  </div>
+  <div class="topbar-right">
+    <button class="btn-sm" id="btnFit" title="适应画布">适应</button>
+    <button class="btn-sm" id="btnLabels" title="切换标签显示">标签</button>
+    <span class="hint">滚轮缩放 | 拖拽节点 | 悬停详情</span>
+  </div>
+</div>
+
+<div class="graph-container" id="graphContainer">
+  <div class="tooltip" id="tooltip"></div>
+  <div class="legend" id="legend"></div>
+  <div class="zoom-indicator" id="zoomIndicator"></div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+const token = urlParams.get("token");
+if (!token) {
+  document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;color:#9898b2;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;font-size:0.95rem;">请先登录再查看图谱</div>';
+  throw new Error("no token");
+}
+
+const TOKEN = token;
+let showLabels = true;
+
+async function fetchGraph() {
+  const resp = await fetch("/api/graph", {
+    headers: { "Authorization": "Bearer " + TOKEN }
+  });
+  if (!resp.ok) {
+    if (resp.status === 401) throw new Error("认证已过期");
+    throw new Error("请求失败 (" + resp.status + ")");
+  }
+  const data = await resp.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+const CAT_PALETTE = [
+  "#58a6ff", "#f78166", "#7ee787", "#d2a8ff",
+  "#ffa657", "#79c0ff", "#a5d6ff", "#56d364",
+  "#f778ba", "#e3b341"
+];
+const colorScale = d3.scaleOrdinal(CAT_PALETTE);
+
+function getProgressLabel(p) {
+  const map = { "none": "未学习", "learning": "正在学习", "learned": "已学习", "mastered": "熟练掌握" };
+  return map[p] || "未学习";
+}
+
+(async function main() {
+  const container = document.getElementById("graphContainer");
+  const tooltipEl = document.getElementById("tooltip");
+  const legendEl = document.getElementById("legend");
+  const loadingEl = document.getElementById("loading");
+  const statsBadge = document.getElementById("statsBadge");
+  const zoomIndicator = document.getElementById("zoomIndicator");
+  const searchInput = document.getElementById("searchInput");
+  const searchResults = document.getElementById("searchResults");
+
+  let data;
+  try {
+    data = await fetchGraph();
+  } catch (err) {
+    loadingEl.innerHTML = '<div style="color:var(--text-muted);font-size:0.9rem">加载失败：' + err.message + '</div>';
+    return;
+  }
+  loadingEl.classList.add("hidden");
+
+  const { nodes, edges } = data;
+  statsBadge.textContent = nodes.length + " 节点 · " + edges.length + " 连线";
+
+  if (nodes.length === 0) {
+    container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:0.9rem">暂无项目数据</div>';
+    return;
+  }
+
+  // ── 图例 ──
+  const categories = [...new Set(nodes.map(n => n.category))];
+  legendEl.innerHTML = categories.map(c =>
+    '<div class="legend-item"><div class="legend-swatch" style="background:' + colorScale(c) + '"></div><span>' + c + '</span></div>'
+  ).join("");
+
+  // ── D3 力导向图 ──
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+
+  const svg = d3.select(container).append("svg")
+    .attr("viewBox", [0, 0, width, height])
+    .attr("width", width)
+    .attr("height", height);
+
+  // 背景点击取消
+  svg.on("click", () => {
+    node.selectAll("circle").transition().duration(200).attr("opacity", 1);
+    node.selectAll("text").transition().duration(200).attr("opacity", 1);
+    link.transition().duration(200)
+      .attr("stroke-opacity", 0.45)
+      .attr("stroke", "rgba(139, 148, 158, 0.4)");
+    tooltipEl.classList.remove("visible");
+  });
+
+  const g = svg.append("g");
+
+  // 缩放
+  const zoom = d3.zoom()
+    .scaleExtent([0.15, 6])
+    .on("zoom", (event) => {
+      g.attr("transform", event.transform);
+      // 根据缩放级别调整标签和连线
+      const scale = event.transform.k;
+      updateLabelVisibility(scale);
+      // 缩放指示器
+      zoomIndicator.textContent = Math.round(scale * 100) + "%";
+      zoomIndicator.classList.add("visible");
+      clearTimeout(zoomIndicator._timeout);
+      zoomIndicator._timeout = setTimeout(() => zoomIndicator.classList.remove("visible"), 1500);
+    });
+  svg.call(zoom);
+  svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2));
+
+  // 连线
+  const link = g.append("g")
+    .selectAll("line")
+    .data(edges)
+    .join("line")
+    .attr("class", "link")
+    .attr("stroke-width", d => Math.max(0.6, Math.min(5, d.weight * 5)));
+
+  // 节点半径（增大最小值，确保小节点可见）
+  const maxStars = d3.max(nodes, d => d.stars) || 100;
+  const rScale = d3.scaleSqrt()
+    .domain([0, maxStars + 1])
+    .range([5, 45]);
+
+  // 节点组
+  const node = g.append("g")
+    .selectAll("g")
+    .data(nodes)
+    .join("g")
+    .attr("class", "node")
+    .call(d3.drag()
+      .on("start", (event, d) => {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on("end", (event, d) => {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      }));
+
+  node.append("circle")
+    .attr("r", d => rScale(d.stars))
+    .attr("fill", d => colorScale(d.category))
+    .attr("stroke", "var(--bg-secondary)")
+    .attr("stroke-width", 2)
+    .on("mouseenter", (event, d) => {
+      const connected = new Set();
+      edges.forEach(e => {
+        const s = e.source.id !== undefined ? e.source.id : e.source;
+        const t = e.target.id !== undefined ? e.target.id : e.target;
+        if (s === d.id) connected.add(t);
+        if (t === d.id) connected.add(s);
+      });
+
+      node.selectAll("circle").transition().duration(200)
+        .attr("opacity", nd => (nd.id === d.id || connected.has(nd.id)) ? 1 : 0.12);
+      node.selectAll("text").transition().duration(200)
+        .attr("opacity", nd => (nd.id === d.id || connected.has(nd.id)) ? 1 : 0.08);
+
+      link.transition().duration(200)
+        .attr("stroke-opacity", e => {
+          const s = e.source.id !== undefined ? e.source.id : e.source;
+          const t = e.target.id !== undefined ? e.target.id : e.target;
+          return (s === d.id || t === d.id) ? 1 : 0.06;
+        })
+        .attr("stroke", e => {
+          const s = e.source.id !== undefined ? e.source.id : e.source;
+          const t = e.target.id !== undefined ? e.target.id : e.target;
+          return (s === d.id || t === d.id) ? colorScale(d.category) : "rgba(139, 148, 158, 0.4)";
+        });
+
+      d3.select(event.currentTarget).transition().duration(200)
+        .attr("r", rScale(d.stars) * 1.4);
+
+      const progressLabel = getProgressLabel(d.progress);
+      tooltipEl.innerHTML =
+        '<div class="tt-name">' + d.name + '</div>' +
+        '<div class="tt-row"><span class="tt-label">分类</span>' + d.category + '</div>' +
+        '<div class="tt-row"><span class="tt-label">语言</span>' + (d.language || "—") + '</div>' +
+        '<div class="tt-row"><span class="tt-label">进度</span>' + progressLabel + '</div>' +
+        '<div class="tt-row"><span class="tt-label">Star</span>' + d.stars + '</div>' +
+        (d.desc ? '<div class="tt-desc">' + d.desc + '</div>' : "") +
+        (d.url ? '<a class="tt-link" href="' + d.url + '" target="_blank">' + d.url + '</a>' : "");
+      tooltipEl.classList.add("visible");
+    })
+    .on("mousemove", (event) => {
+      tooltipEl.style.left = (event.clientX + 14) + "px";
+      tooltipEl.style.top = (event.clientY - 10) + "px";
+    })
+    .on("mouseleave", (event, d) => {
+      node.selectAll("circle").transition().duration(200).attr("opacity", 1);
+      node.selectAll("text").transition().duration(200).attr("opacity", showLabels ? 1 : 0);
+      link.transition().duration(200)
+        .attr("stroke-opacity", 0.45)
+        .attr("stroke", "rgba(139, 148, 158, 0.4)");
+      d3.select(event.currentTarget).transition().duration(200).attr("r", rScale(d.stars));
+      tooltipEl.classList.remove("visible");
+    })
+    .on("click", (event, d) => {
+      event.stopPropagation();
+      if (d.url) window.open(d.url, "_blank");
+    });
+
+  // 标签——字体大小根据 zoom 自适应
+  const label = node.append("text")
+    .attr("class", "node-label")
+    .attr("dx", d => rScale(d.stars) + 7)
+    .attr("dy", 3)
+    .attr("font-size", "10px")
+    .attr("fill", "var(--text-secondary)")
+    .attr("pointer-events", "none")
+    .attr("text-anchor", "start")
+    .text(d => d.name.length > 22 ? d.name.slice(0, 20) + "…" : d.name);
+
+  function updateLabelVisibility(scale) {
+    // 缩放 < 0.4 时隐藏标签（减少视觉噪音）
+    // 缩放 0.4~0.7 时只显示大节点标签
+    // 缩放 > 0.7 时显示全部标签
+    if (!showLabels) {
+      label.attr("opacity", 0);
+      return;
+    }
+    if (scale < 0.35) {
+      label.attr("opacity", 0);
+    } else if (scale < 0.7) {
+      label.attr("opacity", d => d.stars >= 100 ? 1 : 0);
+    } else {
+      label.attr("opacity", 1);
+    }
+    // 字体随缩放调整
+    const fs = Math.min(12, Math.max(8, 10 / Math.sqrt(scale)));
+    label.attr("font-size", fs + "px");
+  }
+
+  // 仿真——增大斥力让节点散开
+  const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(edges).id(d => d.id).distance(60))
+    .force("charge", d3.forceManyBody().strength(-350))
+    .force("center", d3.forceCenter(0, 0))
+    .force("collide", d3.forceCollide().radius(d => rScale(d.stars) + 10))
+    .on("tick", () => {
+      link
+        .attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+      node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");
+    });
+
+  // ── 搜索功能 ──
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+  const nodeIndex = new Map();
+  nodes.forEach((n, i) => {
+    nodeIndex.set(n.name.toLowerCase(), i);
+    nodeIndex.set(n.id, i);
+  });
+
+  searchInput.addEventListener("input", () => {
+    const q = searchInput.value.trim().toLowerCase();
+    if (!q) { searchResults.classList.remove("visible"); return; }
+    const matches = nodes.filter(n =>
+      n.name.toLowerCase().includes(q) ||
+      (n.category && n.category.toLowerCase().includes(q)) ||
+      (n.language && n.language.toLowerCase().includes(q))
+    ).slice(0, 8);
+
+    if (matches.length === 0) {
+      searchResults.innerHTML = '<div class="search-result-item" style="color:var(--text-muted)">无匹配结果</div>';
+    } else {
+      searchResults.innerHTML = matches.map(n =>
+        '<div class="search-result-item" data-id="' + n.id + '">' +
+        '<span class="search-result-dot" style="background:' + colorScale(n.category) + '"></span>' +
+        n.name +
+        '<span style="color:var(--text-muted);margin-left:auto;font-size:0.7rem">' + (n.category || "") + '</span>' +
+        '</div>'
+      ).join("");
+    }
+    searchResults.classList.add("visible");
+  });
+
+  searchResults.addEventListener("click", (e) => {
+    const item = e.target.closest(".search-result-item");
+    if (!item) return;
+    const id = parseInt(item.dataset.id);
+    focusNode(id);
+    searchResults.classList.remove("visible");
+    searchInput.value = nodes[id].name;
+  });
+
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      searchResults.classList.remove("visible");
+      searchInput.blur();
+    }
+    if (e.key === "Enter") {
+      const q = searchInput.value.trim().toLowerCase();
+      const match = nodes.find(n => n.name.toLowerCase().includes(q));
+      if (match) {
+        focusNode(match.id);
+        searchResults.classList.remove("visible");
+      }
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".search-wrap")) searchResults.classList.remove("visible");
+  });
+
+  function focusNode(nodeId) {
+    const d = nodes[nodeId];
+    if (!d) return;
+    // 计算目标平移和缩放
+    const scale = 2;
+    const tx = width / 2 - d.x * scale;
+    const ty = height / 2 - d.y * scale;
+    svg.transition().duration(600).call(
+      zoom.transform,
+      d3.zoomIdentity.translate(tx, ty).scale(scale)
+    );
+    // 高亮
+    highlightNode(d);
+  }
+
+  function highlightNode(d) {
+    node.selectAll("circle").transition().duration(300)
+      .attr("opacity", nd => nd.id === d.id ? 1 : 0.15);
+    node.selectAll("text").transition().duration(300)
+      .attr("opacity", nd => nd.id === d.id ? 1 : 0);
+    link.transition().duration(300)
+      .attr("stroke-opacity", 0.08);
+    // 3 秒后恢复
+    setTimeout(() => {
+      node.selectAll("circle").transition().duration(400).attr("opacity", 1);
+      node.selectAll("text").transition().duration(400).attr("opacity", showLabels ? 1 : 0);
+      link.transition().duration(400).attr("stroke-opacity", 0.45);
+    }, 3000);
+  }
+
+  // ── 按钮 ──
+  document.getElementById("btnFit").addEventListener("click", () => {
+    svg.transition().duration(500).call(
+      zoom.transform,
+      d3.zoomIdentity.translate(width / 2, height / 2)
+    );
+  });
+
+  document.getElementById("btnLabels").addEventListener("click", function() {
+    showLabels = !showLabels;
+    this.textContent = showLabels ? "标签" : "标签(关)";
+    if (showLabels) {
+      updateLabelVisibility(d3.zoomTransform(svg.node()).k);
+    } else {
+      label.attr("opacity", 0);
+    }
+  });
+})();
+</script>
+</body>
+</html>
