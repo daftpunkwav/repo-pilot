@@ -106,7 +106,7 @@
     <nav class="cat-nav" id="catNav"></nav>
     <div class="sidebar-footer">
       <button id="btnManageCats"><i class="fa-solid fa-layer-group"></i> 分类</button>
-      <button onclick="openGraph()"><i class="fa-solid fa-diagram-project"></i> 图谱</button>
+      <button id="btnGraph" onclick="openGraph()"><i class="fa-solid fa-diagram-project"></i> 图谱</button>
       <button id="btnSettings"><i class="fa-solid fa-gear"></i> 设置</button>
     </div>
   </aside>
@@ -360,7 +360,7 @@
   <div class="graph-overlay hidden" id="graphOverlay">
     <div class="graph-overlay-topbar">
       <span class="graph-overlay-title"><i class="fa-solid fa-diagram-project"></i> 项目关系图谱</span>
-      <button class="graph-overlay-close" onclick="closeGraph()"><i class="fa-solid fa-times"></i></button>
+      <button id="btnGraphClose" class="graph-overlay-close" onclick="closeGraph()"><i class="fa-solid fa-times"></i></button>
     </div>
     <iframe id="graphFrame" src="" frameborder="0" class="graph-frame"></iframe>
   </div>

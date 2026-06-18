@@ -1,0 +1,95 @@
+33 DEPRECATION: Running PyInstaller as admin is not necessary nor sensible. Run PyInstaller from a non-administrator terminal. PyInstaller 7.0 will block this.
+136 INFO: PyInstaller: 6.21.0, contrib hooks: 2026.6
+137 INFO: Python: 3.11.8
+149 INFO: Platform: Windows-10-10.0.22631-SP0
+149 INFO: Python environment: D:\Marvis\MarvisAgent\1.0.1100.219\runtime\python311
+151 INFO: wrote D:\AgentsTool\GitHubStash.spec
+159 INFO: Module search paths (PYTHONPATH):
+['D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Scripts\\pyinstaller.exe',
+ 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\python311.zip',
+ 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\DLLs',
+ 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib',
+ 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311',
+ 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages',
+ 'D:\\AgentsTool']
+461 INFO: Appending 'datas' from .spec
+473 INFO: checking Analysis
+474 INFO: Building Analysis because Analysis-00.toc is non existent
+474 INFO: Looking for Python shared library...
+475 INFO: Using Python shared library: D:\Marvis\MarvisAgent\1.0.1100.219\runtime\python311\python311.dll
+475 INFO: Running Analysis Analysis-00.toc
+476 INFO: Target bytecode optimization level: 0
+477 INFO: Initializing module dependency graph...
+478 INFO: Initializing module graph hook caches...
+504 INFO: Analyzing modules for base_library.zip ...
+1440 INFO: Processing standard module hook 'hook-heapq.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+1517 INFO: Processing standard module hook 'hook-encodings.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+2985 INFO: Processing standard module hook 'hook-math.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+3083 INFO: Processing standard module hook 'hook-pickle.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+4543 INFO: Caching module dependency graph...
+4584 INFO: Analyzing D:\AgentsTool\main.py
+4594 INFO: Processing standard module hook 'hook-webview.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\webview\\__pyinstaller'
+4667 INFO: Processing standard module hook 'hook-platform.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+4977 INFO: Processing standard module hook 'hook-webbrowser.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+5333 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+5441 INFO: Processing standard module hook 'hook-xml.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+5693 INFO: Processing standard module hook 'hook-_ctypes.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+6071 INFO: Processing standard module hook 'hook-jinja2.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+6083 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+6085 INFO: SetuptoolsInfo: initializing cached setuptools info...
+7442 INFO: Processing pre-safe-import-module hook 'hook-gi.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+7567 INFO: Processing standard module hook 'hook-clr.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\pythonnet\\_pyinstaller'
+7654 INFO: Processing standard module hook 'hook-clr_loader.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+7780 INFO: Processing standard module hook 'hook-pycparser.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\stdhooks'
+7905 INFO: Processing standard module hook 'hook-setuptools.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+7913 INFO: Processing pre-safe-import-module hook 'hook-distutils.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+7914 INFO: Processing pre-find-module-path hook 'hook-distutils.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks\\pre_find_module_path'
+8265 INFO: Processing standard module hook 'hook-distutils.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+8330 INFO: Processing standard module hook 'hook-distutils.util.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+8396 INFO: Processing standard module hook 'hook-sysconfig.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+8417 INFO: Processing standard module hook 'hook-_osx_support.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+8526 INFO: Processing pre-safe-import-module hook 'hook-importlib_metadata.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+8685 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+9318 INFO: Processing standard module hook 'hook-pkg_resources.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+10769 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+11590 INFO: Processing standard module hook 'hook-difflib.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+12062 INFO: Processing module hooks (post-graph stage)...
+12063 WARNING: Hidden import "pycparser.lextab" not found!
+12063 WARNING: Hidden import "pycparser.yacctab" not found!
+12446 INFO: Processing pre-safe-import-module hook 'hook-platformdirs.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks\\pre_safe_import_module'
+12491 INFO: Processing standard module hook 'hook-setuptools._vendor.importlib_metadata.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+12606 INFO: Processing standard module hook 'hook-setuptools._vendor.jaraco.text.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks'
+13305 INFO: Performing binary vs. data reclassification (123 entries)
+13432 INFO: Looking for ctypes DLLs
+13545 INFO: Analyzing run-time hooks ...
+13549 INFO: Including run-time hook 'pyi_rth_inspect.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+13552 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+13554 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+13556 INFO: Including run-time hook 'pyi_rth_setuptools.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+13558 INFO: Including run-time hook 'pyi_rth_pkgres.py' from 'D:\\Marvis\\MarvisAgent\\1.0.1100.219\\runtime\\python311\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks'
+13572 INFO: Creating base_library.zip...
+13592 INFO: Looking for dynamic libraries
+14307 INFO: Extra DLL search directories (AddDllDirectory): []
+14308 INFO: Extra DLL search directories (PATH): []
+14945 INFO: Warnings written to D:\AgentsTool\build\GitHubStash\warn-GitHubStash.txt
+15029 INFO: Graph cross-reference written to D:\AgentsTool\build\GitHubStash\xref-GitHubStash.html
+15061 INFO: checking PYZ
+15061 INFO: Building PYZ because PYZ-00.toc is non existent
+15062 INFO: Building PYZ (ZlibArchive) D:\AgentsTool\build\GitHubStash\PYZ-00.pyz
+15786 INFO: Building PYZ (ZlibArchive) D:\AgentsTool\build\GitHubStash\PYZ-00.pyz completed successfully.
+15804 INFO: checking PKG
+15804 INFO: Building PKG because PKG-00.toc is non existent
+15805 INFO: Building PKG (CArchive) GitHubStash.pkg
+18942 INFO: Building PKG (CArchive) GitHubStash.pkg completed successfully.
+18948 INFO: Bootloader D:\Marvis\MarvisAgent\1.0.1100.219\runtime\python311\Lib\site-packages\PyInstaller\bootloader\Windows-64bit-intel\runw.exe
+18948 INFO: checking EXE
+18948 INFO: Building EXE because EXE-00.toc is non existent
+18949 INFO: Building EXE from EXE-00.toc
+18950 INFO: Copying bootloader EXE to D:\AgentsTool\dist\GitHubStash.exe
+18955 INFO: Copying icon to EXE
+18960 INFO: Copying 0 resources to EXE
+18960 INFO: Embedding manifest in EXE
+18963 INFO: Appending PKG archive to EXE
+18977 INFO: Fixing EXE headers
+19075 INFO: Building EXE from EXE-00.toc completed successfully.
+19080 INFO: Build complete! The results are available in: D:\AgentsTool\dist

@@ -712,6 +712,9 @@ function bindSearch() {
 // ═══ 全局事件 ═══
 
 function bindEvents() {
+  // 图谱
+  $("btnGraph").addEventListener("click", openGraph);
+  $("btnGraphClose").addEventListener("click", closeGraph);
   // 添加
   $("btnAdd").addEventListener("click", openAddModal);
   $("btnSave").addEventListener("click", saveProject);
@@ -859,14 +862,19 @@ async function addCategory() {
 
 // ═══ 图谱（嵌入应用内） ═══
 function openGraph() {
-  const overlay = $("graphOverlay");
-  const frame = $("graphFrame");
-  if (!state.authToken) {
-    alert("请先登录");
-    return;
+  try {
+    const overlay = $("graphOverlay");
+    const frame = $("graphFrame");
+    if (!overlay) return;
+    if (!frame) return;
+    if (!state.authToken) {
+      return;
+    }
+    frame.src = "/graph?token=" + encodeURIComponent(state.authToken);
+    overlay.classList.remove("hidden");
+  } catch (e) {
+    // silently fail
   }
-  frame.src = "/graph?token=" + encodeURIComponent(state.authToken);
-  overlay.classList.remove("hidden");
 }
 
 function closeGraph() {
