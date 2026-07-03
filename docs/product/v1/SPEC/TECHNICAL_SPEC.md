@@ -116,38 +116,41 @@ AgentSession 1──N AgentMessage
 | created_at        | TIMESTAMP    | DEFAULT NOW      | 注册时间                        |
 | updated_at        | TIMESTAMP    | DEFAULT NOW      | 更新时间                        |
 
-**agent_permissions JSON Schema（H4 修复：6 个 Agent 工具列表统一）：**
+**agent_permissions JSON Schema（P0 修复：以 AGENT_SPEC §4.3 @tool allowed_agents 为权威来源，方案 B）：**
 
 ```json
 {
   "scout": {
     "enabled": true,
-    "tools": ["read_source_file", "search_web", "get_project_analysis",
-              "query_user_projects", "compare_projects", "ask_user_question", "save_to_memory"]
+    "tools": ["query_user_projects", "read_readme", "search_web",
+              "save_to_memory", "recall_from_memory"]
   },
   "mentor": {
     "enabled": true,
-    "tools": ["read_source_file", "search_web", "get_project_analysis",
-              "query_user_projects", "compare_projects", "ask_user_question",
-              "save_to_memory", "recall_from_memory", "update_user_profile",
-              "build_learning_path"]
+    "tools": ["query_user_projects", "read_readme", "read_source_file",
+              "search_web", "get_project_analysis", "compare_projects",
+              "update_user_profile", "ask_user_question",
+              "save_to_memory", "recall_from_memory", "get_user_profile"]
   },
   "navigator": {
     "enabled": true,
-    "tools": ["query_user_projects", "ask_user_question",
-              "recall_from_memory", "build_learning_path"]
+    "tools": ["query_user_projects", "search_web", "update_user_profile",
+              "ask_user_question", "save_to_memory", "recall_from_memory",
+              "build_learning_path"]
   },
   "curator": {
     "enabled": true,
-    "tools": ["query_user_projects", "suggest_classification", "ask_user_question"]
+    "tools": ["query_user_projects", "search_web", "ask_user_question",
+              "save_to_memory", "recall_from_memory", "suggest_classification"]
   },
   "scribe": {
     "enabled": true,
-    "tools": ["read_source_file", "generate_note_outline", "ask_user_question"]
+    "tools": ["query_user_projects", "search_web", "ask_user_question",
+              "save_to_memory", "recall_from_memory", "generate_note_outline"]
   },
   "hub": {
     "enabled": true,
-    "tools": ["ask_user_question", "recall_from_memory"]
+    "tools": ["query_user_projects", "ask_user_question", "recall_from_memory"]
   }
 }
 ```
@@ -456,14 +459,15 @@ class Message:
 from enum import Enum
 
 class StreamEventType(Enum):
-    """SSE 流式事件类型（6 种 — 权威定义）"""
-    TEXT = "text"                     # 文本增量
+    """SSE 流式事件类型（8 种 — 权威定义，与 AGENT_SPEC §2.2.2.1 对齐）"""
+    TEXT_DELTA = "text_delta"         # 文本增量
     TOOL_CALL = "tool_call"           # 工具调用开始
     TOOL_RESULT = "tool_result"       # 工具执行结果
-    THINKING = "thinking"             # Agent 思考过程
     QUESTION = "question"             # 反问面板
     DONE = "done"                     # 流结束
     ERROR = "error"                   # 错误
+    AGENT_SWITCH = "agent_switch"     # 多 Agent 切换
+    THINKING = "thinking"             # Agent 思考过程
 ```
 
 #### LLMChunk
@@ -725,8 +729,11 @@ Agent 对话端点 `POST /agent/chat` 返回 SSE 流：
 ```
 Content-Type: text/event-stream
 
-event: text
+event: text_delta
 data: {"content": "让我来分析"}
+
+event: thinking
+data: {"thought": "用户想了解 React，我需要..."}
 
 event: tool_call
 data: {"tool": "read_source_file", "args": {...}}
@@ -734,11 +741,17 @@ data: {"tool": "read_source_file", "args": {...}}
 event: tool_result
 data: {"tool": "read_source_file", "result": {...}}
 
+event: agent_switch
+data: {"agent_id": "mentor", "reason": "需要深度讲解"}
+
 event: question
 data: {"type": "radio", "options": [...]}
 
 event: done
 data: {"usage": {"tokens": 1234}}
+
+event: error
+data: {"code": "LLM_TIMEOUT", "message": "LLM 响应超时"}
 ```
 
 ### 4.3 AgentRegistry
@@ -1849,6 +1862,8 @@ app.add_middleware(
 import re
 import logging
 
+from app.core.exceptions import AppException  # §3.4 统一异常
+
 logger = logging.getLogger(__name__)
 
 
@@ -1872,34 +1887,27 @@ class PromptGuard:
         r"##\s*System\s*:",         # Markdown 注入
     ]
 
-    @staticmethod
-    def sanitize_user_input(text: str) -> str:
+    @classmethod
+    def sanitize_user_input(cls, text: str) -> str:
         """检测并处理 Prompt 注入尝试（S-05 修复：可配置模式）
 
         block 模式（默认）: 检测到注入时直接拦截，返回错误消息
         mark 模式（MVP 降级）: 检测到注入时标记内容，仍传递给 LLM
         """
-        for pattern in PromptGuard.INJECTION_PATTERNS:
+        for pattern in cls.INJECTION_PATTERNS:
             if re.search(pattern, text, re.IGNORECASE):
                 logger.warning(f"PromptGuard: 检测到注入尝试 - 模式: {pattern}")
 
-                if PromptGuard.mode == "block":
-                    raise ValueError("检测到可疑的指令注入，已拦截")
+                if cls.mode == "block":
+                    raise AppException("INJECTION_DETECTED", "检测到可疑的指令注入，已拦截")
                 else:  # mark 模式
                     return f"[INJECTION_FLAGGED] {text}"
         return text
 
-    @staticmethod
-    def sanitize_tool_output(text: str) -> str:
-        """对工具返回内容进行消毒"""
-        for pattern in PromptGuard.INJECTION_PATTERNS:
-            if re.search(pattern, text, re.IGNORECASE):
-                logger.warning(f"PromptGuard: 工具输出检测到注入 - 模式: {pattern}")
-                if PromptGuard.mode == "block":
-                    return "[工具输出包含可疑内容，已过滤]"
-                else:
-                    return f"[FLAGGED] {text}"
-        return text
+    @classmethod
+    def sanitize_tool_output(cls, text: str) -> str:
+        """对工具返回内容进行消毒（委托给 sanitize_user_input）"""
+        return cls.sanitize_user_input(text)
 ```
 
 ### 10.3.1 NotificationMessage
