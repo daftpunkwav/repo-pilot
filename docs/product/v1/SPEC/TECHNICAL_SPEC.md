@@ -1121,9 +1121,9 @@ class ReActEngine:
         while iteration < self.MAX_ITERATIONS:
             iteration += 1
 
-            # 获取当前 Agent 可用工具
+            # 获取当前 Agent 可用工具（B-02: context.llm_provider 统一命名）
             tools = context.tool_registry.get_tools_for_agent(context.agent_id)
-            tool_schemas = [t.to_openai_format() for t in tools]
+            tool_schemas = [t.to_openai_format() for t in tools]  # T-02
 
             # 收集流式响应
             collector = StreamCollector()
@@ -2276,9 +2276,8 @@ class SkillLoader:
 | `POST /agent/recommend`     | 10 次/分钟/user | 项目推荐          |
 | `POST /agent/note/generate` | 10 次/分钟/user | 笔记生成          |
 | `POST /agent/config/test`   | 5 次/分钟/user  | LLM 连通性测试     |
-| `POST /settings/test-llm`   | 5 次/分钟/user  | 简化 LLM 测试     |
 
-> **T-06 修复说明：** 已删除原表中与端点清单不匹配的废弃条目，仅保留 §4.1 中定义的端点。
+> **T-06 修复说明：** 已删除原表中与端点清单不匹配的废弃条目（`POST /settings/test-llm`），仅保留 §4.1 中定义的端点。
 
 ---
 
