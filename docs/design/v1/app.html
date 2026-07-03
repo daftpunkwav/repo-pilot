@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1320">
+<title>RepoPilot · AI 开源项目学习领航员</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/design-system.css">
+
+<style>
+  /* ===== App.html 局部样式（液态玻璃组件变体） ===== */
+  .overview-hero {
+    position: relative;
+    padding: 32px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .overview-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 30%, rgba(0,122,255,0.12), transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(191,90,242,0.12), transparent 50%);
+    pointer-events: none;
+  }
+  .overview-hero > * { position: relative; z-index: 1; }
+
+  /* 总览页：分类分布条形图 */
+  .dist-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+  }
+  .dist-bar:last-child { border-bottom: 0; }
+  .dist-label { width: 100px; font-size: 12px; font-weight: 600; }
+  .dist-track { flex: 1; height: 8px; background: rgba(0,0,0,0.05); border-radius: 999px; overflow: hidden; }
+  .dist-fill { height: 100%; border-radius: 999px; }
+  .dist-val { width: 40px; text-align: right; font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-700); }
+
+  /* 笔记编辑器 */
+  .note-shell { display: grid; grid-template-columns: 280px 1fr; min-height: calc(100vh - var(--topbar-h)); }
+  .note-list-col { background: rgba(255,255,255,0.5); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%); border-right: 1px solid rgba(0,0,0,0.06); padding: 16px 12px; overflow-y: auto; }
+  .note-list-item { padding: 10px 12px; border-radius: 10px; cursor: pointer; margin-bottom: 4px; transition: all 0.18s; }
+  .note-list-item:hover { background: rgba(0,0,0,0.04); }
+  .note-list-item.active { background: linear-gradient(135deg, rgba(0,122,255,0.12), rgba(0,122,255,0.04)); border-left: 3px solid var(--brand-500); padding-left: 9px; }
+  .note-title-mini { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .note-meta-mini { font-size: 11px; color: var(--text-500); display: flex; gap: 6px; align-items: center; }
+  .note-editor-col { display: flex; flex-direction: column; min-width: 0; }
+  .note-toolbar { padding: 8px 16px; border-bottom: 1px solid rgba(0,0,0,0.06); background: rgba(255,255,255,0.5); backdrop-filter: blur(20px); display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-500); }
+  .save-status { margin-left: auto; font-weight: 600; }
+  .save-status.saving { color: var(--warning); }
+  .save-status.saved { color: var(--success); }
+  .note-edit-pane, .note-preview-pane { padding: 24px 32px; overflow-y: auto; min-height: 100%; }
+  .note-editor-col { display: grid; grid-template-rows: auto 1fr; }
+  .note-split { display: grid; grid-template-columns: 1fr 1fr; min-height: 0; flex: 1; }
+  .note-edit-pane { border-right: 1px solid rgba(0,0,0,0.06); background: rgba(255,255,255,0.4); }
+  .note-preview-pane { background: rgba(255,255,255,0.3); backdrop-filter: blur(20px); }
+  .note-title-input { width: 100%; font-size: 24px; font-weight: 700; border: 0; outline: 0; background: transparent; padding: 0; margin-bottom: 16px; letter-spacing: -0.01em; }
+  .note-content-input { width: 100%; min-height: 60vh; border: 0; outline: 0; background: transparent; font: 13px/1.7 var(--font-mono); color: var(--text-800); resize: none; padding: 0; }
+  .note-empty { display: grid; place-items: center; padding: 80px 24px; }
+  .note-empty-icon { width: 72px; height: 72px; margin: 0 auto 16px; opacity: 0.5; }
+  .kb { padding: 1px 5px; background: rgba(0,0,0,0.06); border-radius: 4px; font-family: var(--font-mono); font-size: 10px; }
+
+  /* Agent 反问组件 */
+  .agent-shell-full { display: grid; grid-template-columns: 240px 300px 1fr; height: calc(100vh - var(--topbar-h)); }
+  .session-list-col { background: rgba(255,255,255,0.5); backdrop-filter: blur(40px) saturate(180%); -webkit-backdrop-filter: blur(40px) saturate(180%); border-right: 1px solid rgba(255,255,255,0.4); display: flex; flex-direction: column; }
+  .session-list-head { padding: 14px; border-bottom: 1px solid rgba(0,0,0,0.06); }
+  .session-list-body { flex: 1; overflow-y: auto; padding: 8px; }
+  .session-item { padding: 10px 12px; border-radius: 10px; cursor: pointer; margin-bottom: 4px; transition: all 0.18s; }
+  .session-item:hover { background: rgba(0,0,0,0.04); }
+  .session-item.active { background: linear-gradient(135deg, rgba(0,122,255,0.15), rgba(0,122,255,0.06)); border-left: 3px solid var(--brand-500); padding-left: 9px; }
+  .session-item-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .session-item-meta { display: flex; gap: 6px; align-items: center; font-size: 10px; color: var(--text-400); }
+  .session-tabs { display: flex; gap: 4px; padding: 8px 12px; border-bottom: 1px solid rgba(0,0,0,0.06); }
+  .session-tab { padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--text-500); border-radius: 999px; cursor: pointer; }
+  .session-tab.active { background: rgba(0,0,0,0.06); color: var(--text-800); }
+  .unread-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--brand-500); flex-shrink: 0; }
+
+  .chat-area { display: flex; flex-direction: column; min-width: 0; background: rgba(255,255,255,0.35); backdrop-filter: blur(20px); }
+  .chat-header { padding: 12px 20px; border-bottom: 1px solid rgba(0,0,0,0.06); background: rgba(255,255,255,0.5); display: flex; align-items: center; gap: 16px; }
+  .agent-switcher { display: flex; gap: 4px; padding: 5px 6px; background: rgba(0,0,0,0.04); border-radius: 999px; }
+  .agent-avatar { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; position: relative; transition: transform 0.18s var(--ease-spring); }
+  .agent-avatar:hover { transform: translateY(-1px); }
+  .agent-avatar.active { box-shadow: 0 0 0 2px var(--bg-50), 0 0 0 4px var(--brand-500); }
+  .agent-hub       { background: linear-gradient(135deg, #4a3aff, #9d4edd); }
+  .agent-scout     { background: linear-gradient(135deg, #ff9f0a, #ff6f00); }
+  .agent-mentor    { background: linear-gradient(135deg, #9d4edd, #c879ff); }
+  .agent-navigator { background: linear-gradient(135deg, #00b8d4, #00d4aa); }
+  .agent-curator   { background: linear-gradient(135deg, #34c759, #30d158); }
+  .agent-scribe    { background: linear-gradient(135deg, #ff375f, #ff6b8a); }
+
+  .chat-messages { flex: 1; overflow-y: auto; padding: 32px 20px; display: flex; flex-direction: column; gap: 20px; }
+  .msg { display: flex; gap: 12px; max-width: 760px; }
+  .msg-avatar { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+  .msg-body { flex: 1; min-width: 0; }
+  .msg-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .msg-name { font-size: 13px; font-weight: 700; }
+  .msg-time { font-size: 11px; color: var(--text-400); }
+  .msg-content { background: rgba(255,255,255,0.6); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.5); border-radius: 14px; padding: 14px 16px; font-size: 13px; line-height: 1.6; }
+  .msg-routing { font-size: 11px; color: var(--brand-700); background: rgba(0,122,255,0.1); padding: 4px 10px; border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+  .msg-user { flex-direction: row-reverse; align-self: flex-end; max-width: 600px; }
+  .msg-user .msg-avatar { background: linear-gradient(135deg, #5e5ce6, #bf5af2); }
+  .msg-user .msg-body { text-align: right; }
+  .msg-user .msg-head { justify-content: flex-end; }
+  .msg-user .msg-content { background: linear-gradient(135deg, var(--brand-500), var(--brand-600)); color: #fff; border: 0; }
+  .msg-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .quick-btn { padding: 6px 12px; background: rgba(255,255,255,0.5); backdrop-filter: blur(10px); border: 1px solid rgba(0,0,0,0.06); border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--text-700); cursor: pointer; }
+  .quick-btn:hover { background: rgba(255,255,255,0.8); }
+
+  .question-panel { background: rgba(255,255,255,0.7); backdrop-filter: blur(30px); border: 2px solid var(--brand-500); border-radius: 14px; padding: 18px; margin-top: 8px; box-shadow: var(--shadow-md); }
+  .question-item { padding: 12px 0; border-top: 1px dashed rgba(0,0,0,0.08); }
+  .question-item:first-of-type { border-top: 0; padding-top: 0; }
+  .question-text { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+  .radio-option { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid rgba(0,0,0,0.08); border-radius: 10px; cursor: pointer; transition: all 0.18s; margin-bottom: 6px; background: rgba(255,255,255,0.4); }
+  .radio-option:hover { background: rgba(255,255,255,0.7); border-color: var(--brand-300); }
+  .radio-option.selected { border-color: var(--brand-500); background: rgba(0,122,255,0.06); }
+  .radio-dot { width: 16px; height: 16px; border-radius: 999px; border: 2px solid rgba(0,0,0,0.2); flex-shrink: 0; margin-top: 2px; display: grid; place-items: center; }
+  .radio-option.selected .radio-dot { border-color: var(--brand-500); }
+  .radio-dot::after { content: ''; width: 8px; height: 8px; border-radius: 999px; background: var(--brand-500); opacity: 0; }
+  .radio-option.selected .radio-dot::after { opacity: 1; }
+  .radio-label { font-size: 13px; font-weight: 600; }
+  .radio-desc { font-size: 11px; color: var(--text-500); margin-top: 2px; }
+  .km-check { width: 16px; height: 16px; border-radius: 4px; border: 2px solid rgba(0,0,0,0.2); flex-shrink: 0; display: grid; place-items: center; }
+  .km-check.checked { background: var(--brand-500); border-color: var(--brand-500); color: #fff; }
+
+  .chat-input-wrap { padding: 16px 20px 20px; border-top: 1px solid rgba(0,0,0,0.06); background: rgba(255,255,255,0.5); backdrop-filter: blur(20px); }
+  .chat-input { background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.08); border-radius: 14px; padding: 12px 14px; transition: all 0.18s; }
+  .chat-input:focus-within { border-color: var(--brand-500); box-shadow: 0 0 0 3px rgba(0,122,255,0.12); background: rgba(255,255,255,0.9); }
+  .chat-textarea { width: 100%; min-height: 44px; max-height: 180px; border: 0; outline: 0; background: transparent; font: inherit; color: var(--text-800); resize: none; }
+  .send-btn { width: 34px; height: 34px; border-radius: 999px; background: linear-gradient(135deg, var(--brand-500), var(--brand-600)); color: #fff; border: 0; display: grid; place-items: center; cursor: pointer; }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .streaming-cursor { display: inline-block; width: 7px; height: 14px; background: currentColor; vertical-align: middle; margin-left: 2px; animation: blink 1s infinite; opacity: 0.7; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* 图谱 */
+  .graph-stage { position: relative; height: calc(100vh - var(--topbar-h) - 100px); border-radius: var(--radius-lg); overflow: hidden; background: rgba(255,255,255,0.5); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.5); }
+  .graph-toolbar { position: absolute; top: 16px; left: 16px; right: 16px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.5); border-radius: 14px; padding: 12px 16px; box-shadow: var(--shadow-sm); z-index: 5; }
+  .graph-statusbar { position: absolute; bottom: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.5); border-radius: 14px; padding: 8px 16px; font-size: 11px; color: var(--text-500); box-shadow: var(--shadow-sm); z-index: 5; }
+  .node-tooltip { position: absolute; pointer-events: none; background: rgba(28,28,30,0.92); backdrop-filter: blur(20px); color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 11px; box-shadow: var(--shadow-md); opacity: 0; transition: opacity 0.15s; z-index: 7; }
+  .node-tooltip.visible { opacity: 1; }
+  .node-tooltip strong { font-family: var(--font-mono); display: block; margin-bottom: 4px; }
+  .node-circle { cursor: pointer; transition: all 0.2s; }
+  .node-circle:hover { filter: brightness(1.15); }
+  .node-label { font-family: var(--font-mono); font-size: 10px; fill: var(--text-800); text-anchor: middle; pointer-events: none; }
+  .edge { fill: none; stroke-linecap: round; opacity: 0.5; }
+
+  /* Toast */
+  #toast-container { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast { padding: 12px 20px; background: rgba(28,28,30,0.92); backdrop-filter: blur(20px); color: #fff; border-radius: 999px; font-size: 13px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.3); animation: toast-in 0.4s var(--ease-spring); white-space: nowrap; }
+  @keyframes toast-in { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+  /* 主页 grid */
+  .overview-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  .recent-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+
+  /* 进度追踪环 */
+  .progress-ring { transform: rotate(-90deg); }
+  .progress-ring-circle { transition: stroke-dashoffset 0.5s var(--ease-spring); }
+
+  /* 笔记空状态 */
+  .empty-note { display: grid; place-items: center; height: 100%; text-align: center; }
+
+  /* 响应 */
+  @media (max-width: 1100px) {
+    .overview-grid { grid-template-columns: repeat(2, 1fr); }
+    .recent-grid { grid-template-columns: 1fr; }
+    .agent-shell-full { grid-template-columns: 1fr; }
+    .session-list-col { display: none; }
+    .note-shell { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-container"></div>
+
+<!-- Markdown 渲染（同步加载，避免 race condition） -->
+<script src="https://unpkg.com/marked@11.1.1/marked.min.js"></script>
+
+<!-- Vue 3 -->
+<script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
+
+<!-- API Mock -->
+<script src="assets/api-mock.js"></script>
+
+<script>
+'use strict';
+const { createApp, ref, reactive, computed, watch, onMounted, nextTick, onBeforeUnmount, h } = Vue;
+
+// ==========================================================================
+// 1. 极简 Hash 路由（不依赖 Vue Router，避免任何边界问题）
+// ==========================================================================
+const ROUTES = [
+  { pattern: /^\/$/,                          name: 'overview' },
+  { pattern: /^\/projects$/,                  name: 'projects' },
+  { pattern: /^\/projects\/([^/]+)$/,         name: 'project-detail', params: ['id'] },
+  { pattern: /^\/notes$/,                     name: 'notes' },
+  { pattern: /^\/notes\/([^/]+)$/,            name: 'note-edit', params: ['id'] },
+  { pattern: /^\/agent$/,                     name: 'agent' },
+  { pattern: /^\/graph$/,                     name: 'graph' },
+  { pattern: /^\/settings$/,                  name: 'settings' },
+  { pattern: /^\/login$/,                     name: 'login', public: true },
+  { pattern: /^\/register$/,                  name: 'register', public: true }
+];
+
+function parseHash() {
+  const hash = (window.location.hash || '#/').slice(1) || '/';
+  for (const route of ROUTES) {
+    const m = hash.match(route.pattern);
+    if (m) {
+      const params = {};
+      (route.params || []).forEach((k, i) => params[k] = decodeURIComponent(m[i + 1]));
+      return { name: route.name, params, hash };
+    }
+  }
+  return { name: 'overview', params: {}, hash };
+}
+
+function navigate(path) {
+  if (!path.startsWith('#')) path = '#' + path;
+  if (window.location.hash === path) {
+    // 强制刷新（处理相同 hash 但参数变化）
+    window.dispatchEvent(new Event('hashchange'));
+  } else {
+    window.location.hash = path;
+  }
+}
+
+window.addEventListener('hashchange', () => {
+  const r = parseHash();
+  store.route = r;
+});
+
+// ==========================================================================
+// 2. 全局 Store
+// ==========================================================================
+const api = new window.ApiClient();
+const toast = (msg, type = 'info') => {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.style.background = type === 'error' ? 'rgba(255,59,48,0.92)' : type === 'success' ? 'rgba(52,199,89,0.92)' : 'rgba(28,28,30,0.92)';
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2400);
+};
+
+const store = reactive({
+  user: null,
+  settings: null,
+  categories: [],
+  tags: [],
+  isAuth: !!localStorage.getItem('rp_token'),
+  theme: localStorage.getItem('rp_theme') || 'light',
+  route: parseHash()
+});
+
+watch(() => store.theme, (v) => {
+  document.documentElement.setAttribute('data-theme', v);
+  localStorage.setItem('rp_theme', v);
+});
+
+async function loadBootstrap() {
+  if (!store.isAuth) return;
+  try {
+    store.user = (await api.me()).data;
+    store.settings = (await api.getSettings()).data;
+    store.categories = (await api.listCategories()).data;
+    store.tags = (await api.listTags()).data;
+    store.theme = store.settings.theme || 'light';
+  } catch (e) {
+    console.warn('Bootstrap failed', e);
+    store.isAuth = false;
+    api.setToken(null);
+  }
+}
+
+// ==========================================================================
+// 3. 图标（内联 SVG）
+// ==========================================================================
+const Icon = {
+  overview: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+  projects: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/></svg>',
+  agent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-3-6.7L21 4v5h-5"/><circle cx="12" cy="12" r="3"/></svg>',
+  graph: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7l8 0M7 8l4 8M17 8l-4 8"/></svg>',
+  notes: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>',
+  settings: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1.3l2-1.5-2-3.4-2.4.8a7 7 0 00-2.2-1.3L14 3h-4l-.3 2.3a7 7 0 00-2.2 1.3l-2.4-.8-2 3.4 2 1.5a7 7 0 000 2.6l-2 1.5 2 3.4 2.4-.8a7 7 0 002.2 1.3L10 21h4l.3-2.3a7 7 0 002.2-1.3l2.4.8 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+  bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0112 0v5l1.5 3h-15L6 13V8z"/><path d="M10 19a2 2 0 004 0"/></svg>',
+  help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
+  send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l14 0M13 5l7 7-7 7"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
+  external: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>',
+  sparkle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M19 14l.7 2.1L22 17l-2.3.9L19 20l-.7-2.1L16 17l2.3-.9L19 14z"/></svg>',
+  arrowRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6L12 2z"/></svg>',
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-3-6.7"/><path d="M21 4v5h-5"/></svg>',
+  bolt: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>',
+  bookmark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>',
+  inbox: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>',
+  download: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>',
+  link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>',
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>',
+  target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+  fire: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8 6 6 9 6 13a6 6 0 0012 0c0-2-1-3-2-4 0 1-1 2-2 2 0-3-1-5-2-9z"/></svg>',
+  trendUp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8M14 7h7v7"/></svg>'
+};
+
+// ==========================================================================
+// 4. 通用组件
+// ==========================================================================
+
+// 统一侧边栏（用户规定：总览/项目库/Agent Chat/图谱/笔记/设置）
+const Sidebar = {
+  template: `
+    <aside class="sidebar">
+      <a href="#/" class="sidebar-brand" style="text-decoration:none;color:inherit">
+        <div class="sidebar-logo">RP</div>
+        <div>
+          <div class="sidebar-name">RepoPilot</div>
+          <div class="sidebar-version">v1.0.0</div>
+        </div>
+      </a>
+      <a href="#/" class="nav-item" :class="{ active: store.route.name === 'overview' }" v-html="ic.overview + '<span>总览</span>'"></a>
+      <a href="#/projects" class="nav-item" :class="{ active: store.route.name === 'projects' || store.route.name === 'project-detail' }" v-html="ic.projects + '<span>项目库</span><span class=&quot;nav-badge&quot;>24</span>'"></a>
+      <a href="#/agent" class="nav-item ai-badge" :class="{ active: store.route.name === 'agent' }" v-html="ic.agent + '<span>Agent Chat</span><span class=&quot;nav-badge&quot;>AI</span>'"></a>
+      <a href="#/graph" class="nav-item" :class="{ active: store.route.name === 'graph' }" v-html="ic.graph + '<span>图谱</span>'"></a>
+      <a href="#/notes" class="nav-item" :class="{ active: store.route.name === 'notes' || store.route.name === 'note-edit' }" v-html="ic.notes + '<span>笔记</span><span class=&quot;nav-badge&quot;>4</span>'"></a>
+      <a href="#/settings" class="nav-item" :class="{ active: store.route.name === 'settings' }" v-html="ic.settings + '<span>设置</span>'"></a>
+
+      <div class="sidebar-footer">
+        <div class="nav-item" style="pointer-events:none">
+          <div class="avatar">{{ initials }}</div>
+          <div style="display:flex;flex-direction:column;line-height:1.2">
+            <span style="font-weight:600">{{ user?.username || 'Guest' }}</span>
+            <span style="font-size:11px;color:var(--text-400)">Pro · 24 / ∞</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  `,
+  setup() {
+    return { ic: Icon, store, user: computed(() => store.user), initials: computed(() => (store.user?.username || 'G').slice(0, 2).toUpperCase()) };
+  }
+};
+
+const Topbar = {
+  template: `
+    <header class="topbar">
+      <div class="topbar-crumb">
+        <span v-for="(c, i) in crumbs" :key="i">
+          <a v-if="c.to" :href="'#' + c.to" style="color:var(--text-500)">{{ c.label }}</a>
+          <span v-else>{{ c.label }}</span>
+          <span v-if="i < crumbs.length - 1" class="sep">/</span>
+        </span>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="topbar-search">
+        <span v-html="ic.search"></span>
+        <input v-model="q" placeholder="全局搜索..." @keyup.enter="onSearch" />
+        <kbd>⌘K</kbd>
+      </div>
+      <button class="topbar-action" @click="toggleTheme" :title="store.theme === 'dark' ? '浅色' : '深色'" v-html="store.theme === 'dark' ? ic.sun : ic.moon"></button>
+      <button class="topbar-action" title="通知" v-html="ic.bell"></button>
+      <button class="topbar-action" title="帮助" v-html="ic.help"></button>
+      <a href="#/settings">
+        <div class="avatar" style="cursor:pointer">{{ initials }}</div>
+      </a>
+    </header>
+  `,
+  setup() {
+    const q = ref('');
+    const crumbs = computed(() => {
+      const r = store.route;
+      const map = {
+        overview: [{ label: '总览' }],
+        projects: [{ label: '项目库' }],
+        'project-detail': [{ label: '项目库', to: '/projects' }, { label: projectName.value }],
+        notes: [{ label: '笔记' }, { label: '全部笔记' }],
+        'note-edit': [{ label: '笔记', to: '/notes' }, { label: noteTitle.value || '编辑' }],
+        agent: [{ label: 'Agent Chat' }],
+        graph: [{ label: '图谱' }],
+        settings: [{ label: '设置' }]
+      };
+      return map[r.name] || [{ label: r.name }];
+    });
+    const projectName = ref('');
+    const noteTitle = ref('');
+    watch(() => store.route, async (r) => {
+      if (r.name === 'project-detail') {
+        try { projectName.value = (await api.getProject(r.params.id)).data.name; } catch (e) { projectName.value = r.params.id; }
+      }
+      if (r.name === 'note-edit') {
+        try { noteTitle.value = (await api.getNote(r.params.id)).data.title; } catch (e) { noteTitle.value = ''; }
+      }
+    }, { immediate: true });
+    const toggleTheme = () => { store.theme = store.theme === 'dark' ? 'light' : 'dark'; };
+    const onSearch = () => { navigate('/projects?q=' + encodeURIComponent(q.value)); };
+    return { ic: Icon, store, crumbs, initials: computed(() => (store.user?.username || 'G').slice(0, 2).toUpperCase()), q, toggleTheme, onSearch };
+  }
+};
+
+const AppLayout = {
+  components: { Sidebar, Topbar },
+  template: `
+    <div class="app">
+      <Sidebar />
+      <div class="main" style="display:flex;flex-direction:column;min-width:0">
+        <Topbar />
+        <main class="content" style="flex:1">
+          <slot />
+        </main>
+      </div>
+    </div>
+  `
+};
+
+// ==========================================================================
+// 5. 页面组件
+// ==========================================================================
+
+// ============ 5.1 OverviewPage（总览）============
+const OverviewPage = {
+  components: { AppLayout },
+  template: `
+    <AppLayout>
+      <!-- Hero -->
+      <div class="card glass overview-hero">
+        <div class="row between">
+          <div>
+            <div class="muted small">欢迎回来</div>
+            <h1 class="h1" style="margin-top:4px">{{ greeting }}, {{ user?.username || '开发者' }}</h1>
+            <p class="muted mt-sm" style="font-size:13px">今天是个适合学习开源项目的好日子 ✨</p>
+          </div>
+          <div class="row gap-sm">
+            <a href="#/agent" class="btn btn-primary" v-html="ic.agent + '开始对话'"></a>
+            <a href="#/projects" class="btn btn-glass" v-html="ic.projects + '浏览项目'"></a>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 个统计卡 -->
+      <div class="overview-grid">
+        <div class="stat">
+          <div class="stat-icon" style="color:var(--brand-500)" v-html="ic.projects"></div>
+          <div class="stat-label">总项目数</div>
+          <div class="stat-value">{{ stats.total || 24 }}</div>
+          <div class="stat-delta">+3 本周</div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon" style="color:var(--success)" v-html="ic.star"></div>
+          <div class="stat-label">已掌握</div>
+          <div class="stat-value">{{ stats.mastered || 6 }}</div>
+          <div class="stat-delta">25.0%</div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon" style="color:var(--warning)" v-html="ic.refresh"></div>
+          <div class="stat-label">学习中</div>
+          <div class="stat-value">{{ stats.learning || 9 }}</div>
+          <div class="stat-delta">37.5%</div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon" style="color:var(--chart-4)" v-html="ic.bookmark"></div>
+          <div class="stat-label">待开始</div>
+          <div class="stat-value">{{ stats.none || 9 }}</div>
+          <div class="muted small">37.5%</div>
+        </div>
+      </div>
+
+      <div class="recent-grid">
+        <!-- 左：最近项目 + 分类分布 -->
+        <div>
+          <div class="card glass mb-md">
+            <div class="row between mb-md">
+              <h3 class="h3">最近添加的项目</h3>
+              <a href="#/projects" class="btn btn-text btn-sm">查看全部 →</a>
+            </div>
+            <div class="col gap-sm">
+              <a v-for="p in recentProjects" :key="p.id" :href="'#/projects/' + p.id" class="row gap-md" style="padding:10px 12px;border-radius:10px;background:rgba(0,0,0,0.02);text-decoration:none;color:inherit;transition:all 0.18s" onmouseover="this.style.background='rgba(0,122,255,0.06)'" onmouseout="this.style.background='rgba(0,0,0,0.02)'">
+                <div :style="{ width: '36px', height: '36px', borderRadius: '8px', background: categoryColor(p.category_id), color: '#fff', display: 'grid', placeItems: 'center', fontSize: '14px', fontWeight: '700', fontFamily: 'var(--font-mono)' }">{{ p.name.split('/')[0][0] }}</div>
+                <div style="flex:1;min-width:0">
+                  <div class="mono" style="font-weight:600;font-size:13px">{{ p.name }}</div>
+                  <div class="muted small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px">{{ p.description }}</div>
+                </div>
+                <span class="progress-pill" :class="'progress-' + p.progress">{{ progressLabel(p.progress) }}</span>
+              </a>
+            </div>
+          </div>
+
+          <div class="card glass">
+            <h3 class="h3 mb-md">分类分布</h3>
+            <div v-for="d in categoryDist" :key="d.name" class="dist-bar">
+              <div class="dist-label">{{ d.name }}</div>
+              <div class="dist-track"><div class="dist-fill" :style="{ width: d.pct + '%', background: d.color }"></div></div>
+              <div class="dist-val">{{ d.count }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右：最近笔记 + 学习建议 -->
+        <div>
+          <div class="card glass mb-md">
+            <div class="row between mb-md">
+              <h3 class="h3">最近笔记</h3>
+              <a href="#/notes" class="btn btn-text btn-sm">全部 →</a>
+            </div>
+            <div class="col gap-sm">
+              <a v-for="n in recentNotes" :key="n.id" :href="'#/notes/' + n.id" class="note-list-item" style="text-decoration:none;color:inherit">
+                <div class="note-title-mini">{{ n.title }}</div>
+                <div class="note-meta-mini">
+                  <span class="badge mono">{{ projectName(n.project_id) }}</span>
+                  <span style="margin-left:auto">{{ formatDate(n.updated_at) }}</span>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="card glass glass-tinted-violet" style="padding:20px">
+            <div class="row gap-sm mb-sm">
+              <span style="width:32px;height:32px;background:linear-gradient(135deg,#00b8d4,#00d4aa);border-radius:8px;display:grid;place-items:center;color:#fff" v-html="ic.target"></span>
+              <strong style="font-size:14px">Navigator 建议</strong>
+            </div>
+            <p class="muted small" style="line-height:1.65">
+              基于你的项目库（JS 精通、Python 入门），<strong style="color:var(--text-800)">建议本周深入 FastAPI</strong>，与你的 Flask 学习路径形成对照。
+            </p>
+            <a href="#/agent" class="btn btn-primary btn-sm mt-md" v-html="ic.arrowRight + '让 Navigator 规划'"></a>
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  `,
+  async setup() {
+    const stats = ref({}); const projects = ref([]); const notes = ref([]);
+    const recentProjects = computed(() => projects.value.slice(0, 5));
+    const recentNotes = computed(() => notes.value.slice(0, 4));
+    const categoryDist = computed(() => {
+      const map = {};
+      projects.value.forEach(p => { map[p.category_id] = (map[p.category_id] || 0) + 1; });
+      const total = projects.value.length || 1;
+      return Object.entries(map).map(([cid, count]) => {
+        const cat = store.categories.find(c => c.id === cid);
+        return { name: cat?.name || '其他', count, pct: (count / total) * 100, color: cat?.color || '#8e8e93' };
+      }).sort((a, b) => b.count - a.count).slice(0, 6);
+    });
+    const projectName = (id) => projects.value.find(p => p.id === id)?.name || '';
+    const categoryColor = (id) => store.categories.find(c => c.id === id)?.color || '#8e8e93';
+    const progressLabel = (p) => ({ none: '待开始', learning: '学习中', learned: '已学习', mastered: '已掌握' })[p];
+    const greeting = computed(() => { const h = new Date().getHours(); return h < 6 ? '夜深了' : h < 12 ? '早上好' : h < 18 ? '下午好' : '晚上好'; });
+    const formatDate = (d) => { const diff = Date.now() - new Date(d); if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前'; return new Date(d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }); };
+
+    onMounted(async () => {
+      stats.value = (await api.getProjectStats()).data;
+      projects.value = (await api.listProjects({ page_size: 100 })).data.items;
+      notes.value = (await api.listAllNotes()).data;
+    });
+
+    return { ic: Icon, store, user: computed(() => store.user), stats, recentProjects, recentNotes, categoryDist, projectName, categoryColor, progressLabel, greeting, formatDate };
+  }
+};
+
+// ============ 5.2 ProjectsPage（项目库 - 表格视图）============
+const ProjectsPage = {
+  components: { AppLayout },
+  template: `
+    <AppLayout>
+      <div class="row between mb-md">
+        <div>
+          <h1 class="h1">项目库</h1>
+          <p class="muted mt-sm">{{ filtered.length }} / {{ projects.length }} 个项目 · 最后同步于 2026-07-04 14:23</p>
+        </div>
+        <div class="row gap-sm">
+          <button class="btn btn-glass" @click="syncGithub">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.69 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.09-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.49 3.15-1.18 3.15-1.18.62 1.59.23 2.76.11 3.05.74.8 1.18 1.83 1.18 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.07.78 2.16v3.2c0 .31.21.67.8.55C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+            GitHub 同步
+          </button>
+          <button class="btn btn-primary" @click="importProject" v-html="ic.plus + '导入项目'"></button>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="field filter-search">
+          <span v-html="ic.search"></span>
+          <input v-model="filters.search" placeholder="搜索项目名、描述..." />
+        </div>
+        <select class="filter-chip" v-model="filters.category">
+          <option value="">全部分类</option>
+          <option v-for="c in store.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+        </select>
+        <select class="filter-chip" v-model="filters.language">
+          <option value="">全部语言</option>
+          <option v-for="l in languages" :key="l" :value="l">{{ l }}</option>
+        </select>
+        <select class="filter-chip" v-model="filters.progress">
+          <option value="">全部进度</option>
+          <option value="none">待开始</option>
+          <option value="learning">学习中</option>
+          <option value="learned">已学习</option>
+          <option value="mastered">已掌握</option>
+        </select>
+        <button class="btn btn-text btn-sm" @click="resetFilters">清除筛选</button>
+      </div>
+
+      <div v-if="loading" class="empty"><div class="spinner" style="margin:0 auto"></div></div>
+      <div v-else-if="filtered.length === 0" class="empty card">
+        <div class="empty-icon" v-html="ic.inbox"></div>
+        <div class="empty-title">没有匹配的项目</div>
+        <div class="empty-desc">尝试调整筛选条件，或<button class="btn btn-text btn-sm" @click="importProject" style="margin-left:4px">导入新项目</button></div>
+      </div>
+      <table v-else class="table">
+        <thead>
+          <tr>
+            <th>Repo</th>
+            <th>分类</th>
+            <th>语言</th>
+            <th>Stars</th>
+            <th>进度</th>
+            <th>标签</th>
+            <th style="width:80px">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="p in filtered" :key="p.id" @click="navigate('/projects/' + p.id)">
+            <td>
+              <div class="row gap-sm">
+                <div :style="{ width: '32px', height: '32px', borderRadius: '8px', background: categoryColor(p.category_id), color: '#fff', display: 'grid', placeItems: 'center', fontSize: '13px', fontWeight: '700' }">{{ p.name.split('/')[0][0] }}</div>
+                <div>
+                  <div class="mono" style="font-weight:600">{{ p.name }}</div>
+                  <div class="muted" style="font-size:11px;max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ p.description }}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="badge" :class="'cat-' + categoryKey(p.category_id)">{{ categoryName(p.category_id) }}</span></td>
+            <td><span class="row gap-sm"><span :style="{width:'8px',height:'8px',borderRadius:'999px',background:langColor(p.language),display:'inline-block'}"></span><span>{{ p.language }}</span></span></td>
+            <td class="mono">{{ formatStars(p.stars) }}</td>
+            <td><span class="progress-pill" :class="'progress-' + p.progress">{{ progressLabel(p.progress) }}</span></td>
+            <td>
+              <div class="row gap-sm" style="flex-wrap:wrap">
+                <span v-for="tid in p.tags.slice(0,2)" :key="tid" class="badge">{{ tagName(tid) }}</span>
+                <span v-if="p.tags.length > 2" class="muted small">+{{ p.tags.length - 2 }}</span>
+              </div>
+            </td>
+            <td><button class="icon-btn" @click.stop="quickAnalyze(p)" :title="'Scout 快速分析'" v-html="ic.sparkle"></button></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="row between mt-md">
+        <div class="muted small">显示 1-{{ filtered.length }} 共 {{ filtered.length }}</div>
+        <div class="row gap-sm">
+          <button class="filter-chip">&lt;</button>
+          <button class="filter-chip active">1</button>
+          <button class="filter-chip">2</button>
+          <button class="filter-chip">···</button>
+          <button class="filter-chip">&gt;</button>
+        </div>
+      </div>
+
+      <!-- Scout 弹窗 -->
+      <div v-if="analyzing" class="card glass glass-strong" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;max-width:90vw;max-height:80vh;overflow-y:auto;z-index:1000;padding:24px">
+        <div class="row between mb-md">
+          <h3 class="h3">Scout 速览 · {{ analyzing.name }}</h3>
+          <button class="icon-btn" @click="analyzing = null">×</button>
+        </div>
+        <div v-if="analysisText" class="markdown" v-html="renderedAnalysis"></div>
+        <div v-else class="row gap-sm"><div class="spinner"></div><span>Scout 正在分析（30s 内出结果）...</span></div>
+      </div>
+      <div v-if="analyzing" @click="analyzing = null" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999"></div>
+    </AppLayout>
+  `,
+  setup() {
+    const projects = ref([]); const loading = ref(true);
+    const filters = reactive({ search: '', category: '', language: '', progress: '' });
+    const analyzing = ref(null); const analysisText = ref('');
+    const languages = computed(() => [...new Set(projects.value.map(p => p.language))]);
+    const filtered = computed(() => projects.value.filter(p => {
+      if (filters.search && !p.name.toLowerCase().includes(filters.search.toLowerCase()) && !p.description.toLowerCase().includes(filters.search.toLowerCase())) return false;
+      if (filters.category && p.category_id !== filters.category) return false;
+      if (filters.language && p.language !== filters.language) return false;
+      if (filters.progress && p.progress !== filters.progress) return false;
+      return true;
+    }));
+    const load = async () => { loading.value = true; const r = await api.listProjects({ page_size: 100 }); projects.value = r.data.items; loading.value = false; };
+    const categoryName = (id) => store.categories.find(c => c.id === id)?.name || '其他';
+    const categoryKey = (id) => { const n = categoryName(id); return ({ 'Web 前端':'frontend', 'Web 后端':'backend', 'AI / 机器学习':'ai', '数据科学':'data', 'DevOps / 运维':'devops' })[n] || 'other'; };
+    const categoryColor = (id) => store.categories.find(c => c.id === id)?.color || '#8e8e93';
+    const tagName = (id) => store.tags.find(t => t.id === id)?.name || '';
+    const formatStars = (n) => n >= 1000 ? (n / 1000).toFixed(0) + 'k' : n;
+    const progressLabel = (p) => ({ none: '待开始', learning: '学习中', learned: '已学习', mastered: '已掌握' })[p];
+    const langColor = (l) => ({ JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5', Go: '#00ADD8', Rust: '#dea584', CSS: '#563d7c', C: '#555' })[l] || '#8e8e93';
+    const resetFilters = () => { filters.search = ''; filters.category = ''; filters.language = ''; filters.progress = ''; };
+    const navigate = (path) => { window.location.hash = path; };
+    const syncGithub = async () => { toast('正在拉取 GitHub Star...', 'info'); await api.listStars(); toast('已同步 Star', 'success'); await load(); };
+    const importProject = () => { const url = prompt('粘贴 GitHub URL（每行一个）:'); if (!url) return; api.importProjects(url.split('\n').filter(Boolean).map(u => { const m = u.match(/github\.com\/([^/]+)\/([^/]+)/); return m ? { owner: m[1], repo: m[2], url: u } : null; }).filter(Boolean)).then(() => { toast('导入成功', 'success'); load(); }); };
+    const quickAnalyze = async (p) => { analyzing.value = p; analysisText.value = ''; try { const stream = await api.analyze(p.id); for await (const ev of stream) { if (ev.event === 'text_delta') analysisText.value += ev.data.delta; } } catch (e) { analysisText.value = '## 错误\n' + e.message; } };
+    const renderedAnalysis = computed(() => { try { return window.marked ? window.marked.parse(analysisText.value || '') : analysisText.value; } catch (e) { return analysisText.value; } });
+
+    onMounted(load);
+    return { ic: Icon, store, projects, loading, filters, filtered, languages, analyzing, analysisText, renderedAnalysis, resetFilters, navigate, syncGithub, importProject, quickAnalyze, categoryName, categoryKey, categoryColor, tagName, formatStars, progressLabel, langColor };
+  }
+};
+
+// ============ 5.3 ProjectDetailPage ============
+const ProjectDetailPage = {
+  components: { AppLayout },
+  template: `
+    <AppLayout>
+      <div v-if="project">
+        <div class="card glass" style="padding:24px;margin-bottom:16px">
+          <div class="row gap-md">
+            <div :style="{ width: '72px', height: '72px', borderRadius: '18px', background: catColor, color: '#fff', display: 'grid', placeItems: 'center', fontSize: '28px', fontWeight: '700', fontFamily: 'var(--font-mono)', flexShrink: 0 }">{{ project.name[0] }}</div>
+            <div style="flex:1;min-width:0">
+              <div class="row gap-sm">
+                <h1 class="h1 mono" style="font-size:24px">{{ project.name }}</h1>
+                <a :href="project.url" target="_blank" rel="noopener" class="btn btn-glass btn-sm">
+                  在 GitHub 打开 <span v-html="ic.external" style="margin-left:4px"></span>
+                </a>
+              </div>
+              <p class="muted mt-sm" style="font-size:13px;line-height:1.6">{{ project.description }}</p>
+              <div class="row gap-md mt-sm muted small">
+                <span class="row gap-sm"><span v-html="ic.star"></span> {{ formatStars(project.stars) }}</span>
+                <span>·</span>
+                <span>{{ project.language }}</span>
+                <span>·</span>
+                <span>添加于 {{ formatDate(project.imported_at) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card glass mb-md" style="padding:14px 20px">
+          <div class="row between">
+            <div class="row gap-md" style="align-items:center">
+              <span class="label">学习进度</span>
+              <div class="row gap-sm">
+                <span v-for="s in ['none','learning','learned','mastered']" :key="s" class="progress-step" :class="{ active: project.progress === s }" @click="cycleProgress(s)">{{ progressLabel(s) }}</span>
+              </div>
+            </div>
+            <div class="row gap-sm">
+              <a :href="'#/agent?project=' + project.id" class="btn btn-glass btn-sm" v-html="ic.agent + '让 Mentor 讲解'"></a>
+              <button class="btn btn-primary btn-sm" @click="analyzeWith('scout')" v-html="ic.bolt + 'Scout 速览'"></button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab" :class="{active: tab==='readme'}" @click="tab='readme'">📖 README</button>
+          <button class="tab" :class="{active: tab==='notes'}" @click="tab='notes'">📝 笔记 ({{ notes.length }})</button>
+          <button class="tab" :class="{active: tab==='ai'}" @click="tab='ai'">🤖 AI 分析</button>
+        </div>
+
+        <div v-if="tab==='readme'" class="card glass" style="padding:32px;max-width:none">
+          <div class="markdown" v-html="renderedReadme"></div>
+        </div>
+        <div v-else-if="tab==='notes'">
+          <div v-if="notes.length === 0" class="empty card">
+            <div class="empty-icon" v-html="ic.notes"></div>
+            <div class="empty-title">还没有笔记</div>
+            <div class="empty-desc mb-md">为这个项目写下你的第一篇学习笔记</div>
+            <button class="btn btn-primary" @click="createNote" v-html="ic.plus + '新建笔记'"></button>
+          </div>
+          <div v-else>
+            <div class="row between mb-md">
+              <div class="muted">{{ notes.length }} 篇笔记</div>
+              <button class="btn btn-primary btn-sm" @click="createNote" v-html="ic.plus + '新建笔记'"></button>
+            </div>
+            <div class="grid-2">
+              <a v-for="n in notes" :key="n.id" :href="'#/notes/' + n.id" class="card glass card-hover" style="text-decoration:none;color:inherit">
+                <div class="h3 mb-sm">{{ n.title }}</div>
+                <div class="muted small mb-md">{{ formatDate(n.updated_at) }} · {{ n.content.length }} 字符</div>
+                <div class="muted small" style="line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">{{ snippet(n.content) }}</div>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="tab==='ai'" class="card glass">
+          <div class="row between mb-md">
+            <h3 class="h3">AI 分析</h3>
+            <div class="row gap-sm">
+              <button class="btn btn-glass btn-sm" @click="analyzeWith('scout')" v-html="ic.bolt + 'Scout 速览'"></button>
+              <a :href="'#/agent?project=' + project.id" class="btn btn-glass btn-sm" v-html="ic.agent + '打开 Mentor'"></a>
+            </div>
+          </div>
+          <div v-if="aiAnalysis" class="markdown" v-html="renderedAI"></div>
+          <div v-else class="empty" style="padding:32px"><div class="empty-desc">选择一个 AI Agent 开始分析</div></div>
+        </div>
+      </div>
+      <div v-else class="empty"><div class="spinner" style="margin:0 auto"></div></div>
+    </AppLayout>
+  `,
+  async setup() {
+    const project = ref(null); const notes = ref([]); const tab = ref('readme'); const aiAnalysis = ref('');
+    const catColor = computed(() => store.categories.find(c => c.id === project.value?.category_id)?.color || '#007aff');
+    const load = async () => {
+      project.value = (await api.getProject(store.route.params.id)).data;
+      notes.value = (await api.listNotes(store.route.params.id)).data;
+    };
+    const cycleProgress = async (p) => { await api.updateProgress(project.value.id, p); project.value.progress = p; toast('进度已更新', 'success'); };
+    const progressLabel = (p) => ({ none: '待开始', learning: '学习中', learned: '已学习', mastered: '已掌握' })[p];
+    const formatStars = (n) => n >= 1000 ? (n / 1000).toFixed(0) + 'k' : n;
+    const formatDate = (d) => new Date(d).toLocaleDateString('zh-CN');
+    const renderedReadme = computed(() => { try { return window.marked ? window.marked.parse(project.value?.readme || '# 暂无 README') : (project.value?.readme || '暂无 README'); } catch (e) { return project.value?.readme || ''; } });
+    const renderedAI = computed(() => { try { return window.marked ? window.marked.parse(aiAnalysis.value || '') : aiAnalysis.value; } catch (e) { return aiAnalysis.value; } });
+    const analyzeWith = async (agent) => { aiAnalysis.value = ''; tab.value = 'ai'; try { const stream = await api.analyze(project.value.id, agent); for await (const ev of stream) { if (ev.event === 'text_delta') aiAnalysis.value += ev.data.delta; } } catch (e) { aiAnalysis.value = '## 错误\n' + e.message; } };
+    const createNote = async () => { const r = await api.createNote(project.value.id, { title: '未命名笔记', content: `# ${project.value.name} 笔记\n\n## 关键概念\n\n## 代码片段\n\n## 心得\n` }); window.location.hash = '/notes/' + r.data.id; };
+    const snippet = (md) => md.replace(/[#*`>\-]/g, '').slice(0, 200);
+
+    watch(() => store.route.params.id, () => { if (store.route.name === 'project-detail') load(); }, { immediate: true });
+    return { ic: Icon, project, notes, tab, aiAnalysis, catColor, cycleProgress, progressLabel, formatStars, formatDate, renderedReadme, renderedAI, analyzeWith, createNote, snippet };
+  }
+};
+
+// ============ 5.4 NotesListPage ============
+const NotesListPage = {
+  components: { AppLayout },
+  template: `
+    <AppLayout>
+      <div class="row between mb-md">
+        <div>
+          <h1 class="h1">笔记</h1>
+          <p class="muted mt-sm">{{ filtered.length }} / {{ notes.length }} 篇笔记 · 跨 {{ projectCount }} 个项目</p>
+        </div>
+        <button class="btn btn-primary" @click="createNote" v-html="ic.plus + '新建笔记'"></button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="field filter-search">
+          <span v-html="ic.search"></span>
+          <input v-model="search" placeholder="搜索笔记标题、内容..." />
+        </div>
+        <select class="filter-chip" v-model="filterProject">
+          <option value="">全部项目</option>
+          <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+        </select>
+      </div>
+
+      <div v-if="filtered.length === 0" class="empty card">
+        <div class="empty-icon" v-html="ic.notes"></div>
+        <div class="empty-title">{{ notes.length === 0 ? '还没有笔记' : '没有匹配的笔记' }}</div>
+        <div class="empty-desc mb-md">为你的学习之旅记录第一笔</div>
+        <button class="btn btn-primary" @click="createNote" v-html="ic.plus + '新建笔记'"></button>
+      </div>
+
+      <div v-else class="grid-2">
+        <a v-for="n in filtered" :key="n.id" :href="'#/notes/' + n.id" class="card glass card-hover" style="text-decoration:none;color:inherit">
+          <div class="row gap-sm mb-sm">
+            <span class="badge cat-frontend" v-if="projectName(n.project_id)">{{ projectName(n.project_id) }}</span>
+            <span class="muted small" style="margin-left:auto">{{ formatDate(n.updated_at) }}</span>
+          </div>
+          <div class="h3 mb-sm">{{ n.title }}</div>
+          <div class="muted small" style="line-height:1.65;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">{{ snippet(n.content) }}</div>
+          <div class="row gap-md mt-md muted small">
+            <span class="row gap-sm" v-html="ic.bookmark + ' ' + n.content.length + ' 字'"></span>
+            <span class="row gap-sm">Markdown</span>
+          </div>
+        </a>
+      </div>
+    </AppLayout>
+  `,
+  async setup() {
+    const notes = ref([]); const projects = ref([]); const search = ref(''); const filterProject = ref('');
+    const projectCount = computed(() => new Set(notes.value.map(n => n.project_id)).size);
+    const filtered = computed(() => notes.value.filter(n => {
+      if (filterProject.value && n.project_id !== filterProject.value) return false;
+      if (search.value && !n.title.includes(search.value) && !n.content.includes(search.value)) return false;
+      return true;
+    }));
+    const load = async () => {
+      notes.value = (await api.listAllNotes()).data;
+      projects.value = (await api.listProjects({ page_size: 100 })).data.items;
+    };
+    const projectName = (id) => projects.value.find(p => p.id === id)?.name || '';
+    const snippet = (md) => md.replace(/[#*`>\-]/g, '').slice(0, 300);
+    const formatDate = (d) => { const diff = Date.now() - new Date(d); if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前'; if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前'; return new Date(d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }); };
+    const createNote = async () => { const pid = projects.value[0]?.id; const r = await api.createNote(pid, { title: '未命名笔记', content: '# 新笔记\n\n' }); window.location.hash = '/notes/' + r.data.id; };
+
+    onMounted(load);
+    return { ic: Icon, notes, projects, search, filterProject, projectCount, filtered, projectName, snippet, formatDate, createNote };
+  }
+};
+
+// ============ 5.5 NoteEditPage（双栏编辑器）============
+const NoteEditPage = {
+  components: { AppLayout },
+  template: `
+    <AppLayout>
+      <div v-if="note" class="note-shell" style="margin:0 -32px">
+        <div class="note-list-col">
+          <div class="row between mb-md" style="padding:0 4px">
+            <h3 class="h3">笔记</h3>
+            <a href="#/notes" class="icon-btn" title="新建" v-html="ic.plus"></a>
+          </div>
+          <a v-for="n in allNotes" :key="n.id" :href="'#/notes/' + n.id" class="note-list-item" :class="{ active: n.id === note.id }">
+            <div class="note-title-mini">{{ n.title || '未命名笔记' }}</div>
+            <div class="note-meta-mini">
+              <span class="mono" style="font-size:10px">{{ projectName(n.project_id) }}</span>
+              <span style="margin-left:auto">{{ formatDate(n.updated_at) }}</span>
+            </div>
+          </a>
+        </div>
+
+        <div class="note-editor-col">
+          <div class="note-toolbar">
+            <button class="icon-btn" title="加粗" @click="insert('**粗体**')"><strong>B</strong></button>
+            <button class="icon-btn" title="斜体" @click="insert('*斜体*')"><em>I</em></button>
+            <button class="icon-btn" title="代码" @click="insert('\u0060code\u0060')">‹/›</button>
+            <button class="icon-btn" title="链接" @click="insert('[文本](url)')" v-html="ic.link"></button>
+            <span style="margin-left:8px;color:var(--text-700)">{{ projectName(note.project_id) }}</span>
+            <span class="save-status" :class="saveStatus">{{ saveLabel }}</span>
+            <button class="icon-btn" title="删除" @click="del" style="color:var(--error)" v-html="ic.trash"></button>
+          </div>
+
+          <div class="note-split">
+            <div class="note-edit-pane">
+              <input class="note-title-input" v-model="note.title" @input="markChanged" placeholder="笔记标题" />
+              <textarea class="note-content-input" v-model="note.content" @input="markChanged" placeholder="开始用 Markdown 书写..."></textarea>
+            </div>
+            <div class="note-preview-pane">
+              <div style="font-size:22px;font-weight:700;letter-spacing:-0.01em;margin-bottom:20px">{{ note.title || '未命名笔记' }}</div>
+              <div class="markdown" v-html="renderedContent"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div v-else class="empty-note">
+        <div class="spinner"></div>
+      </div>
+    </AppLayout>
+  `,
+  async setup() {
+    const note = ref(null); const allNotes = ref([]); const projects = ref([]);
+    const saveStatus = ref('saved'); const saveLabel = ref('已保存');
+    let saveTimer = null;
+
+    const load = async () => {
+      if (!store.route.params.id) return;
+      note.value = (await api.getNote(store.route.params.id)).data;
+      allNotes.value = (await api.listAllNotes()).data;
+      projects.value = (await api.listProjects({ page_size: 100 })).data.items;
+    };
+    const projectName = (id) => projects.value.find(p => p.id === id)?.name || '';
+    const renderedContent = computed(() => { try { return window.marked ? window.marked.parse(note.value?.content || '') : (note.value?.content || ''); } catch (e) { return note.value?.content || ''; } });
+    const formatDate = (d) => { const diff = Date.now() - new Date(d); if (diff < 60000) return '刚刚'; if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前'; if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前'; return new Date(d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }); };
+    const markChanged = () => {
+      saveStatus.value = 'saving'; saveLabel.value = '保存中...';
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        await api.updateNote(note.value.id, { title: note.value.title, content: note.value.content });
+        saveStatus.value = 'saved'; saveLabel.value = '已保存 · ' + new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+      }, 600);
+    };
+    const insert = (text) => {
+      const ta = document.querySelector('.note-content-input');
+      if (!ta) return;
+      const s = ta.selectionStart, e = ta.selectionEnd;
+      note.value.content = note.value.content.slice(0, s) + text + note.value.content.slice(e);
+      markChanged();
+      nextTick(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = s + text.length; });
+    };
+    const del = async () => {
+      if (!confirm('确定删除这篇笔记？')) return;
+      await api.deleteNote(note.value.id);
+      toast('已删除', 'success');
+      window.location.hash = '/notes';
+    };
+
+    watch(() => store.route.params.id, () => { if (store.route.name === 'note-edit') load(); }, { immediate: true });
+    return { ic: Icon, note, allNotes, projects, saveStatus, saveLabel, projectName, renderedContent, formatDate, markChanged, insert, del };
+  }
+};
+
+// ============ 5.6 AgentPage ============
+const AgentPage = {
+  components: { AppLayout },
+  template: `
+    <AppLayout>
+      <div class="card glass" style="padding:0;overflow:hidden;margin:0 -32px;height:calc(100vh - var(--topbar-h) - 32px)">
+        <div class="agent-shell-full">
+          <div class="session-list-col">
+            <div class="session-list-head">
+              <button class="btn btn-primary btn-block" @click="newSession" v-html="ic.plus + '新建对话'"></button>
+              <div class="field mt-md" style="height:32px"><span v-html="ic.search"></span><input v-model="sessionSearch" placeholder="搜索会话..." /></div>
+            </div>
+            <div class="session-tabs">
+              <span v-for="t in ['全部','收藏','归档']" :key="t" class="session-tab" :class="{active: tab === t}" @click="tab = t">{{ t }}</span>
+            </div>
+            <div class="session-list-body">
+              <div v-for="s in sessions" :key="s.id" class="session-item" :class="{active: current?.id === s.id}" @click="openSession(s)">
+                <div class="session-item-title">{{ s.title }}<span v-if="s.unread" class="unread-dot"></span></div>
+                <div class="session-item-meta">
+                  <span class="badge" :class="'cat-' + s.agent">{{ s.agent }}</span>
+                  <span>{{ formatTime(s.updated_at) }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-area" style="grid-column: span 2">
+            <header class="chat-header">
+              <div class="agent-switcher">
+                <div v-for="a in ['hub','scout','mentor','navigator','curator','scribe']" :key="a" class="agent-avatar" :class="['agent-'+a, {active: activeAgent === a}]" @click="activeAgent = a" :title="a">{{ a[0].toUpperCase() }}</div>
+              </div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:14px;font-weight:600">{{ current?.title || '新对话' }}</div>
+                <div class="muted small">{{ user?.username }} · {{ activeAgent }} · gpt-4o</div>
+              </div>
+              <button class="icon-btn" title="分享" v-html="ic.share"></button>
+              <button class="icon-btn" title="导出" v-html="ic.download"></button>
+            </header>
+
+            <div class="chat-messages" ref="msgBox">
+              <div class="msg">
+                <div class="msg-avatar agent-hub">H</div>
+                <div class="msg-body">
+                  <div class="msg-head"><span class="msg-name">Hub</span><span class="muted small">对话管家</span><span class="msg-time">14:18</span></div>
+                  <div class="msg-content">
+                    你好 {{ user?.username }}！我是 RepoPilot 的 <strong>Hub</strong>，你的开源项目学习入口。<br><br>
+                    我可以帮你路由到 6 个专业 Agent：
+                    <ul style="margin:8px 0 12px;padding-left:20px">
+                      <li><strong style="color:#ff9f0a">Scout</strong> · 30s 快速了解一个新项目</li>
+                      <li><strong style="color:#9d4edd">Mentor</strong> · 深入拆解你库里的项目</li>
+                      <li><strong style="color:#00b8d4">Navigator</strong> · 基于你的项目库规划学习路径</li>
+                      <li><strong style="color:#34c759">Curator</strong> · 智能分类与标签</li>
+                      <li><strong style="color:#ff375f">Scribe</strong> · 辅助你写学习笔记</li>
+                    </ul>
+                    试试问我："对比 Flask 和 FastAPI" 或 "帮我规划全栈学习路径"
+                  </div>
+                  <div class="msg-actions">
+                    <span class="quick-btn">分析项目</span>
+                    <span class="quick-btn">对比项目</span>
+                    <span class="quick-btn">学习规划</span>
+                    <span class="quick-btn">写笔记</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="msg msg-user">
+                <div class="msg-avatar">{{ initials }}</div>
+                <div class="msg-body">
+                  <div class="msg-head"><span class="msg-name">{{ user?.username }}</span><span class="msg-time">14:23</span></div>
+                  <div class="msg-content">对比我库里的 Flask 和 FastAPI</div>
+                </div>
+              </div>
+
+              <div class="msg">
+                <div class="msg-avatar agent-hub">H</div>
+                <div class="msg-body">
+                  <span class="msg-routing">→ Hub 路由到 Mentor · 意图：项目对比</span>
+                  <div class="msg-head"><span class="msg-name">Mentor</span><span class="muted small">深度讲解</span><span class="msg-time">14:23</span></div>
+                  <div class="msg-content">好的，我来对比 Flask 和 FastAPI。在开始之前，我需要先了解你的水平：</div>
+
+                  <div class="question-panel">
+                    <div class="row gap-sm" style="font-size:12px;font-weight:700;color:var(--brand-700);margin-bottom:12px">
+                      <span v-html="ic.sparkle"></span> Mentor 的反问 · 基于你的回答定制讲解
+                    </div>
+
+                    <div class="question-item">
+                      <div class="question-text">Q1 · 你的 Python 掌握程度？</div>
+                      <div v-for="(opt, i) in q1Options" :key="i" class="radio-option" :class="{ selected: opt.selected }" @click="selectRadio('q1', i)">
+                        <div class="radio-dot"></div>
+                        <div><div class="radio-label">{{ opt.label }}</div><div class="radio-desc">{{ opt.desc }}</div></div>
+                      </div>
+                    </div>
+
+                    <div class="question-item">
+                      <div class="question-text">Q2 · 你对 Web 框架的经验？</div>
+                      <div class="row" style="padding:8px 0">
+                        <input type="range" min="0" max="100" v-model.number="slider" class="slider" style="flex:1" />
+                        <span class="mono" style="font-weight:700;color:var(--brand-500);min-width:40px;text-align:right">{{ slider }}</span>
+                      </div>
+                      <div class="row between muted" style="font-size:10px"><span>新手</span><span>用过 1-2 个</span><span>资深</span><span>造轮子</span></div>
+                    </div>
+
+                    <div class="question-item">
+                      <div class="question-text">Q3 · 勾选你熟悉的 Web 后端概念</div>
+                      <div v-for="item in kmItems" :key="item.id" class="row gap-sm" style="padding:6px 8px;cursor:pointer;font-size:13px" @click="item.checked = !item.checked">
+                        <div class="km-check" :class="{checked: item.checked}"><svg v-if="item.checked" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="11" height="11"><path d="M5 12l5 5L20 7"/></svg></div>
+                        <span>{{ item.label }}</span>
+                      </div>
+                    </div>
+
+                    <div class="row" style="justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.06)">
+                      <button class="btn btn-text btn-sm">跳过（用默认深度）</button>
+                      <button class="btn btn-primary btn-sm" @click="submitAnswers">提交答案</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="showMentorAnswer" class="msg">
+                <div class="msg-avatar agent-mentor">M</div>
+                <div class="msg-body">
+                  <div class="msg-head">
+                    <span class="msg-name">Mentor</span>
+                    <span class="muted small">深度讲解</span>
+                    <span v-if="streaming" class="badge badge-primary" style="font-size:10px"><span class="streaming-dot"></span> 正在生成</span>
+                  </div>
+                  <div class="msg-content markdown" v-html="renderedAnswer"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="chat-input-wrap">
+              <div class="chat-input">
+                <textarea class="chat-textarea" v-model="input" placeholder="问 RepoPilot 任何关于开源项目的问题..." rows="2" @keydown.enter.exact.prevent="send"></textarea>
+                <div class="row" style="margin-top:8px">
+                  <button class="icon-btn" title="附件" v-html="ic.link"></button>
+                  <span class="badge" style="margin-left:8px">3 个项目上下文</span>
+                  <div style="flex:1"></div>
+                  <span class="muted small" style="margin-right:8px;font-family:var(--font-mono)">{{ input.length }} 字符</span>
+                  <button class="send-btn" @click="send" :disabled="!input.trim() || streaming" v-html="ic.send"></button>
+                </div>
+              </div>
+              <div class="row between muted" style="font-size:10px;margin-top:6px">
+                <span><span class="kb">Enter</span> 发送 · <span class="kb">Shift+Enter</span> 换行</span>
+                <span>SSE 流式输出 · 延迟 487ms</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  `,
+  setup() {
+    const ic = Icon;
+    const sessions = ref([]); const current = ref(null); const tab = ref('全部'); const sessionSearch = ref('');
+    const activeAgent = ref('mentor');
+    const q1Options = reactive([
+      { label: '不了解', desc: '仅基础语法', selected: false },
+      { label: '了解', desc: '函数、类、模块', selected: false },
+      { label: '掌握', desc: '异步、装饰器、上下文管理器', selected: true },
+      { label: '精通', desc: '元类、AST、并发', selected: false }
+    ]);
+    const slider = ref(35);
+    const kmItems = reactive([
+      { id: 1, label: 'HTTP 协议基础', checked: true },
+      { id: 2, label: 'REST API 设计', checked: true },
+      { id: 3, label: '中间件机制', checked: false },
+      { id: 4, label: 'ORM（SQLAlchemy 等）', checked: false },
+      { id: 5, label: '异步 I/O（asyncio）', checked: false },
+      { id: 6, label: '部署（Nginx / Gunicorn）', checked: false }
+    ]);
+    const selectRadio = (q, i) => q1Options.forEach((o, j) => o.selected = (j === i));
+    const input = ref(''); const streaming = ref(false); const showMentorAnswer = ref(false); const mentorAnswer = ref('');
+    const renderedAnswer = computed(() => { try { return window.marked ? window.marked.parse(mentorAnswer.value) : mentorAnswer.value; } catch (e) { return mentorAnswer.value; } });
+    const msgBox = ref(null);
+    const user = computed(() => store.user);
+    const initials = computed(() => (store.user?.username || 'G').slice(0, 2).toUpperCase());
+
+    const formatTime = (d) => { const diff = Date.now() - new Date(d); if (diff < 3600000) return Math.floor(diff / 60000) + ' 分钟前'; if (diff < 86400000) return Math.floor(diff / 3600000) + ' 小时前'; return new Date(d).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' }); };
+    const newSession = async () => { const r = await api.createAgentSession(); sessions.value.unshift({ ...r.data, updated_at: new Date().toISOString(), unread: false }); current.value = sessions.value[0]; toast('新对话已创建', 'success'); };
+    const openSession = (s) => { current.value = s; };
+
+    const submitAnswers = () => {
+      showMentorAnswer.value = true; streaming.value = true; mentorAnswer.value = '';
+      const answer = `基于你的情况（**Python 掌握 · Web 框架 ${slider.value}/100 · REST 熟悉 · 异步不熟**），我为你定制讲解：
+
+## Flask vs FastAPI：你的学习路径建议
+
+### 共同点
+- 都是 Python Web 框架
+- 都基于 WSGI/ASGI 规范
+
+### 核心差异
+
+| 维度 | Flask | FastAPI |
+|------|-------|---------|
+| 性能 | 同步为主 | 异步原生 |
+| 数据校验 | 手动 | Pydantic 自动 |
+| API 文档 | 需手写 | Swagger 自动生成 |
+| 学习曲线 | 平缓 | 较陡（需懂类型） |
+
+### 给你的建议
+
+> 既然你 Python 已掌握 + REST 熟悉，**建议先学 Flask 打基础（1-2 周）**，理解路由、中间件、请求上下文等概念。然后切到 FastAPI。
+
+### 代码对比
+
+\`\`\`python
+# Flask
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/users/<id>')
+def get_user(id):
+    return {'id': id, 'name': 'zhang.jie'}
+
+# FastAPI
+from fastapi import FastAPI
+app = FastAPI()
+
+@app.get('/users/{id}')
+async def get_user(id: int):
+    return {'id': id, 'name': 'zhang.jie'}
+\`\`\`
+
+需要我深入哪个部分？`;
+      let i = 0;
+      const interval = setInterval(() => {
+        if (i >= answer.length) { clearInterval(interval); streaming.value = false; nextTick(() => { if (msgBox.value) msgBox.value.scrollTop = msgBox.value.scrollHeight; }); return; }
+        mentorAnswer.value += answer[i]; i += 3;
+        nextTick(() => { if (msgBox.value) msgBox.value.scrollTop = msgBox.value.scrollHeight; });
+      }, 10);
+      toast('已收到回答', 'success');
+    };
+
+    const send = () => { if (!input.value.trim()) return; input.value = ''; toast('消息已发送（演示）', 'info'); };
+
+    onMounted(async () => { sessions.value = (await api.listAgentSessions()).data; });
+    return { ic, store, user, initials, sessions, current, tab, sessionSearch, activeAgent, q1Options, slider, kmItems, selectRadio, input, streaming, showMentorAnswer, mentorAnswer, renderedAnswer, msgBox, formatTime, newSession, openSession, submitAnswers, send };
+  }
+};
+
+// ============ 5.7 GraphPage ============
+const GraphPage = {
+  components: { AppLayout },
+  template: `
+    <AppLayout>
+      <div class="row between mb-md">
+        <div>
+          <h1 class="h1">图谱</h1>
+          <p class="muted mt-sm">基于 TF-IDF 相似度的项目网络 · {{ graphData.nodes.length }} 节点 / {{ graphData.edges.length }} 连线</p>
+        </div>
+      </div>
+
+      <div class="graph-stage">
+        <div class="graph-toolbar">
+          <div class="field" style="height:32px;width:200px;background:rgba(255,255,255,0.7)">
+            <span v-html="ic.search"></span>
+            <input v-model="search" placeholder="搜索项目..." />
+          </div>
+          <div class="row gap-sm">
+            <button class="filter-chip" @click="zoom = Math.max(50, zoom - 10)">−</button>
+            <button class="filter-chip">{{ zoom }}%</button>
+            <button class="filter-chip" @click="zoom = Math.min(200, zoom + 10)">+</button>
+            <button class="filter-chip active">力导向</button>
+          </div>
+          <div class="row gap-md" style="justify-content:flex-end">
+            <span v-for="c in legendColors" :key="c.name" class="row gap-sm">
+              <span :style="{width:'10px',height:'10px',borderRadius:'999px',background:c.color}"></span>
+              <span style="font-size:11px;font-weight:600;color:var(--text-700)">{{ c.name }}</span>
+            </span>
+          </div>
+        </div>
+
+        <svg viewBox="0 0 1200 700" style="width:100%;height:100%">
+          <g id="edges">
+            <path v-for="(e, i) in renderedEdges" :key="'e'+i" class="edge" :stroke-width="edgeWidth(e)" :d="edgePath(e)" :stroke="edgeColor(e)" :opacity="edgeOpacity(e)"></path>
+          </g>
+          <g id="nodes">
+            <g v-for="n in renderedNodes" :key="n.id" :transform="`translate(${n.x} ${n.y})`">
+              <circle class="node-circle" :r="nodeR(n)" :fill="nodeColor(n)" :stroke="hovered?.id === n.id ? '#007aff' : '#fff'" :stroke-width="hovered?.id === n.id ? 3 : 2" @mouseenter="hovered = n" @mouseleave="hovered = null" @click="select(n)"></circle>
+              <text class="node-label" y="40">{{ n.label.length > 18 ? n.label.slice(0, 16) + '...' : n.label }}</text>
+            </g>
+          </g>
+        </svg>
+
+        <div class="node-tooltip" :class="{ visible: hovered }" :style="{ left: (tooltipPos.x + 12) + 'px', top: (tooltipPos.y - 8) + 'px' }" v-if="hovered">
+          <strong>{{ hovered.name }}</strong>
+          <div style="color:rgba(255,255,255,0.7)">{{ langOf(hovered.id) }} · {{ formatStars(starsOf(hovered.id)) }} ⭐</div>
+        </div>
+
+        <div v-if="selected" class="card glass glass-strong" style="position:absolute;top:80px;right:24px;width:300px;padding:20px;z-index:6">
+          <button class="icon-btn" style="position:absolute;top:12px;right:12px;width:24px;height:24px" @click="selected = null">×</button>
+          <div class="row gap-sm mb-sm">
+            <div :style="{width:'40px',height:'40px',borderRadius:'10px',background:nodeColor(selected),color:'#fff',display:'grid',placeItems:'center',fontWeight:'700',fontFamily:'var(--font-mono)'}">{{ selected.name[0] }}</div>
+            <div>
+              <div class="mono" style="font-weight:600;font-size:14px">{{ selected.name }}</div>
+              <div class="muted small">{{ categoryOf(selected.id) }}</div>
+            </div>
+          </div>
+          <div class="row between mb-md" style="font-size:12px"><span class="muted">语言</span><span>{{ langOf(selected.id) }}</span></div>
+          <div class="row between mb-md" style="font-size:12px"><span class="muted">Stars</span><span class="mono">{{ formatStars(starsOf(selected.id)) }}</span></div>
+          <div class="label mb-sm">相似的 3 个项目</div>
+          <div v-for="sim in topSimilar" :key="sim.target" class="row between" style="padding:6px 0;font-size:12px;border-bottom:1px solid rgba(0,0,0,0.06)">
+            <span class="mono">{{ nameOf(sim.target) }}</span>
+            <span style="color:var(--brand-500);font-weight:600;font-family:var(--font-mono)">{{ sim.similarity.toFixed(2) }}</span>
+          </div>
+          <div class="col gap-sm mt-md">
+            <a :href="'#/projects/' + selected.id" class="btn btn-primary btn-sm btn-block">查看详情</a>
+            <a :href="'#/agent?project=' + selected.id" class="btn btn-glass btn-sm btn-block">Scout 快速分析</a>
+          </div>
+        </div>
+
+        <div class="graph-statusbar">
+          <div class="row gap-md">
+            <span class="row gap-sm"><span style="width:6px;height:6px;border-radius:999px;background:var(--success);display:inline-block"></span> 60 FPS · {{ graphData.nodes.length }} 节点 / {{ graphData.edges.length }} 连线</span>
+            <span>缩放 {{ zoom }}%</span>
+            <span>阈值 ≥ 0.10</span>
+          </div>
+          <div class="row gap-sm">
+            <span class="badge badge-success">力导向已收敛</span>
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  `,
+  async setup() {
+    const ic = Icon;
+    const graphData = ref({ nodes: [], edges: [] }); const search = ref(''); const zoom = ref(100);
+    const hovered = ref(null); const selected = ref(null);
+    const legendColors = [
+      { name: 'Web 前端', color: '#007aff' },
+      { name: 'Web 后端', color: '#30d158' },
+      { name: 'AI/ML', color: '#ff3b30' },
+      { name: '数据', color: '#ff9f0a' },
+      { name: 'DevOps', color: '#5e5ce6' },
+      { name: '工具', color: '#8e8e93' }
+    ];
+    const layout = (nodes) => {
+      const positioned = [];
+      const n = nodes.length;
+      nodes.forEach((node, i) => {
+        if (i === 0) positioned.push({ ...node, x: 600, y: 350, label: node.name });
+        else {
+          const angle = (i / Math.max(1, n - 1)) * Math.PI * 2 - Math.PI / 2;
+          const radius = i % 3 === 0 ? 280 : i % 3 === 1 ? 180 : 380;
+          positioned.push({ ...node, x: 600 + Math.cos(angle) * radius + (Math.random() - 0.5) * 30, y: 350 + Math.sin(angle) * radius * 0.6 + (Math.random() - 0.5) * 30, label: node.name });
+        }
+      });
+      return positioned;
+    };
+    const renderedNodes = computed(() => layout(graphData.value.nodes.filter(n => !search.value || n.name.includes(search.value))));
+    const renderedEdges = computed(() => { const ids = new Set(renderedNodes.value.map(n => n.id)); return graphData.value.edges.filter(e => ids.has(e.source) && ids.has(e.target)); });
+    const edgeWidth = (e) => 0.5 + e.similarity * 2;
+    const edgeColor = (e) => e.similarity > 0.8 ? '#007aff' : e.similarity > 0.6 ? '#66abff' : '#d1d1d6';
+    const edgeOpacity = (e) => e.similarity > 0.8 ? 0.7 : 0.5;
+    const edgePath = (e) => { const a = renderedNodes.value.find(n => n.id === e.source); const b = renderedNodes.value.find(n => n.id === e.target); if (!a || !b) return ''; const mx = (a.x + b.x) / 2 + (Math.random() - 0.5) * 20; const my = (a.y + b.y) / 2 + (Math.random() - 0.5) * 20; return `M${a.x} ${a.y} Q${mx} ${my} ${b.x} ${b.y}`; };
+    const nodeR = (n) => { if (n.id === 'p_react') return 28; if (renderedNodes.value.indexOf(n) < 6) return 18; return 11; };
+    const nodeColor = (n) => legendColors.find(c => c.name === categoryOf(n.id))?.color || '#8e8e93';
+    const projects = ref([]); const categories = ref([]);
+    const categoryOf = (id) => { const p = projects.value.find(p => p.id === id); return p ? (store.categories.find(c => c.id === p.category_id)?.name || '') : ''; };
+    const langOf = (id) => projects.value.find(p => p.id === id)?.language || '';
+    const starsOf = (id) => projects.value.find(p => p.id === id)?.stars || 0;
+    const nameOf = (id) => projects.value.find(p => p.id === id)?.name || id;
+    const formatStars = (n) => n >= 1000 ? (n / 1000).toFixed(0) + 'k' : n;
+    const topSimilar = computed(() => selected.value ? graphData.value.edges.filter(e => e.source === selected.value.id).sort((a, b) => b.similarity - a.similarity).slice(0, 3) : []);
+    const tooltipPos = ref({ x: 0, y: 0 });
+    const onMove = (e) => { tooltipPos.value = { x: e.clientX, y: e.clientY }; };
+    const select = (n) => { selected.value = n; };
+
+    onMounted(async () => {
+      graphData.value = (await api.getGraph()).data;
+      projects.value = (await api.listProjects({ page_size: 100 })).data.items;
+      window.addEventListener('mousemove', onMove);
+    });
+
+    return { ic, graphData, search, zoom, hovered, selected, legendColors, renderedNodes, renderedEdges, edgeWidth, edgeColor, edgeOpacity, edgePath, nodeR, nodeColor, categoryOf, langOf, starsOf, nameOf, formatStars, topSimilar, tooltipPos, select };
+  }
+};
+
+// ============ 5.8 SettingsPage ============
+const SettingsPage = {
+  components: { AppLayout },
+  template: `
+    <AppLayout>
+      <h1 class="h1">设置</h1>
+      <p class="muted mt-sm mb-lg" style="font-size:13px">个性化你的 RepoPilot 体验</p>
+
+      <div style="display:grid;grid-template-columns:200px 1fr;gap:32px;max-width:980px">
+        <aside style="position:sticky;top:88px;align-self:start">
+          <a v-for="s in sections" :key="s.id" href="#" @click.prevent="active = s.id" class="row gap-sm" :class="{ active: active === s.id }" style="padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:500;text-decoration:none;color:inherit">
+            <span v-html="s.icon"></span> {{ s.label }}
+            <span v-if="s.dot" class="badge badge-error" style="margin-left:auto;font-size:9px;padding:1px 6px">!</span>
+          </a>
+        </aside>
+
+        <div>
+          <div v-if="active==='appearance'" class="card glass mb-md">
+            <div class="row between mb-md">
+              <h2 class="h2">外观</h2>
+              <span class="badge badge-success">已保存</span>
+            </div>
+            <div class="field-group">
+              <label class="field-label">主题</label>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+                <div v-for="t in ['light','dark','auto']" :key="t" class="card" :class="{ 'card-elevated': store.theme === t }" style="padding:14px;text-align:center;cursor:pointer" @click="setTheme(t)">
+                  <div :style="{ height: '60px', borderRadius: '8px', background: themePreview(t), marginBottom: '8px', border: '1px solid rgba(0,0,0,0.06)' }"></div>
+                  <div style="font-size:12px;font-weight:600">{{ ({light:'浅色',dark:'深色',auto:'跟随系统'})[t] }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="field-group mt-lg">
+              <label class="field-label">字体缩放</label>
+              <div class="row gap-md" style="align-items:center">
+                <input type="range" min="80" max="150" step="5" v-model.number="fontScale" class="slider" style="flex:1" />
+                <span class="mono" style="font-weight:600;color:var(--brand-500);min-width:48px;text-align:right">{{ fontScale }}%</span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="active==='github'" class="card glass mb-md">
+            <h2 class="h2 mb-md">GitHub 账号</h2>
+            <div class="card card-pad-sm" style="background:rgba(0,0,0,0.03);display:flex;gap:16px;align-items:center">
+              <div style="width:48px;height:48px;background:#24292f;border-radius:12px;display:grid;place-items:center;color:#fff">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.76 2.69 1.25 3.34.96.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.09-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.15 1.18.91-.25 1.89-.38 2.86-.39.97.01 1.95.14 2.86.39 2.19-1.49 3.15-1.18 3.15-1.18.62 1.59.23 2.76.11 3.05.74.8 1.18 1.83 1.18 3.09 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.07.78 2.16v3.2c0 .31.21.67.8.55C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+              </div>
+              <div style="flex:1">
+                <div class="row gap-sm"><span class="mono" style="font-weight:600">@zhang-jie</span><span class="badge badge-success badge-dot">已验证</span></div>
+                <div class="muted small mt-sm">添加于 2026-05-12 · 最后使用 2 小时前</div>
+                <div class="row gap-sm mt-sm">
+                  <span class="badge mono">read:user</span>
+                  <span class="badge mono">public_repo</span>
+                </div>
+              </div>
+              <div class="col gap-sm">
+                <button class="btn btn-glass btn-sm">测试连通</button>
+                <button class="btn btn-text btn-sm" style="color:var(--error)">解绑</button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="active==='llm'" class="card glass mb-md">
+            <div class="row between mb-md">
+              <h2 class="h2">LLM 配置（BYOK）</h2>
+              <span class="badge badge-success badge-dot">已配置</span>
+            </div>
+            <div style="background:rgba(255,159,10,0.1);border:1px solid rgba(255,159,10,0.3);border-radius:10px;padding:10px 14px;font-size:12px;color:#8a5410;margin-bottom:16px;display:flex;gap:8px">
+              <span>🔑</span> Key 仅本地 Fernet 加密存储（系统密钥链），不上传服务器。
+            </div>
+            <div class="field-group"><label class="field-label">服务提供商</label><div class="field"><select v-model="llm.provider"><option>openai</option><option>anthropic</option><option>google</option><option>azure</option><option>ollama</option><option>custom</option></select></div></div>
+            <div class="field-group mt-md"><label class="field-label">模型</label><div class="field"><input v-model="llm.model" /></div></div>
+            <div class="field-group mt-md"><label class="field-label">API Base URL</label><div class="field"><input v-model="llm.api_base" /></div></div>
+            <div class="field-group mt-md"><label class="field-label">API Key</label><div class="field" style="position:relative"><input :type="showKey ? 'text' : 'password'" v-model="llm.api_key" /><button class="icon-btn" @click="showKey = !showKey" style="position:absolute;right:6px" v-html="ic.eye"></button></div></div>
+            <div class="row gap-sm mt-md">
+              <button class="btn btn-primary" @click="testLLM" :disabled="testing">
+                <span v-if="testing" class="spinner" style="width:14px;height:14px"></span>
+                <span v-else>测试连通性</span>
+              </button>
+              <button class="btn btn-glass" @click="saveLLM">保存配置</button>
+            </div>
+            <div v-if="testResult" class="mt-md" :style="{ background: testResult.ok ? 'rgba(52,199,89,0.1)' : 'rgba(255,59,48,0.1)', border: '1px solid ' + (testResult.ok ? 'rgba(52,199,89,0.3)' : 'rgba(255,59,48,0.3)'), color: testResult.ok ? '#1e7e34' : '#c0392b', padding: '10px 14px', borderRadius: '10px', fontSize: '12px' }">
+              {{ testResult.ok ? '✓' : '✗' }} {{ testResult.message }}
+            </div>
+          </div>
+
+          <div v-if="active==='security'" class="card glass mb-md">
+            <h2 class="h2 mb-md">修改密码</h2>
+            <p class="muted small mb-md">修改密码会使所有 refresh_token 失效。</p>
+            <div class="field-group"><label class="field-label">当前密码</label><div class="field"><input type="password" v-model="pwd.old" /></div></div>
+            <div class="field-group mt-md"><label class="field-label">新密码</label><div class="field"><input type="password" v-model="pwd.new" /></div></div>
+            <div class="field-group mt-md"><label class="field-label">确认新密码</label><div class="field"><input type="password" v-model="pwd.confirm" /></div></div>
+            <button class="btn btn-primary mt-md" @click="changePwd">修改密码</button>
+          </div>
+
+          <div v-if="active==='data'" class="card glass" style="border:1px solid var(--error)">
+            <h2 class="h2" style="color:var(--error)">危险操作</h2>
+            <p class="muted small mt-sm mb-md">以下操作不可恢复。</p>
+            <div class="row gap-sm">
+              <button class="btn btn-glass btn-sm" @click="exportData">导出全部数据</button>
+              <button class="btn btn-sm" style="background:transparent;color:var(--error);border:1px solid var(--error)" @click="logout">退出登录</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  `,
+  setup() {
+    const ic = Icon;
+    const active = ref('appearance');
+    const sections = [
+      { id: 'appearance', label: '外观', icon: ic.sun },
+      { id: 'github', label: 'GitHub', icon: ic.projects },
+      { id: 'llm', label: 'LLM 配置', icon: ic.sparkle },
+      { id: 'security', label: '用户与安全', icon: ic.settings },
+      { id: 'data', label: '数据管理', icon: ic.download }
+    ];
+    const fontScale = ref(store.settings?.font_scale || 100);
+    watch(fontScale, (v) => { document.documentElement.style.fontSize = (v / 100 * 14) + 'px'; });
+    const themePreview = (t) => t === 'light' ? '#f2f2f7' : t === 'dark' ? '#1c1c1e' : 'linear-gradient(90deg, #f2f2f7 50%, #1c1c1e 50%)';
+    const setTheme = (t) => { store.theme = (t === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t); };
+    const llm = reactive({ provider: 'openai', model: 'gpt-4o', api_base: 'https://api.openai.com/v1', api_key: 'sk-proj-a8d2Hf93kdL02mcQyVbnrE9wX7pT4uY6i0sZaBcDeFgHiJkLmN' });
+    const showKey = ref(false);
+    const testResult = ref(null); const testing = ref(false);
+    const testLLM = async () => { testing.value = true; testResult.value = null; try { const r = await api.testLLM(); testResult.value = { ok: true, message: `连通成功 · 延迟 ${r.data.latency_ms}ms` }; } catch (e) { testResult.value = { ok: false, message: e.message }; } finally { testing.value = false; } };
+    const saveLLM = async () => { await api.updateSettings({ llm_provider: llm.provider, llm_model: llm.model, llm_api_base: llm.api_base }); toast('配置已保存', 'success'); };
+    const pwd = reactive({ old: '', new: '', confirm: '' });
+    const changePwd = async () => { if (pwd.new !== pwd.confirm) return toast('两次密码不一致', 'error'); await api.changePassword({ old_password: pwd.old, new_password: pwd.new }); toast('密码已修改', 'success'); setTimeout(() => logout(), 1200); };
+    const exportData = async () => { const r = await api.exportProjects(); const blob = new Blob([JSON.stringify(r.data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `repopilot-export-${Date.now()}.json`; a.click(); toast('已导出', 'success'); };
+    const logout = async () => { await api.logout(); store.isAuth = false; window.location.hash = '/login'; };
+
+    return { active, sections, store, fontScale, themePreview, setTheme, llm, showKey, testResult, testing, testLLM, saveLLM, pwd, changePwd, exportData, logout, ic };
+  }
+};
+
+// ============ 5.9 LoginPage ============
+const LoginPage = {
+  template: `
+    <div style="min-height:100vh;display:grid;place-items:center;padding:32px;position:relative;z-index:10">
+      <div class="card glass glass-strong login-card" style="width:100%;max-width:460px;padding:40px 36px;text-align:center">
+        <div class="sidebar-logo" style="width:64px;height:64px;margin:0 auto 20px;font-size:24px;border-radius:16px">RP</div>
+        <h1 style="font-size:26px;font-weight:700;margin:0 0 6px;letter-spacing:-0.02em">欢迎回来</h1>
+        <p class="muted" style="font-size:13px;margin:0 0 28px">登录 RepoPilot，继续你的开源项目学习</p>
+        <div v-if="error" style="padding:10px 14px;background:rgba(255,59,48,0.1);border:1px solid rgba(255,59,48,0.3);border-radius:10px;color:#c0392b;font-size:13px;margin-bottom:16px;text-align:left">
+          {{ error }}
+        </div>
+        <div class="field-group" style="text-align:left">
+          <label class="field-label">用户名</label>
+          <div class="field"><input v-model="username" placeholder="zhang.jie" autocomplete="username" /></div>
+        </div>
+        <div class="field-group" style="text-align:left">
+          <label class="field-label">密码</label>
+          <div class="field"><input v-model="password" type="password" placeholder="••••••••" @keyup.enter="submit" /></div>
+        </div>
+        <div class="row between mt-sm mb-md" style="font-size:12px">
+          <label class="row gap-sm" style="cursor:pointer">
+            <input type="checkbox" v-model="remember" /> 记住我
+          </label>
+          <a class="muted">忘记密码？</a>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" @click="submit" :disabled="loading">
+          <span v-if="loading" class="spinner" style="width:14px;height:14px"></span>
+          <span v-else>登录</span>
+        </button>
+        <div class="mt-md muted small">还没有账号？<a href="#/register" style="color:var(--brand-500);font-weight:600">立即注册</a></div>
+        <div class="mt-lg muted" style="font-size:10px">v1.0.0 · {{ store.theme === 'dark' ? '深色' : '浅色' }}主题</div>
+      </div>
+    </div>
+  `,
+  setup() {
+    const username = ref('zhang.jie');
+    const password = ref('demo1234');
+    const remember = ref(true);
+    const loading = ref(false);
+    const error = ref('');
+    const submit = async () => {
+      loading.value = true; error.value = '';
+      try {
+        await api.login({ username: username.value, password: password.value });
+        store.isAuth = true;
+        await loadBootstrap();
+        window.location.hash = '/';
+        toast('登录成功', 'success');
+      } catch (e) {
+        error.value = e.message || '登录失败';
+      } finally {
+        loading.value = false;
+      }
+    };
+    return { username, password, remember, loading, error, submit, store };
+  }
+};
+
+// ============ 5.10 RegisterPage ============
+const RegisterPage = {
+  template: `
+    <div style="min-height:100vh;display:grid;place-items:center;padding:32px;position:relative;z-index:10">
+      <div class="card glass glass-strong login-card" style="width:100%;max-width:460px;padding:40px 36px;text-align:center">
+        <div class="sidebar-logo" style="width:64px;height:64px;margin:0 auto 20px;font-size:24px;border-radius:16px">RP</div>
+        <h1 style="font-size:26px;font-weight:700;margin:0 0 6px;letter-spacing:-0.02em">创建账号</h1>
+        <p class="muted" style="font-size:13px;margin:0 0 28px">开启你的 AI 开源项目学习之旅</p>
+        <div class="field-group" style="text-align:left">
+          <label class="field-label">用户名 <span class="muted" style="font-weight:400">(3-32 字符)</span></label>
+          <div class="field"><input v-model="username" placeholder="yourname" /></div>
+        </div>
+        <div class="field-group" style="text-align:left">
+          <label class="field-label">密码 <span class="muted" style="font-weight:400">(≥ 8 位 + 字母数字)</span></label>
+          <div class="field"><input v-model="password" type="password" placeholder="至少 8 位" @input="updateStrength" /></div>
+          <div :class="['strength-bar', strength]" style="display:flex;gap:4px;margin-top:6px"><div></div><div></div><div></div></div>
+          <div style="font-size:11px;color:var(--text-500);margin-top:4px;text-align:left">{{ strengthLabel }}</div>
+        </div>
+        <div class="field-group" style="text-align:left">
+          <label class="field-label">确认密码</label>
+          <div class="field"><input v-model="confirm" type="password" /></div>
+          <div v-if="confirm && confirm !== password" class="field-error">两次密码不一致</div>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg mt-md" @click="submit" :disabled="loading || !canSubmit">
+          <span v-if="loading" class="spinner" style="width:14px;height:14px"></span>
+          <span v-else>创建账号</span>
+        </button>
+        <div class="mt-md muted small">已有账号？<a href="#/login" style="color:var(--brand-500);font-weight:600">立即登录</a></div>
+      </div>
+    </div>
+  `,
+  setup() {
+    const username = ref(''); const password = ref(''); const confirm = ref(''); const loading = ref(false);
+    const strength = ref('weak'); const strengthLabel = ref('弱');
+    const updateStrength = () => { const p = password.value; if (p.length < 8) { strength.value = 'weak'; strengthLabel.value = '太短'; } else if (/[a-z]/.test(p) && /[0-9]/.test(p) && p.length >= 12) { strength.value = 'strong'; strengthLabel.value = '强'; } else { strength.value = 'medium'; strengthLabel.value = '中等'; } };
+    const canSubmit = computed(() => username.value.length >= 3 && password.value.length >= 8 && password.value === confirm.value);
+    const submit = async () => { loading.value = true; try { await api.register({ username: username.value, password: password.value }); await api.login({ username: username.value, password: password.value }); store.isAuth = true; await loadBootstrap(); window.location.hash = '/'; toast('注册成功', 'success'); } finally { loading.value = false; } };
+    return { username, password, confirm, loading, strength, strengthLabel, updateStrength, canSubmit, submit };
+  }
+};
+
+// ==========================================================================
+// 6. 路由分发
+// ==========================================================================
+const App = {
+  template: `<component :is="currentPage" />`,
+  setup() {
+    return {
+      currentPage: computed(() => {
+        // 未登录 → 强制跳转 login（除非在 public 页面）
+        if (!store.isAuth && !['login', 'register'].includes(store.route.name)) {
+          // 用 nextTick 延迟跳转，避免渲染期修改
+          nextTick(() => { window.location.hash = '/login'; });
+          return LoginPage;
+        }
+        // 已登录但访问 login/register → 跳总览
+        if (store.isAuth && ['login', 'register'].includes(store.route.name)) {
+          nextTick(() => { window.location.hash = '/'; });
+          return OverviewPage;
+        }
+        const map = {
+          overview: OverviewPage,
+          projects: ProjectsPage,
+          'project-detail': ProjectDetailPage,
+          notes: NotesListPage,
+          'note-edit': NoteEditPage,
+          agent: AgentPage,
+          graph: GraphPage,
+          settings: SettingsPage,
+          login: LoginPage,
+          register: RegisterPage
+        };
+        return map[store.route.name] || OverviewPage;
+      })
+    };
+  }
+};
+
+// ==========================================================================
+// 7. 启动
+// ==========================================================================
+const app = createApp(App);
+app.mount('#app');
+
+// 初始化 bootstrap
+loadBootstrap();
+
+// 默认 hash
+if (!window.location.hash) {
+  window.location.hash = store.isAuth ? '/' : '/login';
+}
+
+console.log('[RepoPilot] App initialized', { route: store.route, isAuth: store.isAuth });
+</script>
+</body>
+</html>

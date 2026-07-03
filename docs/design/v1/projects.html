@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>项目库 · RepoPilot</title>
+  <link rel="stylesheet" href="./assets/design-system.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ---------- 项目库页面专属样式 ---------- */
+    .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+    .page-head h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 4px; }
+    .page-head .subtitle { color: var(--text-500); font-size: 13px; }
+    .page-head .actions { display: flex; gap: 10px; }
+
+    .btn-github {
+      background: var(--bg-50); color: var(--text-800); border: 1px solid var(--bg-300);
+    }
+    .btn-github .gh-dot {
+      width: 8px; height: 8px; border-radius: 999px;
+      background: var(--success); box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.18);
+    }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+    .stat-card { background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow-xs); position: relative; overflow: hidden; }
+    .stat-card .stat-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-500); display: flex; align-items: center; gap: 6px; }
+    .stat-card .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 2px; }
+    .stat-card .stat-delta { font-size: 12px; font-weight: 600; color: var(--success); display: inline-flex; align-items: center; gap: 4px; }
+    .stat-card .stat-icon { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: var(--brand-500); background: var(--brand-50); }
+    .stat-card.stat-green .stat-icon { color: var(--success); background: var(--success-surface); }
+    .stat-card.stat-orange .stat-icon { color: var(--warning); background: var(--warning-surface); }
+    .stat-card.stat-purple .stat-icon { color: var(--chart-4); background: #f3e8ff; }
+
+    .filter-bar { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius); margin-bottom: 14px; flex-wrap: wrap; }
+    .filter-search { flex: 1 1 240px; min-width: 220px; display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px; background: var(--bg-200); border: 1px solid var(--bg-300); border-radius: var(--radius-sm); color: var(--text-500); }
+    .filter-search input { flex: 1; border: 0; outline: 0; background: transparent; font: 13px/1 var(--font-sans); color: var(--text-800); }
+    .filter-search input::placeholder { color: var(--text-400); }
+    .filter-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius-sm); color: var(--text-700); font: 600 12px/1 var(--font-sans); cursor: pointer; }
+    .filter-btn:hover { background: var(--bg-100); }
+    .filter-btn.active { background: var(--brand-50); color: var(--brand-700); border-color: var(--brand-200); }
+    .filter-btn .chev { color: var(--text-400); }
+    .filter-clear { color: var(--brand-500); font: 600 12px/1 var(--font-sans); background: transparent; border: 0; padding: 8px 4px; cursor: pointer; }
+
+    .table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius); overflow: hidden; }
+    .table th { text-align: left; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-500); padding: 12px 16px; background: var(--bg-200); border-bottom: 1px solid var(--bg-300); white-space: nowrap; }
+    .table td { padding: 14px 16px; font-size: 13px; color: var(--text-800); border-bottom: 1px solid var(--bg-300); vertical-align: middle; }
+    .table tbody tr:last-child td { border-bottom: 0; }
+    .table tbody tr:hover { background: var(--bg-100); cursor: pointer; }
+
+    .repo-cell { display: flex; align-items: center; gap: 12px; min-width: 240px; }
+    .repo-avatar { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font: 700 13px/1 var(--font-mono); color: #fff; flex-shrink: 0; }
+    .repo-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .repo-name { font: 600 13px/1.3 var(--font-mono); color: var(--text-800); display: flex; align-items: center; gap: 6px; }
+    .repo-name .owner { color: var(--text-500); font-weight: 500; }
+    .repo-name .slash { color: var(--text-300); }
+    .repo-desc { font-size: 12px; color: var(--text-500); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .lang-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-700); }
+    .lang-dot::before { content: ''; width: 10px; height: 10px; border-radius: 999px; background: var(--bg-400); }
+    .lang-js::before     { background: #f1e05a; }
+    .lang-ts::before     { background: #3178c6; }
+    .lang-py::before     { background: #3572a5; }
+    .lang-go::before     { background: #00add8; }
+    .lang-rust::before   { background: #dea584; }
+    .lang-c::before      { background: #555555; }
+    .lang-cpp::before    { background: #f34b7d; }
+    .lang-css::before    { background: #563d7c; }
+    .lang-java::before   { background: #b07219; }
+
+    .stars { display: inline-flex; align-items: center; gap: 4px; font: 600 13px/1 var(--font-sans); color: var(--text-700); }
+    .stars svg { width: 12px; height: 12px; color: var(--warning); }
+
+    .tags { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+    .tag { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 999px; background: var(--bg-200); color: var(--text-600); font-size: 11px; font-weight: 600; }
+
+    .btn-scout { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--brand-50); color: var(--brand-700); font: 600 11px/1 var(--font-sans); border: 0; cursor: pointer; }
+    .btn-scout:hover { background: var(--brand-100); }
+
+    .row-actions { display: inline-flex; align-items: center; gap: 4px; }
+    .icon-btn { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: transparent; border: 0; color: var(--text-500); cursor: pointer; }
+    .icon-btn:hover { background: var(--bg-300); color: var(--text-800); }
+
+    .pagination { display: flex; align-items: center; justify-content: space-between; padding: 14px 8px 0; }
+    .pagination .info { color: var(--text-500); font-size: 12px; }
+    .pagination .pages { display: inline-flex; gap: 4px; align-items: center; }
+    .page-btn { min-width: 32px; height: 32px; padding: 0 8px; border-radius: 8px; background: transparent; border: 0; color: var(--text-700); font: 600 12px/1 var(--font-sans); cursor: pointer; }
+    .page-btn:hover { background: var(--bg-300); }
+    .page-btn.active { background: var(--brand-500); color: #fff; }
+    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .empty-state {
+      padding: 80px 20px; text-align: center;
+      background: var(--bg-50); border: 1px dashed var(--bg-300); border-radius: var(--radius);
+    }
+    .empty-state svg { color: var(--text-300); margin-bottom: 12px; }
+    .empty-state h3 { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
+    .empty-state p { font-size: 13px; color: var(--text-500); margin: 0; }
+  </style>
+</head>
+<body data-page="projects">
+  <div class="app">
+    <div id="app-sidebar"></div>
+
+    <div class="main">
+      <header id="app-topbar"></header>
+
+      <main class="content">
+
+        <!-- 页面标题 -->
+        <div class="page-head">
+          <div>
+            <h1 id="page-title">我的项目库</h1>
+            <div class="subtitle" id="page-subtitle">加载中...</div>
+          </div>
+          <div class="actions">
+            <button class="btn btn-github" id="btn-sync-github" title="从 GitHub 拉取最新 Star">
+              <span class="gh-dot"></span>
+              <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.92.58.11.79-.25.79-.56v-2c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.78 1.19 1.78 1.19 1.04 1.78 2.72 1.27 3.38.97.1-.75.4-1.27.74-1.56-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.04 0 0 .97-.31 3.18 1.18.92-.26 1.91-.39 2.89-.39.98 0 1.97.13 2.89.39 2.21-1.49 3.18-1.18 3.18-1.18.62 1.58.23 2.75.11 3.04.74.81 1.18 1.84 1.18 3.1 0 4.43-2.7 5.41-5.26 5.69.41.36.78 1.06.78 2.13v3.16c0 .31.21.68.8.56C20.21 21.38 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+              GitHub 同步
+            </button>
+            <button class="btn btn-primary" id="btn-import">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>
+              导入项目
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 个统计卡 -->
+        <section class="stat-grid" id="stat-grid"></section>
+
+        <!-- 筛选栏 -->
+        <div class="filter-bar" role="toolbar" aria-label="项目筛选">
+          <div class="filter-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            <input type="text" placeholder="筛选当前列表：项目名 / 描述 / 标签" id="filter-search-input" />
+          </div>
+          <button class="filter-btn" data-filter="category">
+            <span id="filter-category-label">分类：全部</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <button class="filter-btn" data-filter="language">
+            <span id="filter-language-label">语言：全部</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <button class="filter-btn" data-filter="progress">
+            <span id="filter-progress-label">进度：全部</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <button class="filter-btn" data-filter="sort" style="margin-left:auto;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M3 6h18M6 12h12M10 18h4"/></svg>
+            <span id="filter-sort-label">排序：最近更新</span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <button class="filter-clear" id="filter-clear">清除筛选</button>
+        </div>
+
+        <!-- 项目表格 -->
+        <div id="table-wrap"></div>
+
+        <!-- 分页 -->
+        <div class="pagination" id="pagination-wrap"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 脚本 -->
+  <script src="./assets/api-mock.js"></script>
+  <script src="./assets/sidebar.js"></script>
+  <script src="./assets/topbar.js"></script>
+  <script src="./assets/app-shell.js"></script>
+  <script>
+    (async function () {
+      const api = await RP.ensureApiClient();
+
+      // ============ 状态 ============
+      const state = {
+        items: [],
+        total: 0,
+        page: 1,
+        pageSize: 12,
+        search: '',
+        category: '',
+        language: '',
+        progress: '',
+        sort: 'recent'
+      };
+
+      // 读取 URL 中的筛选
+      const urlSearch = RP.getQueryParam('q');
+      if (urlSearch) state.search = urlSearch;
+
+      // ============ 加载数据 ============
+      async function loadProjects() {
+        const params = { page: state.page, page_size: state.pageSize };
+        if (state.search) params.search = state.search;
+        if (state.category) params.category = state.category;
+        if (state.language) params.language = state.language;
+        if (state.progress) params.progress = state.progress;
+        if (state.sort === 'stars') params.sort_by = 'stars';
+
+        const resp = await api.listProjects(params);
+        state.items = resp.data.items || [];
+        state.total = resp.data.total || 0;
+        render();
+      }
+
+      async function loadStats() {
+        const s = (await api.getProjectStats()).data;
+        const total = s.total || 0;
+        const byP = s.by_progress || {};
+        document.getElementById('stat-grid').innerHTML = `
+          <article class="stat-card">
+            <div class="stat-label">总项目数</div>
+            <div class="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+            </div>
+            <div class="stat-value">${total}</div>
+            <div class="stat-delta">+${Math.floor(Math.random()*3)+1} 本周新增</div>
+          </article>
+          <article class="stat-card stat-green">
+            <div class="stat-label">已掌握</div>
+            <div class="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M20 6L9 17l-5-5"/></svg>
+            </div>
+            <div class="stat-value">${byP.mastered || 0}</div>
+            <div class="stat-delta">${total ? Math.round((byP.mastered || 0) / total * 100) : 0}% · 占比</div>
+          </article>
+          <article class="stat-card stat-orange">
+            <div class="stat-label">学习中</div>
+            <div class="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M2 12a10 10 0 1 0 20 0 10 10 0 1 0-20 0z"/><path d="M12 6v6l4 2"/></svg>
+            </div>
+            <div class="stat-value">${byP.learning || 0}</div>
+            <div class="stat-delta">${total ? Math.round((byP.learning || 0) / total * 100) : 0}% · 占比</div>
+          </article>
+          <article class="stat-card stat-purple">
+            <div class="stat-label">待开始</div>
+            <div class="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>
+            </div>
+            <div class="stat-value">${byP.none || 0}</div>
+            <div class="stat-delta" style="color:var(--text-500)">${total ? Math.round((byP.none || 0) / total * 100) : 0}% · 占比</div>
+          </article>
+        `;
+      }
+
+      // ============ 渲染 ============
+      function render() {
+        renderTable();
+        renderPagination();
+        renderSubtitle();
+      }
+
+      function renderSubtitle() {
+        const filterDesc = [];
+        if (state.search) filterDesc.push(`"${state.search}"`);
+        if (state.category) filterDesc.push(`分类=${state.category}`);
+        if (state.language) filterDesc.push(`语言=${state.language}`);
+        if (state.progress) filterDesc.push(`进度=${RP.progressLabel(state.progress)}`);
+        const tail = filterDesc.length ? ` · 已筛选 ${filterDesc.join(' · ')}` : '';
+        document.getElementById('page-subtitle').textContent =
+          `${state.total} 个项目 · 6 个分类 · 最后同步于 2026-07-04 14:23${tail}`;
+      }
+
+      function renderTable() {
+        const wrap = document.getElementById('table-wrap');
+        if (state.items.length === 0) {
+          wrap.innerHTML = `
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+              <h3>没有匹配的项目</h3>
+              <p>尝试调整筛选条件，或 <a href="#" id="empty-import" style="color:var(--brand-500);font-weight:600;">导入新项目</a></p>
+            </div>
+          `;
+          document.getElementById('empty-import')?.addEventListener('click', (e) => { e.preventDefault(); importProject(); });
+          return;
+        }
+
+        const gradients = [
+          'linear-gradient(135deg,#61dafb,#2196f3)',
+          'linear-gradient(135deg,#42b883,#35495e)',
+          'linear-gradient(135deg,#000,#404040)',
+          'linear-gradient(135deg,#38bdf8,#0ea5e9)',
+          'linear-gradient(135deg,#009688,#00695c)',
+          'linear-gradient(135deg,#ffd43b,#306998)',
+          'linear-gradient(135deg,#3178c6,#235a97)',
+          'linear-gradient(135deg,#f9a03c,#e67e22)',
+          'linear-gradient(135deg,#1c3c3c,#0d2626)',
+          'linear-gradient(135deg,#336791,#1f3f5a)',
+          'linear-gradient(135deg,#2496ed,#0db7ed)',
+          'linear-gradient(135deg,#000,#444)'
+        ];
+
+        const catColorMap = {
+          cat_frontend: 'cat-frontend',
+          cat_backend: 'cat-backend',
+          cat_ai: 'cat-ai',
+          cat_data: 'cat-data',
+          cat_devops: 'cat-devops',
+          cat_tools: 'cat-tools'
+        };
+
+        const rowsHtml = state.items.map((p, i) => {
+          const [owner, repo] = p.name.split('/');
+          const catBadge = catColorMap[p.category_id] ? `<span class="badge ${catColorMap[p.category_id]}">${RP.categoryLabel(p.category_id)}</span>` : `<span class="badge">${RP.categoryLabel(p.category_id)}</span>`;
+          const langClass = 'lang-' + (p.language || '').toLowerCase().replace(/[^a-z]/g, '').slice(0, 6);
+          const tags = (p.tags || []).slice(0, 2).map(t => `<span class="tag">${t.replace(/^tag_/, '')}</span>`).join('');
+          return `
+            <tr data-project-id="${p.id}">
+              <td><input type="checkbox" onclick="event.stopPropagation()" /></td>
+              <td>
+                <div class="repo-cell">
+                  <div class="repo-avatar" style="background:${gradients[i % gradients.length]}">${(repo || '?')[0].toUpperCase()}</div>
+                  <div class="repo-info">
+                    <div class="repo-name">
+                      <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" style="color:var(--warning);"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8L2 9.3l6.9-1L12 2z"/></svg>
+                      <span class="owner">${owner}</span><span class="slash">/</span><span>${repo}</span>
+                    </div>
+                    <div class="repo-desc">${p.description || ''}</div>
+                  </div>
+                </div>
+              </td>
+              <td>${catBadge}</td>
+              <td><span class="lang-dot ${langClass}">${p.language || '-'}</span></td>
+              <td>
+                <span class="stars">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8L2 9.3l6.9-1L12 2z"/></svg>
+                  ${RP.formatNumber(p.stars)}
+                </span>
+              </td>
+              <td><span class="progress-pill progress-${p.progress}">${RP.progressLabel(p.progress)}</span></td>
+              <td><div class="tags">${tags}</div></td>
+              <td>
+                <div class="row-actions">
+                  <button class="btn-scout" onclick="event.stopPropagation();scoutProject('${p.id}')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                    Scout
+                  </button>
+                  <button class="icon-btn" onclick="event.stopPropagation();showActions('${p.id}')" title="更多">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        wrap.innerHTML = `
+          <table class="table" aria-label="项目列表">
+            <thead>
+              <tr>
+                <th style="width:32px;"><input type="checkbox" /></th>
+                <th>Repo</th>
+                <th>分类</th>
+                <th>语言</th>
+                <th>Stars</th>
+                <th>进度</th>
+                <th>标签</th>
+                <th style="width:120px;">操作</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        `;
+
+        // 行点击进入详情
+        wrap.querySelectorAll('tbody tr').forEach(tr => {
+          tr.addEventListener('click', () => {
+            const id = tr.getAttribute('data-project-id');
+            window.location.href = `project-detail.html?id=${id}`;
+          });
+        });
+      }
+
+      function renderPagination() {
+        const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
+        const start = (state.page - 1) * state.pageSize + 1;
+        const end = Math.min(state.page * state.pageSize, state.total);
+
+        const wrap = document.getElementById('pagination-wrap');
+        if (state.total === 0) {
+          wrap.innerHTML = '';
+          return;
+        }
+
+        const pages = [];
+        for (let i = 1; i <= Math.min(3, totalPages); i++) pages.push(i);
+        if (totalPages > 4) pages.push('...');
+        if (totalPages > 3) pages.push(totalPages);
+
+        const pagesHtml = pages.map(p => {
+          if (p === '...') return `<span class="page-btn" style="cursor:default;color:var(--text-400);">···</span>`;
+          return `<button class="page-btn ${p === state.page ? 'active' : ''}" data-page="${p}">${p}</button>`;
+        }).join('');
+
+        wrap.innerHTML = `
+          <div class="info">显示 <strong style="color:var(--text-800);">${start}-${end}</strong> 共 <strong style="color:var(--text-800);">${state.total}</strong> 个项目</div>
+          <div class="pages">
+            <button class="page-btn" data-page-nav="prev" ${state.page <= 1 ? 'disabled' : ''}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M15 6l-6 6 6 6"/></svg>
+            </button>
+            ${pagesHtml}
+            <button class="page-btn" data-page-nav="next" ${state.page >= totalPages ? 'disabled' : ''}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+        `;
+
+        wrap.querySelectorAll('[data-page]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            state.page = parseInt(btn.getAttribute('data-page'));
+            loadProjects();
+          });
+        });
+        wrap.querySelector('[data-page-nav="prev"]')?.addEventListener('click', () => {
+          if (state.page > 1) { state.page--; loadProjects(); }
+        });
+        wrap.querySelector('[data-page-nav="next"]')?.addEventListener('click', () => {
+          if (state.page < totalPages) { state.page++; loadProjects(); }
+        });
+      }
+
+      // ============ 交互 ============
+      // 搜索框
+      let searchTimer;
+      document.getElementById('filter-search-input').addEventListener('input', (e) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          state.search = e.target.value.trim();
+          state.page = 1;
+          loadProjects();
+        }, 300);
+      });
+
+      // 分类筛选下拉
+      const categoryOptions = [
+        { value: '', label: '全部' },
+        { value: 'cat_frontend', label: 'Web 前端' },
+        { value: 'cat_backend', label: 'Web 后端' },
+        { value: 'cat_ai', label: 'AI / 机器学习' },
+        { value: 'cat_data', label: '数据科学' },
+        { value: 'cat_devops', label: 'DevOps / 运维' },
+        { value: 'cat_tools', label: '工具 / 库' }
+      ];
+      const languageOptions = [
+        { value: '', label: '全部' },
+        { value: 'JavaScript', label: 'JavaScript' },
+        { value: 'TypeScript', label: 'TypeScript' },
+        { value: 'Python', label: 'Python' },
+        { value: 'Go', label: 'Go' },
+        { value: 'CSS', label: 'CSS' },
+        { value: 'C', label: 'C' }
+      ];
+      const progressOptions = [
+        { value: '', label: '全部' },
+        { value: 'none', label: '待开始' },
+        { value: 'learning', label: '学习中' },
+        { value: 'learned', label: '已学习' },
+        { value: 'mastered', label: '已掌握' }
+      ];
+      const sortOptions = [
+        { value: 'recent', label: '最近更新' },
+        { value: 'stars', label: 'Stars 最多' },
+        { value: 'name', label: '名称' }
+      ];
+
+      function showPicker(filterKey, options, onSelect) {
+        // 简易下拉：复用 prompt/select 风格，用 rpToast 不够好，这里用自定义 mini-popover
+        const existing = document.getElementById('rp-mini-popover');
+        if (existing) existing.remove();
+
+        const pop = document.createElement('div');
+        pop.id = 'rp-mini-popover';
+        pop.style.cssText = 'position:absolute;background:var(--bg-50);border:1px solid var(--bg-300);border-radius:10px;box-shadow:var(--shadow-md);padding:6px;z-index:100;min-width:140px;';
+        pop.innerHTML = options.map(o => `
+          <div class="rp-popover-item" data-value="${o.value}" style="padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text-700);">
+            ${o.label}
+          </div>
+        `).join('');
+        document.body.appendChild(pop);
+
+        // 定位
+        const trigger = document.querySelector(`[data-filter="${filterKey}"]`);
+        const rect = trigger.getBoundingClientRect();
+        pop.style.top = (rect.bottom + 4) + 'px';
+        pop.style.left = rect.left + 'px';
+
+        pop.querySelectorAll('.rp-popover-item').forEach(item => {
+          item.addEventListener('mouseenter', () => item.style.background = 'var(--bg-100)');
+          item.addEventListener('mouseleave', () => item.style.background = 'transparent');
+          item.addEventListener('click', () => {
+            onSelect(item.getAttribute('data-value'));
+            pop.remove();
+          });
+        });
+
+        // 点击外部关闭
+        setTimeout(() => {
+          const close = (e) => {
+            if (!pop.contains(e.target) && !trigger.contains(e.target)) {
+              pop.remove();
+              document.removeEventListener('click', close);
+            }
+          };
+          document.addEventListener('click', close);
+        }, 0);
+      }
+
+      document.querySelector('[data-filter="category"]').addEventListener('click', () => {
+        showPicker('category', categoryOptions, (v) => {
+          state.category = v;
+          document.getElementById('filter-category-label').textContent = '分类：' + (categoryOptions.find(o => o.value === v)?.label || '全部');
+          state.page = 1;
+          loadProjects();
+        });
+      });
+      document.querySelector('[data-filter="language"]').addEventListener('click', () => {
+        showPicker('language', languageOptions, (v) => {
+          state.language = v;
+          document.getElementById('filter-language-label').textContent = '语言：' + (languageOptions.find(o => o.value === v)?.label || '全部');
+          state.page = 1;
+          loadProjects();
+        });
+      });
+      document.querySelector('[data-filter="progress"]').addEventListener('click', () => {
+        showPicker('progress', progressOptions, (v) => {
+          state.progress = v;
+          document.getElementById('filter-progress-label').textContent = '进度：' + (progressOptions.find(o => o.value === v)?.label || '全部');
+          state.page = 1;
+          loadProjects();
+        });
+      });
+      document.querySelector('[data-filter="sort"]').addEventListener('click', () => {
+        showPicker('sort', sortOptions, (v) => {
+          state.sort = v;
+          document.getElementById('filter-sort-label').textContent = '排序：' + (sortOptions.find(o => o.value === v)?.label || '最近更新');
+          loadProjects();
+        });
+      });
+
+      document.getElementById('filter-clear').addEventListener('click', () => {
+        state.search = '';
+        state.category = '';
+        state.language = '';
+        state.progress = '';
+        state.sort = 'recent';
+        state.page = 1;
+        document.getElementById('filter-search-input').value = '';
+        document.getElementById('filter-category-label').textContent = '分类：全部';
+        document.getElementById('filter-language-label').textContent = '语言：全部';
+        document.getElementById('filter-progress-label').textContent = '进度：全部';
+        document.getElementById('filter-sort-label').textContent = '排序：最近更新';
+        loadProjects();
+      });
+
+      // GitHub 同步
+      document.getElementById('btn-sync-github').addEventListener('click', async () => {
+        const btn = document.getElementById('btn-sync-github');
+        const origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="gh-dot"></span>同步中...';
+        try {
+          const stars = await api.listStars();
+          const importResp = await api.importProjects(stars.slice(0, 10));
+          RP.toast(`同步完成 · 新增 ${importResp.data.summary.succeeded} 个项目`, 'success');
+          await loadProjects();
+          await loadStats();
+        } catch (e) {
+          RP.toast('同步失败：' + (e.message || '网络错误'), 'error');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = origHtml;
+        }
+      });
+
+      // 导入项目
+      function importProject() {
+        const url = prompt('粘贴 GitHub 项目 URL（例如 https://github.com/facebook/react）:');
+        if (!url) return;
+        if (!url.match(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/?$/)) {
+          RP.toast('URL 格式不正确，应为 https://github.com/{owner}/{repo}', 'error');
+          return;
+        }
+        const m = url.match(/github\.com\/([\w.-]+)\/([\w.-]+)/);
+        const r = { owner: m[1], repo: m[2].replace(/\.git$/, ''), url };
+        api.importProjects([r]).then(() => {
+          RP.toast(`已导入 ${m[1]}/${m[2]}`, 'success');
+          loadProjects();
+          loadStats();
+        });
+      }
+      document.getElementById('btn-import').addEventListener('click', importProject);
+
+      // 全局：行内 Scout 按钮
+      window.scoutProject = (id) => {
+        RP.toast(`Scout 正在分析项目...`, 'info');
+        // 跳转到 agent 页
+        setTimeout(() => { window.location.href = `agent.html?analyze=${id}`; }, 600);
+      };
+      window.showActions = (id) => {
+        RP.toast(`操作菜单 · 项目 ${id}（演示）`, 'info');
+      };
+
+      // ============ 初始化 ============
+      await loadStats();
+      await loadProjects();
+    })();
+  </script>
+</body>
+</html>

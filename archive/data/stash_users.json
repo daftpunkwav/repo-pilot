@@ -1,0 +1,25 @@
+{
+  "users": [
+    {
+      "id": "242fec84-4f54-4208-89a8-42c54b3b5842",
+      "username": "testuser",
+      "github_accounts": [],
+      "created_at": 1783067456.1036894,
+      "password_hash": "0211cae278a96b8eb8822d5a94f05b88e9d329975baec7deed5e74295370068e",
+      "salt": "6820c4c766424431e7f93da1dbb1ad7f"
+    },
+    {
+      "id": "25692111-30a3-4c4e-8fb8-fd65b4efcc86",
+      "username": "daftpunkwav",
+      "github_accounts": [
+        {
+          "email": "daftpunk.wav@outlook.com",
+          "github_id": "daftpunkwav"
+        }
+      ],
+      "created_at": 1783072367.9825547,
+      "password_hash": "e9486026925e514a26ba64c8c4b39d17f20dff14c3f08f6372e5674183dcf490",
+      "salt": "3f53cb875cc638897c76db5d4312ed26"
+    }
+  ]
+}

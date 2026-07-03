@@ -1,20 +1,43 @@
 # Python
 __pycache__/
-*.py[cod]
+*.pyc
 *.pyo
+.venv/
+venv/
 *.egg-info/
+
+# Node
+node_modules/
 dist/
 build/
+.vite/
 
-# IDE
-.vscode/
-.idea/
+# Data
+data/*.db
+data/*.json
+!data/.gitkeep
 
 # OS
-Thumbs.db
 .DS_Store
+Thumbs.db
 
-# Environment
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swoop
+
+# Env
 .env
-venv/
-.venv/
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Obsidian
+.obsidian/
+
+# TypeScript/Vite 产物
+frontend/tsconfig.tsbuildinfo
