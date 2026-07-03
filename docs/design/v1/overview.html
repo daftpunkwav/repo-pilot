@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>总览 · RepoPilot</title>
+  <link rel="stylesheet" href="./assets/design-system.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ---------- 总览页专有样式（保持与 design-system 令牌一致） ---------- */
+    .overview-hero {
+      position: relative;
+      padding: 28px 32px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 20px;
+      border: 1px solid var(--bg-300);
+      background:
+        radial-gradient(ellipse at 15% 30%, rgba(0,122,255,0.10), transparent 55%),
+        radial-gradient(ellipse at 85% 70%, rgba(191,90,242,0.08), transparent 55%),
+        var(--bg-50);
+    }
+    .overview-hero h1 { margin: 0 0 4px; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+    .overview-hero .lede { color: var(--text-500); font-size: 13px; margin: 0 0 18px; }
+    .quick-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .quick-actions .btn { font-size: 13px; }
+
+    /* 4 列统计卡 */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+    .stat-card {
+      background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius);
+      padding: 18px 20px; box-shadow: var(--shadow-xs); position: relative; overflow: hidden;
+    }
+    .stat-card .stat-label {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text-500); display: flex; align-items: center; gap: 6px;
+    }
+    .stat-card .stat-value { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 8px 0 4px; }
+    .stat-card .stat-meta { font-size: 12px; color: var(--text-500); font-weight: 500; }
+    .stat-card .stat-icon {
+      position: absolute; top: 16px; right: 16px; width: 34px; height: 34px;
+      border-radius: 10px; display: grid; place-items: center;
+      color: var(--brand-500); background: var(--brand-50);
+    }
+    .stat-card.stat-green .stat-icon { color: var(--success); background: var(--success-surface); }
+    .stat-card.stat-orange .stat-icon { color: var(--warning); background: var(--warning-surface); }
+    .stat-card.stat-purple .stat-icon { color: var(--chart-4); background: #f3e8ff; }
+
+    /* 区块标题 */
+    .section-head {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin: 8px 0 12px;
+    }
+    .section-head h2 { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+    .section-head .more { font-size: 12px; color: var(--brand-500); font-weight: 600; text-decoration: none; }
+    .section-head .more:hover { text-decoration: underline; }
+
+    /* 2 列布局：左 7 / 右 5 */
+    .row-2col { display: grid; grid-template-columns: 7fr 5fr; gap: 16px; margin-bottom: 20px; }
+    .panel {
+      background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius);
+      box-shadow: var(--shadow-xs); padding: 16px 18px;
+    }
+    .panel h3 { margin: 0 0 12px; font-size: 14px; font-weight: 700; }
+
+    /* 学习进度分布 */
+    .progress-bars { display: flex; flex-direction: column; gap: 10px; }
+    .progress-row {
+      display: grid; grid-template-columns: 80px 1fr 36px;
+      align-items: center; gap: 12px; font-size: 12px;
+    }
+    .progress-row .pl { color: var(--text-700); font-weight: 600; }
+    .progress-row .pv { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-800); text-align: right; }
+    .progress-row .track { height: 8px; background: var(--bg-200); border-radius: 999px; overflow: hidden; }
+    .progress-row .fill { height: 100%; border-radius: 999px; }
+    .fill-none { background: var(--text-300); }
+    .fill-learning { background: var(--warning); }
+    .fill-learned { background: var(--brand-300); }
+    .fill-mastered { background: var(--success); }
+
+    /* 最近活动 */
+    .activity-list { display: flex; flex-direction: column; gap: 10px; }
+    .activity-item {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      transition: background 0.15s;
+    }
+    .activity-item:hover { background: var(--bg-100); }
+    .activity-icon {
+      width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+      display: grid; place-items: center;
+      color: var(--brand-500); background: var(--brand-50);
+    }
+    .activity-body { flex: 1; min-width: 0; }
+    .activity-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+    .activity-desc { font-size: 12px; color: var(--text-500); }
+    .activity-time { font-size: 11px; color: var(--text-400); font-family: var(--font-mono); flex-shrink: 0; }
+
+    /* 项目推荐卡 */
+    .project-list { display: flex; flex-direction: column; gap: 8px; }
+    .project-item {
+      display: flex; gap: 12px; align-items: center;
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      transition: background 0.15s;
+      text-decoration: none; color: inherit;
+    }
+    .project-item:hover { background: var(--bg-100); }
+    .project-avatar {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      display: grid; place-items: center; color: #fff;
+      font: 700 13px/1 var(--font-mono);
+    }
+    .project-info { flex: 1; min-width: 0; }
+    .project-name {
+      font: 600 13px/1.3 var(--font-mono);
+      display: flex; gap: 4px; align-items: center;
+    }
+    .project-name .owner { color: var(--text-500); font-weight: 500; }
+    .project-name .slash { color: var(--text-300); }
+    .project-desc {
+      font-size: 12px; color: var(--text-500);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .project-stars { font-size: 12px; color: var(--text-700); font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
+
+    /* 6 Agent 入口 */
+    .agent-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
+    .agent-card {
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 14px 12px; border-radius: var(--radius);
+      background: var(--bg-50); border: 1px solid var(--bg-300);
+      cursor: pointer; transition: all 0.18s var(--ease);
+      text-decoration: none; color: inherit;
+    }
+    .agent-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--brand-300); }
+    .agent-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: grid; place-items: center; color: #fff;
+      font: 700 14px/1 var(--font-sans);
+    }
+    .agent-name { font-size: 13px; font-weight: 700; }
+    .agent-desc { font-size: 11px; color: var(--text-500); line-height: 1.4; }
+
+    /* 最近笔记 */
+    .notes-list { display: flex; flex-direction: column; gap: 8px; }
+    .note-item {
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      transition: background 0.15s;
+      text-decoration: none; color: inherit;
+      display: block;
+    }
+    .note-item:hover { background: var(--bg-100); }
+    .note-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .note-meta { font-size: 11px; color: var(--text-500); display: flex; gap: 8px; }
+    .note-meta .tag-link { color: var(--brand-500); font-family: var(--font-mono); }
+
+    @media (max-width: 1200px) {
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .agent-grid { grid-template-columns: repeat(3, 1fr); }
+      .row-2col { grid-template-columns: 1fr; }
+    }
+
+    /* ===== GitHub 近期热门 ===== */
+    .trending-section { margin-bottom: 20px; }
+    .trending-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; margin-bottom: 12px;
+    }
+    .trending-head-left { display: flex; align-items: baseline; gap: 10px; }
+    .trending-head h2 { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin: 0; display: flex; align-items: center; gap: 8px; }
+    .trending-head .trending-subtitle { font-size: 12px; color: var(--text-500); }
+    .trending-fire {
+      display: inline-grid; place-items: center;
+      width: 26px; height: 26px; border-radius: 8px;
+      background: linear-gradient(135deg,#ff9f0a,#ff375f); color: #fff;
+    }
+    .period-toggle, .sort-toggle {
+      display: inline-flex; padding: 3px;
+      background: var(--bg-200); border-radius: 999px; gap: 2px;
+    }
+    .period-btn, .sort-btn {
+      padding: 5px 12px; border: 0; background: transparent;
+      color: var(--text-500); font: 600 12px/1 var(--font-sans);
+      border-radius: 999px; cursor: pointer; transition: all 0.15s;
+    }
+    .period-btn:hover, .sort-btn:hover { color: var(--text-800); }
+    .period-btn.active, .sort-btn.active {
+      background: var(--bg-50); color: var(--brand-700);
+      box-shadow: var(--shadow-xs); font-weight: 700;
+    }
+    .trending-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+    }
+    .trending-card {
+      display: flex; gap: 12px; align-items: flex-start;
+      padding: 14px 16px;
+      background: var(--bg-50); border: 1px solid var(--bg-300);
+      border-radius: var(--radius); box-shadow: var(--shadow-xs);
+      text-decoration: none; color: inherit;
+      transition: all 0.18s var(--ease);
+    }
+    .trending-card:hover {
+      transform: translateY(-2px); box-shadow: var(--shadow-md);
+      border-color: var(--brand-300);
+    }
+    .trending-rank {
+      flex-shrink: 0;
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      display: grid; place-items: center;
+      font: 700 14px/1 var(--font-mono);
+      color: var(--text-500);
+      background: var(--bg-100);
+    }
+    .trending-card:nth-child(1) .trending-rank { background: linear-gradient(135deg,#ffd700,#ff9f0a); color: #fff; }
+    .trending-card:nth-child(2) .trending-rank { background: linear-gradient(135deg,#c0c0c0,#8e8e93); color: #fff; }
+    .trending-card:nth-child(3) .trending-rank { background: linear-gradient(135deg,#cd7f32,#a05a2c); color: #fff; }
+    .trending-body { flex: 1; min-width: 0; }
+    .trending-name {
+      font: 600 13px/1.3 var(--font-mono);
+      display: flex; gap: 4px; align-items: baseline;
+      margin-bottom: 4px;
+    }
+    .trending-name .owner { color: var(--text-500); font-weight: 500; }
+    .trending-name .slash { color: var(--text-300); }
+    .trending-desc {
+      font-size: 12px; color: var(--text-500);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      margin-bottom: 6px;
+    }
+    .trending-meta {
+      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      font-size: 11px; color: var(--text-500);
+    }
+    .trending-meta .lang-dot { display: inline-flex; align-items: center; gap: 4px; }
+    .trending-meta .lang-dot::before {
+      content: ''; width: 8px; height: 8px; border-radius: 999px;
+      background: var(--bg-400);
+    }
+    .trending-meta .lang-ts::before { background: #3178c6; }
+    .trending-meta .lang-js::before { background: #f1e05a; }
+    .trending-meta .lang-python::before { background: #3572a5; }
+    .trending-meta .lang-rust::before { background: #dea584; }
+    .trending-meta .lang-cpp::before { background: #f34b7d; }
+    .trending-meta .stars { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; color: var(--text-700); }
+    .trending-meta .added-stars {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 2px 8px; border-radius: 999px;
+      background: rgba(52, 199, 89, 0.14); color: #1e7e34;
+      font-weight: 700;
+    }
+    .trending-empty {
+      padding: 40px 20px; text-align: center;
+      background: var(--bg-50); border: 1px dashed var(--bg-300); border-radius: var(--radius);
+      color: var(--text-400); font-size: 13px;
+    }
+
+    @media (max-width: 1200px) {
+      .trending-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body data-page="overview">
+
+  <div class="app">
+    <!-- 侧边栏（由 sidebar.js 渲染） -->
+    <div id="app-sidebar"></div>
+
+    <!-- 右侧主区 -->
+    <div class="main">
+      <!-- 顶栏（由 topbar.js 渲染） -->
+      <header id="app-topbar"></header>
+
+      <!-- 内容 -->
+      <main class="content">
+
+        <!-- ===== 欢迎区（个性化问候 + 快捷入口） ===== -->
+        <section class="overview-hero">
+          <h1>你好，<span id="hero-username">同学</span> 👋</h1>
+          <p class="lede" id="hero-lede">上次登录 2026-07-04 14:23 · 你的项目库有 24 个项目等待探索</p>
+          <div class="quick-actions">
+            <a href="agent.html" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M21 12a9 9 0 1 1-3-6.7L21 4v5h-5"/></svg>
+              和 Agent 对话
+            </a>
+            <a href="projects.html" class="btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+              浏览项目库
+            </a>
+            <a href="graph.html" class="btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 7l8 0M7.5 8L11 16M16.5 8L13 16"/></svg>
+              查看图谱
+            </a>
+            <a href="settings.html" class="btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+              设置
+            </a>
+          </div>
+        </section>
+
+        <!-- ===== 4 个统计卡 ===== -->
+        <section class="stat-grid" id="stat-grid">
+          <!-- JS 动态填充 -->
+        </section>
+
+        <!-- ===== 6 Agent 入口 ===== -->
+        <section class="agent-grid" id="agent-grid">
+          <!-- JS 动态填充 -->
+        </section>
+
+        <!-- ===== 2 列布局：学习进度 + 最近活动 ===== -->
+        <section class="row-2col">
+          <!-- 左：学习进度分布 -->
+          <div class="panel">
+            <h3>学习进度分布</h3>
+            <div class="progress-bars" id="progress-bars">
+              <!-- JS 动态填充 -->
+            </div>
+          </div>
+          <!-- 右：最近活动 -->
+          <div class="panel">
+            <div class="section-head" style="margin-top:0">
+              <h3>最近活动</h3>
+              <a href="agent.html" class="more">查看全部 →</a>
+            </div>
+            <div class="activity-list" id="activity-list">
+              <!-- JS 动态填充 -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== 2 列布局：推荐项目 + 最近笔记 ===== -->
+        <section class="row-2col">
+          <!-- 左：推荐项目 -->
+          <div class="panel">
+            <div class="section-head" style="margin-top:0">
+              <h3>为你推荐</h3>
+              <a href="projects.html" class="more">查看全部 →</a>
+            </div>
+            <div class="project-list" id="project-list">
+              <!-- JS 动态填充 -->
+            </div>
+          </div>
+          <!-- 右：最近笔记 -->
+          <div class="panel">
+            <div class="section-head" style="margin-top:0">
+              <h3>最近笔记</h3>
+              <a href="notes.html" class="more">查看全部 →</a>
+            </div>
+            <div class="notes-list" id="notes-list">
+              <!-- JS 动态填充 -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== GitHub 近期热门 ===== -->
+        <section class="trending-section">
+          <div class="trending-head">
+            <div class="trending-head-left">
+              <h2>
+                <span class="trending-fire" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M13.5 0.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.59 2.65.59 4.04 0 2.65-2.15 4.8-4.8 4.8z"/></svg>
+                </span>
+                GitHub 近期热门
+              </h2>
+              <span class="trending-subtitle">基于真实 trending 数据,帮助你发现值得关注的项目</span>
+            </div>
+            <div class="period-toggle" role="tablist" aria-label="时间范围">
+              <button class="period-btn" data-period="daily">今日</button>
+              <button class="period-btn active" data-period="weekly">本周</button>
+              <button class="period-btn" data-period="monthly">本月</button>
+            </div>
+          </div>
+          <div class="trending-grid" id="gh-trending">
+            <!-- JS 动态填充 -->
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- 脚本：api-mock → sidebar → topbar → app-shell → 页面业务 -->
+  <script src="./assets/api-mock.js"></script>
+  <script src="./assets/sidebar.js"></script>
+  <script src="./assets/topbar.js"></script>
+  <script src="./assets/app-shell.js"></script>
+  <script>
+    (async function () {
+      const api = await RP.ensureApiClient();
+
+      // 1. 加载用户信息
+      try {
+        const u = await api.me();
+        document.getElementById('hero-username').textContent = u.username;
+        document.getElementById('hero-lede').textContent =
+          `上次登录 ${RP.formatDate(u.created_at)} · GitHub 已绑定（@${u.github_login || 'unknown'}）`;
+      } catch (e) {
+        document.getElementById('hero-username').textContent = '同学';
+      }
+
+      // 2. 加载项目统计
+      const stats = (await api.getProjectStats()).data;
+      const byProgress = stats.by_progress || {};
+      const total = stats.total || 0;
+
+      const statGrid = document.getElementById('stat-grid');
+      statGrid.innerHTML = `
+        <article class="stat-card">
+          <div class="stat-label">总项目数</div>
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+          </div>
+          <div class="stat-value">${total}</div>
+          <div class="stat-meta">6 个分类 · ${Object.keys(stats.by_language || {}).length} 种语言</div>
+        </article>
+        <article class="stat-card stat-green">
+          <div class="stat-label">已掌握</div>
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M20 6L9 17l-5-5"/></svg>
+          </div>
+          <div class="stat-value">${byProgress.mastered || 0}</div>
+          <div class="stat-meta">${total ? Math.round((byProgress.mastered || 0) / total * 100) : 0}% · 占比</div>
+        </article>
+        <article class="stat-card stat-orange">
+          <div class="stat-label">学习中</div>
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M2 12a10 10 0 1 0 20 0 10 10 0 1 0-20 0z"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <div class="stat-value">${byProgress.learning || 0}</div>
+          <div class="stat-meta">${total ? Math.round((byProgress.learning || 0) / total * 100) : 0}% · 占比</div>
+        </article>
+        <article class="stat-card stat-purple">
+          <div class="stat-label">待开始</div>
+          <div class="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="9"/><path d="M8 12h8"/></svg>
+          </div>
+          <div class="stat-value">${byProgress.none || 0}</div>
+          <div class="stat-meta">${total ? Math.round((byProgress.none || 0) / total * 100) : 0}% · 占比</div>
+        </article>
+      `;
+
+      // 3. 学习进度分布（条形图）
+      const progressData = [
+        { key: 'none', label: '待开始', color: 'fill-none' },
+        { key: 'learning', label: '学习中', color: 'fill-learning' },
+        { key: 'learned', label: '已学习', color: 'fill-learned' },
+        { key: 'mastered', label: '已掌握', color: 'fill-mastered' }
+      ];
+      const max = Math.max(...progressData.map(p => byProgress[p.key] || 0), 1);
+      document.getElementById('progress-bars').innerHTML = progressData.map(p => {
+        const v = byProgress[p.key] || 0;
+        const pct = Math.round(v / max * 100);
+        return `
+          <div class="progress-row">
+            <span class="pl">${p.label}</span>
+            <div class="track"><div class="fill ${p.color}" style="width:${pct}%"></div></div>
+            <span class="pv">${v}</span>
+          </div>
+        `;
+      }).join('');
+
+      // 4. 6 个 Agent 入口
+      const agents = [
+        { id: 'hub', name: 'Hub', desc: '对话管家', color: 'linear-gradient(135deg,#4a3aff,#9d4edd)' },
+        { id: 'scout', name: 'Scout', desc: '快速分析', color: 'linear-gradient(135deg,#ff9f0a,#ff6f00)' },
+        { id: 'mentor', name: 'Mentor', desc: '深度讲解', color: 'linear-gradient(135deg,#9d4edd,#c879ff)' },
+        { id: 'navigator', name: 'Navigator', desc: '学习规划', color: 'linear-gradient(135deg,#00b8d4,#00d4aa)' },
+        { id: 'curator', name: 'Curator', desc: '分类管家', color: 'linear-gradient(135deg,#34c759,#30d158)' },
+        { id: 'scribe', name: 'Scribe', desc: '笔记助手', color: 'linear-gradient(135deg,#ff375f,#ff6b8a)' }
+      ];
+      document.getElementById('agent-grid').innerHTML = agents.map(a => `
+        <a class="agent-card" href="agent.html?agent=${a.id}">
+          <div class="agent-icon" style="background:${a.color}">${a.name[0]}</div>
+          <div>
+            <div class="agent-name">${a.name}</div>
+            <div class="agent-desc">${a.desc}</div>
+          </div>
+        </a>
+      `).join('');
+
+      // 5. 最近活动（mock：从会话 + 笔记合并）
+      const sessions = (await api.listAgentSessions()).data || [];
+      const notes = (await api.listAllNotes()).data || [];
+      const activities = [
+        ...sessions.slice(0, 3).map(s => ({
+          kind: 'agent',
+          title: s.title,
+          desc: `${s.agent} · 会话`,
+          time: s.updated_at,
+          link: 'agent.html'
+        })),
+        ...notes.slice(0, 2).map(n => ({
+          kind: 'note',
+          title: n.title,
+          desc: `笔记 · ${n.project_id}`,
+          time: n.updated_at,
+          link: `notes.html#note-${n.id}`
+        }))
+      ].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 5);
+
+      const iconForKind = {
+        agent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15a3 3 0 0 1-3 3H8l-5 4V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v9z"/></svg>',
+        note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>'
+      };
+      document.getElementById('activity-list').innerHTML = activities.length === 0
+        ? '<div style="padding:20px 12px;color:var(--text-400);font-size:12px;text-align:center;">暂无活动</div>'
+        : activities.map(a => `
+          <a class="activity-item" href="${a.link}">
+            <div class="activity-icon">${iconForKind[a.kind] || ''}</div>
+            <div class="activity-body">
+              <div class="activity-title">${a.title}</div>
+              <div class="activity-desc">${a.desc}</div>
+            </div>
+            <span class="activity-time">${RP.formatDate(a.time)}</span>
+          </a>
+        `).join('');
+
+      // 6. 推荐项目（按 Stars 排序，取 Top 5）
+      const projects = (await api.listProjects({ page_size: 100 })).data.items || [];
+      const recommended = [...projects].sort((a, b) => b.stars - a.stars).slice(0, 5);
+      const gradients = [
+        'linear-gradient(135deg,#61dafb,#2196f3)',
+        'linear-gradient(135deg,#42b883,#35495e)',
+        'linear-gradient(135deg,#000,#404040)',
+        'linear-gradient(135deg,#38bdf8,#0ea5e9)',
+        'linear-gradient(135deg,#009688,#00695c)'
+      ];
+      document.getElementById('project-list').innerHTML = recommended.map((p, i) => {
+        const [owner, repo] = p.name.split('/');
+        return `
+          <a class="project-item" href="project-detail.html?id=${p.id}">
+            <div class="project-avatar" style="background:${gradients[i % gradients.length]}">${repo[0].toUpperCase()}</div>
+            <div class="project-info">
+              <div class="project-name">
+                <span class="owner">${owner}</span><span class="slash">/</span><span>${repo}</span>
+              </div>
+              <div class="project-desc">${p.description || ''}</div>
+            </div>
+            <span class="project-stars">⭐ ${RP.formatNumber(p.stars)}</span>
+          </a>
+        `;
+      }).join('');
+
+      // 7. 最近笔记
+      const recentNotes = [...notes].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(0, 4);
+      document.getElementById('notes-list').innerHTML = recentNotes.length === 0
+        ? '<div style="padding:20px 12px;color:var(--text-400);font-size:12px;text-align:center;">暂无笔记</div>'
+        : recentNotes.map(n => {
+          const project = projects.find(p => p.id === n.project_id);
+          return `
+            <a class="note-item" href="notes.html#note-${n.id}">
+              <div class="note-title">${n.title}</div>
+              <div class="note-meta">
+                <span class="tag-link">${project ? project.name : n.project_id}</span>
+                <span>·</span>
+                <span>${RP.formatDate(n.updated_at)}</span>
+              </div>
+            </a>
+          `;
+        }).join('');
+
+      // ===== 8. GitHub 近期热门 =====
+      const trendingGrid = document.getElementById('gh-trending');
+      const periodLabel = { daily: '今日', weekly: '本周', monthly: '本月' };
+
+      const langToClass = (lang) => {
+        if (!lang) return 'lang-other';
+        const l = lang.toLowerCase();
+        if (l.includes('typescript') || l === 'ts') return 'lang-ts';
+        if (l.includes('javascript') || l === 'js') return 'lang-js';
+        if (l.includes('python')) return 'lang-python';
+        if (l.includes('rust')) return 'lang-rust';
+        if (l.includes('c++') || l.includes('cpp')) return 'lang-cpp';
+        return 'lang-other';
+      };
+
+      async function renderGhTrending(period) {
+        const resp = await api.listTrending({ period });
+        const items = resp.data.items || [];
+        if (items.length === 0) {
+          trendingGrid.innerHTML = '<div class="trending-empty">该周期暂无数据</div>';
+          return;
+        }
+        trendingGrid.innerHTML = items.map(r => `
+          <a class="trending-card" href="https://github.com/${r.owner}/${r.repo}" target="_blank" rel="noopener">
+            <div class="trending-rank">${r.rank}</div>
+            <div class="trending-body">
+              <div class="trending-name">
+                <span class="owner">${r.owner}</span><span class="slash">/</span><span>${r.repo}</span>
+              </div>
+              <div class="trending-desc" title="${(r.description || '').replace(/"/g,'&quot;')}">${r.description || ''}</div>
+              <div class="trending-meta">
+                <span class="lang-dot ${langToClass(r.language)}">${r.language || '-'}</span>
+                <span class="stars">
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8L2 9.3l6.9-1L12 2z"/></svg>
+                  ${RP.formatNumber(r.total_stars || r.stars)}
+                </span>
+                <span class="added-stars">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><path d="M12 5v14M5 12h14"/></svg>
+                  ${periodLabel[period]} +${RP.formatNumber(r.added_stars)}
+                </span>
+              </div>
+            </div>
+          </a>
+        `).join('');
+      }
+
+      await renderGhTrending('weekly');
+
+      // 周期切换
+      document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          await renderGhTrending(btn.getAttribute('data-period'));
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>RepoPilot v1 设计系统 · 设计稿索引</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/design-system.css">
+<style>
+  .hero { padding: 80px 32px 64px; max-width: 1200px; margin: 0 auto; text-align: center; }
+  .hero-logo { width: 88px; height: 88px; margin: 0 auto 24px; background: linear-gradient(135deg, var(--brand-500), var(--brand-700)); border-radius: 22px; display: grid; place-items: center; color: #fff; font-size: 36px; font-weight: 800; box-shadow: var(--shadow-lg); }
+  .hero h1 { font-size: 48px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; margin: 0 0 16px; background: linear-gradient(135deg, var(--text-800), var(--brand-600)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero .lede { font-size: 18px; color: var(--text-500); max-width: 640px; margin: 0 auto 32px; line-height: 1.6; }
+  .hero-meta { display: inline-flex; gap: 8px; align-items: center; }
+
+  .feature-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; max-width: 1200px; margin: 48px auto; padding: 0 32px; }
+  .feature { background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius); padding: 20px; transition: all 0.2s var(--ease); }
+  .feature:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--brand-300); }
+  .feature-icon { width: 40px; height: 40px; border-radius: 10px; background: var(--brand-50); color: var(--brand-700); display: grid; place-items: center; margin-bottom: 12px; }
+  .feature-icon svg { width: 22px; height: 22px; }
+  .feature h3 { font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+  .feature p { font-size: 12px; color: var(--text-500); line-height: 1.5; margin: 0; }
+
+  .section { max-width: 1200px; margin: 64px auto; padding: 0 32px; }
+  .section-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--brand-500); margin-bottom: 8px; }
+  .section-title { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; margin: 0 0 12px; }
+  .section-desc { font-size: 15px; color: var(--text-500); max-width: 640px; line-height: 1.6; margin: 0 0 32px; }
+
+  .page-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .page-card { background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius); overflow: hidden; transition: all 0.2s var(--ease); cursor: pointer; display: block; color: inherit; }
+  .page-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--brand-500); }
+  .page-preview { aspect-ratio: 16 / 10; background: var(--bg-100); position: relative; overflow: hidden; border-bottom: 1px solid var(--bg-300); }
+  .page-preview-inner { width: 100%; height: 100%; transform: scale(0.5); transform-origin: top left; pointer-events: none; }
+  .page-info { padding: 16px 18px; }
+  .page-info .row { justify-content: space-between; align-items: flex-start; }
+  .page-name { font-size: 15px; font-weight: 600; }
+  .page-route { font-family: var(--font-mono); font-size: 11px; color: var(--text-500); margin-top: 2px; }
+  .page-desc { font-size: 12px; color: var(--text-500); line-height: 1.5; margin-top: 8px; }
+  .page-tag { display: inline-flex; padding: 2px 8px; background: var(--brand-50); color: var(--brand-700); border-radius: 999px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* Mini-preview mockups */
+  .mp { display: flex; height: 100%; font-family: var(--font-sans); }
+  .mp-side { width: 60px; background: var(--bg-200); border-right: 1px solid var(--bg-300); padding: 8px 4px; }
+  .mp-side-item { height: 8px; background: var(--bg-300); border-radius: 2px; margin-bottom: 6px; }
+  .mp-side-item.active { background: var(--brand-500); }
+  .mp-main { flex: 1; padding: 12px; background: var(--bg-100); }
+  .mp-row { display: flex; gap: 6px; margin-bottom: 8px; }
+  .mp-card { flex: 1; background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: 4px; padding: 8px; min-height: 36px; }
+  .mp-table { background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: 4px; padding: 8px; }
+  .mp-table-row { height: 8px; background: var(--bg-200); border-radius: 2px; margin-bottom: 4px; }
+
+  .design-tokens { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .token-card { background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius); padding: 24px; }
+  .token-card h4 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-500); margin: 0 0 16px; }
+  .color-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .color-swatch { aspect-ratio: 1; border-radius: var(--radius-sm); display: flex; align-items: flex-end; justify-content: center; padding: 4px; font-family: var(--font-mono); font-size: 9px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+  .type-sample { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+  .type-row { padding: 12px 0; border-top: 1px solid var(--bg-300); display: flex; align-items: baseline; gap: 12px; }
+  .type-row:first-of-type { border-top: 0; padding-top: 0; }
+  .type-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-500); min-width: 60px; }
+
+  footer { padding: 48px 32px 32px; text-align: center; color: var(--text-500); font-size: 12px; border-top: 1px solid var(--bg-300); margin-top: 64px; }
+  footer .row { justify-content: center; gap: 16px; }
+</style>
+</head>
+<body>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-logo">RP</div>
+    <h1>RepoPilot v1 设计稿</h1>
+    <p class="lede">AI 驱动的开源项目学习平台。基于 Apple Design Library 设计令牌、DM Sans / JetBrains Mono 字体系统与 7 个核心页面的完整视觉规范。</p>
+    <div class="hero-meta">
+      <span class="badge badge-primary badge-dot">v1.0.0</span>
+      <span class="badge">PRD §1.0 · SPEC §12 · MVP §5.1</span>
+      <span class="badge">2026-07-04</span>
+      <a href="overview.html" class="badge" style="background:var(--brand-500);color:#fff;text-decoration:none;">→ 进入应用</a>
+    </div>
+  </section>
+
+  <!-- 核心差异化 -->
+  <section class="section">
+    <div class="section-eyebrow">差异化能力</div>
+    <h2 class="section-title">6 个专业 Agent 协同</h2>
+    <p class="section-desc">不是通用聊天机器人，而是一个由专业 Agent 组成的学习专家网络。先了解你的水平，再定制讲解。</p>
+
+    <div class="feature-row" style="margin:0;padding:0">
+      <div class="feature">
+        <div class="feature-icon" style="background:linear-gradient(135deg,#4a3aff,#9d4edd);color:#fff">H</div>
+        <h3>Hub · 对话管家</h3>
+        <p>统一对话入口，智能路由用户问题到合适的 Agent</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon" style="background:linear-gradient(135deg,#ff9f0a,#ff6f00);color:#fff">S</div>
+        <h3>Scout · 快速分析</h3>
+        <p>30 秒给出项目速览：核心功能、技术栈、学习门槛</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon" style="background:linear-gradient(135deg,#9d4edd,#c879ff);color:#fff">M</div>
+        <h3>Mentor · 深度讲解</h3>
+        <p>反问机制 + 多层拆解，定制化讲解开源项目</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon" style="background:linear-gradient(135deg,#00b8d4,#00d4aa);color:#fff">N</div>
+        <h3>Navigator · 学习规划</h3>
+        <p>基于你的项目库和目标，规划 10 周学习路径</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon" style="background:linear-gradient(135deg,#34c759,#30d158);color:#fff">C</div>
+        <h3>Curator · 分类管家</h3>
+        <p>智能分类与标签建议，让项目库井井有条</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon" style="background:linear-gradient(135deg,#ff375f,#ff6b8a);color:#fff">S</div>
+        <h3>Scribe · 笔记助手</h3>
+        <p>生成笔记大纲、补充要点、总结长文档</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg></div>
+        <h3>知识图谱</h3>
+        <p>基于 TF-IDF 相似度的力导向图，发现项目间隐藏的关联</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8 5.8 21.3l2.4-7.4L2 9.4h7.6L12 2z"/></svg></div>
+        <h3>BYOK · 隐私优先</h3>
+        <p>使用你自己的 API Key · Key 仅本地加密存储 · 无 Key 时优雅降级</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 个页面 -->
+  <section class="section">
+    <div class="section-eyebrow">完整页面</div>
+    <h2 class="section-title">7 个核心页面</h2>
+    <p class="section-desc">基于 Apple Design Library 设计的完整前端页面，所有页面共享同一套设计令牌与组件规范。</p>
+
+    <div class="page-grid">
+      <a class="page-card" href="login.html">
+        <div class="page-preview">
+          <div class="page-preview-inner">
+            <div style="width:200%;height:200%;background:linear-gradient(135deg,#f2f2f7,#e8f2ff);display:grid;place-items:center;padding:160px">
+              <div style="width:480px;background:#fff;border:1px solid #e5e5ea;border-radius:16px;padding:32px;box-shadow:0 4px 12px rgba(0,0,0,0.06)">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+                  <div style="width:40px;height:40px;background:linear-gradient(135deg,#007aff,#003b82);border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:700">RP</div>
+                  <div>
+                    <div style="font-weight:700">RepoPilot</div>
+                    <div style="font-size:11px;color:#6e6e73">你的 AI 开源项目学习领航员</div>
+                  </div>
+                </div>
+                <div style="height:36px;background:#f2f2f7;border-radius:8px;margin-bottom:12px"></div>
+                <div style="height:36px;background:#f2f2f7;border-radius:8px;margin-bottom:20px"></div>
+                <div style="height:40px;background:#007aff;border-radius:999px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="page-info">
+          <div class="row between">
+            <div>
+              <div class="page-name">登录 / 注册</div>
+              <div class="page-route">/login · /register</div>
+            </div>
+            <span class="page-tag">Auth</span>
+          </div>
+          <p class="page-desc">居中卡片布局 · 密码强度条 · 错误态展示 · 桌面优先</p>
+        </div>
+      </a>
+
+      <a class="page-card" href="overview.html">
+        <div class="page-preview">
+          <div class="page-preview-inner">
+            <div class="mp">
+              <div class="mp-side">
+                <div class="mp-side-item active" style="height:24px;margin-bottom:12px"></div>
+                <div class="mp-side-item"></div><div class="mp-side-item"></div><div class="mp-side-item"></div><div class="mp-side-item"></div>
+              </div>
+              <div class="mp-main">
+                <div style="height:48px;background:linear-gradient(135deg,rgba(0,122,255,.12),rgba(191,90,242,.08));border-radius:8px;margin-bottom:10px"></div>
+                <div class="mp-row">
+                  <div class="mp-card" style="height:48px"></div><div class="mp-card" style="height:48px"></div><div class="mp-card" style="height:48px"></div><div class="mp-card" style="height:48px"></div>
+                </div>
+                <div class="mp-table">
+                  <div class="mp-table-row" style="width:60%;background:#d1d1d6"></div>
+                  <div class="mp-table-row"></div><div class="mp-table-row"></div><div class="mp-table-row"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="page-info">
+          <div class="row between">
+            <div>
+              <div class="page-name">总览 Dashboard</div>
+              <div class="page-route">/overview.html</div>
+            </div>
+            <span class="page-tag">Core</span>
+          </div>
+          <p class="page-desc">4 统计卡 · 6 Agent 入口 · 学习进度分布 · 最近活动 · 推荐项目 · 最近笔记</p>
+        </div>
+      </a>
+
+      <a class="page-card" href="projects.html">
+        <div class="page-preview">
+          <div class="page-preview-inner">
+            <div class="mp">
+              <div class="mp-side">
+                <div class="mp-side-item"></div>
+                <div class="mp-side-item active" style="height:24px;margin-bottom:12px"></div>
+                <div class="mp-side-item"></div><div class="mp-side-item"></div><div class="mp-side-item"></div>
+              </div>
+              <div class="mp-main">
+                <div style="height:32px;background:#fff;border:1px solid #e5e5ea;border-radius:6px;margin-bottom:10px"></div>
+                <div class="mp-row">
+                  <div class="mp-card" style="height:24px"></div>
+                </div>
+                <div class="mp-table">
+                  <div class="mp-table-row" style="width:60%;background:#d1d1d6"></div>
+                  <div class="mp-table-row"></div><div class="mp-table-row"></div><div class="mp-table-row"></div><div class="mp-table-row"></div><div class="mp-table-row"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="page-info">
+          <div class="row between">
+            <div>
+              <div class="page-name">项目库</div>
+              <div class="page-route">/projects.html</div>
+            </div>
+            <span class="page-tag">Core</span>
+          </div>
+          <p class="page-desc">4 个统计卡片 · 筛选栏 · 12 行真实项目数据 · 4 种进度态 · 分页</p>
+        </div>
+      </a>
+
+      <a class="page-card" href="project-detail.html">
+        <div class="page-preview">
+          <div class="page-preview-inner">
+            <div style="width:200%;height:200%;background:#f2f2f7;padding:20px 30px;display:flex;gap:20px">
+              <div style="flex:1;background:#fff;border:1px solid #e5e5ea;border-radius:8px;padding:20px">
+                <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+                  <div style="width:48px;height:48px;background:#007aff;border-radius:12px"></div>
+                  <div>
+                    <div style="height:14px;width:200px;background:#1d1d1f;border-radius:3px;margin-bottom:6px"></div>
+                    <div style="height:8px;width:160px;background:#d1d1d6;border-radius:2px"></div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px;margin-bottom:16px">
+                  <div style="height:24px;width:60px;background:#e9f9ee;border-radius:999px"></div>
+                  <div style="height:24px;width:60px;background:#e8f2ff;border-radius:999px"></div>
+                  <div style="height:24px;width:60px;background:#fff4e5;border-radius:999px"></div>
+                </div>
+                <div style="height:8px;background:#d1d1d6;border-radius:2px;margin-bottom:6px"></div>
+                <div style="height:8px;background:#d1d1d6;border-radius:2px;margin-bottom:6px"></div>
+                <div style="height:8px;background:#d1d1d6;border-radius:2px;width:80%"></div>
+              </div>
+              <div style="width:160px;display:flex;flex-direction:column;gap:12px">
+                <div style="background:#fff;border:1px solid #e5e5ea;border-radius:8px;padding:12px;height:120px"></div>
+                <div style="background:#fff;border:1px solid #e5e5ea;border-radius:8px;padding:12px;height:80px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="page-info">
+          <div class="row between">
+            <div>
+              <div class="page-name">项目详情</div>
+              <div class="page-route">/projects/:id</div>
+            </div>
+            <span class="page-tag">Detail</span>
+          </div>
+          <p class="page-desc">README 渲染 · 笔记面板 · 6 个 Agent 快捷入口 · 5 个相似项目</p>
+        </div>
+      </a>
+
+      <a class="page-card" href="graph.html">
+        <div class="page-preview">
+          <div class="page-preview-inner">
+            <div style="width:200%;height:200%;background:radial-gradient(circle at center,#f7f7fa,#f2f2f7);position:relative;display:grid;place-items:center">
+              <svg viewBox="0 0 400 250" style="width:80%;height:80%">
+                <line x1="200" y1="125" x2="120" y2="60" stroke="#007aff" stroke-width="1.5" opacity="0.6"/>
+                <line x1="200" y1="125" x2="280" y2="60" stroke="#007aff" stroke-width="1.5" opacity="0.6"/>
+                <line x1="200" y1="125" x2="320" y2="160" stroke="#66abff" stroke-width="1.2" opacity="0.5"/>
+                <line x1="200" y1="125" x2="80" y2="180" stroke="#66abff" stroke-width="1.2" opacity="0.5"/>
+                <line x1="200" y1="125" x2="240" y2="200" stroke="#d1d1d6" stroke-width="1" opacity="0.5"/>
+                <line x1="120" y1="60" x2="50" y2="100" stroke="#d1d1d6" stroke-width="0.8" opacity="0.5"/>
+                <line x1="280" y1="60" x2="350" y2="100" stroke="#d1d1d6" stroke-width="0.8" opacity="0.5"/>
+                <circle cx="200" cy="125" r="14" fill="#007aff" stroke="#fff" stroke-width="2"/>
+                <circle cx="120" cy="60" r="9" fill="#007aff"/>
+                <circle cx="280" cy="60" r="9" fill="#007aff"/>
+                <circle cx="320" cy="160" r="7" fill="#30d158"/>
+                <circle cx="80" cy="180" r="7" fill="#ff3b30"/>
+                <circle cx="240" cy="200" r="6" fill="#ff9f0a"/>
+                <circle cx="50" cy="100" r="6" fill="#5e5ce6"/>
+                <circle cx="350" cy="100" r="6" fill="#5e5ce6"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="page-info">
+          <div class="row between">
+            <div>
+              <div class="page-name">项目关系图谱</div>
+              <div class="page-route">/graph</div>
+            </div>
+            <span class="page-tag">Visualization</span>
+          </div>
+          <p class="page-desc">24 节点力导向图 · TF-IDF 相似度连线 · 详情面板 · 缩略图</p>
+        </div>
+      </a>
+
+      <a class="page-card" href="app.html#/settings">
+        <div class="page-preview">
+          <div class="page-preview-inner">
+            <div style="width:200%;height:200%;background:#f2f2f7;padding:20px 30px;display:flex;gap:20px">
+              <div style="width:80px;display:flex;flex-direction:column;gap:4px">
+                <div style="height:24px;background:#e8f2ff;border-radius:6px"></div>
+                <div style="height:20px;background:#fff;border-radius:6px"></div>
+                <div style="height:20px;background:#fff;border-radius:6px"></div>
+                <div style="height:20px;background:#fff;border-radius:6px"></div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:12px">
+                <div style="background:#fff;border:1px solid #e5e5ea;border-radius:8px;padding:16px">
+                  <div style="height:10px;width:120px;background:#1d1d1f;border-radius:3px;margin-bottom:12px"></div>
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+                    <div style="height:80px;border:2px solid #007aff;border-radius:8px"></div>
+                    <div style="height:80px;border:1px solid #d1d1d6;border-radius:8px"></div>
+                    <div style="height:80px;border:1px solid #d1d1d6;border-radius:8px"></div>
+                  </div>
+                </div>
+                <div style="background:#fff;border:1px solid #e5e5ea;border-radius:8px;padding:16px">
+                  <div style="height:10px;width:140px;background:#1d1d1f;border-radius:3px;margin-bottom:10px"></div>
+                  <div style="height:36px;background:#f2f2f7;border-radius:8px;margin-bottom:6px"></div>
+                  <div style="height:36px;background:#f2f2f7;border-radius:8px"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="page-info">
+          <div class="row between">
+            <div>
+              <div class="page-name">设置</div>
+              <div class="page-route">/settings</div>
+            </div>
+            <span class="page-tag">Settings</span>
+          </div>
+          <p class="page-desc">主题 / 字体 / GitHub / LLM BYOK / 密码 / 危险操作 · 6 个 section</p>
+        </div>
+      </a>
+
+      <a class="page-card" href="app.html#/agent">
+        <div class="page-preview">
+          <div class="page-preview-inner">
+            <div style="width:200%;height:200%;background:#f2f2f7;display:flex">
+              <div style="width:60px;background:#fff;border-right:1px solid #e5e5ea;padding:12px 6px"></div>
+              <div style="width:120px;background:#fff;border-right:1px solid #e5e5ea;padding:12px">
+                <div style="display:flex;gap:3px;margin-bottom:8px">
+                  <div style="width:14px;height:14px;background:linear-gradient(135deg,#4a3aff,#9d4edd);border-radius:3px"></div>
+                  <div style="width:14px;height:14px;background:linear-gradient(135deg,#ff9f0a,#ff6f00);border-radius:3px"></div>
+                  <div style="width:14px;height:14px;background:linear-gradient(135deg,#9d4edd,#c879ff);border-radius:3px;border:1px solid #007aff"></div>
+                </div>
+                <div style="height:32px;background:#e8f2ff;border-radius:4px;margin-bottom:6px"></div>
+                <div style="height:24px;background:#fff;border:1px solid #d1d1d6;border-radius:4px;margin-bottom:4px"></div>
+                <div style="height:24px;background:#fff;border:1px solid #d1d1d6;border-radius:4px"></div>
+              </div>
+              <div style="flex:1;padding:16px;display:flex;flex-direction:column;gap:10px;background:#fafafa">
+                <div style="display:flex;gap:8px">
+                  <div style="width:24px;height:24px;background:linear-gradient(135deg,#4a3aff,#9d4edd);border-radius:6px;flex-shrink:0"></div>
+                  <div style="flex:1;background:#fff;border:1px solid #d1d1d6;border-radius:8px;padding:10px">
+                    <div style="height:6px;background:#d1d1d6;border-radius:2px;margin-bottom:4px"></div>
+                    <div style="height:6px;background:#d1d1d6;border-radius:2px;width:70%"></div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;flex-direction:row-reverse">
+                  <div style="width:24px;height:24px;background:linear-gradient(135deg,#5e5ce6,#bf5af2);border-radius:6px;flex-shrink:0"></div>
+                  <div style="background:#007aff;border-radius:8px;padding:10px;max-width:60%">
+                    <div style="height:6px;background:rgba(255,255,255,0.6);border-radius:2px;width:140px"></div>
+                  </div>
+                </div>
+                <div style="background:#fff;border:2px solid #007aff;border-radius:8px;padding:12px;margin-top:6px">
+                  <div style="height:8px;background:#1d1d1f;border-radius:2px;margin-bottom:8px;width:60%"></div>
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <div style="height:18px;background:#f2f2f7;border:1px solid #d1d1d6;border-radius:4px"></div>
+                    <div style="height:18px;background:#e8f2ff;border:1px solid #007aff;border-radius:4px"></div>
+                    <div style="height:18px;background:#f2f2f7;border:1px solid #d1d1d6;border-radius:4px"></div>
+                  </div>
+                </div>
+              </div>
+              <div style="width:80px;background:#fff;border-left:1px solid #e5e5ea;padding:12px"></div>
+            </div>
+          </div>
+        </div>
+        <div class="page-info">
+          <div class="row between">
+            <div>
+              <div class="page-name">Agent Chat</div>
+              <div class="page-route">/agent</div>
+            </div>
+            <span class="page-tag" style="background:linear-gradient(135deg,#e8e8ff,#ffe5ec);color:#5e2ca5">Core AI</span>
+          </div>
+          <p class="page-desc">6 Agent 切换 · 5 条消息流 · 4 种反问组件 · SSE 流式 · 工具日志</p>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- 设计令牌 -->
+  <section class="section">
+    <div class="section-eyebrow">设计令牌</div>
+    <h2 class="section-title">Apple Design Library 落地</h2>
+    <p class="section-desc">所有页面共享同一套设计令牌 · 可一键切换浅色 / 深色主题</p>
+
+    <div class="design-tokens">
+      <div class="token-card">
+        <h4>Brand & Background</h4>
+        <div class="color-grid">
+          <div class="color-swatch" style="background:#007aff">500</div>
+          <div class="color-swatch" style="background:#003b82">800</div>
+          <div class="color-swatch" style="background:#2e8dff">400</div>
+          <div class="color-swatch" style="background:#66abff">300</div>
+          <div class="color-swatch" style="background:#e8f2ff;color:#007aff">50</div>
+          <div class="color-swatch" style="background:#f2f2f7;color:#1d1d1f">200</div>
+        </div>
+        <div class="color-grid" style="margin-top:8px">
+          <div class="color-swatch" style="background:#1d1d1f">800</div>
+          <div class="color-swatch" style="background:#6e6e73">500</div>
+          <div class="color-swatch" style="background:#aeaeb2">300</div>
+          <div class="color-swatch" style="background:#e5e5ea;color:#1d1d1f">300</div>
+          <div class="color-swatch" style="background:#ffffff;color:#1d1d1f;border:1px solid #e5e5ea">50</div>
+          <div class="color-swatch" style="background:#000000">900</div>
+        </div>
+      </div>
+
+      <div class="token-card">
+        <h4>State & Chart</h4>
+        <div class="color-grid">
+          <div class="color-swatch" style="background:#34c759">success</div>
+          <div class="color-swatch" style="background:#ff3b30">error</div>
+          <div class="color-swatch" style="background:#ff9f0a">warning</div>
+          <div class="color-swatch" style="background:#5e5ce6">chart-4</div>
+          <div class="color-swatch" style="background:#bf5af2">chart-5</div>
+          <div class="color-swatch" style="background:#30d158">chart-1</div>
+        </div>
+        <div class="color-grid" style="margin-top:8px">
+          <div class="color-swatch" style="background:#ff375f">chart-6</div>
+          <div class="color-swatch" style="background:#64d2ff">chart-7</div>
+          <div class="color-swatch" style="background:#ffd60a;color:#1d1d1f">chart-8</div>
+          <div class="color-swatch" style="background:#e9f9ee;color:#1e7e34">succ-sf</div>
+          <div class="color-swatch" style="background:#ffecea;color:#c0392b">err-sf</div>
+          <div class="color-swatch" style="background:#fff4e5;color:#b8651b">warn-sf</div>
+        </div>
+      </div>
+
+      <div class="token-card" style="grid-column:1/-1">
+        <h4>Typography</h4>
+        <div class="type-row">
+          <span class="type-label">H1 / 28</span>
+          <span class="type-sample" style="font-size:28px">RepoPilot · AI 开源项目学习</span>
+        </div>
+        <div class="type-row">
+          <span class="type-label">H2 / 20</span>
+          <span class="type-sample" style="font-size:20px">项目关系图谱 · 基于 TF-IDF</span>
+        </div>
+        <div class="type-row">
+          <span class="type-label">H3 / 16</span>
+          <span class="type-sample" style="font-size:16px">Section Title · Cards & Sections</span>
+        </div>
+        <div class="type-row">
+          <span class="type-label">Body / 14</span>
+          <span style="font-size:14px;color:var(--text-700)">DM Sans 正文 · The quick brown fox jumps over the lazy dog.</span>
+        </div>
+        <div class="type-row">
+          <span class="type-label">Mono / 13</span>
+          <span style="font-family:var(--font-mono);font-size:13px;color:var(--text-700)">facebook/react · tiangolo/fastapi · v1.0.0</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 工程约束 -->
+  <section class="section">
+    <div class="section-eyebrow">工程约束</div>
+    <h2 class="section-title">质量门禁自检</h2>
+
+    <div class="feature-row" style="margin:0;padding:0;grid-template-columns:repeat(3,1fr)">
+      <div class="feature">
+        <h3 style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" width="16" height="16"><path d="M22 11l-10 10-4-4"/></svg>设计令牌驱动</h3>
+        <p>所有颜色 / 圆角 / 间距走 CSS 变量 · 通过 `data-theme="dark"` 一键切换深色</p>
+      </div>
+      <div class="feature">
+        <h3 style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" width="16" height="16"><path d="M22 11l-10 10-4-4"/></svg>零 emoji · 全 SVG</h3>
+        <p>所有图标使用 inline SVG · 与 PRD §4.3 桌面优先 900px+ 对齐</p>
+      </div>
+      <div class="feature">
+        <h3 style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" width="16" height="16"><path d="M22 11l-10 10-4-4"/></svg>真实数据 · 无 lorem</h3>
+        <p>所有示例基于真实开源项目（React / FastAPI / Flask 等），表格、代码块可读</p>
+      </div>
+      <div class="feature">
+        <h3 style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" width="16" height="16"><path d="M22 11l-10 10-4-4"/></svg>5 条消息 · 4 种反问</h3>
+        <p>Agent Chat 完整呈现 Hub 路由 / Mentor 反问 / SSE 流式 / 工具调用</p>
+      </div>
+      <div class="feature">
+        <h3 style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" width="16" height="16"><path d="M22 11l-10 10-4-4"/></svg>图谱 26 节点</h3>
+        <p>力导向图 · TF-IDF 相似度三档连线 · hover + selected 双态展示</p>
+      </div>
+      <div class="feature">
+        <h3 style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2" width="16" height="16"><path d="M22 11l-10 10-4-4"/></svg>BYOK 隐私优先</h3>
+        <p>API Key 仅本地 Fernet 加密 · 无 Key 时 Agent 功能优雅降级（PRD §3.3.1）</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="row">
+      <span>RepoPilot v1.0.0 · 基于 v1 PRD / SPEC / MVP_SCOPE</span>
+      <span>·</span>
+      <span>设计系统 <code class="mono">assets/design-system.css</code></span>
+      <span>·</span>
+      <span>2026-07-04</span>
+    </div>
+  </footer>
+</body>
+</html>

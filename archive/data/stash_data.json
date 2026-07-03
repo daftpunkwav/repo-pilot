@@ -1,0 +1,3574 @@
+{
+  "projects": [
+    {
+      "name": "React",
+      "url": "https://github.com/facebook/react",
+      "description": "A JavaScript library for building user interfaces with components",
+      "category": "前端框架",
+      "tags": [
+        "javascript",
+        "ui",
+        "components"
+      ],
+      "note": "",
+      "stars": 220000,
+      "language": "JavaScript",
+      "progress": "none"
+    },
+    {
+      "name": "Vue.js",
+      "url": "https://github.com/vuejs/core",
+      "description": "A progressive JavaScript framework for building user interfaces",
+      "category": "前端框架",
+      "tags": [
+        "javascript",
+        "ui",
+        "framework"
+      ],
+      "note": "",
+      "stars": 207000,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "Next.js",
+      "url": "https://github.com/vercel/next.js",
+      "description": "The React framework for production with server-side rendering",
+      "category": "前端框架",
+      "tags": [
+        "react",
+        "ssr",
+        "framework"
+      ],
+      "note": "",
+      "stars": 120000,
+      "language": "JavaScript",
+      "progress": "none"
+    },
+    {
+      "name": "Flask",
+      "url": "https://github.com/pallets/flask",
+      "description": "A lightweight Python web framework for building APIs and web applications",
+      "category": "后端框架",
+      "tags": [
+        "python",
+        "web",
+        "api"
+      ],
+      "note": "",
+      "stars": 67000,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "FastAPI",
+      "url": "https://github.com/tiangolo/fastapi",
+      "description": "Modern fast Python web framework for building APIs with automatic documentation",
+      "category": "后端框架",
+      "tags": [
+        "python",
+        "api",
+        "async"
+      ],
+      "note": "",
+      "stars": 72000,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "D3.js",
+      "url": "https://github.com/d3/d3",
+      "description": "Data visualization library for producing dynamic interactive visualizations",
+      "category": "数据可视化",
+      "tags": [
+        "javascript",
+        "visualization",
+        "svg"
+      ],
+      "note": "",
+      "stars": 108000,
+      "language": "JavaScript",
+      "progress": "none"
+    },
+    {
+      "name": "zed-industries/zed",
+      "url": "https://github.com/zed-industries/zed",
+      "description": "Code at the speed of thought – Zed is a high-performance, multiplayer code editor from the creators of Atom and Tree-sitter.",
+      "category": "Web 前端",
+      "tags": [
+        "gpui",
+        "rust-lang",
+        "text-editor",
+        "zed"
+      ],
+      "note": "",
+      "stars": 86399,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "QuantumNous/new-api",
+      "url": "https://github.com/QuantumNous/new-api",
+      "description": "A unified AI model hub for aggregation & distribution. It supports cross-converting various LLMs into OpenAI-compatible, Claude-compatible, or Gemini-compatible formats. A centralized gateway for personal and enterprise model management. 🍥",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai-gateway",
+        "claude",
+        "deepseek",
+        "gemini",
+        "newapi",
+        "openai",
+        "rerank"
+      ],
+      "note": "",
+      "stars": 40984,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "nexu-io/open-design",
+      "url": "https://github.com/nexu-io/open-design",
+      "description": "🎨 The Vibe Design Workspace & the open-source Claude Design alternative. 🖥️ Local-first desktop app. 🖼️ Your coding agent becomes the design engine: prototypes, landing pages, dashboards, slides, images & video — real files, HTML/PDF/PPTX/MP4 export. 🤖 Claude Code / Codex / Cursor / Gemini / OpenCode / Qwen & 20+ CLIs via BYOK.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent-skills",
+        "ai-agents",
+        "ai-design",
+        "byok",
+        "claude-code-for-design",
+        "claude-design",
+        "codex-design",
+        "coding-agents"
+      ],
+      "note": "",
+      "stars": 74532,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "EpicGames/lore",
+      "url": "https://github.com/EpicGames/lore",
+      "description": "Lore is a next-generation, open source version control system",
+      "category": "数据科学",
+      "tags": [
+        "open-source"
+      ],
+      "note": "",
+      "stars": 7611,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "byoungd/up",
+      "url": "https://github.com/byoungd/up",
+      "description": "An advanced guide which might benefit you a lot 🎉 . 人生进阶指南 离谱的人生 离谱的英语学习指南/英语学习教程/英语学习/学英语",
+      "category": "Web 前端",
+      "tags": [
+        "chinese",
+        "english-learning",
+        "tutorial"
+      ],
+      "note": "",
+      "stars": 55233,
+      "language": "JavaScript",
+      "progress": "none"
+    },
+    {
+      "name": "Karovia/fullstack-ai-agent-roadmap",
+      "url": "https://github.com/Karovia/fullstack-ai-agent-roadmap",
+      "description": "🎯 从零基础到 AI Agent 全栈工程师 · 110 个详细教程 · 58 万字 · 400+ GitHub 项目精选 · Obsidian 友好 · 中文",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "ai-agent",
+        "chinese",
+        "claude",
+        "fastapi",
+        "fullstack",
+        "javascript",
+        "langgraph"
+      ],
+      "note": "",
+      "stars": 251,
+      "language": "",
+      "progress": "none"
+    },
+    {
+      "name": "stablyai/orca",
+      "url": "https://github.com/stablyai/orca",
+      "description": "Orca is the ADE for working with a fleet of parallel agents. Run any coding agent with your own subscription. Available on desktop and mobile.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ade",
+        "agent-ide",
+        "ai-agents",
+        "claude-code",
+        "cli",
+        "codex",
+        "cursor-agent",
+        "devtools"
+      ],
+      "note": "",
+      "stars": 11357,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "modelcontextprotocol/servers",
+      "url": "https://github.com/modelcontextprotocol/servers",
+      "description": "Model Context Protocol Servers",
+      "category": "Web 前端",
+      "tags": [],
+      "note": "",
+      "stars": 88013,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "vibrantlabsai/ragas",
+      "url": "https://github.com/vibrantlabsai/ragas",
+      "description": "Supercharge Your LLM Application Evaluations 🚀",
+      "category": "AI / 机器学习",
+      "tags": [
+        "evaluation",
+        "llm",
+        "llmops"
+      ],
+      "note": "",
+      "stars": 14634,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "milvus-io/milvus",
+      "url": "https://github.com/milvus-io/milvus",
+      "description": "Milvus is a high-performance, cloud-native vector database built for scalable vector ANN search",
+      "category": "AI / 机器学习",
+      "tags": [
+        "anns",
+        "cloud-native",
+        "diskann",
+        "distributed",
+        "embedding-database",
+        "embedding-similarity",
+        "embedding-store",
+        "faiss"
+      ],
+      "note": "",
+      "stars": 45059,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "ItzCrazyKns/Vane",
+      "url": "https://github.com/ItzCrazyKns/Vane",
+      "description": "Vane is an AI-powered answering engine.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai-agents",
+        "ai-search-engine",
+        "answering-engine",
+        "artificial-intelligence",
+        "llm",
+        "machine-learning",
+        "open-source-ai-search-engine",
+        "perplexica"
+      ],
+      "note": "",
+      "stars": 35540,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "mem0ai/mem0",
+      "url": "https://github.com/mem0ai/mem0",
+      "description": "Universal memory layer for AI Agents",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agents",
+        "ai",
+        "ai-agents",
+        "application",
+        "chatbots",
+        "chatgpt",
+        "genai",
+        "llm"
+      ],
+      "note": "",
+      "stars": 60009,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "infiniflow/ragflow",
+      "url": "https://github.com/infiniflow/ragflow",
+      "description": "RAGFlow is a leading open-source Retrieval-Augmented Generation (RAG) engine that fuses cutting-edge RAG with Agent capabilities to create a superior context layer for LLMs",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agentic-ai",
+        "agentic-retrieval",
+        "agentic-search",
+        "ai",
+        "ai-agents",
+        "context-engine",
+        "context-management",
+        "llm-apps"
+      ],
+      "note": "",
+      "stars": 84205,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "hi-godot/godot-ai",
+      "url": "https://github.com/hi-godot/godot-ai",
+      "description": "Production-grade MCP server and AI tools for the Godot engine. A Snap to install. Totally free and fun.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "game-development",
+        "godot",
+        "godot-plugin",
+        "mcp"
+      ],
+      "note": "",
+      "stars": 819,
+      "language": "GDScript",
+      "progress": "none"
+    },
+    {
+      "name": "Coding-Solo/godot-mcp",
+      "url": "https://github.com/Coding-Solo/godot-mcp",
+      "description": "MCP server for interfacing with Godot game engine. Provides tools for launching the editor, running projects, and capturing debug output.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "godot",
+        "mcp"
+      ],
+      "note": "",
+      "stars": 4526,
+      "language": "JavaScript",
+      "progress": "none"
+    },
+    {
+      "name": "ee0pdt/Godot-MCP",
+      "url": "https://github.com/ee0pdt/Godot-MCP",
+      "description": "An MCP for Godot that lets you create and edit games in the Godot game engine with tools like Claude",
+      "category": "后端 / API",
+      "tags": [
+        "claude",
+        "gamedev",
+        "godot",
+        "mcp"
+      ],
+      "note": "",
+      "stars": 590,
+      "language": "GDScript",
+      "progress": "none"
+    },
+    {
+      "name": "chongdashu/unreal-mcp",
+      "url": "https://github.com/chongdashu/unreal-mcp",
+      "description": "Enable AI assistant clients like Cursor, Windsurf and Claude Desktop to control Unreal Engine through natural language using the Model Context Protocol (MCP).",
+      "category": "AI / 机器学习",
+      "tags": [
+        "mcp-server",
+        "modelcontextprotocol",
+        "unreal-engine-5"
+      ],
+      "note": "",
+      "stars": 2019,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "flopperam/unreal-engine-mcp",
+      "url": "https://github.com/flopperam/unreal-engine-mcp",
+      "description": "This MCP is now owned by Aura! Please try out the most intelligent AI agent for Unreal Engine at https://www.tryaura.dev/?utm_source=youtube&utm_medium=video&utm_campaign=flop",
+      "category": "AI / 机器学习",
+      "tags": [],
+      "note": "",
+      "stars": 1052,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "CoderGamester/mcp-unity",
+      "url": "https://github.com/CoderGamester/mcp-unity",
+      "description": "Model Context Protocol (MCP) plugin to connect with Unity Editor — designed for Cursor, Claude Code, Codex, Windsurf and other IDEs",
+      "category": "AI / 机器学习",
+      "tags": [
+        "claudecode",
+        "codex-cli",
+        "copilot",
+        "cursor",
+        "game-development",
+        "mcp",
+        "model-context-protocol",
+        "openai"
+      ],
+      "note": "",
+      "stars": 1808,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "IvanMurzak/Unity-MCP",
+      "url": "https://github.com/IvanMurzak/Unity-MCP",
+      "description": "AI Skills, MCP Tools, and CLI for Unity Engine. Full AI develop and test loop. Use cli for quick setup. Efficient token usage, advanced tools. Any C# method may be turned into a tool by a single line. Works with Claude Code, Gemini, Copilot, Cursor and any other absolutely for free.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "ai-integration",
+        "anthropic",
+        "claude",
+        "claude-code",
+        "claude-desktop",
+        "cli",
+        "copilot"
+      ],
+      "note": "",
+      "stars": 3428,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "CoplayDev/unity-mcp",
+      "url": "https://github.com/CoplayDev/unity-mcp",
+      "description": "Unity MCP acts as a bridge between AI assistants and your Unity Editor. Give your LLM tools to manage assets, control scenes, edit scripts, and automate tasks within Unity.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "ai-integration",
+        "anthropic",
+        "claude",
+        "copilot",
+        "cursor",
+        "game-development",
+        "gamedev"
+      ],
+      "note": "",
+      "stars": 11303,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "goldbergyoni/nodebestpractices",
+      "url": "https://github.com/goldbergyoni/nodebestpractices",
+      "description": "✅ The Node.js best practices list (July 2026)",
+      "category": "Web 前端",
+      "tags": [
+        "best-practices",
+        "es6",
+        "eslint",
+        "express",
+        "expressjs",
+        "javascript",
+        "jest",
+        "microservices"
+      ],
+      "note": "",
+      "stars": 105389,
+      "language": "Dockerfile",
+      "progress": "none"
+    },
+    {
+      "name": "psf/requests",
+      "url": "https://github.com/psf/requests",
+      "description": "A simple, yet elegant, HTTP library.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "client",
+        "cookies",
+        "forhumans",
+        "http",
+        "humans",
+        "python",
+        "python-requests",
+        "requests"
+      ],
+      "note": "",
+      "stars": 54090,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "langchain-ai/langchainjs",
+      "url": "https://github.com/langchain-ai/langchainjs",
+      "description": "The agent engineering platform",
+      "category": "Web 前端",
+      "tags": [],
+      "note": "",
+      "stars": 17887,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "github/spec-kit",
+      "url": "https://github.com/github/spec-kit",
+      "description": "💫 Toolkit to help you get started with Spec-Driven Development",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "copilot",
+        "development",
+        "engineering",
+        "prd",
+        "spec",
+        "spec-driven"
+      ],
+      "note": "",
+      "stars": 117610,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "datawhalechina/Agent-Learning-Hub",
+      "url": "https://github.com/datawhalechina/Agent-Learning-Hub",
+      "description": "AI Agent 学习路线与资料库收集",
+      "category": "AI / 机器学习",
+      "tags": [],
+      "note": "",
+      "stars": 4735,
+      "language": "HTML",
+      "progress": "none"
+    },
+    {
+      "name": "shareAI-lab/learn-claude-code",
+      "url": "https://github.com/shareAI-lab/learn-claude-code",
+      "description": "Bash is all you need -  A nano claude code–like 「agent harness」, built from 0 to 1",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent",
+        "agent-development",
+        "ai-agent",
+        "claude",
+        "claude-code",
+        "educational",
+        "llm",
+        "python"
+      ],
+      "note": "",
+      "stars": 69705,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "NanmiCoder/cc-haha",
+      "url": "https://github.com/NanmiCoder/cc-haha",
+      "description": "Claude Code 泄露源码 - 本地可运行版本，新增跨平台桌面端软件补齐Computer Use（附带核心模块解析）",
+      "category": "Web 前端",
+      "tags": [],
+      "note": "",
+      "stars": 13076,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "can1357/oh-my-pi",
+      "url": "https://github.com/can1357/oh-my-pi",
+      "description": "⌥  AI Coding agent for the terminal — hash-anchored edits, optimized tool harness, LSP, Python, browser, subagents, and more",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai-agent",
+        "ai-coding-agent",
+        "anthropic",
+        "bun",
+        "claude",
+        "cli",
+        "coding-assistant",
+        "llm"
+      ],
+      "note": "",
+      "stars": 15761,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "lobehub/lobehub",
+      "url": "https://github.com/lobehub/lobehub",
+      "description": "🤯 LobeHub is your Chief Agent Operator, organizing your agents into 7×24 operations by hiring, scheduling, and reporting on your entire AI team.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent",
+        "agent-collaboration",
+        "agent-harness",
+        "ai",
+        "cao",
+        "chatgpt",
+        "chief-agent-operator",
+        "claude"
+      ],
+      "note": "",
+      "stars": 79407,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "lessweb/deepcode-cli",
+      "url": "https://github.com/lessweb/deepcode-cli",
+      "description": "Deep Code 是专为 deepseek-v4 模型优化的终端 AI 编码助手，支持深度思考、推理强度控制以及 Agent Skills。",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai-agent",
+        "deepseek"
+      ],
+      "note": "",
+      "stars": 1397,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "CherryHQ/cherry-studio",
+      "url": "https://github.com/CherryHQ/cherry-studio",
+      "description": "AI productivity studio with smart chat, autonomous agents, and 300+ assistants. Unified access to frontier LLMs",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent-skills",
+        "ai-agent",
+        "awesome-skills",
+        "claude-code",
+        "codex",
+        "deepseek",
+        "hermes-agent",
+        "openclaw"
+      ],
+      "note": "",
+      "stars": 48103,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "AstrBotDevs/AstrBot",
+      "url": "https://github.com/AstrBotDevs/AstrBot",
+      "description": "AI Agent Assistant & development framework that integrates lots of IM platforms, LLMs, plugins and AI feature, and can be your openclaw alternative. ✨",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent",
+        "ai",
+        "chatbot",
+        "chatgpt",
+        "discord",
+        "docker",
+        "gemini",
+        "gpt"
+      ],
+      "note": "",
+      "stars": 35764,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "duckdb/duckdb",
+      "url": "https://github.com/duckdb/duckdb",
+      "description": "DuckDB is an analytical in-process SQL database management system",
+      "category": "数据科学",
+      "tags": [
+        "analytics",
+        "database",
+        "embedded-database",
+        "olap",
+        "sql"
+      ],
+      "note": "",
+      "stars": 39160,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "ClickHouse/ClickHouse",
+      "url": "https://github.com/ClickHouse/ClickHouse",
+      "description": "ClickHouse® is a real-time analytics database management system",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "analytics",
+        "big-data",
+        "clickhouse",
+        "cloud-native",
+        "cpp",
+        "database",
+        "dbms"
+      ],
+      "note": "",
+      "stars": 48428,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "mongodb/mongo",
+      "url": "https://github.com/mongodb/mongo",
+      "description": "The MongoDB Database",
+      "category": "后端 / API",
+      "tags": [
+        "c-plus-plus",
+        "database",
+        "mongodb",
+        "nosql"
+      ],
+      "note": "",
+      "stars": 28425,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "mysql/mysql-server",
+      "url": "https://github.com/mysql/mysql-server",
+      "description": "MySQL Server, the world's most popular open source database, and MySQL Cluster, a real-time, open source transactional database.",
+      "category": "后端 / API",
+      "tags": [],
+      "note": "",
+      "stars": 12323,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "lua/lua",
+      "url": "https://github.com/lua/lua",
+      "description": "A copy of the Lua development repository, as seen by the Lua team. Mirrored irregularly. All communication should be through the Lua mailing list https://www.lua.org/lua-l.html",
+      "category": "AI / 机器学习",
+      "tags": [],
+      "note": "",
+      "stars": 10106,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "ruby/ruby",
+      "url": "https://github.com/ruby/ruby",
+      "description": "The Ruby Programming Language",
+      "category": "后端 / API",
+      "tags": [
+        "c",
+        "jit",
+        "language",
+        "object-oriented",
+        "programming-language",
+        "ruby",
+        "ruby-language",
+        "rust"
+      ],
+      "note": "",
+      "stars": 23632,
+      "language": "Ruby",
+      "progress": "none"
+    },
+    {
+      "name": "dotnet/roslyn",
+      "url": "https://github.com/dotnet/roslyn",
+      "description": "The Roslyn .NET compiler provides C# and Visual Basic languages with rich code analysis APIs.",
+      "category": "后端 / API",
+      "tags": [
+        "csharp",
+        "hacktoberfest",
+        "roslyn",
+        "visual-basic",
+        "visual-studio"
+      ],
+      "note": "",
+      "stars": 20519,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "dotnet/efcore",
+      "url": "https://github.com/dotnet/efcore",
+      "description": "EF Core is a modern object-database mapper for .NET. It supports LINQ queries, change tracking, updates, and schema migrations.",
+      "category": "后端 / API",
+      "tags": [
+        "aspnet-product",
+        "c-sharp",
+        "database",
+        "dotnet-core",
+        "dotnet-framework",
+        "dotnet-standard",
+        "entity-framework",
+        "hacktoberfest"
+      ],
+      "note": "",
+      "stars": 14735,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "dotnet/aspnetcore",
+      "url": "https://github.com/dotnet/aspnetcore",
+      "description": "ASP.NET Core is a cross-platform .NET framework for building modern cloud-based web applications on Windows, Mac, or Linux.",
+      "category": "Web 前端",
+      "tags": [
+        "aspnetcore",
+        "dotnet",
+        "hacktoberfest",
+        "help-wanted"
+      ],
+      "note": "",
+      "stars": 38170,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "dotnet/runtime",
+      "url": "https://github.com/dotnet/runtime",
+      "description": ".NET is a cross-platform runtime for cloud, mobile, desktop, and IoT apps.",
+      "category": "后端 / API",
+      "tags": [
+        "dotnet",
+        "hacktoberfest",
+        "help-wanted"
+      ],
+      "note": "",
+      "stars": 18022,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "vitejs/vite",
+      "url": "https://github.com/vitejs/vite",
+      "description": "Next generation frontend tooling. It's fast!",
+      "category": "Web 前端",
+      "tags": [
+        "build-tool",
+        "dev-server",
+        "frontend",
+        "hmr",
+        "vite"
+      ],
+      "note": "",
+      "stars": 81721,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "microsoft/TypeScript",
+      "url": "https://github.com/microsoft/TypeScript",
+      "description": "TypeScript is a superset of JavaScript that compiles to clean JavaScript output.",
+      "category": "Web 前端",
+      "tags": [
+        "javascript",
+        "language",
+        "typechecker",
+        "typescript"
+      ],
+      "note": "",
+      "stars": 109451,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "angular/angular",
+      "url": "https://github.com/angular/angular",
+      "description": "Deliver web apps with confidence 🚀",
+      "category": "Web 前端",
+      "tags": [
+        "angular",
+        "javascript",
+        "pwa",
+        "typescript",
+        "web",
+        "web-framework",
+        "web-performance"
+      ],
+      "note": "",
+      "stars": 100473,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "traefik/traefik",
+      "url": "https://github.com/traefik/traefik",
+      "description": "The Cloud Native Application Proxy",
+      "category": "后端 / API",
+      "tags": [
+        "consul",
+        "docker",
+        "etcd",
+        "go",
+        "golang",
+        "kubernetes",
+        "letsencrypt",
+        "load-balancer"
+      ],
+      "note": "",
+      "stars": 63834,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "hashicorp/terraform",
+      "url": "https://github.com/hashicorp/terraform",
+      "description": "Terraform enables you to safely and predictably create, change, and improve infrastructure. It is a source-available tool that codifies APIs into declarative configuration files that can be shared amongst team members, treated as code, edited, reviewed, and versioned.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "cloud",
+        "cloud-management",
+        "graph",
+        "infrastructure-as-code",
+        "terraform"
+      ],
+      "note": "",
+      "stars": 48817,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "apache/hadoop",
+      "url": "https://github.com/apache/hadoop",
+      "description": "Apache Hadoop",
+      "category": "后端 / API",
+      "tags": [
+        "hadoop"
+      ],
+      "note": "",
+      "stars": 15589,
+      "language": "Java",
+      "progress": "none"
+    },
+    {
+      "name": "elastic/elasticsearch",
+      "url": "https://github.com/elastic/elasticsearch",
+      "description": "Free and Open Source, Distributed, RESTful Search Engine",
+      "category": "后端 / API",
+      "tags": [
+        "elasticsearch",
+        "java",
+        "search-engine"
+      ],
+      "note": "",
+      "stars": 77221,
+      "language": "Java",
+      "progress": "none"
+    },
+    {
+      "name": "apache/kafka",
+      "url": "https://github.com/apache/kafka",
+      "description": "Apache Kafka - A distributed event streaming platform",
+      "category": "后端 / API",
+      "tags": [
+        "java",
+        "kafka",
+        "scala",
+        "streaming"
+      ],
+      "note": "",
+      "stars": 33095,
+      "language": "Java",
+      "progress": "none"
+    },
+    {
+      "name": "netty/netty",
+      "url": "https://github.com/netty/netty",
+      "description": "Netty project - an event-driven asynchronous network application framework",
+      "category": "后端 / API",
+      "tags": [],
+      "note": "",
+      "stars": 35000,
+      "language": "Java",
+      "progress": "none"
+    },
+    {
+      "name": "spring-cloud/spring-cloud-release",
+      "url": "https://github.com/spring-cloud/spring-cloud-release",
+      "description": "Spring Cloud Release Train - dependency management across a wide range of Spring Cloud projects.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "cloud-native",
+        "java",
+        "microservices",
+        "spring",
+        "spring-boot",
+        "spring-cloud",
+        "spring-cloud-core"
+      ],
+      "note": "",
+      "stars": 954,
+      "language": "",
+      "progress": "none"
+    },
+    {
+      "name": "spring-projects/spring-boot",
+      "url": "https://github.com/spring-projects/spring-boot",
+      "description": "Spring Boot helps you to create Spring-powered, production-grade applications and services with absolute minimum fuss.",
+      "category": "后端 / API",
+      "tags": [
+        "framework",
+        "java",
+        "spring",
+        "spring-boot"
+      ],
+      "note": "",
+      "stars": 81052,
+      "language": "Java",
+      "progress": "none"
+    },
+    {
+      "name": "spring-projects/spring-framework",
+      "url": "https://github.com/spring-projects/spring-framework",
+      "description": "Spring Framework",
+      "category": "后端 / API",
+      "tags": [
+        "framework",
+        "spring",
+        "spring-framework"
+      ],
+      "note": "",
+      "stars": 60085,
+      "language": "Java",
+      "progress": "none"
+    },
+    {
+      "name": "scikit-learn/scikit-learn",
+      "url": "https://github.com/scikit-learn/scikit-learn",
+      "description": "scikit-learn: machine learning in Python",
+      "category": "AI / 机器学习",
+      "tags": [
+        "data-analysis",
+        "data-science",
+        "machine-learning",
+        "python",
+        "statistics"
+      ],
+      "note": "",
+      "stars": 66544,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "pandas-dev/pandas",
+      "url": "https://github.com/pandas-dev/pandas",
+      "description": "Flexible and powerful data analysis / manipulation library for Python, providing labeled data structures similar to R data.frame objects, statistical functions, and much more",
+      "category": "AI / 机器学习",
+      "tags": [
+        "alignment",
+        "data-analysis",
+        "data-science",
+        "flexible",
+        "pandas",
+        "python"
+      ],
+      "note": "",
+      "stars": 49115,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "numpy/numpy",
+      "url": "https://github.com/numpy/numpy",
+      "description": "The fundamental package for scientific computing with Python.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "numpy",
+        "python"
+      ],
+      "note": "",
+      "stars": 32304,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "django/django",
+      "url": "https://github.com/django/django",
+      "description": "The Web framework for perfectionists with deadlines.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "apps",
+        "django",
+        "framework",
+        "models",
+        "orm",
+        "python",
+        "templates",
+        "views"
+      ],
+      "note": "",
+      "stars": 88001,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "firecracker-microvm/firecracker",
+      "url": "https://github.com/firecracker-microvm/firecracker",
+      "description": "Secure and fast microVMs for serverless computing.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "containers",
+        "minimalist",
+        "open-source",
+        "oversubscription",
+        "rust",
+        "sandbox",
+        "serverless",
+        "virtual-machine"
+      ],
+      "note": "",
+      "stars": 35268,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "servo/servo",
+      "url": "https://github.com/servo/servo",
+      "description": "Servo aims to empower developers with a lightweight, high-performance alternative for embedding web technologies in applications.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "browser",
+        "rust",
+        "servo",
+        "web",
+        "webbrowser",
+        "webengine",
+        "webplatform"
+      ],
+      "note": "",
+      "stars": 37292,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "FFmpeg/FFmpeg",
+      "url": "https://github.com/FFmpeg/FFmpeg",
+      "description": "Mirror of https://git.ffmpeg.org/ffmpeg.git",
+      "category": "数据科学",
+      "tags": [
+        "audio",
+        "c",
+        "ffmpeg",
+        "fft",
+        "hevc",
+        "hls",
+        "matroska",
+        "mp4"
+      ],
+      "note": "",
+      "stars": 61667,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "gcc-mirror/gcc",
+      "url": "https://github.com/gcc-mirror/gcc",
+      "description": "",
+      "category": "系统 / 底层",
+      "tags": [],
+      "note": "",
+      "stars": 11040,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "llvm/llvm-project",
+      "url": "https://github.com/llvm/llvm-project",
+      "description": "The LLVM Project is a collection of modular and reusable compiler and toolchain technologies.",
+      "category": "AI / 机器学习",
+      "tags": [],
+      "note": "",
+      "stars": 39070,
+      "language": "LLVM",
+      "progress": "none"
+    },
+    {
+      "name": "ggml-org/llama.cpp",
+      "url": "https://github.com/ggml-org/llama.cpp",
+      "description": "LLM inference in C/C++",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ggml"
+      ],
+      "note": "",
+      "stars": 119114,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "Significant-Gravitas/AutoGPT",
+      "url": "https://github.com/Significant-Gravitas/AutoGPT",
+      "description": "AutoGPT is the vision of accessible AI for everyone, to use and to build on. Our mission is to provide the tools, so that you can focus on what matters.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agentic-ai",
+        "agents",
+        "ai",
+        "artificial-intelligence",
+        "autonomous-agents",
+        "claude",
+        "gpt",
+        "llama-api"
+      ],
+      "note": "",
+      "stars": 185305,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "run-llama/llama_index",
+      "url": "https://github.com/run-llama/llama_index",
+      "description": "LlamaIndex is the leading document agent and OCR platform",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agents",
+        "application",
+        "data",
+        "fine-tuning",
+        "framework",
+        "llamaindex",
+        "llm",
+        "multi-agents"
+      ],
+      "note": "",
+      "stars": 50621,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "libsdl-org/SDL",
+      "url": "https://github.com/libsdl-org/SDL",
+      "description": "Simple DirectMedia Layer",
+      "category": "数据科学",
+      "tags": [
+        "sdl",
+        "sdl2",
+        "sdl3"
+      ],
+      "note": "",
+      "stars": 16018,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "tmux/tmux",
+      "url": "https://github.com/tmux/tmux",
+      "description": "tmux source code",
+      "category": "数据科学",
+      "tags": [],
+      "note": "",
+      "stars": 47314,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "postgres/postgres",
+      "url": "https://github.com/postgres/postgres",
+      "description": "Mirror of the official PostgreSQL GIT repository. Note that this is just a *mirror* - we don't work with pull requests on github. To contribute, please see https://wiki.postgresql.org/wiki/Submitting_a_Patch",
+      "category": "DevOps / 工具链",
+      "tags": [],
+      "note": "",
+      "stars": 21340,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "appwrite/appwrite",
+      "url": "https://github.com/appwrite/appwrite",
+      "description": "Appwrite® - complete cloud infrastructure for your web, mobile and AI apps. Including Auth, Databases, Storage, Functions, Messaging, Hosting, Realtime and more",
+      "category": "AI / 机器学习",
+      "tags": [
+        "android",
+        "appwrite",
+        "backend",
+        "backend-as-a-service",
+        "docker",
+        "firebase",
+        "flutter",
+        "hosting"
+      ],
+      "note": "",
+      "stars": 56472,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "supabase/supabase",
+      "url": "https://github.com/supabase/supabase",
+      "description": "The Postgres development platform. Supabase gives you a dedicated Postgres database to build your web, mobile, and AI applications.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "alternative",
+        "auth",
+        "database",
+        "deno",
+        "embeddings",
+        "example",
+        "firebase"
+      ],
+      "note": "",
+      "stars": 105210,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "laurent22/joplin",
+      "url": "https://github.com/laurent22/joplin",
+      "description": "Joplin - the privacy-focused note taking app with sync capabilities for Windows, macOS, Linux, Android and iOS.",
+      "category": "Web 前端",
+      "tags": [
+        "android",
+        "dropbox",
+        "electron",
+        "enex-files",
+        "evernote",
+        "javascript",
+        "joplin",
+        "nextcloud"
+      ],
+      "note": "",
+      "stars": 55413,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "home-assistant/core",
+      "url": "https://github.com/home-assistant/core",
+      "description": ":house_with_garden: Open source home automation that puts local control and privacy first.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "asyncio",
+        "hacktoberfest",
+        "home-automation",
+        "internet-of-things",
+        "iot",
+        "mqtt",
+        "python",
+        "raspberry-pi"
+      ],
+      "note": "",
+      "stars": 88170,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "Comfy-Org/ComfyUI",
+      "url": "https://github.com/Comfy-Org/ComfyUI",
+      "description": "The most powerful and modular diffusion model GUI, api and backend with a graph/nodes interface.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "comfy",
+        "comfyui",
+        "python",
+        "pytorch",
+        "stable-diffusion"
+      ],
+      "note": "",
+      "stars": 119257,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "AUTOMATIC1111/stable-diffusion-webui",
+      "url": "https://github.com/AUTOMATIC1111/stable-diffusion-webui",
+      "description": "Stable Diffusion web UI",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "ai-art",
+        "deep-learning",
+        "diffusion",
+        "gradio",
+        "image-generation",
+        "image2image",
+        "img2img"
+      ],
+      "note": "",
+      "stars": 163963,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "ollama/ollama",
+      "url": "https://github.com/ollama/ollama",
+      "description": "Get up and running with Kimi-K2.6, GLM-5.1, MiniMax, DeepSeek, gpt-oss, Qwen, Gemma and other models.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "deepseek",
+        "gemma",
+        "gemma3",
+        "glm",
+        "go",
+        "golang",
+        "gpt-oss",
+        "llama"
+      ],
+      "note": "",
+      "stars": 175353,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "immich-app/immich",
+      "url": "https://github.com/immich-app/immich",
+      "description": "High performance self-hosted photo and video management solution.",
+      "category": "Web 前端",
+      "tags": [
+        "backup-tool",
+        "flutter",
+        "google-photos",
+        "google-photos-alternative",
+        "javascript",
+        "mobile-app",
+        "nestjs",
+        "nodejs"
+      ],
+      "note": "",
+      "stars": 105138,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "rustdesk/rustdesk",
+      "url": "https://github.com/rustdesk/rustdesk",
+      "description": "An open-source remote desktop application designed for self-hosting, as an alternative to TeamViewer.",
+      "category": "数据科学",
+      "tags": [
+        "android",
+        "anydesk",
+        "dart",
+        "flatpak",
+        "flutter",
+        "flutter-apps",
+        "ios",
+        "linux"
+      ],
+      "note": "",
+      "stars": 117542,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "electron/electron",
+      "url": "https://github.com/electron/electron",
+      "description": ":electron: Build cross-platform desktop apps with JavaScript, HTML, and CSS",
+      "category": "Web 前端",
+      "tags": [
+        "c-plus-plus",
+        "chrome",
+        "css",
+        "electron",
+        "html",
+        "javascript",
+        "nodejs",
+        "v8"
+      ],
+      "note": "",
+      "stars": 121881,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "mrdoob/three.js",
+      "url": "https://github.com/mrdoob/three.js",
+      "description": "JavaScript 3D Library.",
+      "category": "Web 前端",
+      "tags": [
+        "3d",
+        "augmented-reality",
+        "canvas",
+        "html5",
+        "javascript",
+        "svg",
+        "virtual-reality",
+        "webaudio"
+      ],
+      "note": "",
+      "stars": 113484,
+      "language": "JavaScript",
+      "progress": "none"
+    },
+    {
+      "name": "tailwindlabs/tailwindcss",
+      "url": "https://github.com/tailwindlabs/tailwindcss",
+      "description": "A utility-first CSS framework for rapid UI development.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "css",
+        "css-framework",
+        "functional-css",
+        "postcss",
+        "responsive",
+        "tailwindcss",
+        "utility-classes"
+      ],
+      "note": "",
+      "stars": 95780,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "laravel/laravel",
+      "url": "https://github.com/laravel/laravel",
+      "description": "Laravel is a web application framework with expressive, elegant syntax. We’ve already laid the foundation for your next big idea — freeing you to create without sweating the small things.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "framework",
+        "laravel",
+        "php"
+      ],
+      "note": "",
+      "stars": 84574,
+      "language": "Blade",
+      "progress": "none"
+    },
+    {
+      "name": "rails/rails",
+      "url": "https://github.com/rails/rails",
+      "description": "Ruby on Rails",
+      "category": "AI / 机器学习",
+      "tags": [
+        "activejob",
+        "activerecord",
+        "framework",
+        "html",
+        "mvc",
+        "rails",
+        "ruby"
+      ],
+      "note": "",
+      "stars": 58665,
+      "language": "Ruby",
+      "progress": "none"
+    },
+    {
+      "name": "golang/go",
+      "url": "https://github.com/golang/go",
+      "description": "The Go programming language",
+      "category": "后端 / API",
+      "tags": [
+        "go",
+        "golang",
+        "language",
+        "programming-language"
+      ],
+      "note": "",
+      "stars": 134999,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "rust-lang/rust",
+      "url": "https://github.com/rust-lang/rust",
+      "description": "Empowering everyone to build reliable and efficient software.",
+      "category": "Web 前端",
+      "tags": [
+        "compiler",
+        "language",
+        "rust"
+      ],
+      "note": "",
+      "stars": 114280,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "ansible/ansible",
+      "url": "https://github.com/ansible/ansible",
+      "description": "Ansible is a radically simple IT automation platform that makes your applications and systems easier to deploy and maintain. Automate everything from code deployment to network configuration to cloud management, in a language that approaches plain English, using SSH, with no agents to install on remote systems. https://docs.ansible.com.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ansible",
+        "python"
+      ],
+      "note": "",
+      "stars": 69077,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "moby/moby",
+      "url": "https://github.com/moby/moby",
+      "description": "The Moby Project - a collaborative project for the container ecosystem to assemble container-based systems",
+      "category": "AI / 机器学习",
+      "tags": [
+        "containers",
+        "docker",
+        "go",
+        "golang"
+      ],
+      "note": "",
+      "stars": 71781,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "vinta/awesome-python",
+      "url": "https://github.com/vinta/awesome-python",
+      "description": "An opinionated list of Python frameworks, libraries, tools, and resources",
+      "category": "AI / 机器学习",
+      "tags": [
+        "awesome",
+        "collections",
+        "python",
+        "python-frameworks",
+        "python-libraries",
+        "python-tools"
+      ],
+      "note": "",
+      "stars": 306074,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "ohmyzsh/ohmyzsh",
+      "url": "https://github.com/ohmyzsh/ohmyzsh",
+      "description": "🙃   A delightful community-driven (with 2,500+ contributors) framework for managing your zsh configuration. Includes 300+ optional plugins (rails, git, macOS, hub, docker, homebrew, node, php, python, etc), 140+ themes to spice up your morning, and an auto-update tool that makes it easy to keep up with the latest updates from the community.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "cli",
+        "cli-app",
+        "oh-my-zsh",
+        "oh-my-zsh-plugin",
+        "oh-my-zsh-theme",
+        "ohmyzsh",
+        "plugin-framework",
+        "plugins"
+      ],
+      "note": "",
+      "stars": 188336,
+      "language": "Shell",
+      "progress": "none"
+    },
+    {
+      "name": "python/cpython",
+      "url": "https://github.com/python/cpython",
+      "description": "The Python programming language",
+      "category": "AI / 机器学习",
+      "tags": [],
+      "note": "",
+      "stars": 73489,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "nodejs/node",
+      "url": "https://github.com/nodejs/node",
+      "description": "Node.js JavaScript runtime ✨🐢🚀✨",
+      "category": "Web 前端",
+      "tags": [
+        "javascript",
+        "js",
+        "linux",
+        "macos",
+        "mit",
+        "node",
+        "nodejs",
+        "runtime"
+      ],
+      "note": "",
+      "stars": 118050,
+      "language": "JavaScript",
+      "progress": "none"
+    },
+    {
+      "name": "twbs/bootstrap",
+      "url": "https://github.com/twbs/bootstrap",
+      "description": "The most popular HTML, CSS, and JavaScript framework for developing responsive, mobile first projects on the web.",
+      "category": "Web 前端",
+      "tags": [
+        "bootstrap",
+        "css",
+        "css-framework",
+        "html",
+        "javascript",
+        "sass",
+        "scss"
+      ],
+      "note": "",
+      "stars": 174420,
+      "language": "MDX",
+      "progress": "none"
+    },
+    {
+      "name": "tensorflow/tensorflow",
+      "url": "https://github.com/tensorflow/tensorflow",
+      "description": "An Open Source Machine Learning Framework for Everyone",
+      "category": "AI / 机器学习",
+      "tags": [
+        "deep-learning",
+        "deep-neural-networks",
+        "distributed",
+        "machine-learning",
+        "ml",
+        "neural-network",
+        "python",
+        "tensorflow"
+      ],
+      "note": "",
+      "stars": 196012,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "microsoft/vscode",
+      "url": "https://github.com/microsoft/vscode",
+      "description": "Visual Studio Code",
+      "category": "Web 前端",
+      "tags": [
+        "editor",
+        "electron",
+        "microsoft",
+        "typescript",
+        "visual-studio-code"
+      ],
+      "note": "",
+      "stars": 187010,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "codecrafters-io/build-your-own-x",
+      "url": "https://github.com/codecrafters-io/build-your-own-x",
+      "description": "Master programming by recreating your favorite technologies from scratch.",
+      "category": "DevOps / 工具链",
+      "tags": [
+        "awesome-list",
+        "free",
+        "programming",
+        "tutorial-code",
+        "tutorial-exercises",
+        "tutorials"
+      ],
+      "note": "",
+      "stars": 522027,
+      "language": "Markdown",
+      "progress": "none"
+    },
+    {
+      "name": "sindresorhus/awesome",
+      "url": "https://github.com/sindresorhus/awesome",
+      "description": "😎 Awesome lists about all kinds of interesting topics",
+      "category": "数据科学",
+      "tags": [
+        "awesome",
+        "awesome-list",
+        "lists",
+        "resources",
+        "unicorns"
+      ],
+      "note": "",
+      "stars": 481071,
+      "language": "",
+      "progress": "none"
+    },
+    {
+      "name": "EbookFoundation/free-programming-books",
+      "url": "https://github.com/EbookFoundation/free-programming-books",
+      "description": ":books: Freely available programming books",
+      "category": "AI / 机器学习",
+      "tags": [
+        "books",
+        "education",
+        "hacktoberfest",
+        "list",
+        "resource"
+      ],
+      "note": "",
+      "stars": 391197,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "freeCodeCamp/freeCodeCamp",
+      "url": "https://github.com/freeCodeCamp/freeCodeCamp",
+      "description": "freeCodeCamp.org's open-source codebase and curriculum. Learn math, programming, and computer science for free.",
+      "category": "Web 前端",
+      "tags": [
+        "careers",
+        "certification",
+        "community",
+        "curriculum",
+        "d3",
+        "education",
+        "freecodecamp",
+        "javascript"
+      ],
+      "note": "",
+      "stars": 450964,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "cline/cline",
+      "url": "https://github.com/cline/cline",
+      "description": "Autonomous coding agent as an SDK, IDE extension, or CLI assistant.",
+      "category": "Web 前端",
+      "tags": [],
+      "note": "",
+      "stars": 64239,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "continuedev/continue",
+      "url": "https://github.com/continuedev/continue",
+      "description": "open-source coding agent",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent",
+        "ai",
+        "cli",
+        "developer-tools",
+        "open-source"
+      ],
+      "note": "",
+      "stars": 34665,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "RooCodeInc/Roo-Code",
+      "url": "https://github.com/RooCodeInc/Roo-Code",
+      "description": "Roo Code gives you a whole dev team of AI agents in your code editor.",
+      "category": "AI / 机器学习",
+      "tags": [],
+      "note": "",
+      "stars": 24299,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "TabbyML/tabby",
+      "url": "https://github.com/TabbyML/tabby",
+      "description": "Self-hosted AI coding assistant",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "codegen",
+        "coding-assistant",
+        "coding-language",
+        "developer-experience",
+        "developer-tools",
+        "gen-ai",
+        "ide"
+      ],
+      "note": "",
+      "stars": 33667,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "SWE-agent/SWE-agent",
+      "url": "https://github.com/SWE-agent/SWE-agent",
+      "description": "SWE-agent takes a GitHub issue and tries to automatically fix it, using your LM of choice. It can also be employed for offensive cybersecurity or competitive coding challenges. [NeurIPS 2024] ",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent",
+        "agent-based-model",
+        "ai",
+        "cybersecurity",
+        "developer-tools",
+        "llm",
+        "lms"
+      ],
+      "note": "",
+      "stars": 19700,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "aaif-goose/goose",
+      "url": "https://github.com/aaif-goose/goose",
+      "description": "an open source, extensible AI agent that goes beyond code suggestions - install, execute, edit, and test with any LLM",
+      "category": "AI / 机器学习",
+      "tags": [
+        "acp",
+        "ai",
+        "ai-agents",
+        "mcp"
+      ],
+      "note": "",
+      "stars": 50597,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "Egonex-AI/Understand-Anything",
+      "url": "https://github.com/Egonex-AI/Understand-Anything",
+      "description": "Graphs that teach > graphs that impress. Turn any code into an interactive knowledge graph you can explore, search, and ask questions about. Works with Claude Code, Codex, Cursor, Copilot, Gemini CLI, and more.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "antigravity-skills",
+        "business-knowledge",
+        "claude-code",
+        "claude-skills",
+        "codebase-analysis",
+        "codex",
+        "codex-skills",
+        "developer-tools-ai-agent"
+      ],
+      "note": "",
+      "stars": 70559,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "openai/codex",
+      "url": "https://github.com/openai/codex",
+      "description": "Lightweight coding agent that runs in your terminal",
+      "category": "数据科学",
+      "tags": [],
+      "note": "",
+      "stars": 95288,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "activeloopai/hivemind",
+      "url": "https://github.com/activeloopai/hivemind",
+      "description": "Hivemind turns your traces into reusable skills across agents",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "ai-agents",
+        "ai-memory",
+        "anthropic",
+        "artificial-intelligence",
+        "claude",
+        "claude-agent-sdk",
+        "claude-agents"
+      ],
+      "note": "",
+      "stars": 1426,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "tw93/Kami",
+      "url": "https://github.com/tw93/Kami",
+      "description": "👩‍🚒 Good content deserves good paper.",
+      "category": "Web 前端",
+      "tags": [],
+      "note": "",
+      "stars": 9495,
+      "language": "HTML",
+      "progress": "none"
+    },
+    {
+      "name": "donnemartin/system-design-primer",
+      "url": "https://github.com/donnemartin/system-design-primer",
+      "description": "Learn how to design large-scale systems. Prep for the system design interview.  Includes Anki flashcards.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "design",
+        "design-patterns",
+        "design-system",
+        "development",
+        "interview",
+        "interview-practice",
+        "interview-questions",
+        "programming"
+      ],
+      "note": "",
+      "stars": 355919,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "public-apis/public-apis",
+      "url": "https://github.com/public-apis/public-apis",
+      "description": "A collective list of free APIs",
+      "category": "AI / 机器学习",
+      "tags": [
+        "api",
+        "apis",
+        "dataset",
+        "development",
+        "free",
+        "list",
+        "lists",
+        "open-source"
+      ],
+      "note": "",
+      "stars": 446205,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "amruthpillai/reactive-resume",
+      "url": "https://github.com/amruthpillai/reactive-resume",
+      "description": "A one-of-a-kind resume builder that keeps your privacy in mind. Completely secure, customizable, portable, open-source and free forever. Try it out today!",
+      "category": "AI / 机器学习",
+      "tags": [
+        "better-auth",
+        "hacktoberfest",
+        "react",
+        "resume",
+        "resume-builder",
+        "self-hosted",
+        "tailwindcss",
+        "tanstack-start"
+      ],
+      "note": "",
+      "stars": 39270,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "practical-tutorials/project-based-learning",
+      "url": "https://github.com/practical-tutorials/project-based-learning",
+      "description": "Curated list of project-based tutorials",
+      "category": "AI / 机器学习",
+      "tags": [
+        "beginner-project",
+        "cpp",
+        "golang",
+        "javascript",
+        "project",
+        "python",
+        "tutorial",
+        "webdevelopment"
+      ],
+      "note": "",
+      "stars": 271898,
+      "language": "",
+      "progress": "none"
+    },
+    {
+      "name": "nilbuild/developer-roadmap",
+      "url": "https://github.com/nilbuild/developer-roadmap",
+      "description": "Interactive roadmaps, guides and other educational content to help developers grow in their careers.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "angular-roadmap",
+        "backend-roadmap",
+        "blockchain-roadmap",
+        "computer-science",
+        "dba-roadmap",
+        "developer-roadmap",
+        "devops-roadmap",
+        "frontend-roadmap"
+      ],
+      "note": "",
+      "stars": 359085,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "huggingface/agents-course",
+      "url": "https://github.com/huggingface/agents-course",
+      "description": "This repository contains the Hugging Face Agents Course. ",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agentic-ai",
+        "agents",
+        "course",
+        "huggingface",
+        "langchain",
+        "llamaindex",
+        "smolagents"
+      ],
+      "note": "",
+      "stars": 29783,
+      "language": "MDX",
+      "progress": "none"
+    },
+    {
+      "name": "Aider-AI/aider",
+      "url": "https://github.com/Aider-AI/aider",
+      "description": "aider is AI pair programming in your terminal",
+      "category": "AI / 机器学习",
+      "tags": [
+        "anthropic",
+        "chatgpt",
+        "claude-3",
+        "cli",
+        "command-line",
+        "gemini",
+        "gpt-3",
+        "gpt-35-turbo"
+      ],
+      "note": "",
+      "stars": 46981,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "plandex-ai/plandex",
+      "url": "https://github.com/plandex-ai/plandex",
+      "description": "Open source AI coding agent. Designed for large projects and real world tasks.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "ai-agents",
+        "ai-developer-tools",
+        "ai-tools",
+        "cli",
+        "command-line",
+        "developer-tools",
+        "git"
+      ],
+      "note": "",
+      "stars": 15495,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "opencode-ai/opencode",
+      "url": "https://github.com/opencode-ai/opencode",
+      "description": "A powerful AI coding agent. Built for the terminal.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "claude",
+        "code",
+        "llm",
+        "openai"
+      ],
+      "note": "",
+      "stars": 13194,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "mindfold-ai/Trellis",
+      "url": "https://github.com/mindfold-ai/Trellis",
+      "description": "The best agent harness.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agentic-coding",
+        "ai-workflow",
+        "claudecode",
+        "codex",
+        "harness"
+      ],
+      "note": "",
+      "stars": 11705,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "rohitg00/ai-engineering-from-scratch",
+      "url": "https://github.com/rohitg00/ai-engineering-from-scratch",
+      "description": "Learn it. Build it. Ship it for others.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agents",
+        "ai",
+        "ai-agents",
+        "ai-engineering",
+        "computer-vision",
+        "course",
+        "deep-learning",
+        "from-scratch"
+      ],
+      "note": "",
+      "stars": 37205,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "langchain-ai/langchain",
+      "url": "https://github.com/langchain-ai/langchain",
+      "description": "The agent engineering platform.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agents",
+        "ai",
+        "ai-agents",
+        "anthropic",
+        "chatgpt",
+        "deepagents",
+        "enterprise",
+        "framework"
+      ],
+      "note": "",
+      "stars": 140813,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "yoheinakajima/babyagi",
+      "url": "https://github.com/yoheinakajima/babyagi",
+      "description": "",
+      "category": "AI / 机器学习",
+      "tags": [],
+      "note": "",
+      "stars": 22315,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "elder-plinius/CL4R1T4S",
+      "url": "https://github.com/elder-plinius/CL4R1T4S",
+      "description": "LEAKED SYSTEM PROMPTS FOR CHATGPT, CLAUDE, GEMINI, GROK, PERPLEXITY, CURSOR, LOVABLE, REPLIT, AND MORE! - AI SYSTEMS TRANSPARENCY FOR ALL! 👐",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agents",
+        "ai",
+        "chatgpt",
+        "gemini",
+        "google",
+        "grok",
+        "hacking",
+        "leak"
+      ],
+      "note": "",
+      "stars": 44423,
+      "language": "",
+      "progress": "none"
+    },
+    {
+      "name": "rossant/awesome-math",
+      "url": "https://github.com/rossant/awesome-math",
+      "description": "A curated list of awesome mathematics resources",
+      "category": "AI / 机器学习",
+      "tags": [
+        "awesome",
+        "awesome-list",
+        "lecture-notes",
+        "list",
+        "mathematics"
+      ],
+      "note": "",
+      "stars": 15794,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "addyosmani/agent-skills",
+      "url": "https://github.com/addyosmani/agent-skills",
+      "description": "Production-grade engineering skills for AI coding agents.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent-skills",
+        "antigravity",
+        "antigravity-ide",
+        "claude-code",
+        "cursor",
+        "skills"
+      ],
+      "note": "",
+      "stars": 68674,
+      "language": "Shell",
+      "progress": "none"
+    },
+    {
+      "name": "opendatalab/MinerU",
+      "url": "https://github.com/opendatalab/MinerU",
+      "description": "Transforms complex documents like PDFs and Office docs into LLM-ready markdown/JSON for your Agentic workflows.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai4science",
+        "document-analysis",
+        "docx",
+        "extract-data",
+        "layout-analysis",
+        "ocr",
+        "parser",
+        "pdf"
+      ],
+      "note": "",
+      "stars": 73167,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "datalab-to/marker",
+      "url": "https://github.com/datalab-to/marker",
+      "description": "Convert PDF to markdown + JSON quickly with high accuracy",
+      "category": "AI / 机器学习",
+      "tags": [],
+      "note": "",
+      "stars": 37081,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "docling-project/docling",
+      "url": "https://github.com/docling-project/docling",
+      "description": "Get your documents ready for gen AI",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "convert",
+        "document-parser",
+        "document-parsing",
+        "documents",
+        "docx",
+        "html",
+        "markdown"
+      ],
+      "note": "",
+      "stars": 62565,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "microsoft/markitdown",
+      "url": "https://github.com/microsoft/markitdown",
+      "description": "Python tool for converting files and office documents to Markdown.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "autogen",
+        "autogen-extension",
+        "langchain",
+        "markdown",
+        "microsoft-office",
+        "openai",
+        "pdf"
+      ],
+      "note": "",
+      "stars": 162599,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "skypjack/entt",
+      "url": "https://github.com/skypjack/entt",
+      "description": "Gaming meets modern C++ - a fast and reliable entity component system (ECS) and much more",
+      "category": "DevOps / 工具链",
+      "tags": [
+        "architectural-patterns",
+        "cpp",
+        "cpp17",
+        "cpp20",
+        "data-oriented",
+        "data-oriented-design",
+        "ecs",
+        "ecs-framework"
+      ],
+      "note": "",
+      "stars": 12869,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "godotengine/godot-demo-projects",
+      "url": "https://github.com/godotengine/godot-demo-projects",
+      "description": "Demonstration and Template Projects",
+      "category": "数据科学",
+      "tags": [],
+      "note": "",
+      "stars": 9090,
+      "language": "GDScript",
+      "progress": "none"
+    },
+    {
+      "name": "Unity-Technologies/BoatAttack",
+      "url": "https://github.com/Unity-Technologies/BoatAttack",
+      "description": "Demo Project using the Universal RP from Unity3D",
+      "category": "后端 / API",
+      "tags": [],
+      "note": "",
+      "stars": 2755,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "Unity-Technologies/FPSSample",
+      "url": "https://github.com/Unity-Technologies/FPSSample",
+      "description": "A first person multiplayer shooter example project in Unity",
+      "category": "后端 / API",
+      "tags": [],
+      "note": "",
+      "stars": 5109,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "FakeFishGames/Barotrauma",
+      "url": "https://github.com/FakeFishGames/Barotrauma",
+      "description": "A 2D online multiplayer game taking place in a submarine travelling through the icy depths of Jupiter's moon Europa.",
+      "category": "后端 / API",
+      "tags": [
+        "game",
+        "monogame",
+        "multiplayer-game"
+      ],
+      "note": "",
+      "stars": 2157,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "google/leveldb",
+      "url": "https://github.com/google/leveldb",
+      "description": "LevelDB is a fast key-value storage library written at Google that provides an ordered mapping from string keys to string values.",
+      "category": "后端 / API",
+      "tags": [],
+      "note": "",
+      "stars": 39203,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "TheAlgorithms/Lua",
+      "url": "https://github.com/TheAlgorithms/Lua",
+      "description": "Algorithms and Data Structures implemented in the Lua programming language",
+      "category": "后端 / API",
+      "tags": [
+        "algorithms",
+        "algorithms-datastructures",
+        "datastructures",
+        "datastructures-algorithms",
+        "dsa",
+        "hacktoberfest",
+        "lua"
+      ],
+      "note": "",
+      "stars": 379,
+      "language": "Lua",
+      "progress": "none"
+    },
+    {
+      "name": "TheAlgorithms/Algorithms-Explanation",
+      "url": "https://github.com/TheAlgorithms/Algorithms-Explanation",
+      "description": "Popular algorithms explained in simple language with examples and links to their implementation in various programming languages and other required resources.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "algorithm",
+        "algorithms",
+        "algorithms-explained",
+        "data-structures",
+        "explanations",
+        "hacktoberfest",
+        "programming-languages"
+      ],
+      "note": "",
+      "stars": 3444,
+      "language": "",
+      "progress": "none"
+    },
+    {
+      "name": "TheAlgorithms/Ruby",
+      "url": "https://github.com/TheAlgorithms/Ruby",
+      "description": "All algorithms implemented in Ruby",
+      "category": "后端 / API",
+      "tags": [
+        "algorithms",
+        "algorithms-implemented",
+        "community-driven",
+        "data-structures",
+        "hacktoberfest",
+        "interview",
+        "ruby",
+        "searches"
+      ],
+      "note": "",
+      "stars": 1309,
+      "language": "Ruby",
+      "progress": "none"
+    },
+    {
+      "name": "TheAlgorithms/C-Sharp",
+      "url": "https://github.com/TheAlgorithms/C-Sharp",
+      "description": "All algorithms implemented in C#.",
+      "category": "后端 / API",
+      "tags": [
+        "algorithm",
+        "algorithms",
+        "algorithms-and-data-structures",
+        "c-sharp",
+        "data-structures",
+        "hacktoberfest"
+      ],
+      "note": "",
+      "stars": 8162,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "TheAlgorithms/Rust",
+      "url": "https://github.com/TheAlgorithms/Rust",
+      "description": " All Algorithms implemented in Rust ",
+      "category": "后端 / API",
+      "tags": [
+        "algorithms",
+        "data-structures",
+        "hacktoberfest",
+        "rust",
+        "rust-lang"
+      ],
+      "note": "",
+      "stars": 25896,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "TheAlgorithms/TypeScript",
+      "url": "https://github.com/TheAlgorithms/TypeScript",
+      "description": "Algorithms and Data Structures implemented in TypeScript for beginners, following best practices.",
+      "category": "Web 前端",
+      "tags": [
+        "algorithms",
+        "data-structures",
+        "hacktoberfest",
+        "typescript"
+      ],
+      "note": "",
+      "stars": 2855,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "TheAlgorithms/C-Plus-Plus",
+      "url": "https://github.com/TheAlgorithms/C-Plus-Plus",
+      "description": "Collection of various algorithms in mathematics, machine learning, computer science and physics implemented in C++ for educational purposes.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "algorithm",
+        "algorithm-competitions",
+        "algorithms-implemented",
+        "artificial-intelligence-algorithms",
+        "computer-science",
+        "cpp",
+        "data-structures",
+        "educational"
+      ],
+      "note": "",
+      "stars": 34422,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "TheAlgorithms/Go",
+      "url": "https://github.com/TheAlgorithms/Go",
+      "description": "Algorithms and Data Structures implemented in Go for beginners, following best practices.",
+      "category": "后端 / API",
+      "tags": [
+        "algorithms",
+        "algorithms-implemented",
+        "community-driven",
+        "data-structures",
+        "datastructures",
+        "hacktoberfest",
+        "interview",
+        "interview-preparation"
+      ],
+      "note": "",
+      "stars": 18119,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "TheAlgorithms/C",
+      "url": "https://github.com/TheAlgorithms/C",
+      "description": "Collection of various algorithms in mathematics, machine learning, computer science, physics, etc implemented in C for educational purposes.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "algorithm-challenges",
+        "algorithm-competitions",
+        "algorithms",
+        "c",
+        "community-driven",
+        "computer-science",
+        "data-structures",
+        "datastructures"
+      ],
+      "note": "",
+      "stars": 22206,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "TheAlgorithms/Python",
+      "url": "https://github.com/TheAlgorithms/Python",
+      "description": "All Algorithms implemented in Python",
+      "category": "AI / 机器学习",
+      "tags": [
+        "algorithm",
+        "algorithm-competitions",
+        "algorithms-implemented",
+        "algos",
+        "community-driven",
+        "education",
+        "hacktoberfest",
+        "interview"
+      ],
+      "note": "",
+      "stars": 222389,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "kubernetes/kubernetes",
+      "url": "https://github.com/kubernetes/kubernetes",
+      "description": "Production-Grade Container Scheduling and Management",
+      "category": "AI / 机器学习",
+      "tags": [
+        "cncf",
+        "containers",
+        "go",
+        "kubernetes"
+      ],
+      "note": "",
+      "stars": 123407,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "docker-archive/docker-ce",
+      "url": "https://github.com/docker-archive/docker-ce",
+      "description": ":warning: This repository is deprecated and will be archived (Docker CE itself is NOT deprecated) see the https://github.com/docker/docker-ce/blob/master/README.md :warning:",
+      "category": "后端 / API",
+      "tags": [
+        "docker",
+        "git",
+        "golang",
+        "moby"
+      ],
+      "note": "",
+      "stars": 5753,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "minio/minio",
+      "url": "https://github.com/minio/minio",
+      "description": "MinIO is a high-performance, S3 compatible object store, open sourced under GNU AGPLv3 license.",
+      "category": "后端 / API",
+      "tags": [
+        "amazon-s3",
+        "cloud",
+        "cloudnative",
+        "cloudstorage",
+        "go",
+        "k8s",
+        "kubernetes",
+        "multi-cloud"
+      ],
+      "note": "",
+      "stars": 61261,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "prometheus/prometheus",
+      "url": "https://github.com/prometheus/prometheus",
+      "description": "The Prometheus monitoring system and time series database.",
+      "category": "后端 / API",
+      "tags": [
+        "alerting",
+        "graphing",
+        "hacktoberfest",
+        "metrics",
+        "monitoring",
+        "prometheus",
+        "time-series"
+      ],
+      "note": "",
+      "stars": 64924,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "etcd-io/etcd",
+      "url": "https://github.com/etcd-io/etcd",
+      "description": "Distributed reliable key-value store for the most critical data of a distributed system",
+      "category": "后端 / API",
+      "tags": [
+        "cncf",
+        "consensus",
+        "database",
+        "distributed-database",
+        "distributed-systems",
+        "etcd",
+        "go",
+        "key-value"
+      ],
+      "note": "",
+      "stars": 51939,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "gin-gonic/gin",
+      "url": "https://github.com/gin-gonic/gin",
+      "description": "Gin is a high-performance HTTP web framework written in Go. It provides a Martini-like API but with significantly better performance—up to 40 times faster—thanks to httprouter. Gin is designed for building REST APIs, web applications, and microservices.",
+      "category": "Web 前端",
+      "tags": [
+        "framework",
+        "gin",
+        "go",
+        "middleware",
+        "performance",
+        "router",
+        "server"
+      ],
+      "note": "",
+      "stars": 88821,
+      "language": "Go",
+      "progress": "none"
+    },
+    {
+      "name": "pmndrs/zustand",
+      "url": "https://github.com/pmndrs/zustand",
+      "description": "🐻 Bear necessities for state management in React",
+      "category": "Web 前端",
+      "tags": [
+        "hacktoberfest",
+        "hooks",
+        "react",
+        "react-context",
+        "reactjs",
+        "redux",
+        "state-management"
+      ],
+      "note": "",
+      "stars": 58420,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "openresty/openresty",
+      "url": "https://github.com/openresty/openresty",
+      "description": "High Performance Web Platform Based on Nginx and LuaJIT",
+      "category": "数据科学",
+      "tags": [],
+      "note": "",
+      "stars": 13925,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "neovim/neovim",
+      "url": "https://github.com/neovim/neovim",
+      "description": "Vim-fork focused on extensibility and usability",
+      "category": "后端 / API",
+      "tags": [
+        "api",
+        "c",
+        "lua",
+        "neovim",
+        "nvim",
+        "text-editor",
+        "vim"
+      ],
+      "note": "",
+      "stars": 100893,
+      "language": "Vim Script",
+      "progress": "none"
+    },
+    {
+      "name": "dotnet/orleans",
+      "url": "https://github.com/dotnet/orleans",
+      "description": "Cloud Native application framework for .NET",
+      "category": "后端 / API",
+      "tags": [
+        "actor-model",
+        "actors",
+        "cloud-computing",
+        "cloud-native",
+        "concurrency",
+        "distributed-actors",
+        "distributed-systems",
+        "dotnet"
+      ],
+      "note": "",
+      "stars": 10797,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "genaray/Arch",
+      "url": "https://github.com/genaray/Arch",
+      "description": "A high-performance C# based Archetype & Chunks Entity Component System (ECS) with optional multithreading.",
+      "category": "后端 / API",
+      "tags": [
+        "csharp",
+        "dotnet",
+        "dotnet-core",
+        "ecs",
+        "entity-component-system",
+        "entity-framework",
+        "fast",
+        "game"
+      ],
+      "note": "",
+      "stars": 1745,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "Thraka/SadConsole",
+      "url": "https://github.com/Thraka/SadConsole",
+      "description": "A .NET ascii/ansi console engine written in C# for MonoGame and SFML. Create your own text roguelike (or other) games!",
+      "category": "后端 / API",
+      "tags": [
+        "ansi",
+        "ascii",
+        "c-sharp",
+        "console",
+        "game-engine",
+        "gamedev",
+        "monogame",
+        "roguelike"
+      ],
+      "note": "",
+      "stars": 1370,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "actix/actix-web",
+      "url": "https://github.com/actix/actix-web",
+      "description": "Actix Web is a powerful, pragmatic, and extremely fast web framework for Rust.",
+      "category": "数据科学",
+      "tags": [
+        "actix",
+        "actix-web",
+        "async",
+        "rust",
+        "web",
+        "web-development",
+        "websockets"
+      ],
+      "note": "",
+      "stars": 24703,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "tokio-rs/tokio",
+      "url": "https://github.com/tokio-rs/tokio",
+      "description": "A runtime for writing reliable asynchronous applications with Rust. Provides I/O, networking, scheduling, timers, ...",
+      "category": "数据科学",
+      "tags": [
+        "asynchronous",
+        "networking",
+        "rust"
+      ],
+      "note": "",
+      "stars": 32432,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "BurntSushi/ripgrep",
+      "url": "https://github.com/BurntSushi/ripgrep",
+      "description": "ripgrep recursively searches directories for a regex pattern while respecting your gitignore",
+      "category": "数据科学",
+      "tags": [
+        "cli",
+        "command-line",
+        "command-line-tool",
+        "gitignore",
+        "grep",
+        "recursively-search",
+        "regex",
+        "ripgrep"
+      ],
+      "note": "",
+      "stars": 65755,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "tokio-rs/mini-redis",
+      "url": "https://github.com/tokio-rs/mini-redis",
+      "description": "Incomplete Redis client and server implementation using Tokio - for learning purposes only",
+      "category": "后端 / API",
+      "tags": [],
+      "note": "",
+      "stars": 4718,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "rust-lang/rustlings",
+      "url": "https://github.com/rust-lang/rustlings",
+      "description": ":crab: Small exercises to get you used to reading and writing Rust code!",
+      "category": "DevOps / 工具链",
+      "tags": [
+        "beginner-friendly",
+        "exercises",
+        "rust",
+        "rustlings"
+      ],
+      "note": "",
+      "stars": 63427,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "gabime/spdlog",
+      "url": "https://github.com/gabime/spdlog",
+      "description": "Fast C++ logging library.",
+      "category": "数据科学",
+      "tags": [
+        "cpp",
+        "cpp11",
+        "header-only",
+        "logging",
+        "spdlog"
+      ],
+      "note": "",
+      "stars": 29013,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "fmtlib/fmt",
+      "url": "https://github.com/fmtlib/fmt",
+      "description": "A modern formatting library",
+      "category": "数据科学",
+      "tags": [
+        "c-plus-plus",
+        "chrono",
+        "cpp",
+        "cross-platform",
+        "floating-point",
+        "formatting",
+        "multiplatform",
+        "output"
+      ],
+      "note": "",
+      "stars": 23637,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "chromium/chromium",
+      "url": "https://github.com/chromium/chromium",
+      "description": "The official GitHub mirror of the Chromium source",
+      "category": "DevOps / 工具链",
+      "tags": [
+        "browser",
+        "chromium"
+      ],
+      "note": "",
+      "stars": 24116,
+      "language": "",
+      "progress": "none"
+    },
+    {
+      "name": "raysan5/raylib",
+      "url": "https://github.com/raysan5/raylib",
+      "description": "A simple and easy-to-use library to enjoy videogames programming",
+      "category": "数据科学",
+      "tags": [
+        "android",
+        "c",
+        "embedded",
+        "esp32",
+        "game-development",
+        "game-engine",
+        "gamedev",
+        "graphics"
+      ],
+      "note": "",
+      "stars": 33689,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "ocornut/imgui",
+      "url": "https://github.com/ocornut/imgui",
+      "description": "Dear ImGui: Bloat-free Graphical User interface for C++ with minimal dependencies",
+      "category": "Web 前端",
+      "tags": [
+        "api",
+        "cplusplus",
+        "framework",
+        "game-development",
+        "game-engine",
+        "gamedev",
+        "gui",
+        "imgui"
+      ],
+      "note": "",
+      "stars": 74252,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "OGRECave/ogre",
+      "url": "https://github.com/OGRECave/ogre",
+      "description": "high-performance rendering backend (C++, Python, C#, Java)",
+      "category": "AI / 机器学习",
+      "tags": [
+        "cpp",
+        "csharp",
+        "directx",
+        "directx11",
+        "gamedev",
+        "graphics-engine",
+        "java",
+        "metal"
+      ],
+      "note": "",
+      "stars": 4610,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "godotengine/godot",
+      "url": "https://github.com/godotengine/godot",
+      "description": "Godot Engine – Multi-platform 2D and 3D game engine",
+      "category": "后端 / API",
+      "tags": [
+        "game-development",
+        "game-engine",
+        "gamedev",
+        "godot",
+        "godotengine",
+        "multi-platform",
+        "open-source"
+      ],
+      "note": "",
+      "stars": 113538,
+      "language": "C++",
+      "progress": "none"
+    },
+    {
+      "name": "nginx/nginx",
+      "url": "https://github.com/nginx/nginx",
+      "description": "The official NGINX Open Source repository.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "content-cache",
+        "http",
+        "http2",
+        "http3",
+        "https",
+        "load-balancer",
+        "mail-proxy-server",
+        "nginx"
+      ],
+      "note": "",
+      "stars": 31082,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "redis/redis",
+      "url": "https://github.com/redis/redis",
+      "description": "For developers, who are building real-time data-driven applications, Redis is the preferred, fastest, and most feature-rich cache, data structure server, and document and vector query engine.",
+      "category": "Web 前端",
+      "tags": [
+        "cache",
+        "caching",
+        "database",
+        "distributed-systems",
+        "in-memory",
+        "in-memory-database",
+        "json",
+        "key-value"
+      ],
+      "note": "",
+      "stars": 75266,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "sqlite/sqlite",
+      "url": "https://github.com/sqlite/sqlite",
+      "description": "Official Git mirror of the SQLite source tree",
+      "category": "DevOps / 工具链",
+      "tags": [],
+      "note": "",
+      "stars": 9965,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "mit-pdos/xv6-riscv",
+      "url": "https://github.com/mit-pdos/xv6-riscv",
+      "description": "Xv6 for RISC-V",
+      "category": "数据科学",
+      "tags": [],
+      "note": "",
+      "stars": 10009,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "torvalds/linux",
+      "url": "https://github.com/torvalds/linux",
+      "description": "Linux kernel source tree",
+      "category": "数据科学",
+      "tags": [],
+      "note": "",
+      "stars": 238169,
+      "language": "C",
+      "progress": "none"
+    },
+    {
+      "name": "vllm-project/vllm",
+      "url": "https://github.com/vllm-project/vllm",
+      "description": "A high-throughput and memory-efficient inference and serving engine for LLMs",
+      "category": "AI / 机器学习",
+      "tags": [
+        "amd",
+        "blackwell",
+        "cuda",
+        "deepseek",
+        "deepseek-v3",
+        "gpt",
+        "gpt-oss",
+        "inference"
+      ],
+      "note": "",
+      "stars": 85250,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "pytorch/pytorch",
+      "url": "https://github.com/pytorch/pytorch",
+      "description": "Tensors and Dynamic neural networks in Python with strong GPU acceleration",
+      "category": "AI / 机器学习",
+      "tags": [
+        "autograd",
+        "deep-learning",
+        "gpu",
+        "machine-learning",
+        "neural-network",
+        "numpy",
+        "python",
+        "tensor"
+      ],
+      "note": "",
+      "stars": 101332,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "pydantic/pydantic",
+      "url": "https://github.com/pydantic/pydantic",
+      "description": "Data validation using Python type hints",
+      "category": "AI / 机器学习",
+      "tags": [
+        "hints",
+        "json-schema",
+        "parsing",
+        "pydantic",
+        "python",
+        "python310",
+        "python311",
+        "python312"
+      ],
+      "note": "",
+      "stars": 28182,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "fastapi/fastapi",
+      "url": "https://github.com/fastapi/fastapi",
+      "description": "FastAPI framework, high performance, easy to learn, fast to code, ready for production",
+      "category": "AI / 机器学习",
+      "tags": [
+        "api",
+        "async",
+        "asyncio",
+        "fastapi",
+        "framework",
+        "json",
+        "json-schema",
+        "openapi"
+      ],
+      "note": "",
+      "stars": 99963,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "apache/airflow",
+      "url": "https://github.com/apache/airflow",
+      "description": "Apache Airflow - A platform to programmatically author, schedule, and monitor workflows",
+      "category": "AI / 机器学习",
+      "tags": [
+        "airflow",
+        "apache",
+        "apache-airflow",
+        "automation",
+        "dag",
+        "data-engineering",
+        "data-integration",
+        "data-orchestrator"
+      ],
+      "note": "",
+      "stars": 46011,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "huggingface/transformers",
+      "url": "https://github.com/huggingface/transformers",
+      "description": "🤗 Transformers: the model-definition framework for state-of-the-art machine learning models in text, vision, audio, and multimodal models, for both inference and training. ",
+      "category": "AI / 机器学习",
+      "tags": [
+        "audio",
+        "deep-learning",
+        "deepseek",
+        "gemma",
+        "glm",
+        "hacktoberfest",
+        "llm",
+        "machine-learning"
+      ],
+      "note": "",
+      "stars": 162193,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "redisson/redisson",
+      "url": "https://github.com/redisson/redisson",
+      "description": "Redisson: Valkey & Redis Java Client and Real-Time Data Platform. Sync/Async/RxJava/Reactive API. Over 50 Valkey and Redis based Java objects and services: Set, Multimap, SortedSet, Map, List, Queue, Deque, Semaphore, Lock, AtomicLong, Map Reduce, Bloom filter, Spring, Tomcat, Scheduler, JCache API, Hibernate, RPC, local cache..",
+      "category": "Web 前端",
+      "tags": [
+        "cache",
+        "distributed",
+        "distributed-locks",
+        "executor",
+        "hibernate",
+        "java",
+        "json",
+        "lock"
+      ],
+      "note": "",
+      "stars": 24364,
+      "language": "Java",
+      "progress": "none"
+    },
+    {
+      "name": "spring-petclinic/spring-petclinic-microservices",
+      "url": "https://github.com/spring-petclinic/spring-petclinic-microservices",
+      "description": "Distributed version of Spring Petclinic built with Spring Cloud",
+      "category": "Web 前端",
+      "tags": [
+        "chaos-monkey",
+        "docker",
+        "eureka",
+        "grafana",
+        "hystrix",
+        "micrometer",
+        "microservices",
+        "opentelemetry"
+      ],
+      "note": "",
+      "stars": 2153,
+      "language": "Java",
+      "progress": "none"
+    },
+    {
+      "name": "spring-projects/spring-petclinic",
+      "url": "https://github.com/spring-projects/spring-petclinic",
+      "description": "A sample Spring-based application",
+      "category": "Web 前端",
+      "tags": [],
+      "note": "",
+      "stars": 9342,
+      "language": "CSS",
+      "progress": "none"
+    },
+    {
+      "name": "macrozheng/mall-swarm",
+      "url": "https://github.com/macrozheng/mall-swarm",
+      "description": "mall-swarm是一套微服务商城系统，采用了 Spring Cloud Alibaba、Spring Boot 3.5、Sa-Token、MyBatis、Elasticsearch、Docker、Kubernetes等核心技术，同时提供了基于Vue的管理后台方便快速搭建系统。mall-swarm在电商业务的基础集成了注册中心、配置中心、监控中心、网关等系统功能。",
+      "category": "Web 前端",
+      "tags": [
+        "docker",
+        "elasticsearch",
+        "java",
+        "k8s",
+        "kubernetes",
+        "mongodb",
+        "mybatis",
+        "mysql"
+      ],
+      "note": "",
+      "stars": 13021,
+      "language": "Java",
+      "progress": "none"
+    },
+    {
+      "name": "macrozheng/mall",
+      "url": "https://github.com/macrozheng/mall",
+      "description": "mall项目是一套电商系统，包括前台商城系统及后台管理系统，基于Spring Boot+MyBatis实现，采用Docker容器化部署。 前台商城系统包含首页门户、商品推荐、商品搜索、商品展示、购物车、订单流程、会员中心、客户服务、帮助中心等模块。 后台管理系统包含商品管理、订单管理、会员管理、促销管理、运营管理、内容管理、统计报表、财务管理、权限管理、设置等模块。",
+      "category": "Web 前端",
+      "tags": [
+        "docker",
+        "elasticsearch",
+        "elk",
+        "java",
+        "mongodb",
+        "mybatis",
+        "mysql",
+        "rabbitmq"
+      ],
+      "note": "",
+      "stars": 83973,
+      "language": "Java",
+      "progress": "none"
+    },
+    {
+      "name": "OpenRA/OpenRA",
+      "url": "https://github.com/OpenRA/OpenRA",
+      "description": "Open Source real-time strategy game engine for early Westwood games such as Command & Conquer: Red Alert written in C# using SDL and OpenGL. Runs on Windows, Linux, *BSD and Mac OS X.",
+      "category": "后端 / API",
+      "tags": [
+        "command-and-conquer",
+        "cross-platform",
+        "csharp",
+        "dotnet",
+        "dune-2000",
+        "engine",
+        "game",
+        "game-engine"
+      ],
+      "note": "",
+      "stars": 17033,
+      "language": "C#",
+      "progress": "none"
+    },
+    {
+      "name": "n8n-io/n8n",
+      "url": "https://github.com/n8n-io/n8n",
+      "description": "Fair-code workflow automation platform with native AI capabilities. Combine visual building with custom code, self-host or cloud, 400+ integrations.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "ai",
+        "apis",
+        "automation",
+        "cli",
+        "data-flow",
+        "development",
+        "integration-framework",
+        "integrations"
+      ],
+      "note": "",
+      "stars": 194998,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "pydantic/pydantic-ai",
+      "url": "https://github.com/pydantic/pydantic-ai",
+      "description": "AI Agent Framework, the Pydantic way",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent-framework",
+        "genai",
+        "llm",
+        "pydantic",
+        "python"
+      ],
+      "note": "",
+      "stars": 18182,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "crewAIInc/crewAI",
+      "url": "https://github.com/crewAIInc/crewAI",
+      "description": "Framework for orchestrating role-playing, autonomous AI agents. By fostering collaborative intelligence, CrewAI empowers agents to work together seamlessly, tackling complex tasks.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agents",
+        "ai",
+        "ai-agents",
+        "aiagentframework",
+        "llms"
+      ],
+      "note": "",
+      "stars": 54819,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "microsoft/autogen",
+      "url": "https://github.com/microsoft/autogen",
+      "description": "A programming framework for agentic AI",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agentic",
+        "agentic-agi",
+        "agents",
+        "ai",
+        "autogen",
+        "autogen-ecosystem",
+        "chatgpt",
+        "framework"
+      ],
+      "note": "",
+      "stars": 59460,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "OpenHands/OpenHands",
+      "url": "https://github.com/OpenHands/OpenHands",
+      "description": "🙌 OpenHands: AI-Driven Development",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent",
+        "artificial-intelligence",
+        "chatgpt",
+        "claude-ai",
+        "cli",
+        "developer-tools",
+        "gpt",
+        "llm"
+      ],
+      "note": "",
+      "stars": 79236,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "labring/FastGPT",
+      "url": "https://github.com/labring/FastGPT",
+      "description": "FastGPT is a knowledge-based platform built on the LLMs, offers a comprehensive suite of out-of-the-box capabilities such as data processing, RAG retrieval, and visual AI workflow orchestration, letting you easily develop and deploy complex question-answering systems without the need for extensive setup or configuration.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent",
+        "claude",
+        "deepseek",
+        "llm",
+        "mcp",
+        "nextjs",
+        "openai",
+        "qwen"
+      ],
+      "note": "",
+      "stars": 28800,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "langgenius/dify",
+      "url": "https://github.com/langgenius/dify",
+      "description": "Production-ready platform for agentic workflow development.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent",
+        "agentic-ai",
+        "agentic-framework",
+        "agentic-workflow",
+        "ai",
+        "automation",
+        "gemini",
+        "genai"
+      ],
+      "note": "",
+      "stars": 147516,
+      "language": "TypeScript",
+      "progress": "none"
+    },
+    {
+      "name": "huggingface/smolagents",
+      "url": "https://github.com/huggingface/smolagents",
+      "description": "🤗 smolagents: a barebones library for agents that think in code.",
+      "category": "AI / 机器学习",
+      "tags": [],
+      "note": "",
+      "stars": 28161,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "langchain-ai/langgraph",
+      "url": "https://github.com/langchain-ai/langgraph",
+      "description": "Build resilient agents.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agents",
+        "ai",
+        "ai-agents",
+        "chatgpt",
+        "deepagents",
+        "enterprise",
+        "framework",
+        "gemini"
+      ],
+      "note": "",
+      "stars": 36387,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "datawhalechina/hello-agents",
+      "url": "https://github.com/datawhalechina/hello-agents",
+      "description": "📚 《从零开始构建智能体》——从零开始的智能体原理与实践教程",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent",
+        "llm",
+        "rag",
+        "tutorial"
+      ],
+      "note": "",
+      "stars": 63737,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "Hmbown/CodeWhale",
+      "url": "https://github.com/Hmbown/CodeWhale",
+      "description": "Open-source, community-driven agent harness",
+      "category": "AI / 机器学习",
+      "tags": [
+        "cli",
+        "deepseek",
+        "llm",
+        "rust",
+        "terminal",
+        "tui"
+      ],
+      "note": "",
+      "stars": 39363,
+      "language": "Rust",
+      "progress": "none"
+    },
+    {
+      "name": "react/react",
+      "url": "https://github.com/react/react",
+      "description": "The library for web and native user interfaces.",
+      "category": "Web 前端",
+      "tags": [
+        "declarative",
+        "frontend",
+        "javascript",
+        "library",
+        "react",
+        "ui"
+      ],
+      "note": "",
+      "stars": 246202,
+      "language": "JavaScript",
+      "progress": "none"
+    },
+    {
+      "name": "charlax/professional-programming",
+      "url": "https://github.com/charlax/professional-programming",
+      "description": "A collection of learning resources for curious software engineers",
+      "category": "AI / 机器学习",
+      "tags": [
+        "architecture",
+        "computer-science",
+        "concepts",
+        "documentation",
+        "engineer",
+        "learning",
+        "lessons-learned",
+        "professional"
+      ],
+      "note": "",
+      "stars": 51217,
+      "language": "Python",
+      "progress": "none"
+    },
+    {
+      "name": "Panniantong/Agent-Reach",
+      "url": "https://github.com/Panniantong/Agent-Reach",
+      "description": "Give your AI agent eyes to see the entire internet. Read & search Twitter, Reddit, YouTube, GitHub, Bilibili, XiaoHongShu — one CLI, zero API fees.",
+      "category": "AI / 机器学习",
+      "tags": [
+        "agent-infrastructure",
+        "ai-agent",
+        "ai-search",
+        "automation",
+        "bilibili",
+        "claude-code",
+        "cli",
+        "cursor"
+      ],
+      "note": "",
+      "stars": 49501,
+      "language": "Python",
+      "progress": "none"
+    }
+  ],
+  "custom_categories": []
+}

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>注册 · RepoPilot</title>
+  <!-- 设计系统：Apple Design Library 派生令牌 -->
+  <link rel="stylesheet" href="./assets/design-system.css" />
+  <!-- 字体：DM Sans（正文）+ JetBrains Mono（代码/版本号） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* =====================================================================
+       注册页 · 页面级样式
+       视觉与登录页保持一致：相同的卡片骨架、相同的品牌色板
+       ===================================================================== */
+    html, body { min-width: 900px; }
+    body.auth-bg {
+      background:
+        radial-gradient(1200px 600px at 50% -10%, var(--brand-50), transparent 60%),
+        radial-gradient(800px 400px at 90% 110%, var(--brand-50), transparent 70%),
+        var(--bg-200);
+      min-height: 100vh;
+    }
+
+    .auth-canvas {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 48px 32px 64px;
+    }
+
+    .design-doc-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--bg-300);
+    }
+    .design-doc-title { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+    .design-doc-meta { font-size: 12px; color: var(--text-500); font-family: var(--font-mono); }
+
+    /* 注册页采用 560px 的单卡片布局，便于放下密码强度条 + 规则提示 */
+    .state-grid-single {
+      display: grid;
+      grid-template-columns: minmax(0, 480px);
+      justify-content: center;
+    }
+
+    .state-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-500);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .state-label::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 999px;
+      background: var(--brand-500);
+      display: inline-block;
+    }
+
+    /* 卡片本体 */
+    .auth-card {
+      background: var(--bg-50);
+      border: 1px solid var(--bg-300);
+      border-radius: var(--radius-lg);
+      padding: 36px 32px 28px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .auth-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .auth-logo {
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--brand-400), var(--brand-700));
+      display: grid;
+      place-items: center;
+      color: #fff;
+      box-shadow: 0 8px 20px -8px rgba(0, 122, 255, 0.55);
+      margin-bottom: 14px;
+    }
+    .auth-logo svg { width: 28px; height: 28px; }
+    .auth-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-800); }
+    .auth-subtitle { font-size: 13px; color: var(--text-500); margin-top: 4px; }
+
+    /* 表单 */
+    .auth-form { display: flex; flex-direction: column; gap: 14px; }
+    .field-rule {
+      font-size: 11px;
+      color: var(--text-500);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .field-rule .chev {
+      width: 10px; height: 10px;
+      display: inline-block;
+    }
+
+    /* 密码强度条：3 段式，弱/中/强对应 brand-200 / warning / success */
+    .strength {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .strength-bars {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      height: 4px;
+    }
+    .strength-bars span {
+      background: var(--bg-300);
+      border-radius: 999px;
+      transition: background 0.2s var(--ease);
+    }
+    /* Medium 状态示例：前两段亮起，使用 warning 橙 */
+    .strength.medium .strength-bars span:nth-child(-n+2) { background: var(--warning); }
+    .strength.weak   .strength-bars span:nth-child(1)     { background: var(--error); }
+    .strength.strong .strength-bars span                  { background: var(--success); }
+
+    .strength-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-500);
+    }
+    .strength-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .strength.weak   .strength-tag { background: var(--error-surface); color: #c0392b; }
+    .strength.medium .strength-tag { background: var(--warning-surface); color: #b8651b; }
+    .strength.strong .strength-tag { background: var(--success-surface); color: #1e7e34; }
+
+    /* 规则清单（Requirement checklist） */
+    .req-list {
+      margin-top: 8px;
+      padding: 12px 14px;
+      background: var(--bg-100);
+      border: 1px solid var(--bg-300);
+      border-radius: var(--radius-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .req-list-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-500);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .req-list-title svg { width: 12px; height: 12px; }
+    .req-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--text-600);
+    }
+    .req-item .dot {
+      width: 14px; height: 14px;
+      border-radius: 999px;
+      border: 1.5px solid var(--bg-400);
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      background: var(--bg-50);
+    }
+    .req-item .dot svg { width: 9px; height: 9px; color: #fff; opacity: 0; }
+    /* 已满足：实心绿圆 + 勾 */
+    .req-item.met .dot { background: var(--success); border-color: var(--success); }
+    .req-item.met .dot svg { opacity: 1; }
+    .req-item.met { color: var(--text-700); }
+
+    /* 主按钮 */
+    .auth-btn {
+      margin-top: 8px;
+      width: 100%;
+      height: 48px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--brand-500);
+      color: #fff;
+      font: 600 15px/1 var(--font-sans);
+      letter-spacing: -0.01em;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 6px 16px -8px rgba(0, 122, 255, 0.55);
+      transition: filter 0.15s var(--ease), transform 0.15s var(--ease);
+    }
+    .auth-btn:hover { filter: brightness(1.04); }
+    .auth-btn:active { transform: translateY(1px); }
+    .auth-btn svg { width: 16px; height: 16px; }
+
+    .auth-divider {
+      height: 1px;
+      background: var(--bg-300);
+      margin: 22px 0 18px;
+    }
+    .auth-bottom {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-500);
+    }
+    .auth-bottom a { color: var(--brand-500); font-weight: 600; }
+    .auth-bottom a:hover { color: var(--brand-600); }
+
+    .auth-version {
+      margin-top: 16px;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-400);
+      letter-spacing: 0.04em;
+    }
+
+    /* 设计稿说明 */
+    .design-notes {
+      margin-top: 48px;
+      padding: 20px 24px;
+      background: var(--bg-50);
+      border: 1px dashed var(--bg-400);
+      border-radius: var(--radius);
+      color: var(--text-600);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .design-notes strong { color: var(--text-800); }
+    .design-notes code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 1px 6px;
+      background: var(--bg-200);
+      border-radius: 4px;
+      color: var(--brand-700);
+    }
+    .design-notes ul { margin: 6px 0 0; padding-left: 20px; }
+    .design-notes li { margin-bottom: 2px; }
+  </style>
+</head>
+<body class="auth-bg">
+  <main class="auth-canvas">
+
+    <!-- 设计稿说明头 -->
+    <header class="design-doc-header">
+      <div class="design-doc-title">注册页 · 设计稿</div>
+      <div class="design-doc-meta">register.html · v1.0.0 · Apple DL</div>
+    </header>
+
+    <section class="state-grid-single">
+      <div>
+        <div class="state-label">State · Default · 密码强度：中</div>
+        <div class="auth-card" role="form" aria-labelledby="register-title">
+          <div class="auth-brand">
+            <!-- 品牌 Logo 与登录页保持一致 -->
+            <div class="auth-logo" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2 L20 7 V17 L12 22 L4 17 V7 Z" />
+                <path d="M12 7 V17" />
+                <path d="M9 10 L15 14" />
+              </svg>
+            </div>
+            <h1 class="auth-title" id="register-title">创建账号</h1>
+            <p class="auth-subtitle">加入 RepoPilot，开启你的开源学习之旅</p>
+          </div>
+
+          <form class="auth-form" onsubmit="return false;">
+
+            <!-- 用户名 -->
+            <div class="field-group">
+              <label class="field-label" for="reg-username">用户名</label>
+              <div class="field">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:16px;height:16px;color:var(--text-400)">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+                </svg>
+                <input id="reg-username" type="text" value="newcomer_2026" placeholder="3-32 个字符" autocomplete="username" />
+                <!-- 已满足：尾部打勾 -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:16px;height:16px;color:var(--success)">
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+              </div>
+              <div class="field-rule">
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 6l-6 6 6 6" />
+                </svg>
+                3 - 32 个字符，支持字母、数字、下划线
+              </div>
+            </div>
+
+            <!-- 密码 + 强度条 + 规则清单 -->
+            <div class="field-group">
+              <label class="field-label" for="reg-password">密码</label>
+              <div class="field">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:16px;height:16px;color:var(--text-400)">
+                  <rect x="4" y="11" width="16" height="10" rx="2" />
+                  <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                </svg>
+                <input id="reg-password" type="password" value="OpenSource2026" placeholder="至少 8 位，包含字母与数字" autocomplete="new-password" />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:16px;height:16px;color:var(--text-400)">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </div>
+
+              <!-- 强度条：当前为 medium 示例 -->
+              <div class="strength medium" aria-label="密码强度：中">
+                <div class="strength-bars"><span></span><span></span><span></span></div>
+                <div class="strength-meta">
+                  <span>密码强度</span>
+                  <span class="strength-tag">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:10px;height:10px">
+                      <path d="M5 12h14" />
+                    </svg>
+                    中 · 再加一位大写字母可升级为强
+                  </span>
+                </div>
+              </div>
+
+              <!-- 规则清单：实时校验视觉示例 -->
+              <div class="req-list" aria-label="密码规则">
+                <div class="req-list-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 8v4" />
+                    <path d="M12 16h.01" />
+                  </svg>
+                  密码规则
+                </div>
+                <div class="req-item met">
+                  <span class="dot">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 12l5 5L20 7" />
+                    </svg>
+                  </span>
+                  <span>长度 ≥ 8 字符</span>
+                </div>
+                <div class="req-item met">
+                  <span class="dot">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 12l5 5L20 7" />
+                    </svg>
+                  </span>
+                  <span>包含字母</span>
+                </div>
+                <div class="req-item met">
+                  <span class="dot">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 12l5 5L20 7" />
+                    </svg>
+                  </span>
+                  <span>包含数字</span>
+                </div>
+                <div class="req-item">
+                  <span class="dot"></span>
+                  <span>建议包含大小写混合与符号以提升强度</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 确认密码 -->
+            <div class="field-group">
+              <label class="field-label" for="reg-confirm">确认密码</label>
+              <div class="field">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:16px;height:16px;color:var(--text-400)">
+                  <rect x="4" y="11" width="16" height="10" rx="2" />
+                  <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                </svg>
+                <input id="reg-confirm" type="password" value="OpenSource2026" placeholder="再次输入密码" autocomplete="new-password" />
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="width:16px;height:16px;color:var(--success)">
+                  <path d="M5 12l5 5L20 7" />
+                </svg>
+              </div>
+              <div class="field-rule">
+                <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 6l-6 6 6 6" />
+                </svg>
+                两次密码需保持一致
+              </div>
+            </div>
+
+            <button type="submit" class="auth-btn">
+              创建账号
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14" />
+                <path d="M13 6l6 6-6 6" />
+              </svg>
+            </button>
+          </form>
+
+          <div class="auth-divider"></div>
+          <div class="auth-bottom">
+            已有账号？<a href="./login.html">立即登录</a>
+          </div>
+          <div class="auth-version">v1.0.0 · 注册成功后将自动登录</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 设计稿附注 -->
+    <aside class="design-notes">
+      <strong>设计说明：</strong>
+      <ul>
+        <li>注册成功后由前端 <code>setAuth()</code> 自动写入 token 并跳转 <code>/</code>，与现有 <code>LoginPage.tsx</code> 行为对齐。</li>
+        <li>密码强度采用 3 段式：弱 = <code>--error</code>，中 = <code>--warning</code>，强 = <code>--success</code>；规则清单使用对勾点强调"已满足"。</li>
+        <li>用户名/密码规则以 <code>field-rule</code> 小字 + 箭头图标呈现，避免占用主输入区域。</li>
+        <li>卡片圆角 <code>16px</code>、主按钮 <code>999px</code> 胶囊形，与登录页保持视觉一致。</li>
+      </ul>
+    </aside>
+  </main>
+</body>
+</html>

@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
+<title>Agent 对话 · RepoPilot</title>
+<!-- 设计系统：基于 Apple Design Library (dl_builtin_apple) 设计令牌 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- DM Sans（正文）+ JetBrains Mono（代码 / 数据） -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/design-system.css">
+<style>
+  /* ==========================================================================
+     AgentPage 页面样式
+     基于 Apple 设计库 · RepoPilot v1
+     ========================================================================== */
+
+  /* 四栏布局：sidebar + 会话列表 + 对话区 + 上下文面板 */
+  .agent-shell {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 280px 1fr 280px;
+    min-height: 100vh;
+    background: var(--bg-200);
+  }
+
+  /* ============ 会话列表 ============ */
+  .session-list {
+    background: var(--bg-50);
+    border-right: 1px solid var(--bg-300);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  .session-list-header {
+    padding: 14px 14px 12px;
+    border-bottom: 1px solid var(--bg-300);
+    background: var(--bg-50);
+  }
+  .session-list-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--bg-300);
+    background: var(--bg-50);
+  }
+  .session-tab {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-500);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background .15s var(--ease);
+  }
+  .session-tab:hover { background: var(--bg-200); }
+  .session-tab.active { background: var(--bg-300); color: var(--text-800); }
+
+  .session-list-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 8px;
+  }
+  .session-item {
+    position: relative;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    margin-bottom: 2px;
+    transition: background .15s var(--ease);
+  }
+  .session-item:hover { background: var(--bg-200); }
+  .session-item.active {
+    background: var(--brand-50);
+    border-left: 3px solid var(--brand-500);
+    padding-left: 9px;
+  }
+  .session-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-800);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .session-summary {
+    font-size: 11px;
+    color: var(--text-500);
+    line-height: 1.4;
+    margin-bottom: 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .session-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--text-400);
+  }
+  /* 各 Agent 标签色（与头像呼应） */
+  .agent-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .02em;
+  }
+  .agent-tag-hub       { background: #e8e8ff; color: #4a3aff; }
+  .agent-tag-mentor    { background: #f3e8ff; color: #5e2ca5; }
+  .agent-tag-scout     { background: #fff4e5; color: #b8651b; }
+  .agent-tag-navigator { background: #e0f7fa; color: #1f6f7a; }
+  .agent-tag-curator   { background: #e9f9ee; color: #1e7e34; }
+  .agent-tag-scribe    { background: #ffe5ec; color: #b0004d; }
+  .session-unread {
+    width: 8px; height: 8px; border-radius: 999px;
+    background: var(--brand-500);
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  /* ============ 对话区 ============ */
+  .chat-area {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background: var(--bg-100);
+  }
+
+  /* 对话头部 */
+  .chat-header {
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--bg-300);
+    background: var(--bg-50);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .chat-title { flex: 1; min-width: 0; }
+  .chat-title h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chat-title .ctx {
+    font-size: 11px;
+    color: var(--text-500);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chat-title .ctx .dot { width: 4px; height: 4px; border-radius: 999px; background: var(--bg-400); }
+  .chat-actions { display: flex; gap: 4px; }
+  .chat-icon-btn {
+    width: 32px; height: 32px;
+    border-radius: 999px;
+    background: transparent;
+    border: 0;
+    color: var(--text-500);
+    display: grid; place-items: center;
+    cursor: pointer;
+    transition: background .15s var(--ease), color .15s var(--ease);
+  }
+  .chat-icon-btn:hover { background: var(--bg-300); color: var(--text-800); }
+
+  /* Agent 切换器 */
+  .agent-switcher {
+    display: flex;
+    gap: 4px;
+    padding: 4px 6px;
+    background: var(--bg-200);
+    border-radius: 999px;
+  }
+  .agent-avatar {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    display: grid; place-items: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    position: relative;
+    transition: transform .15s var(--ease);
+    box-shadow: var(--shadow-xs);
+    flex-shrink: 0;
+  }
+  .agent-avatar:hover { transform: translateY(-1px); }
+  .agent-avatar.active {
+    box-shadow: 0 0 0 2px var(--bg-50), 0 0 0 4px var(--brand-500);
+  }
+  .agent-hub       { background: linear-gradient(135deg, #4a3aff, #9d4edd); }
+  .agent-scout     { background: linear-gradient(135deg, #ff9f0a, #ff6f00); }
+  .agent-mentor    { background: linear-gradient(135deg, #9d4edd, #c879ff); }
+  .agent-navigator { background: linear-gradient(135deg, #00b8d4, #00d4aa); }
+  .agent-curator   { background: linear-gradient(135deg, #34c759, #30d158); }
+  .agent-scribe    { background: linear-gradient(135deg, #ff375f, #ff6b8a); }
+
+  /* ============ 消息流 ============ */
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 28px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    background: var(--bg-100);
+  }
+  .msg { display: flex; gap: 12px; max-width: 760px; }
+  .msg-avatar {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: grid; place-items: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-xs);
+  }
+  .msg-body { flex: 1; min-width: 0; }
+  .msg-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .msg-name { font-size: 13px; font-weight: 700; }
+  .msg-role {
+    font-size: 10px;
+    color: var(--text-400);
+    padding: 1px 6px;
+    background: var(--bg-200);
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .msg-time { font-size: 11px; color: var(--text-400); }
+  .msg-content {
+    background: var(--bg-50);
+    border: 1px solid var(--bg-300);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--text-800);
+  }
+  .msg-routing {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--brand-700);
+    background: var(--brand-50);
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+  }
+  .msg-user {
+    flex-direction: row-reverse;
+    align-self: flex-end;
+    max-width: 600px;
+  }
+  .msg-user .msg-avatar {
+    background: linear-gradient(135deg, #5e5ce6, #bf5af2);
+  }
+  .msg-user .msg-body { text-align: right; }
+  .msg-user .msg-head { justify-content: flex-end; }
+  .msg-user .msg-content {
+    background: var(--brand-500);
+    color: #fff;
+    border-color: var(--brand-500);
+  }
+  .msg-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .quick-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: var(--bg-200);
+    border: 1px solid var(--bg-300);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-700);
+    cursor: pointer;
+    transition: background .15s var(--ease);
+  }
+  .quick-btn:hover { background: var(--bg-300); }
+  .quick-btn.primary {
+    background: var(--brand-500);
+    color: #fff;
+    border-color: var(--brand-500);
+  }
+
+  /* ============ 反问面板（核心交互） ============ */
+  .question-panel {
+    background: var(--bg-50);
+    border: 2px solid var(--brand-500);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-top: 10px;
+    box-shadow: var(--shadow-md);
+  }
+  .question-panel-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brand-700);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .question-item {
+    padding: 14px 0;
+    border-top: 1px dashed var(--bg-300);
+  }
+  .question-item:first-of-type { border-top: 0; padding-top: 4px; }
+  .question-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-800);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .question-text .q-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: var(--brand-50);
+    color: var(--brand-700);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* radio 选项 */
+  .radio-options { display: flex; flex-direction: column; gap: 6px; }
+  .radio-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--bg-300);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all .15s var(--ease);
+    background: var(--bg-50);
+  }
+  .radio-option:hover { border-color: var(--brand-300); background: var(--bg-100); }
+  .radio-option.selected {
+    border-color: var(--brand-500);
+    background: var(--brand-50);
+  }
+  .radio-dot {
+    width: 18px; height: 18px;
+    border-radius: 999px;
+    border: 2px solid var(--bg-400);
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: grid; place-items: center;
+    transition: border-color .15s var(--ease);
+  }
+  .radio-option.selected .radio-dot { border-color: var(--brand-500); }
+  .radio-dot::after {
+    content: '';
+    width: 8px; height: 8px;
+    border-radius: 999px;
+    background: var(--brand-500);
+    opacity: 0;
+    transform: scale(.4);
+    transition: opacity .15s var(--ease), transform .15s var(--ease);
+  }
+  .radio-option.selected .radio-dot::after { opacity: 1; transform: scale(1); }
+  .radio-content { flex: 1; min-width: 0; }
+  .radio-label { font-size: 13px; font-weight: 600; color: var(--text-800); }
+  .radio-desc { font-size: 11px; color: var(--text-500); margin-top: 2px; }
+
+  /* slider */
+  .slider-row { padding: 10px 4px 4px; }
+  .slider-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 11px;
+    color: var(--text-500);
+  }
+  .slider-value {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    color: var(--brand-500);
+    font-size: 18px;
+    letter-spacing: -.01em;
+  }
+  .slider-track {
+    position: relative;
+    height: 4px;
+    background: var(--bg-300);
+    border-radius: 999px;
+    margin: 14px 0 8px;
+  }
+  .slider-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 35%;
+    background: var(--brand-500);
+    border-radius: 999px;
+  }
+  .slider-thumb {
+    position: absolute;
+    top: 50%;
+    left: 35%;
+    width: 20px; height: 20px;
+    background: #fff;
+    border: 1px solid var(--bg-400);
+    border-radius: 999px;
+    transform: translate(-50%, -50%);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+  }
+  .slider-thumb::after {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border-radius: 999px;
+    background: var(--brand-500);
+  }
+  .slider-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 10px;
+    color: var(--text-400);
+  }
+
+  /* knowledge_map 树形 checkbox */
+  .km-tree { display: flex; flex-direction: column; gap: 4px; padding: 4px 0; }
+  .km-node {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background .15s var(--ease);
+  }
+  .km-node:hover { background: var(--bg-200); }
+  .km-chevron {
+    width: 14px; height: 14px;
+    color: var(--text-400);
+    flex-shrink: 0;
+  }
+  .km-chevron.open { transform: rotate(90deg); }
+  .km-check {
+    width: 16px; height: 16px;
+    border-radius: 4px;
+    border: 2px solid var(--bg-400);
+    flex-shrink: 0;
+    display: grid; place-items: center;
+    background: var(--bg-50);
+    transition: all .15s var(--ease);
+  }
+  .km-check.checked {
+    background: var(--brand-500);
+    border-color: var(--brand-500);
+    color: #fff;
+  }
+  .km-label { font-size: 13px; color: var(--text-800); }
+  .km-children {
+    padding-left: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* drag_sort */
+  .ds-list { display: flex; flex-direction: column; gap: 4px; }
+  .ds-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--bg-100);
+    border: 1px solid var(--bg-300);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+  }
+  .ds-handle {
+    color: var(--text-400);
+    width: 14px;
+    flex-shrink: 0;
+  }
+  .ds-num {
+    width: 20px; height: 20px;
+    border-radius: 999px;
+    background: var(--brand-50);
+    color: var(--brand-700);
+    display: grid; place-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .question-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--bg-300);
+  }
+  .question-actions .right { display: flex; gap: 8px; }
+
+  /* 流式输出 */
+  .streaming-cursor {
+    display: inline-block;
+    width: 8px; height: 14px;
+    background: var(--brand-500);
+    vertical-align: middle;
+    margin-left: 3px;
+    animation: blink 1s infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .streaming-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--brand-700);
+    background: var(--brand-50);
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-left: 4px;
+    font-weight: 600;
+  }
+  .streaming-dot {
+    width: 6px; height: 6px;
+    border-radius: 999px;
+    background: var(--brand-500);
+    animation: pulse 1.2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: .4; } 50% { opacity: 1; } }
+
+  /* ============ 输入区（底部 fixed） ============ */
+  .chat-input-wrap {
+    padding: 14px 20px 16px;
+    border-top: 1px solid var(--bg-300);
+    background: var(--bg-50);
+  }
+  .chat-input {
+    background: var(--bg-50);
+    border: 1px solid var(--bg-300);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
+  }
+  .chat-input:focus-within {
+    border-color: var(--brand-500);
+    box-shadow: 0 0 0 3px var(--brand-50);
+  }
+  .chat-textarea {
+    width: 100%;
+    min-height: 44px;
+    max-height: 200px;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font: 14px/1.5 var(--font-sans);
+    color: var(--text-800);
+    resize: none;
+  }
+  .chat-textarea::placeholder { color: var(--text-400); }
+  .chat-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .chat-toolbar .icon-btn {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    background: transparent;
+    border: 0;
+    color: var(--text-500);
+    display: grid; place-items: center;
+    cursor: pointer;
+    transition: background .15s var(--ease), color .15s var(--ease);
+  }
+  .chat-toolbar .icon-btn:hover { background: var(--bg-300); color: var(--text-800); }
+  .chat-toolbar .spacer { flex: 1; }
+  .chat-toolbar .ctx-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: var(--bg-200);
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-700);
+  }
+  .chat-toolbar .ctx-chip.active {
+    background: var(--brand-50);
+    color: var(--brand-700);
+  }
+  .send-btn {
+    width: 32px; height: 32px;
+    border-radius: 999px;
+    background: var(--brand-500);
+    color: #fff;
+    border: 0;
+    display: grid; place-items: center;
+    cursor: pointer;
+    transition: background .15s var(--ease);
+  }
+  .send-btn:hover { background: var(--brand-600); }
+  .chat-hint {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--text-400);
+  }
+  .chat-hint kbd {
+    padding: 1px 5px;
+    background: var(--bg-200);
+    border: 1px solid var(--bg-300);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+
+  /* ============ 上下文面板 ============ */
+  .context-panel {
+    background: var(--bg-50);
+    border-left: 1px solid var(--bg-300);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  .context-section {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--bg-300);
+  }
+  .context-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-500);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ctx-proj {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+  }
+  .ctx-proj-icon {
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    display: grid; place-items: center;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    flex-shrink: 0;
+  }
+  .ctx-proj-name {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-800);
+  }
+  .ctx-proj-meta {
+    font-size: 10px;
+    color: var(--text-500);
+  }
+  .ctx-proj .remove {
+    margin-left: auto;
+    color: var(--text-400);
+    width: 18px; height: 18px;
+    border-radius: 4px;
+    display: grid; place-items: center;
+    cursor: pointer;
+  }
+  .ctx-proj .remove:hover { background: var(--bg-200); color: var(--text-800); }
+
+  .profile-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .profile-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .profile-key { color: var(--text-500); flex-shrink: 0; }
+  .profile-val {
+    color: var(--text-800);
+    font-weight: 600;
+    text-align: right;
+  }
+
+  .tool-log {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+  .tool-log-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 4px;
+  }
+  .tool-log-row.success {
+    background: var(--success-surface);
+    color: #1e7e34;
+  }
+  .tool-log-row.running {
+    background: var(--brand-50);
+    color: var(--brand-700);
+  }
+  .tool-log-row .check { color: var(--success); font-weight: 700; }
+  .tool-log-row .dot {
+    width: 6px; height: 6px;
+    border-radius: 999px;
+    background: var(--brand-500);
+    animation: pulse 1.2s infinite;
+  }
+
+  .degrade-tip {
+    font-size: 11px;
+    line-height: 1.5;
+    padding: 10px 12px;
+    background: var(--warning-surface);
+    border-radius: var(--radius-sm);
+    color: #8a5410;
+    display: flex;
+    gap: 8px;
+  }
+  .degrade-tip svg { flex-shrink: 0; color: #b8651b; }
+  .degrade-tip a {
+    color: var(--brand-500);
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  /* 折叠区域 */
+  .collapsible-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+  }
+  .chev-down {
+    transition: transform .15s var(--ease);
+    color: var(--text-400);
+  }
+  .chev-down.open { transform: rotate(180deg); }
+</style>
+</head>
+<body data-page="agent">
+
+<div class="agent-shell">
+
+  <!-- ============ 左侧导航 Sidebar（由 sidebar.js 渲染） ============ -->
+  <div id="app-sidebar"></div>
+
+  <!-- ============ 会话列表（280px） ============ -->
+  <aside class="session-list">
+    <!-- 顶部：新建 + 搜索 -->
+    <div class="session-list-header">
+      <button class="btn btn-primary btn-block">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>
+        新建对话
+      </button>
+      <div class="field mt-sm" style="height:32px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        <input placeholder="搜索会话..." />
+      </div>
+    </div>
+
+    <!-- 标签切换 -->
+    <div class="session-list-tabs">
+      <span class="session-tab active">全部 12</span>
+      <span class="session-tab">收藏 3</span>
+      <span class="session-tab">归档</span>
+    </div>
+
+    <!-- 会话列表（10+ 条） -->
+    <div class="session-list-body">
+      <!-- 当前活跃会话 -->
+      <div class="session-item active">
+        <div class="session-title">
+          Flask vs FastAPI 对比分析
+          <span class="session-unread" title="未读"></span>
+        </div>
+        <div class="session-summary">对比我库里的 Flask 和 FastAPI 框架...</div>
+        <div class="session-meta">
+          <span class="agent-tag agent-tag-mentor">Mentor</span>
+          <span>2 分钟前</span>
+        </div>
+      </div>
+
+      <div class="session-item">
+        <div class="session-title">Next.js 学习路径规划<span class="session-unread"></span></div>
+        <div class="session-summary">基于我现有的 React 知识，规划 Next.js...</div>
+        <div class="session-meta">
+          <span class="agent-tag agent-tag-navigator">Navigator</span>
+          <span>2 小时前</span>
+        </div>
+      </div>
+
+      <div class="session-item">
+        <div class="session-title">React 项目速览</div>
+        <div class="session-summary">帮我看看 facebook/react 这个项目的...</div>
+        <div class="session-meta">
+          <span class="agent-tag agent-tag-scout">Scout</span>
+          <span>昨天</span>
+        </div>
+      </div>
+
+      <div class="session-item">
+        <div class="session-title">项目库批量分类建议</div>
+        <div class="session-summary">我新导入了 50 个项目，帮我建议分类...</div>
+        <div class="session-meta">
+          <span class="agent-tag agent-tag-curator">Curator</span>
+          <span>昨天</span>
+        </div>
+      </div>
+
+      <div class="session-item">
+        <div class="session-title">LangChain 学习笔记大纲</div>
+        <div class="session-summary">帮我生成 LangChain 项目的学习笔记大纲...</div>
+        <div class="session-meta">
+          <span class="agent-tag agent-tag-scribe">Scribe</span>
+          <span>3 天前</span>
+        </div>
+      </div>
+
+      <div class="session-item">
+        <div class="session-title">Docker 学习计划</div>
+        <div class="session-summary">从零开始学 Docker，多久能上手？...</div>
+        <div class="session-meta">
+          <span class="agent-tag agent-tag-hub">Hub</span>
+          <span>3 天前</span>
+        </div>
+      </div>
+
+      <div class="session-item">
+        <div class="session-title">Vue 3 组合式 API 讲解</div>
+        <div class="session-summary">讲讲 Vue 3 的 Composition API...</div>
+        <div class="session-meta">
+          <span class="agent-tag agent-tag-mentor">Mentor</span>
+          <span>5 天前</span>
+        </div>
+      </div>
+
+      <div class="session-item">
+        <div class="session-title">全栈开发者 3 个月规划</div>
+        <div class="session-summary">想在 3 个月内成为全栈开发者...</div>
+        <div class="session-meta">
+          <span class="agent-tag agent-tag-navigator">Navigator</span>
+          <span>1 周前</span>
+        </div>
+      </div>
+
+      <div class="session-item">
+        <div class="session-title">Django vs Express 对比</div>
+        <div class="session-summary">Django 和 Express 在 API 设计的取舍...</div>
+        <div class="session-meta">
+          <span class="agent-tag agent-tag-mentor">Mentor</span>
+          <span>1 周前</span>
+        </div>
+      </div>
+
+      <div class="session-item">
+        <div class="session-title">TypeScript 进阶路线</div>
+        <div class="session-summary">从基础到泛型、条件类型、模板字面量类型...</div>
+        <div class="session-meta">
+          <span class="agent-tag agent-tag-navigator">Navigator</span>
+          <span>2 周前</span>
+        </div>
+      </div>
+
+      <div class="session-item">
+        <div class="session-title">Vite 项目分析</div>
+        <div class="session-summary">vitejs/vite 的架构和核心模块...</div>
+        <div class="session-meta">
+          <span class="agent-tag agent-tag-scout">Scout</span>
+          <span>2 周前</span>
+        </div>
+      </div>
+
+      <div class="session-item">
+        <div class="session-title">标签系统规范化</div>
+        <div class="session-summary">合并重复标签，统一命名规范...</div>
+        <div class="session-meta">
+          <span class="agent-tag agent-tag-curator">Curator</span>
+          <span>3 周前</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 底部：Agent 配置入口 -->
+    <div class="session-list-header" style="border-top:1px solid var(--bg-300);border-bottom:0;padding:10px 14px">
+      <button class="btn btn-sm btn-ghost" style="justify-content:flex-start;width:100%;gap:8px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1.3l2-1.5-2-3.4-2.4.8a7 7 0 00-2.2-1.3L14 3h-4l-.3 2.3a7 7 0 00-2.2 1.3l-2.4-.8-2 3.4 2 1.5a7 7 0 000 2.6l-2 1.5 2 3.4 2.4-.8a7 7 0 002.2 1.3L10 21h4l.3-2.3a7 7 0 002.2-1.3l2.4.8 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>
+        Agent 配置
+      </button>
+      <div style="font-size:10px;color:var(--text-400);margin-top:6px;padding:0 4px;line-height:1.5">
+        6 个 Agent 协同工作 · 数据仅存储在你的浏览器
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ 对话区 ============ -->
+  <main class="chat-area">
+
+    <!-- 顶部：面包屑 + Agent 切换 + 标题 + 操作 -->
+    <header class="chat-header">
+      <!-- 6 个 Agent 切换（Hub 高亮蓝色 ring） -->
+      <div class="agent-switcher" title="切换 Agent">
+        <div class="agent-avatar agent-hub active" title="Hub · 对话管家"><span>H</span></div>
+        <div class="agent-avatar agent-scout" title="Scout · 快速分析"><span>S</span></div>
+        <div class="agent-avatar agent-mentor" title="Mentor · 深度讲解"><span>M</span></div>
+        <div class="agent-avatar agent-navigator" title="Navigator · 学习规划"><span>N</span></div>
+        <div class="agent-avatar agent-curator" title="Curator · 分类管家"><span>C</span></div>
+        <div class="agent-avatar agent-scribe" title="Scribe · 笔记助手"><span>S</span></div>
+      </div>
+
+      <!-- 会话标题 + 当前用户上下文 -->
+      <div class="chat-title">
+        <h2>
+          Flask vs FastAPI 对比分析
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="color:var(--text-400)"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </h2>
+        <div class="ctx">
+          为 24 个项目 · zhang.jie · gpt-4o
+          <span class="dot"></span>
+          <span style="color:var(--brand-500)">6 个 Agent 在线</span>
+        </div>
+      </div>
+
+      <!-- 顶部面包屑（任务硬性要求） -->
+      <div class="topbar-crumb" style="display:none">
+        Agent / 与 AI 学习助手对话
+      </div>
+
+      <!-- 右侧操作按钮组 -->
+      <div class="chat-actions">
+        <button class="chat-icon-btn" title="导出对话">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5M12 15V3"/></svg>
+        </button>
+        <button class="chat-icon-btn" title="分享">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98"/></svg>
+        </button>
+        <button class="chat-icon-btn" title="归档">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 002 2h12a2 2 0 002-2V8M10 12h4"/></svg>
+        </button>
+        <button class="chat-icon-btn" title="更多">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ============ 消息流 ============ -->
+    <div class="chat-messages">
+
+      <!-- 消息 1：Hub 欢迎（左侧） -->
+      <div class="msg">
+        <div class="msg-avatar agent-hub">H</div>
+        <div class="msg-body">
+          <div class="msg-head">
+            <span class="msg-name">Hub</span>
+            <span class="msg-role">对话管家</span>
+            <span class="msg-time">14:18</span>
+          </div>
+          <div class="msg-content">
+            你好 zhang.jie！我是 RepoPilot 的 <strong>Hub</strong>，你的开源项目学习入口。<br><br>
+            我可以帮你路由到 6 个专业 Agent：
+            <ul style="margin:8px 0 12px;padding-left:20px">
+              <li><strong style="color:#ff9f0a">Scout</strong> · 30s 快速了解一个新项目</li>
+              <li><strong style="color:#9d4edd">Mentor</strong> · 深入拆解你库里的项目</li>
+              <li><strong style="color:#00b8d4">Navigator</strong> · 基于你的项目库规划学习路径</li>
+              <li><strong style="color:#34c759">Curator</strong> · 智能分类与标签</li>
+              <li><strong style="color:#ff375f">Scribe</strong> · 辅助你写学习笔记</li>
+            </ul>
+            试试问我："<em>对比我库里的 Flask 和 FastAPI</em>" 或 "<em>帮我规划全栈学习路径</em>"
+          </div>
+          <!-- 快捷操作按钮组 -->
+          <div class="msg-actions">
+            <span class="quick-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              分析项目
+            </span>
+            <span class="quick-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7M16 21h5v-5M21 21l-7-7M3 3l7 7M8 3H3v5"/></svg>
+              对比项目
+            </span>
+            <span class="quick-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M3 12l4-4M3 12l4 4M3 12h18M21 12l-4-4M21 12l-4 4"/></svg>
+              学习规划
+            </span>
+            <span class="quick-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              写笔记
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 消息 2：用户提问（右对齐） -->
+      <div class="msg msg-user">
+        <div class="msg-avatar">ZJ</div>
+        <div class="msg-body">
+          <div class="msg-head">
+            <span class="msg-name">zhang.jie</span>
+            <span class="msg-time">14:23</span>
+          </div>
+          <div class="msg-content">对比我库里的 Flask 和 FastAPI</div>
+        </div>
+      </div>
+
+      <!-- 消息 3：Hub 路由决策（独立消息） -->
+      <div class="msg">
+        <div class="msg-avatar agent-hub">H</div>
+        <div class="msg-body">
+          <div class="msg-head">
+            <span class="msg-name">Hub</span>
+            <span class="msg-role">对话管家</span>
+            <span class="msg-time">14:23</span>
+          </div>
+          <div class="msg-content">
+            <span class="msg-routing" style="margin-bottom:8px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M3 12h18M14 5l7 7-7 7"/></svg>
+              路由到 Mentor · 意图：项目对比 · 置信度 96%
+            </span>
+            <div style="font-size:12px;color:var(--text-500);line-height:1.6">
+              已识别意图：<strong style="color:var(--text-800)">对比分析</strong> · 调用栈：Mentor → query_user_projects → compare_projects
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 消息 4：Mentor 反问（独立消息，含完整反问面板） -->
+      <div class="msg">
+        <div class="msg-avatar agent-mentor">M</div>
+        <div class="msg-body">
+          <div class="msg-head">
+            <span class="msg-name">Mentor</span>
+            <span class="msg-role">深度讲解</span>
+            <span class="msg-time">14:23</span>
+          </div>
+          <div class="msg-content">
+            好的，我来对比 Flask 和 FastAPI。在开始之前，我需要先了解你的水平，这样才能给你定制讲解深度：
+          </div>
+
+          <!-- ============ 反问面板（核心交互） ============ -->
+          <div class="question-panel">
+            <div class="question-panel-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+              Mentor 的反问 · 基于你的回答定制讲解
+            </div>
+
+            <!-- Q1：radio 类型 -->
+            <div class="question-item">
+              <div class="question-text">
+                <span class="q-tag">Q1</span>
+                你的 Python 掌握程度？
+              </div>
+              <div class="radio-options">
+                <div class="radio-option">
+                  <div class="radio-dot"></div>
+                  <div class="radio-content">
+                    <div class="radio-label">不了解</div>
+                    <div class="radio-desc">仅基础语法（变量、循环、函数）</div>
+                  </div>
+                </div>
+                <div class="radio-option">
+                  <div class="radio-dot"></div>
+                  <div class="radio-content">
+                    <div class="radio-label">了解</div>
+                    <div class="radio-desc">函数、类、模块、常用标准库</div>
+                  </div>
+                </div>
+                <div class="radio-option selected">
+                  <div class="radio-dot"></div>
+                  <div class="radio-content">
+                    <div class="radio-label">掌握</div>
+                    <div class="radio-desc">异步、装饰器、上下文管理器、生成器</div>
+                  </div>
+                </div>
+                <div class="radio-option">
+                  <div class="radio-dot"></div>
+                  <div class="radio-content">
+                    <div class="radio-label">精通</div>
+                    <div class="radio-desc">元类、AST、并发、性能优化</div>
+                  </div>
+                </div>
+                <div class="radio-option">
+                  <div class="radio-dot"></div>
+                  <div class="radio-content">
+                    <div class="radio-label" style="color:var(--brand-500)">其他...</div>
+                    <div class="radio-desc">补充说明你的特殊情况（可展开输入框）</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Q2：slider 类型 -->
+            <div class="question-item">
+              <div class="question-text">
+                <span class="q-tag">Q2</span>
+                你对 Web 框架的经验？
+              </div>
+              <div class="slider-row">
+                <div class="slider-head">
+                  <span>0 = 完全新手</span>
+                  <span class="slider-value">35</span>
+                  <span>100 = 能造轮子</span>
+                </div>
+                <div class="slider-track">
+                  <div class="slider-fill"></div>
+                  <div class="slider-thumb"></div>
+                </div>
+                <div class="slider-labels">
+                  <span>新手</span>
+                  <span>用过 1-2 个</span>
+                  <span>资深用户</span>
+                  <span>框架作者</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Q3：knowledge_map 类型 -->
+            <div class="question-item">
+              <div class="question-text">
+                <span class="q-tag">Q3</span>
+                勾选你熟悉的 Web 后端概念
+              </div>
+              <div class="km-tree">
+                <div class="km-node">
+                  <svg class="km-chevron open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                  <div class="km-check checked">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="11" height="11"><path d="M5 12l5 5L20 7"/></svg>
+                  </div>
+                  <span class="km-label">HTTP 协议基础</span>
+                </div>
+                <div class="km-node">
+                  <svg class="km-chevron open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                  <div class="km-check checked">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="11" height="11"><path d="M5 12l5 5L20 7"/></svg>
+                  </div>
+                  <span class="km-label">REST API 设计</span>
+                </div>
+                <div class="km-node">
+                  <svg class="km-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                  <div class="km-check"></div>
+                  <span class="km-label">中间件机制</span>
+                </div>
+                <div class="km-node">
+                  <svg class="km-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                  <div class="km-check"></div>
+                  <span class="km-label">ORM（SQLAlchemy 等）</span>
+                </div>
+                <div class="km-node">
+                  <svg class="km-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                  <div class="km-check"></div>
+                  <span class="km-label">异步 I/O（asyncio）</span>
+                </div>
+                <div class="km-node">
+                  <svg class="km-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                  <div class="km-check"></div>
+                  <span class="km-label">部署（Nginx / Gunicorn）</span>
+                </div>
+                <div class="km-node">
+                  <svg class="km-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+                  <div class="km-check"></div>
+                  <span class="km-label">容器化（Docker）</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Q4（drag_sort 类型，补充展示） -->
+            <div class="question-item">
+              <div class="question-text">
+                <span class="q-tag">Q4</span>
+                按学习优先级排序（拖动调整）
+              </div>
+              <div class="ds-list">
+                <div class="ds-item">
+                  <svg class="ds-handle" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+                  <span class="ds-num">1</span>
+                  <span>中间件机制</span>
+                </div>
+                <div class="ds-item">
+                  <svg class="ds-handle" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+                  <span class="ds-num">2</span>
+                  <span>异步 I/O（asyncio）</span>
+                </div>
+                <div class="ds-item">
+                  <svg class="ds-handle" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+                  <span class="ds-num">3</span>
+                  <span>ORM（SQLAlchemy 等）</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="question-actions">
+              <button class="btn btn-ghost btn-sm">跳过（用默认深度）</button>
+              <div class="right">
+                <span style="font-size:11px;color:var(--text-400);align-self:center">4 题 / 已答 4 题</span>
+                <button class="btn btn-primary btn-sm">
+                  提交答案
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M5 12l14 0M13 5l7 7-7 7"/></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 消息 5：Mentor 流式输出（已开始回答） -->
+      <div class="msg">
+        <div class="msg-avatar agent-mentor">M</div>
+        <div class="msg-body">
+          <div class="msg-head">
+            <span class="msg-name">Mentor</span>
+            <span class="msg-role">深度讲解</span>
+            <span class="msg-time">14:24</span>
+            <span class="streaming-indicator">
+              <span class="streaming-dot"></span>
+              SSE 流式生成中
+            </span>
+          </div>
+          <div class="msg-content markdown">
+            <p>基于你的情况（<strong>Python 掌握 · Web 框架 35/100 · REST 熟悉 · 异步不熟</strong>），我为你定制讲解：</p>
+
+            <h2>Flask vs FastAPI：你的学习路径建议</h2>
+
+            <h3>共同点</h3>
+            <ul>
+              <li>都是 Python Web 框架</li>
+              <li>都基于 WSGI/ASGI 规范</li>
+              <li>都有活跃的社区和生态</li>
+            </ul>
+
+            <h3>核心差异</h3>
+            <table>
+              <thead>
+                <tr><th>维度</th><th>Flask</th><th>FastAPI</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>性能</td><td>同步为主</td><td>异步原生</td></tr>
+                <tr><td>数据校验</td><td>手动</td><td>Pydantic 自动</td></tr>
+                <tr><td>API 文档</td><td>需手写</td><td>Swagger 自动生成</td></tr>
+                <tr><td>学习曲线</td><td>平缓</td><td>较陡（需懂类型）</td></tr>
+                <tr><td>类型提示</td><td>可选</td><td>必须</td></tr>
+              </tbody>
+            </table>
+
+            <h3>给你的建议</h3>
+            <blockquote>
+              既然你 Python 已掌握 + REST 熟悉，<strong>建议先学 Flask 打基础（1-2 周）</strong>，
+              理解路由、中间件、请求上下文等概念。然后切到 FastAPI，会发现很多概念是相通的，
+              而且 FastAPI 的类型系统会让你写代码更安全。
+            </blockquote>
+
+            <h3>代码对比</h3>
+            <pre><code><span class="c-cmt"># Flask</span>
+<span class="c-kw">from</span> flask <span class="c-kw">import</span> Flask, request
+app = Flask(__name__)
+
+<span class="c-kw">@app.route</span>(<span class="c-str">'/users/&lt;id&gt;'</span>)
+<span class="c-kw">def</span> get_user(id):
+    <span class="c-kw">return</span> {<span class="c-str">'id'</span>: id, <span class="c-str">'name'</span>: <span class="c-str">'zhang.jie'</span>}</code></pre>
+
+            <p>需要我深入哪个部分？<span class="streaming-cursor"></span></p>
+          </div>
+          <div class="msg-actions">
+            <span class="quick-btn primary">深入 Flask 路由机制</span>
+            <span class="quick-btn">深入 FastAPI 异步</span>
+            <span class="quick-btn">对比中间件</span>
+            <span class="quick-btn">做一个练习</span>
+          </div>
+          <div class="msg-actions mt-sm">
+            <button class="btn btn-sm" style="color:var(--error);background:var(--error-surface)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
+              停止生成
+            </button>
+            <span style="font-size:11px;color:var(--text-400);align-self:center">已生成 247 / 约 480 tokens · 487ms / token</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 输入区（底部 fixed） ============ -->
+    <div class="chat-input-wrap">
+      <div class="chat-input">
+        <textarea class="chat-textarea" placeholder="问 RepoPilot 任何关于开源项目的问题..." rows="2">对比 Flask 和 FastAPI 的中间件机制差异</textarea>
+        <div class="chat-toolbar">
+          <!-- 附件 -->
+          <button class="icon-btn" title="附件">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <!-- 模型选择 -->
+          <button class="icon-btn" title="选择模型">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1.3l2-1.5-2-3.4-2.4.8a7 7 0 00-2.2-1.3L14 3h-4l-.3 2.3a7 7 0 00-2.2 1.3l-2.4-.8-2 3.4 2 1.5a7 7 0 000 2.6l-2 1.5 2 3.4 2.4-.8a7 7 0 002.2 1.3L10 21h4l.3-2.3a7 7 0 002.2-1.3l2.4.8 2-3.4-2-1.5c.1-.4.1-.9.1-1.3z"/></svg>
+          </button>
+          <!-- 上下文数量 -->
+          <span class="ctx-chip active">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="11" height="11"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>
+            3 个项目上下文
+          </span>
+          <div class="spacer"></div>
+          <span style="font-size:11px;color:var(--text-400);font-family:var(--font-mono)">23 字符</span>
+          <!-- 发送按钮 -->
+          <button class="send-btn" title="发送 (Enter)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M5 12l14 0M13 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="chat-hint">
+        <span>
+          <kbd>Enter</kbd> 发送 · <kbd>Shift</kbd>+<kbd>Enter</kbd> 换行 · <kbd>⌘</kbd>+<kbd>K</kbd> 快捷命令
+        </span>
+        <span>SSE 流式输出已启用 · 平均延迟 487ms</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ 右侧上下文面板（280px） ============ -->
+  <aside class="context-panel">
+    <!-- 当前项目上下文 -->
+    <div class="context-section">
+      <div class="context-title">
+        <span>当前上下文 · 3 个项目</span>
+        <button class="chat-icon-btn" style="width:20px;height:20px" title="编辑上下文">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </button>
+      </div>
+      <div class="ctx-proj">
+        <div class="ctx-proj-icon" style="background:#30d158">F</div>
+        <div style="flex:1;min-width:0">
+          <div class="ctx-proj-name">pallets/flask</div>
+          <div class="ctx-proj-meta">Web 后端 · Python · ★66k</div>
+        </div>
+        <span class="remove" title="移除">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </span>
+      </div>
+      <div class="ctx-proj">
+        <div class="ctx-proj-icon" style="background:#00b8d4">FA</div>
+        <div style="flex:1;min-width:0">
+          <div class="ctx-proj-name">tiangolo/fastapi</div>
+          <div class="ctx-proj-meta">Web 后端 · Python · ★75k</div>
+        </div>
+        <span class="remove" title="移除">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </span>
+      </div>
+      <div class="ctx-proj">
+        <div class="ctx-proj-icon" style="background:#5e5ce6">EX</div>
+        <div style="flex:1;min-width:0">
+          <div class="ctx-proj-name">expressjs/express</div>
+          <div class="ctx-proj-meta">Web 后端 · Node.js · ★65k</div>
+        </div>
+        <span class="remove" title="移除">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </span>
+      </div>
+    </div>
+
+    <!-- 用户画像摘要（记忆摘要） -->
+    <div class="context-section">
+      <div class="context-title">
+        <span>记忆摘要</span>
+        <button class="chat-icon-btn" style="width:20px;height:20px" title="查看完整画像">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+      <div class="profile-summary">
+        <div class="profile-row">
+          <span class="profile-key">技术栈</span>
+          <span class="profile-val">JS 精通 · Python 入门</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-key">React</span>
+          <span class="profile-val">学习中</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-key">学习目标</span>
+          <span class="profile-val">3 个月内成为全栈开发者（2026-10）</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-key">偏好</span>
+          <span class="profile-val">对比式学习 · 代码示例 · 中文讲解</span>
+        </div>
+        <div class="profile-row">
+          <span class="profile-key">最近活跃</span>
+          <span class="profile-val">2 分钟前</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 工具调用日志（折叠状态：展开） -->
+    <div class="context-section">
+      <div class="context-title collapsible-head">
+        <span>工具调用日志</span>
+        <svg class="chev-down open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="tool-log">
+        <div class="tool-log-row success">
+          <span class="check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10"><path d="M5 12l5 5L20 7"/></svg>
+          </span>
+          <span>query_user_projects</span>
+          <span style="margin-left:auto;color:var(--text-500)">412ms</span>
+        </div>
+        <div class="tool-log-row success">
+          <span class="check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10"><path d="M5 12l5 5L20 7"/></svg>
+          </span>
+          <span>get_user_profile</span>
+          <span style="margin-left:auto;color:var(--text-500)">87ms</span>
+        </div>
+        <div class="tool-log-row success">
+          <span class="check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10"><path d="M5 12l5 5L20 7"/></svg>
+          </span>
+          <span>read_readme</span>
+          <span style="margin-left:auto;color:var(--text-500)">203ms</span>
+        </div>
+        <div class="tool-log-row running">
+          <span class="dot"></span>
+          <span>compare_projects</span>
+          <span style="margin-left:auto;color:var(--text-500)">进行中</span>
+        </div>
+        <div class="tool-log-row" style="color:var(--text-400);background:transparent;padding-left:24px">
+          <span>rag_search</span>
+          <span style="margin-left:auto">排队中</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 降级提示（无 LLM Key 时） -->
+    <div class="context-section" style="margin-top:auto">
+      <div class="context-title">降级提示</div>
+      <div class="degrade-tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+        <div>
+          未配置 API Key 时，Agent 仅使用代码规则（关键词分类等），无法进行深度对话。
+          <a href="settings.html">配置 LLM →</a>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script src="./assets/api-mock.js"></script>
+<script src="./assets/sidebar.js"></script>
+<script src="./assets/topbar.js"></script>
+<script src="./assets/app-shell.js"></script>
+<script>
+  // Agent page 接收 URL 参数 ?agent=xxx & ?analyze=yyy
+  (async function () {
+    const api = await RP.ensureApiClient();
+    const initAgent = RP.getQueryParam('agent');
+    const analyzeId = RP.getQueryParam('analyze');
+
+    // 切换到指定 Agent
+    if (initAgent) {
+      const map = { hub: 0, scout: 1, mentor: 2, navigator: 3, curator: 4, scribe: 5 };
+      const idx = map[initAgent];
+      if (typeof idx === 'number') {
+        const items = document.querySelectorAll('.agent-avatar');
+        items.forEach((it, i) => it.classList.toggle('active', i === idx));
+      }
+    }
+
+    // 自动发起分析（从 project-detail 跳过来时）
+    if (analyzeId) {
+      try {
+        const p = await api.getProject(analyzeId);
+        const name = p.data.name;
+        const ta = document.querySelector('.chat-textarea, textarea');
+        if (ta) {
+          ta.value = `请帮我分析项目 ${name}`;
+          ta.focus();
+        }
+        RP.toast(`已加载项目 ${name}，按 Enter 发起分析`, 'info');
+      } catch (e) {
+        RP.toast('项目加载失败', 'error');
+      }
+    }
+  })();
+</script>
+
+</body>
+</html>
