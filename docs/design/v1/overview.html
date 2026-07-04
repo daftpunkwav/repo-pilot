@@ -67,6 +67,194 @@
 
     /* 学习进度分布 */
     .progress-bars { display: flex; flex-direction: column; gap: 10px; }
+
+    /* ===== Agent 学习周报卡（iOS Liquid Glass · 无色） ===== */
+    .agent-summary {
+      position: relative;
+      margin: 2px 0 14px;
+      padding: 14px 16px;
+      border-radius: var(--radius);
+      /* 三层堆叠：玻璃色片 + 高光 + 噪点 */
+      background-color: var(--glass-tint);
+      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        0 1px 2px rgba(15, 23, 42, 0.04),
+        0 8px 24px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .agent-summary::before {
+      /* 顶部高光反射（玻璃材质标志） */
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--glass-highlight);
+      pointer-events: none;
+      border-radius: inherit;
+      z-index: 0;
+    }
+    .agent-summary::after {
+      /* 微噪点纹理：让玻璃看起来"有质感"而非纯塑料 */
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: var(--glass-noise);
+      background-size: 200px 200px;
+      opacity: 0.4;
+      pointer-events: none;
+      mix-blend-mode: overlay;
+      border-radius: inherit;
+      z-index: 0;
+    }
+    /* 让卡片内所有子元素浮在玻璃层之上 */
+    .agent-summary > * { position: relative; z-index: 1; }
+
+    .summary-head {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 10px;
+    }
+    .summary-avatar {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      display: grid; place-items: center;
+      color: var(--text-700);
+      font: 700 13px/1 var(--font-sans);
+      background: rgba(255, 255, 255, 0.55);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        0 1px 3px rgba(15, 23, 42, 0.08);
+      flex-shrink: 0;
+    }
+    .summary-meta { flex: 1; min-width: 0; }
+    .summary-agent {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-800);
+      letter-spacing: -0.01em;
+    }
+    .summary-time {
+      font-size: 10px;
+      color: var(--text-400);
+      font-family: var(--font-mono);
+      margin-top: 2px;
+    }
+    .summary-badge {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 7px 3px 5px;
+      font: 700 9px/1 var(--font-mono);
+      letter-spacing: 0.08em;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.5);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      color: var(--text-700);
+      text-transform: uppercase;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+    .summary-badge::before {
+      content: '✦';
+      font-size: 9px;
+    }
+    .summary-body {
+      display: flex; flex-direction: column; gap: 6px;
+      margin-bottom: 12px;
+    }
+    .summary-body p {
+      margin: 0;
+      font-size: 12.5px;
+      line-height: 1.55;
+      color: var(--text-700);
+    }
+    /* iOS 强调靠 weight 不靠 color：避免引入第二种色相 */
+    .summary-body strong {
+      font-weight: 700;
+      color: var(--text-900);
+    }
+    .summary-tips {
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .summary-tip {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 8px 10px;
+      background: rgba(255, 255, 255, 0.45);
+      -webkit-backdrop-filter: blur(var(--glass-blur-soft));
+      backdrop-filter: blur(var(--glass-blur-soft));
+      border: 1px solid rgba(255, 255, 255, 0.55);
+      border-radius: var(--radius-sm);
+      text-decoration: none; color: inherit;
+      transition: all 0.15s var(--ease);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    }
+    .summary-tip:hover {
+      background: rgba(255, 255, 255, 0.7);
+      border-color: rgba(255, 255, 255, 0.85);
+      transform: translateX(2px);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.85),
+        0 2px 8px rgba(15, 23, 42, 0.06);
+    }
+    .summary-tip-icon {
+      flex-shrink: 0;
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      display: grid; place-items: center;
+      font-size: 12px;
+      margin-top: 1px;
+      background: rgba(255, 255, 255, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    }
+    .summary-tip-body { flex: 1; min-width: 0; }
+    .summary-tip-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-800);
+      margin-bottom: 1px;
+    }
+    .summary-tip-content {
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: var(--text-500);
+    }
+    .summary-tip-arrow {
+      flex-shrink: 0;
+      color: var(--text-400);
+      font-size: 14px;
+      align-self: center;
+      transition: transform 0.15s var(--ease), color 0.15s var(--ease);
+    }
+    .summary-tip:hover .summary-tip-arrow {
+      color: var(--text-700);
+      transform: translateX(2px);
+    }
+
+    /* 进度条小节分隔：让 agent 总结和原进度条有清晰的视觉分层 */
+    .progress-divider {
+      height: 1px;
+      background: var(--bg-200);
+      margin: 4px 0 12px;
+    }
+    .progress-section-title {
+      font: 700 10px/1 var(--font-sans);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-400);
+      margin: 0 0 10px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .progress-section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--bg-200);
+    }
     .progress-row {
       display: grid; grid-template-columns: 80px 1fr 36px;
       align-items: center; gap: 12px; font-size: 12px;
@@ -162,7 +350,7 @@
       .row-2col { grid-template-columns: 1fr; }
     }
 
-    /* ===== GitHub 近期热门 ===== */
+    /* ===== GitHub 近期热门（倒阶梯单列布局） ===== */
     .trending-section { margin-bottom: 20px; }
     .trending-head {
       display: flex; align-items: center; justify-content: space-between;
@@ -190,8 +378,13 @@
       background: var(--bg-50); color: var(--brand-700);
       box-shadow: var(--shadow-xs); font-weight: 700;
     }
+
+    /* 倒阶梯容器：单列 flex，左对齐 */
     .trending-grid {
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;     /* 全部卡片左对齐 */
+      gap: 8px;
     }
     .trending-card {
       display: flex; gap: 12px; align-items: flex-start;
@@ -199,12 +392,31 @@
       background: var(--bg-50); border: 1px solid var(--bg-300);
       border-radius: var(--radius); box-shadow: var(--shadow-xs);
       text-decoration: none; color: inherit;
-      transition: all 0.18s var(--ease);
+      /* 阶梯宽度由 --card-w 控制；初始隐藏等待入场动画 */
+      max-width: 0;
+      width: var(--card-w, 100%);
+      opacity: 0;
+      transform: translateX(-14px);
+      overflow: hidden;
+      transition:
+        max-width 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.5s var(--ease),
+        transform 0.5s var(--ease),
+        box-shadow 0.18s var(--ease),
+        border-color 0.18s var(--ease);
+      will-change: max-width, opacity, transform;
+    }
+    .trending-card.is-visible {
+      max-width: 100%;
+      opacity: 1;
+      transform: translateX(0);
     }
     .trending-card:hover {
-      transform: translateY(-2px); box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
       border-color: var(--brand-300);
     }
+    .trending-card.is-visible:hover { transform: translateY(-2px); }
     .trending-rank {
       flex-shrink: 0;
       width: 32px; height: 32px;
@@ -255,10 +467,7 @@
       padding: 40px 20px; text-align: center;
       background: var(--bg-50); border: 1px dashed var(--bg-300); border-radius: var(--radius);
       color: var(--text-400); font-size: 13px;
-    }
-
-    @media (max-width: 1200px) {
-      .trending-grid { grid-template-columns: 1fr; }
+      max-width: 100%;
     }
   </style>
 </head>
@@ -315,6 +524,14 @@
           <!-- 左：学习进度分布 -->
           <div class="panel">
             <h3>学习进度分布</h3>
+
+            <!-- Agent 学习周报（mock：未来接入真实 agent 总结 API） -->
+            <section class="agent-summary" id="agent-summary" aria-label="Mentor 学习周报">
+              <!-- JS 动态填充 -->
+            </section>
+
+            <div class="progress-divider" role="presentation"></div>
+            <p class="progress-section-title">分类总览</p>
             <div class="progress-bars" id="progress-bars">
               <!-- JS 动态填充 -->
             </div>
@@ -442,7 +659,75 @@
         </article>
       `;
 
-      // 3. 学习进度分布（条形图）
+      // 3. Agent 学习周报（mock：未来由 Mentor agent 真实生成总结与提示）
+      //   - 上半部叙事：本周学习节奏、掌握的概念、笔记产出
+      //   - 下半部行动：建议下一步 / 需要复习 / 本周目标
+      //   - 数据接入后可替换为 `await api.getAgentSummary({ agent: 'mentor', period: 'weekly' })`
+      const username = document.getElementById('hero-username').textContent.trim() || '同学';
+      const now = new Date();
+      const fmtTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const agentSummary = {
+        avatar: 'M',
+        gradient: 'linear-gradient(135deg,#9d4edd,#c879ff)',
+        name: 'Mentor',
+        role: '深度讲解',
+        generatedAt: `今天 ${fmtTime} · 由 AI 自动生成`,
+        // 叙事内容：当 mock 数据接入真实指标后，把数字换成 ${byProgress.mastered} 等动态值
+        paragraphs: [
+          `${username}，<strong>本周你深入了 3 个 TypeScript 项目</strong>，累计学习 4 小时 17 分。重点攻克了类型体操与泛型模式，已掌握 <strong>条件类型</strong> 与 <strong>映射类型</strong> 两个核心概念。`,
+          `新增 <strong>5 条结构化笔记</strong>，并对 2 个项目的 README 贡献了中文翻译。你的笔记密度比上周提升了 38%。`
+        ],
+        tips: [
+          {
+            type: 'tip-suggestion',
+            icon: '💡',
+            title: '建议下一步',
+            content: 'vueuse 的 useStorage 用到了高级泛型 + 类型守卫，推荐用 Scout 拆解源码',
+            href: 'project-detail.html?id=vueuse'
+          },
+          {
+            type: 'tip-warning',
+            icon: '⚠️',
+            title: '需要复习',
+            content: '14 天前学过的「Promise 异步链」笔记已临近遗忘峰值，本周回顾能巩固理解',
+            href: 'notes.html#review-promise'
+          },
+          {
+            type: 'tip-goal',
+            icon: '🎯',
+            title: '本周目标',
+            content: '距完成「TypeScript 进阶」学习路径还差 3 个核心概念，继续保持当前节奏',
+            href: 'graph.html'
+          }
+        ]
+      };
+      document.getElementById('agent-summary').innerHTML = `
+        <div class="summary-head">
+          <div class="summary-avatar" aria-hidden="true">${agentSummary.avatar}</div>
+          <div class="summary-meta">
+            <div class="summary-agent">${agentSummary.name} · 本周学习总结</div>
+            <div class="summary-time">${agentSummary.generatedAt}</div>
+          </div>
+          <span class="summary-badge" aria-label="AI 生成">AI</span>
+        </div>
+        <div class="summary-body">
+          ${agentSummary.paragraphs.map(t => `<p>${t}</p>`).join('')}
+        </div>
+        <div class="summary-tips">
+          ${agentSummary.tips.map(t => `
+            <a class="summary-tip ${t.type}" href="${t.href}">
+              <div class="summary-tip-icon" aria-hidden="true">${t.icon}</div>
+              <div class="summary-tip-body">
+                <div class="summary-tip-title">${t.title}</div>
+                <div class="summary-tip-content">${t.content}</div>
+              </div>
+              <span class="summary-tip-arrow" aria-hidden="true">→</span>
+            </a>
+          `).join('')}
+        </div>
+      `;
+
+      // 4. 学习进度分布（条形图）
       const progressData = [
         { key: 'none', label: '待开始', color: 'fill-none' },
         { key: 'learning', label: '学习中', color: 'fill-learning' },
@@ -579,33 +864,71 @@
 
       async function renderGhTrending(period) {
         const resp = await api.listTrending({ period });
-        const items = resp.data.items || [];
+        const rawItems = resp.data.items || [];
+        // 最多展示 50 个项目
+        const MAX_TRENDING = 50;
+        const items = rawItems.slice(0, MAX_TRENDING);
         if (items.length === 0) {
           trendingGrid.innerHTML = '<div class="trending-empty">该周期暂无数据</div>';
           return;
         }
-        trendingGrid.innerHTML = items.map(r => `
-          <a class="trending-card" href="https://github.com/${r.owner}/${r.repo}" target="_blank" rel="noopener">
-            <div class="trending-rank">${r.rank}</div>
-            <div class="trending-body">
-              <div class="trending-name">
-                <span class="owner">${r.owner}</span><span class="slash">/</span><span>${r.repo}</span>
+
+        // 倒阶梯宽度计算：
+        //  - 第 1 个：100%（与上方 .row-2col 总宽一致）
+        //  - 第 N 个：从 100% 线性递减至最小宽度 MIN_W
+        const MIN_W = 38;          // 最小宽度（%）防止卡片过窄
+        const lastIndex = Math.max(items.length - 1, 1);
+        const step = (100 - MIN_W) / lastIndex;
+
+        trendingGrid.innerHTML = items.map((r, index) => {
+          const widthPct = Math.max(100 - index * step, MIN_W);
+          return `
+            <a class="trending-card"
+               data-index="${index}"
+               style="--card-w: ${widthPct.toFixed(2)}%"
+               href="https://github.com/${r.owner}/${r.repo}" target="_blank" rel="noopener">
+              <div class="trending-rank">${r.rank}</div>
+              <div class="trending-body">
+                <div class="trending-name">
+                  <span class="owner">${r.owner}</span><span class="slash">/</span><span>${r.repo}</span>
+                </div>
+                <div class="trending-desc" title="${(r.description || '').replace(/"/g,'&quot;')}">${r.description || ''}</div>
+                <div class="trending-meta">
+                  <span class="lang-dot ${langToClass(r.language)}">${r.language || '-'}</span>
+                  <span class="stars">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8L2 9.3l6.9-1L12 2z"/></svg>
+                    ${RP.formatNumber(r.total_stars || r.stars)}
+                  </span>
+                  <span class="added-stars">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><path d="M12 5v14M5 12h14"/></svg>
+                    ${periodLabel[period]} +${RP.formatNumber(r.added_stars)}
+                  </span>
+                </div>
               </div>
-              <div class="trending-desc" title="${(r.description || '').replace(/"/g,'&quot;')}">${r.description || ''}</div>
-              <div class="trending-meta">
-                <span class="lang-dot ${langToClass(r.language)}">${r.language || '-'}</span>
-                <span class="stars">
-                  <svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8L2 9.3l6.9-1L12 2z"/></svg>
-                  ${RP.formatNumber(r.total_stars || r.stars)}
-                </span>
-                <span class="added-stars">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="10" height="10"><path d="M12 5v14M5 12h14"/></svg>
-                  ${periodLabel[period]} +${RP.formatNumber(r.added_stars)}
-                </span>
-              </div>
-            </div>
-          </a>
-        `).join('');
+            </a>
+          `;
+        }).join('');
+
+        // 倒阶梯入场动画：IntersectionObserver 触发
+        //  - 每个卡片进入视口时，宽度从 0 → --card-w，形成"阶梯展开"动效
+        //  - 每个卡片交错 60ms 启动，避免一次性齐刷刷出现
+        if ('IntersectionObserver' in window) {
+          const cards = trendingGrid.querySelectorAll('.trending-card');
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+              if (!entry.isIntersecting) return;
+              const el = entry.target;
+              const idx = Number(el.dataset.index) || 0;
+              // 视口内才解锁；按索引轻微错峰
+              setTimeout(() => el.classList.add('is-visible'), Math.min(idx * 60, 800));
+              observer.unobserve(el);
+            });
+          }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+          cards.forEach(card => observer.observe(card));
+        } else {
+          // Fallback：直接全部可见
+          trendingGrid.querySelectorAll('.trending-card').forEach(c => c.classList.add('is-visible'));
+        }
       }
 
       await renderGhTrending('weekly');
