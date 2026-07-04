@@ -722,7 +722,7 @@
     /* 底层 · Agent 名彩色艺术字（对齐 Hero art 层） */
     .agent-card-art {
       position: absolute;
-      inset: 10px 14px;
+      inset: 10px 14px 10px 18px;
       z-index: 0;
       display: flex;
       align-items: center;
@@ -765,9 +765,10 @@
       display: grid;
       grid-template-columns: var(--agent-meta-width) minmax(0, 1fr);
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       height: 100%;
-      padding: var(--agent-card-pad) 12px var(--agent-card-pad) 10px;
+      padding: var(--agent-card-pad) var(--agent-card-pad-right) var(--agent-card-pad)
+        var(--agent-card-pad-left);
     }
     /* 左侧 meta · 固定宽高 */
     .agent-card-meta {
