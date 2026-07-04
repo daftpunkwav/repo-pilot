@@ -618,10 +618,12 @@
       --agent-tagline-size: calc(var(--agent-tagline-base) * 1.3 * 1.2);
       --agent-intro-size: calc(var(--agent-tagline-size) * 0.861);
       --agent-body-tagline-size: calc(var(--agent-tagline-size) * 0.9);
-      --agent-body-intro-size: var(--agent-intro-size);
+      --agent-body-intro-size: calc(var(--agent-intro-size) * 0.9);
       --agent-avatar-size: calc(54px * 1.2);
       --agent-card-height: calc(112px * 1.2);
       --agent-card-pad: 10px;
+      --agent-card-pad-left: 18px;
+      --agent-card-pad-right: 14px;
       --agent-card-inner-height: calc(var(--agent-card-height) - 2 * var(--agent-card-pad));
       --agent-meta-width: 38%;
       --agent-tagline-row-height: calc(var(--agent-body-tagline-size) * 1.25);
@@ -783,13 +785,13 @@
     }
     .agent-card-meta > * { position: relative; z-index: 1; }
     .agent-card-titles { min-width: 0; width: 100%; text-align: center; }
-    /* 右侧 · 标题行 + 简介块固定高度 */
+    /* 右侧 · 标题行 + 简介块，整体垂直居中 */
     .agent-card-body {
       height: var(--agent-card-inner-height);
       box-sizing: border-box;
       display: grid;
       grid-template-rows: var(--agent-tagline-row-height) var(--agent-intro-block-height);
-      align-content: start;
+      align-content: center;
       gap: 6px;
       min-width: 0;
       padding: 0 4px 0 0;
@@ -816,7 +818,7 @@
       font-size: var(--agent-body-intro-size);
       font-weight: 500;
       line-height: var(--agent-intro-row-height);
-      color: var(--text-500);
+      color: #000;
       text-align: left;
       display: -webkit-box;
       -webkit-box-orient: vertical;
