@@ -136,7 +136,7 @@
   --lg-blur: var(--lg-blur-strong);
 }
 
-/* 中层 · 大面板（0.4 tint · blur 5px · 内发光） */
+/* 中层 · 大面板（与参考 .glass-card 实例 1:1，不含固定 width/height） */
 .glass-card--panel,
 .liquid-glass--panel {
   --lg-tint: var(--lg-panel-tint);
@@ -149,6 +149,48 @@
   --lg-edge-top: var(--lg-panel-edge-top);
   --lg-edge-left-top: var(--lg-panel-edge-left-top);
   --lg-edge-left-mid: var(--lg-panel-edge-left-mid);
+
+  position: relative;
+  overflow: hidden;
+  background: var(--lg-panel-tint);
+  backdrop-filter: blur(var(--lg-panel-blur));
+  -webkit-backdrop-filter: blur(var(--lg-panel-blur));
+  border-radius: var(--lg-radius-card);
+  border: 1px solid var(--lg-panel-border);
+  box-shadow:
+    var(--lg-panel-shadow-outer),
+    var(--lg-panel-shadow-inset-top),
+    var(--lg-panel-shadow-inset-bottom),
+    var(--lg-panel-inset-glow);
+}
+
+.glass-card--panel::before,
+.liquid-glass--panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--lg-panel-edge-top), transparent);
+  pointer-events: none;
+}
+
+.glass-card--panel::after,
+.liquid-glass--panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    var(--lg-panel-edge-left-top),
+    transparent,
+    var(--lg-panel-edge-left-mid)
+  );
+  pointer-events: none;
 }
 
 /* 透明中层 · 不渲染底板，仅保留内层 control 玻璃 */

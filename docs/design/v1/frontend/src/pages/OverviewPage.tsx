@@ -169,21 +169,21 @@ export function OverviewPage() {
 
       <AgentCarousel externalLookTarget={chatBtnLookTarget} />
 
-      <section className="row-2col">
-        <div className="panel panel-progress glass-card glass-card--panel-clear">
+      <section className="row-2col row-2col--phi">
+        <div className="panel panel-progress glass-card glass-card--panel">
           <h3>学习进度分布</h3>
           <div className="progress-panel-body">
             <section
-              className="agent-summary progress-panel-summary glass-card glass-card--control"
+              className="agent-summary progress-panel-summary overview-control-surface glass-card glass-card--control"
               aria-label="Mentor 学习周报"
             >
               <div className="summary-head">
-                <div className="summary-avatar">M</div>
+                <div className="summary-avatar glass-card glass-card--control">M</div>
                 <div className="summary-meta">
                   <div className="summary-agent">Mentor · 本周学习总结</div>
                   <div className="summary-time">由 AI 自动生成</div>
                 </div>
-                <span className="summary-badge">AI</span>
+                <span className="summary-badge glass-card glass-card--control">AI</span>
               </div>
               <div className="summary-body">
                 <p
@@ -216,7 +216,7 @@ export function OverviewPage() {
           </div>
         </div>
 
-        <div className="panel glass-card glass-card--panel-clear">
+        <div className="panel glass-card glass-card--panel">
           <div className="section-head" style={{ marginTop: 0 }}>
             <h3>最近活动</h3>
             <Link
@@ -235,10 +235,10 @@ export function OverviewPage() {
               (activities ?? []).slice(0, 5).map((a) => (
                 <Link
                   key={a.id}
-                  className="activity-item glass-card glass-card--control liquid-glass--interactive"
+                  className="activity-item overview-control-surface glass-card glass-card--control liquid-glass--interactive"
                   to="/agent"
                 >
-                  <div className="activity-icon glass-card glass-card--control">
+                  <div className="activity-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14}>
                       <path d="M21 15a3 3 0 0 1-3 3H8l-5 4V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v9z" />
                     </svg>

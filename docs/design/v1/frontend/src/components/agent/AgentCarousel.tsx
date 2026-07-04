@@ -249,7 +249,7 @@ export function AgentCarousel({
                 >
                   <div className="agent-card-glass glass-card glass-card--panel" aria-hidden />
                   <div className="agent-card-content">
-                    <div className="agent-card-meta glass-card glass-card--control">
+                    <div className="agent-card-meta overview-control-surface glass-card glass-card--control">
                       <AgentAvatar
                         agentId={agent.id}
                         lookTarget={effectiveLookTarget}

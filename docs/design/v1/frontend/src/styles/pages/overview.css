@@ -309,20 +309,34 @@
       font-weight: 600;
     }
 
-    /* 总览卡片 · control 子元素使用较小圆角 */
+    /* 总览内层 control · 与 Hero「和 Agent 对话」按钮同参数（glass-card--control） */
+    .overview-control-surface.glass-card--control,
+    .agent-summary.glass-card--control,
     .activity-item.glass-card--control,
+    .agent-card-meta.glass-card--control {
+      border-radius: var(--radius-btn);
+    }
+    .summary-avatar.glass-card--control,
+    .summary-badge.glass-card--control {
+      border-radius: var(--radius-tile);
+    }
+    .summary-badge.glass-card--control {
+      border-radius: var(--radius-pill);
+    }
+    /* 其余 control 子元素保留较小圆角 */
     .activity-icon.glass-card--control,
     .project-item.glass-card--control,
     .note-item.glass-card--control,
-    .agent-summary.glass-card--control,
     .trending-rank.glass-card--control {
       border-radius: var(--radius-sm);
     }
-    .agent-card-meta.glass-card--control {
-      border-radius: var(--agent-card-radius);
-    }
+
+    /* 总览外层 panel · Hero / Agent 卡 / 进度 / 活动 / 导航 */
+    .overview-hero-glass.glass-card--panel,
+    .agent-card-glass.glass-card--panel,
+    .panel.glass-card--panel,
     .agent-carousel-nav.glass-card--panel {
-      border-radius: var(--agent-card-radius);
+      border-radius: var(--lg-radius-card, 20px);
     }
 
     /* 区块标题 */
@@ -341,10 +355,26 @@
     }
     .section-head .more:hover { color: var(--brand-600); text-decoration: none; }
 
-    /* 2 列布局：左 7 / 右 5 · 中层 panel */
-    .row-2col { display: grid; grid-template-columns: 7fr 5fr; gap: 16px; margin-bottom: 20px; align-items: stretch; }
+    /* 2 列布局 · 默认 7:5；--phi 变体为黄金比例 1.618:1 */
+    .row-2col {
+      display: grid;
+      grid-template-columns: 7fr 5fr;
+      gap: 16px;
+      margin-bottom: 20px;
+      align-items: stretch;
+    }
+    .row-2col--phi {
+      grid-template-columns: 1.618fr 1fr;
+    }
     .panel {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
       padding: 16px 18px;
+    }
+    .panel > * {
+      position: relative;
+      z-index: 1;
     }
     .panel h3 {
       position: relative;
@@ -418,18 +448,13 @@
       margin-bottom: 10px;
     }
     .summary-avatar {
-      width: 32px; height: 32px;
+      width: 32px;
+      height: 32px;
       border-radius: var(--radius-tile);
-      display: grid; place-items: center;
+      display: grid;
+      place-items: center;
       color: var(--text-700);
       font: 700 13px/1 var(--font-sans);
-      background: rgba(255, 255, 255, 0.55);
-      -webkit-backdrop-filter: blur(12px);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.7);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.8),
-        0 1px 3px rgba(15, 23, 42, 0.08);
       flex-shrink: 0;
     }
     .summary-meta { flex: 1; min-width: 0; }
@@ -446,18 +471,15 @@
       margin-top: 2px;
     }
     .summary-badge {
-      display: inline-flex; align-items: center; gap: 3px;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
       padding: 3px 7px 3px 5px;
       font: 700 9px/1 var(--font-mono);
       letter-spacing: 0.08em;
       border-radius: var(--radius-pill);
-      background: rgba(255, 255, 255, 0.5);
-      -webkit-backdrop-filter: blur(8px);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255, 255, 255, 0.65);
       color: var(--text-700);
       text-transform: uppercase;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
     }
     .summary-badge::before {
       content: '✦';
@@ -757,7 +779,7 @@
       gap: 8px;
       padding: 12px 8px 10px;
       text-align: center;
-      border-radius: var(--agent-card-radius);
+      border-radius: var(--radius-btn);
     }
     .agent-card-meta > * { position: relative; z-index: 1; }
     .agent-card-titles { min-width: 0; width: 100%; text-align: center; }
