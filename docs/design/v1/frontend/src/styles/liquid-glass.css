@@ -28,14 +28,14 @@
   --lg-blur-strong: 16px;
   --lg-tint-strong: rgba(255, 255, 255, 0.12);
 
-  /* --- 中层大面板（hero / Agent 卡 · 更清晰磨砂）--- */
-  --lg-panel-tint: rgba(255, 255, 255, 0.38);
-  --lg-panel-blur: 16px;
+  /* --- 中层大面板（hero / Agent 卡）--- */
+  --lg-panel-tint: rgba(255, 255, 255, 0.4);
+  --lg-panel-blur: 5px;
   --lg-panel-border: rgba(255, 255, 255, 0.3);
   --lg-panel-shadow-outer: 0 8px 32px rgba(0, 0, 0, 0.1);
   --lg-panel-shadow-inset-top: inset 0 1px 0 rgba(255, 255, 255, 0.5);
   --lg-panel-shadow-inset-bottom: inset 0 -1px 0 rgba(255, 255, 255, 0.1);
-  --lg-panel-inset-glow: inset 0 0 60px 30px rgba(255, 255, 255, 3);
+  --lg-panel-inset-glow: inset 0 0 60px 30px rgba(255, 255, 255, 0.3);
   --lg-panel-edge-top: rgba(255, 255, 255, 0.8);
   --lg-panel-edge-left-top: rgba(255, 255, 255, 0.8);
   --lg-panel-edge-left-mid: rgba(255, 255, 255, 0.3);
@@ -63,12 +63,12 @@
   --lg-brand-text: #66abff;
 
   --lg-panel-tint: rgba(255, 255, 255, 0.22);
-  --lg-panel-blur: 16px;
+  --lg-panel-blur: 5px;
   --lg-panel-border: rgba(255, 255, 255, 0.18);
   --lg-panel-shadow-outer: 0 8px 32px rgba(0, 0, 0, 0.28);
   --lg-panel-shadow-inset-top: inset 0 1px 0 rgba(255, 255, 255, 0.22);
   --lg-panel-shadow-inset-bottom: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
-  --lg-panel-inset-glow: inset 0 0 60px 30px rgba(255, 255, 255, 3);
+  --lg-panel-inset-glow: inset 0 0 60px 30px rgba(255, 255, 255, 0.12);
   --lg-panel-edge-top: rgba(255, 255, 255, 0.45);
   --lg-panel-edge-left-top: rgba(255, 255, 255, 0.45);
   --lg-panel-edge-left-mid: rgba(255, 255, 255, 0.14);
@@ -136,7 +136,7 @@
   --lg-blur: var(--lg-blur-strong);
 }
 
-/* 中层 · 大面板（0.38 tint · blur 42px · 无内发光） */
+/* 中层 · 大面板（0.4 tint · blur 5px · 内发光） */
 .glass-card--panel,
 .liquid-glass--panel {
   --lg-tint: var(--lg-panel-tint);

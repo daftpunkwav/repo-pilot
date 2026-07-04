@@ -34,12 +34,6 @@
       filter: saturate(1.38) contrast(1.05) brightness(1.04);
       transform-origin: center center;
     }
-    .overview-hero-particles {
-      position: absolute;
-      inset: 0;
-      z-index: 1;
-      pointer-events: none;
-    }
     .overview-hero-art-char {
       flex: 1 1 0;
       min-width: 0;
@@ -640,6 +634,7 @@
       --agent-nav-arrow-size: calc(20px * 0.8);
       --agent-nav-width: calc(var(--agent-nav-arrow-size) * 1.25);
       --agent-nav-height: calc(var(--agent-card-height) * 0.618);
+      --agent-meta-radius: calc(var(--agent-card-inner-height) / var(--phi));
       --agent-nav-gap: 10px;
       --agent-nav-gutter: calc(var(--agent-nav-width) + var(--agent-nav-gap));
       margin-bottom: 20px;
@@ -871,9 +866,6 @@
       .agent-carousel-track { transition: none !important; }
       .overview-hero-art-char-glyph.morse-hopping {
         animation: none;
-      }
-      .overview-hero-particles {
-        display: none;
       }
     }
 
