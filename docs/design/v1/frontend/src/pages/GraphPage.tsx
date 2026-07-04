@@ -57,21 +57,23 @@ export function GraphPage() {
     (n) => n.id === selectedNodeId
   );
 
-  if (isLoading) return <LoadingSpinner label="正在计算图谱…" />;
+  if (isLoading) return <LoadingSpinner fullScreen />;
 
   if ((data?.nodes.length ?? 0) < 2) {
     return (
-      <EmptyState
-        title="图谱节点不足"
-        description="请至少导入 2 个项目以生成知识图谱"
-      />
+      <div className="graph-content">
+        <EmptyState
+          title="图谱节点不足"
+          description="请至少导入 2 个项目以生成知识图谱"
+        />
+      </div>
     );
   }
 
   return (
-    <div className="page graph-page">
-      <GraphControls categories={categories} nodeCount={filteredData.nodes.length} />
-      <div className="graph-layout" ref={containerRef}>
+    <div className="graph-content">
+      <div className="graph-stage" ref={containerRef}>
+        <GraphControls categories={categories} nodeCount={filteredData.nodes.length} />
         <ForceGraph
           data={filteredData}
           width={size.width - (selectedNode ? 320 : 0)}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   useCategories,
@@ -11,9 +11,8 @@ import { FilterBar, useProjectLanguages } from '@/components/project/FilterBar';
 import { ProjectTable } from '@/components/project/ProjectTable';
 import { ImportStarsDrawer } from '@/components/project/ImportStarsDrawer';
 import { ImportUrlsModal } from '@/components/project/ImportUrlsModal';
-import { EmptyState } from '@/components/common/EmptyState';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { GlassCard } from '@/components/common/GlassCard';
+import { formatNumber } from '@/utils/format';
 
 export function ProjectsPage() {
   const { data, isLoading } = useProjects();
@@ -23,97 +22,128 @@ export function ProjectsPage() {
   const page = useProjectStore((s) => s.page);
   const pageSize = useProjectStore((s) => s.pageSize);
   const setPage = useProjectStore((s) => s.setPage);
+  const search = useProjectStore((s) => s.search);
   const [starsOpen, setStarsOpen] = useState(false);
   const [urlsOpen, setUrlsOpen] = useState(false);
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    if (searchParams.get('import') === 'stars') {
-      setStarsOpen(true);
-    }
+    const q = searchParams.get('q');
+    if (q) useProjectStore.getState().setSearch(q);
+    if (searchParams.get('import') === 'stars') setStarsOpen(true);
   }, [searchParams]);
 
-  const languages = useProjectLanguages(data?.items ?? []);
+  const total = data?.total ?? 0;
   const totalPages = data ? Math.ceil(data.total / pageSize) : 1;
+  const byP = stats?.by_progress;
+
+  const languages = useProjectLanguages(data?.items ?? []);
+
+  const subtitle = useMemo(() => {
+    const parts: string[] = [];
+    if (search) parts.push(`"${search}"`);
+    const tail = parts.length ? ` · 已筛选 ${parts.join(' · ')}` : '';
+    return `${total} 个项目 · 最后同步于 ${new Date().toLocaleDateString('zh-CN')}${tail}`;
+  }, [total, search]);
 
   return (
-    <div className="page projects-page">
-      <header className="page-head">
+    <>
+      <div className="page-head">
         <div>
-          <h1>项目库</h1>
-          <p className="page-head__sub">管理你导入的 GitHub 项目</p>
+          <h1>我的项目库</h1>
+          <div className="subtitle">{subtitle}</div>
         </div>
-        <div className="page-head__actions">
+        <div className="actions">
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-github"
             data-testid="import-stars-btn"
             onClick={() => setStarsOpen(true)}
           >
-            同步 GitHub Stars
+            <span className="gh-dot" />
+            GitHub 同步
           </button>
-          <button type="button" className="btn btn-ghost" onClick={() => setUrlsOpen(true)}>
-            批量粘贴 URL
+          <button type="button" className="btn btn-primary" onClick={() => setUrlsOpen(true)}>
+            导入项目
           </button>
         </div>
-      </header>
+      </div>
 
       {stats && (
-        <div className="stats-grid stats-grid--compact">
-          <GlassCard className="stat-card stat-card--sm">
-            <span className="stat-card__value">{stats.total}</span>
-            <span className="stat-card__label">项目</span>
-          </GlassCard>
-          <GlassCard className="stat-card stat-card--sm">
-            <span className="stat-card__value">{stats.by_progress.learning}</span>
-            <span className="stat-card__label">学习中</span>
-          </GlassCard>
-        </div>
+        <section className="stat-grid">
+          <article className="stat-card">
+            <div className="stat-label">总项目数</div>
+            <div className="stat-value">{stats.total}</div>
+            <div className="stat-delta">活跃库</div>
+          </article>
+          <article className="stat-card stat-green">
+            <div className="stat-label">已掌握</div>
+            <div className="stat-value">{byP?.mastered ?? 0}</div>
+            <div className="stat-delta">
+              {stats.total ? Math.round(((byP?.mastered ?? 0) / stats.total) * 100) : 0}% · 占比
+            </div>
+          </article>
+          <article className="stat-card stat-orange">
+            <div className="stat-label">学习中</div>
+            <div className="stat-value">{byP?.learning ?? 0}</div>
+            <div className="stat-delta">
+              {stats.total ? Math.round(((byP?.learning ?? 0) / stats.total) * 100) : 0}% · 占比
+            </div>
+          </article>
+          <article className="stat-card stat-purple">
+            <div className="stat-label">待开始</div>
+            <div className="stat-value">{byP?.none ?? 0}</div>
+            <div className="stat-delta" style={{ color: 'var(--text-500)' }}>
+              {stats.total ? Math.round(((byP?.none ?? 0) / stats.total) * 100) : 0}% · 占比
+            </div>
+          </article>
+        </section>
       )}
 
       <FilterBar categories={categories} tags={tags} languages={languages} />
 
       {isLoading ? (
         <LoadingSpinner />
-      ) : data && data.items.length > 0 ? (
-        <>
-          <ProjectTable projects={data.items} categories={categories} tags={tags} />
-          <div className="pagination">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-            >
-              上一页
-            </button>
-            <span>
-              {page} / {totalPages}
-            </span>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              下一页
-            </button>
-          </div>
-        </>
       ) : (
-        <EmptyState
-          title="还没有项目"
-          description="导入 GitHub Stars 或粘贴 URL 开始"
-          action={
-            <button type="button" className="btn btn-primary" onClick={() => setStarsOpen(true)}>
-              导入 GitHub Stars
-            </button>
-          }
-        />
+        <>
+          <ProjectTable
+            projects={data?.items ?? []}
+            tags={tags}
+            onImportClick={() => setStarsOpen(true)}
+          />
+          {data && data.items.length > 0 && (
+            <div className="pagination">
+              <span className="info">
+                第 {page} / {totalPages} 页 · 共 {formatNumber(data.total)} 项
+              </span>
+              <div className="pages">
+                <button
+                  type="button"
+                  className="page-btn"
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                >
+                  ‹
+                </button>
+                <button type="button" className="page-btn active">
+                  {page}
+                </button>
+                <button
+                  type="button"
+                  className="page-btn"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(page + 1)}
+                >
+                  ›
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <ImportStarsDrawer open={starsOpen} onClose={() => setStarsOpen(false)} />
       <ImportUrlsModal open={urlsOpen} onClose={() => setUrlsOpen(false)} />
-    </div>
+    </>
   );
 }

@@ -4,7 +4,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useNoteStore } from '@/stores/noteStore';
 import { NoteList } from '@/components/note/NoteList';
 import { NoteEditor } from '@/components/note/NoteEditor';
-import { EmptyState } from '@/components/common/EmptyState';
+import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useUIStore } from '@/stores/uiStore';
@@ -15,6 +15,7 @@ export function NotesPage() {
   const searchQuery = useNoteStore((s) => s.searchQuery);
   const setSearchQuery = useNoteStore((s) => s.setSearchQuery);
   const selectedNoteId = useNoteStore((s) => s.selectedNoteId);
+  const editorContent = useNoteStore((s) => s.editorContent);
   const startEditing = useNoteStore((s) => s.startEditing);
   const editingNoteId = useNoteStore((s) => s.editingNoteId);
   const createNote = useCreateNote();
@@ -58,21 +59,26 @@ export function NotesPage() {
     addToast({ type: 'success', message: '笔记已保存' });
   };
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading) return <LoadingSpinner fullScreen />;
 
   return (
-    <div className="page notes-page">
-      <aside className="notes-sidebar glass">
-        <input
-          className="input"
-          type="search"
-          placeholder="搜索笔记…"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+    <div className="notes-shell" data-view="split">
+      <header className="notes-topbar">
+        <div className="notes-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14}>
+            <circle cx="11" cy="11" r="7" />
+            <path d="M21 21l-4.3-4.3" />
+          </svg>
+          <input
+            type="text"
+            placeholder="搜索笔记标题、内容..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
         <button
           type="button"
-          className="btn btn-primary btn-block"
+          className="btn btn-primary btn-sm"
           onClick={() => {
             startEditing('new', '新笔记', '');
             setNewProjectId(projectsData?.items[0]?.id ?? '');
@@ -80,18 +86,26 @@ export function NotesPage() {
         >
           新建笔记
         </button>
-        {filtered.length > 0 ? (
+      </header>
+
+      <aside className="notes-list-pane">
+        <div className="notes-list-header">
+          <h3>笔记</h3>
+          <span className="badge" style={{ fontFamily: 'var(--font-mono)' }}>
+            {filtered.length}
+          </span>
+        </div>
+        <div className="notes-list-body">
           <NoteList
             notes={filtered}
             projectNames={projectNames}
             selectedId={selectedNoteId}
             onSelect={(n) => startEditing(n.id, n.title, n.content)}
           />
-        ) : (
-          <EmptyState title="暂无笔记" description="在项目详情页或此处创建笔记" />
-        )}
+        </div>
       </aside>
-      <main className="notes-content">
+
+      <section className="edit-pane">
         {editingNoteId ? (
           <>
             {editingNoteId === 'new' && (
@@ -99,6 +113,7 @@ export function NotesPage() {
                 className="input"
                 value={newProjectId}
                 onChange={(e) => setNewProjectId(e.target.value)}
+                style={{ marginBottom: 12 }}
               >
                 <option value="">选择项目</option>
                 {(projectsData?.items ?? []).map((p) => (
@@ -112,7 +127,8 @@ export function NotesPage() {
             {editingNoteId.startsWith('n_') && (
               <button
                 type="button"
-                className="btn btn-danger"
+                className="btn btn-danger btn-sm"
+                style={{ marginTop: 12 }}
                 onClick={() => setDeleteOpen(true)}
               >
                 删除
@@ -120,9 +136,22 @@ export function NotesPage() {
             )}
           </>
         ) : (
-          <EmptyState title="选择一条笔记" description="从左侧列表选择或新建笔记" />
+          <p className="muted" style={{ padding: 24 }}>
+            从左侧选择或新建笔记
+          </p>
         )}
-      </main>
+      </section>
+
+      <section className="preview-pane">
+        {editingNoteId ? (
+          <MarkdownRenderer content={editorContent} className="markdown-body" />
+        ) : (
+          <p className="muted" style={{ padding: 24 }}>
+            预览区
+          </p>
+        )}
+      </section>
+
       <ConfirmDialog
         open={deleteOpen}
         title="删除笔记"

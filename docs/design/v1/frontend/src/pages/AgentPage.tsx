@@ -1,10 +1,22 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAgentStore } from '@/stores/agentStore';
 import { ChatPanel } from '@/components/agent/ChatPanel';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { useState } from 'react';
 import { formatRelativeTime } from '@/utils/date';
+import { getApi } from '@/api/client';
+import { Link } from 'react-router-dom';
+import { useSettings } from '@/hooks/useSettings';
+
+const AGENT_TAG_CLASS: Record<string, string> = {
+  hub: 'agent-tag-hub',
+  scout: 'agent-tag-scout',
+  mentor: 'agent-tag-mentor',
+  navigator: 'agent-tag-navigator',
+  curator: 'agent-tag-curator',
+  scribe: 'agent-tag-scribe',
+};
 
 export function AgentPage() {
   const { sessionId } = useParams<{ sessionId?: string }>();
@@ -15,6 +27,12 @@ export function AgentPage() {
   const createSession = useAgentStore((s) => s.createSession);
   const deleteSession = useAgentStore((s) => s.deleteSession);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const { settings } = useSettings();
+
+  const { data: profile } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: async () => (await getApi().getUserProfile()).data,
+  });
 
   useEffect(() => {
     void loadSessions();
@@ -30,47 +48,93 @@ export function AgentPage() {
   }, [sessionId, sessions, currentSessionId, switchSession]);
 
   return (
-    <div className="page agent-page">
-      <aside className="agent-sessions glass">
-        <button
-          type="button"
-          className="btn btn-primary btn-block"
-          data-testid="new-session-btn"
-          onClick={() => void createSession()}
-        >
-          新建会话
-        </button>
-        <ul className="session-list">
+    <>
+      <aside className="session-list">
+        <div className="session-list-header">
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            data-testid="new-session-btn"
+            onClick={() => void createSession()}
+          >
+            新建对话
+          </button>
+        </div>
+        <div className="session-list-tabs">
+          <span className="session-tab active">全部 {sessions.length}</span>
+        </div>
+        <div className="session-list-body">
           {sessions.map((s) => (
-            <li key={s.id}>
-              <button
-                type="button"
-                className={`session-list__item ${currentSessionId === s.id ? 'active' : ''}`}
-                onClick={() => void switchSession(s.id)}
-              >
-                <span>{s.title}</span>
-                <time>{formatRelativeTime(s.updated_at)}</time>
-                {s.unread && <span className="session-list__unread" />}
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm"
-                onClick={() => setDeleteTarget(s.id)}
-                aria-label="删除会话"
-              >
-                ×
-              </button>
-            </li>
+            <div
+              key={s.id}
+              className={`session-item ${currentSessionId === s.id ? 'active' : ''}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => void switchSession(s.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void switchSession(s.id);
+              }}
+            >
+              <div className="session-title">
+                {s.title}
+                {s.unread && <span className="session-unread" title="未读" />}
+              </div>
+              <div className="session-meta">
+                <span className={`agent-tag ${AGENT_TAG_CLASS[s.agent] ?? 'agent-tag-hub'}`}>
+                  {s.agent}
+                </span>
+                <span>{formatRelativeTime(s.updated_at)}</span>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  style={{ marginLeft: 'auto' }}
+                  aria-label="删除会话"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteTarget(s.id);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       </aside>
-      <div className="agent-main">
-        {currentSessionId ? (
-          <ChatPanel />
-        ) : (
-          <p className="agent-empty">创建或选择一个会话开始对话</p>
+
+      <main className="chat-area">
+        {currentSessionId ? <ChatPanel /> : <p className="muted">创建或选择一个会话开始对话</p>}
+      </main>
+
+      <aside className="context-panel">
+        <div className="context-section">
+          <div className="context-title">
+            <span>记忆摘要</span>
+          </div>
+          <div className="profile-summary">
+            <div className="profile-row">
+              <span className="profile-key">学习摘要</span>
+              <span className="profile-val">{profile?.history_summary?.slice(0, 80) ?? '—'}</span>
+            </div>
+            <div className="profile-row">
+              <span className="profile-key">目标数</span>
+              <span className="profile-val">{profile?.goals?.length ?? 0}</span>
+            </div>
+          </div>
+        </div>
+        {settings?.llm_configured === false && (
+          <div className="context-section" style={{ marginTop: 'auto' }}>
+            <div className="context-title">降级提示</div>
+            <div className="degrade-tip">
+              <div>
+                未配置 API Key 时，Agent 仅使用规则降级。
+                <Link to="/settings"> 配置 LLM →</Link>
+              </div>
+            </div>
+          </div>
         )}
-      </div>
+      </aside>
+
       <ConfirmDialog
         open={deleteTarget !== null}
         title="删除会话"
@@ -82,6 +146,6 @@ export function AgentPage() {
         }}
         onCancel={() => setDeleteTarget(null)}
       />
-    </div>
+    </>
   );
 }
