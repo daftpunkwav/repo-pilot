@@ -55,14 +55,14 @@ export function ChatPanel() {
   const llmOk = settings?.llm_configured !== false;
 
   return (
-    <div className="chat-panel">
+    <div className="chat-area-inner">
       {!llmOk && (
-        <div className="chat-panel__banner">
+        <div className="degrade-tip" style={{ margin: '8px 16px' }}>
           LLM 未配置，请前往 <Link to="/settings">设置</Link> 配置 API Key。
         </div>
       )}
       <AgentSelector profiles={profiles} />
-      <div className="chat-panel__messages">
+      <div className="chat-messages">
         {messages.map((m) => (
           <MessageBubble key={m.id} message={m} emoji={emoji} />
         ))}
@@ -91,25 +91,31 @@ export function ChatPanel() {
         {error && <div className="error-banner">{error}</div>}
         <div ref={bottomRef} />
       </div>
-      <div className="chat-panel__input">
-        <textarea
-          className="input textarea"
-          data-testid="chat-input"
-          rows={2}
-          placeholder="输入消息… Enter 发送，Shift+Enter 换行"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={streaming || Boolean(pendingQuestion) || !llmOk}
-        />
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => void handleSend()}
-          disabled={streaming || Boolean(pendingQuestion) || !llmOk}
-        >
-          发送
-        </button>
+      <div className="chat-input-wrap">
+        <div className="chat-input">
+          <textarea
+            className="chat-textarea"
+            data-testid="chat-input"
+            rows={2}
+            placeholder="问 RepoPilot 任何关于开源项目的问题..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={streaming || Boolean(pendingQuestion) || !llmOk}
+          />
+          <div className="chat-toolbar">
+            <div className="spacer" />
+            <button
+              type="button"
+              className="send-btn"
+              title="发送"
+              onClick={() => void handleSend()}
+              disabled={streaming || Boolean(pendingQuestion) || !llmOk}
+            >
+              发送
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

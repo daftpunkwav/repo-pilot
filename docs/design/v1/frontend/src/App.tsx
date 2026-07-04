@@ -6,7 +6,7 @@ import {
 } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
-import { AppShell } from '@/components/layout/AppShell';
+import { AppShell, AgentShell, NotesShell } from '@/components/layout/AppShell';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -106,34 +106,10 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: 'agent',
-        element: (
-          <Lazy>
-            <AgentPage />
-          </Lazy>
-        ),
-      },
-      {
-        path: 'agent/sessions/:sessionId',
-        element: (
-          <Lazy>
-            <AgentPage />
-          </Lazy>
-        ),
-      },
-      {
         path: 'graph',
         element: (
           <Lazy>
             <GraphPage />
-          </Lazy>
-        ),
-      },
-      {
-        path: 'notes',
-        element: (
-          <Lazy>
-            <NotesPage />
           </Lazy>
         ),
       },
@@ -150,6 +126,50 @@ const router = createBrowserRouter([
         element: (
           <Lazy>
             <ProfilePage />
+          </Lazy>
+        ),
+      },
+    ],
+  },
+  {
+    path: '/agent',
+    element: (
+      <ProtectedRoute>
+        <AgentShell />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: (
+          <Lazy>
+            <AgentPage />
+          </Lazy>
+        ),
+      },
+      {
+        path: 'sessions/:sessionId',
+        element: (
+          <Lazy>
+            <AgentPage />
+          </Lazy>
+        ),
+      },
+    ],
+  },
+  {
+    path: '/notes',
+    element: (
+      <ProtectedRoute>
+        <NotesShell />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: (
+          <Lazy>
+            <NotesPage />
           </Lazy>
         ),
       },

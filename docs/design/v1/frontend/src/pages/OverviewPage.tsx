@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import {
   useActivities,
@@ -10,197 +10,339 @@ import {
 import { useAllNotes } from '@/hooks/useNotes';
 import { useQuery } from '@tanstack/react-query';
 import { getApi } from '@/api/client';
-import { GlassCard } from '@/components/common/GlassCard';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
-import { formatRelativeTime } from '@/utils/date';
+import { formatRelativeTime, formatDateTime } from '@/utils/date';
+import { formatNumber, langCssClass, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
+import { AGENT_CARDS } from '@/utils/labels';
 import type { ProjectProgress, TrendingPeriod } from '@/api/types';
 
-const PROGRESS_LABELS: Record<ProjectProgress, string> = {
-  none: '未开始',
-  learning: '学习中',
-  learned: '已掌握',
-  mastered: '精通',
-};
-
-const PRODUCT_INTRO = `# RepoPilot 是什么
-
-RepoPilot 是你的 **GitHub 项目学习驾驶舱**：导入 Stars、管理进度、与 6 个专业 Agent 对话、可视化知识图谱。
-
-## 6 个专业 Agent
-
-- **Hub** — 总调度
-- **Scout** — 项目速览
-- **Mentor** — 深度教学
-- **Navigator** — 学习路径
-- **Curator** — 项目整理
-- **Scribe** — 笔记生成
-`;
+const PROGRESS_ROWS: Array<{ key: ProjectProgress; label: string; color: string }> = [
+  { key: 'none', label: '待开始', color: 'fill-none' },
+  { key: 'learning', label: '学习中', color: 'fill-learning' },
+  { key: 'learned', label: '已学习', color: 'fill-learned' },
+  { key: 'mastered', label: '已掌握', color: 'fill-mastered' },
+];
 
 export function OverviewPage() {
   const user = useAuthStore((s) => s.user);
-  const navigate = useNavigate();
   const { data: stats, isLoading: statsLoading } = useProjectStats();
-  const { data: notes } = useAllNotes();
-  const { data: recent } = useProjects();
+  const { data: notes = [] } = useAllNotes();
+  const { data: projectsData } = useProjects();
   const { data: activities } = useActivities();
-  const [period, setPeriod] = useState<TrendingPeriod>('daily');
-  const [langFilter, setLangFilter] = useState('');
-  const { data: trending } = useTrending(period, langFilter || undefined);
+  const [period, setPeriod] = useState<TrendingPeriod>('weekly');
+  const { data: trending = [] } = useTrending(period);
 
   const { data: profile } = useQuery({
     queryKey: ['userProfile'],
     queryFn: async () => (await getApi().getUserProfile()).data,
   });
 
+  const [trendingVisible, setTrendingVisible] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setTrendingVisible(true), 80);
+    return () => clearTimeout(t);
+  }, [period, trending]);
+
+  const recommended = useMemo(() => {
+    const items = projectsData?.items ?? [];
+    return [...items].sort((a, b) => b.stars - a.stars).slice(0, 5);
+  }, [projectsData]);
+
+  const recentNotes = useMemo(() => {
+    return [...notes].sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at)).slice(0, 4);
+  }, [notes]);
+
   if (statsLoading) return <LoadingSpinner />;
 
   const total = stats?.total ?? 0;
-  const learning = stats?.by_progress.learning ?? 0;
-  const mastered = stats?.by_progress.mastered ?? 0;
-  const noteCount = notes?.length ?? 0;
+  const byProgress = stats?.by_progress ?? {
+    none: 0,
+    learning: 0,
+    learned: 0,
+    mastered: 0,
+  };
+  const maxProgress = Math.max(...PROGRESS_ROWS.map((p) => byProgress[p.key] ?? 0), 1);
+
+  const username = user?.username ?? '同学';
+  const heroLede = user
+    ? `上次登录 ${formatDateTime(user.created_at)} · GitHub 已绑定（@${user.github_login ?? 'unknown'}）`
+    : `你的项目库有 ${total} 个项目等待探索`;
+
+  const MIN_TREND_W = 38;
+  const trendStep = trending.length > 1 ? (100 - MIN_TREND_W) / (trending.length - 1) : 0;
 
   return (
-    <div className="page overview-page">
-      <section className="overview-hero glass">
-        <h1>欢迎回来，{user?.username ?? '用户'}</h1>
-        <p className="overview-hero__lede">
-          RepoPilot 帮你把 GitHub Stars 变成可执行的学习计划。
-        </p>
+    <>
+      <section className="overview-hero">
+        <h1>
+          你好，<span>{username}</span> 👋
+        </h1>
+        <p className="lede">{heroLede}</p>
         <div className="quick-actions">
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => navigate('/projects?import=stars')}
-          >
-            导入 GitHub Stars
-          </button>
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/projects')}>
+          <Link to="/agent" className="btn btn-primary">
+            和 Agent 对话
+          </Link>
+          <Link to="/projects" className="btn">
             浏览项目库
-          </button>
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/graph')}>
-            打开图谱
-          </button>
-          <button type="button" className="btn btn-ghost" onClick={() => navigate('/agent')}>
-            与 Agent 对话
-          </button>
+          </Link>
+          <Link to="/graph" className="btn">
+            查看图谱
+          </Link>
+          <Link to="/settings" className="btn">
+            设置
+          </Link>
         </div>
       </section>
 
-      <div className="stats-grid" data-testid="stats-cards">
-        <GlassCard className="stat-card">
-          <span className="stat-card__label">项目总数</span>
-          <span className="stat-card__value">{total}</span>
-        </GlassCard>
-        <GlassCard className="stat-card">
-          <span className="stat-card__label">学习中</span>
-          <span className="stat-card__value">{learning}</span>
-        </GlassCard>
-        <GlassCard className="stat-card">
-          <span className="stat-card__label">已掌握</span>
-          <span className="stat-card__value">{mastered}</span>
-        </GlassCard>
-        <GlassCard className="stat-card">
-          <span className="stat-card__label">笔记数</span>
-          <span className="stat-card__value">{noteCount}</span>
-        </GlassCard>
-      </div>
+      <section className="stat-grid" data-testid="stats-cards">
+        <article className="stat-card">
+          <div className="stat-label">总项目数</div>
+          <div className="stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={18} height={18}>
+              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+            </svg>
+          </div>
+          <div className="stat-value">{total}</div>
+          <div className="stat-meta">
+            {Object.keys(stats?.by_language ?? {}).length} 种语言 · 多分类
+          </div>
+        </article>
+        <article className="stat-card stat-green">
+          <div className="stat-label">已掌握</div>
+          <div className="stat-value">{byProgress.mastered}</div>
+          <div className="stat-meta">
+            {total ? Math.round((byProgress.mastered / total) * 100) : 0}% · 占比
+          </div>
+        </article>
+        <article className="stat-card stat-orange">
+          <div className="stat-label">学习中</div>
+          <div className="stat-value">{byProgress.learning}</div>
+          <div className="stat-meta">
+            {total ? Math.round((byProgress.learning / total) * 100) : 0}% · 占比
+          </div>
+        </article>
+        <article className="stat-card stat-purple">
+          <div className="stat-label">待开始</div>
+          <div className="stat-value">{byProgress.none}</div>
+          <div className="stat-meta">
+            {total ? Math.round((byProgress.none / total) * 100) : 0}% · 占比
+          </div>
+        </article>
+      </section>
 
-      <div className="overview-row-2">
-        <GlassCard className="progress-panel">
-          <h2>学习进度分布</h2>
-          {(Object.keys(PROGRESS_LABELS) as ProjectProgress[]).map((key) => {
-            const count = stats?.by_progress[key] ?? 0;
-            const pct = total > 0 ? (count / total) * 100 : 0;
-            return (
-              <div key={key} className="progress-bar-row">
-                <span>{PROGRESS_LABELS[key]}</span>
-                <div className="progress-bar">
-                  <div className="progress-bar__fill" style={{ width: `${pct}%` }} />
-                </div>
-                <span>{count}</span>
+      <section className="agent-grid">
+        {AGENT_CARDS.map((a) => (
+          <Link key={a.id} className="agent-card" to={`/agent?agent=${a.id}`}>
+            <div className="agent-icon" style={{ background: a.color }}>
+              {a.name[0]}
+            </div>
+            <div>
+              <div className="agent-name">{a.name}</div>
+              <div className="agent-desc">{a.desc}</div>
+            </div>
+          </Link>
+        ))}
+      </section>
+
+      <section className="row-2col">
+        <div className="panel">
+          <h3>学习进度分布</h3>
+          <section className="agent-summary" aria-label="Mentor 学习周报">
+            <div className="summary-head">
+              <div className="summary-avatar">M</div>
+              <div className="summary-meta">
+                <div className="summary-agent">Mentor · 本周学习总结</div>
+                <div className="summary-time">由 AI 自动生成</div>
               </div>
-            );
-          })}
-        </GlassCard>
+              <span className="summary-badge">AI</span>
+            </div>
+            <div className="summary-body">
+              <p
+                dangerouslySetInnerHTML={{
+                  __html:
+                    profile?.history_summary ??
+                    `${username}，本周继续保持学习节奏，Agent 将为你生成个性化周报。`,
+                }}
+              />
+            </div>
+          </section>
+          <div className="progress-divider" />
+          <p className="progress-section-title">分类总览</p>
+          <div className="progress-bars">
+            {PROGRESS_ROWS.map((p) => {
+              const v = byProgress[p.key] ?? 0;
+              const pct = Math.round((v / maxProgress) * 100);
+              return (
+                <div key={p.key} className="progress-row">
+                  <span className="pl">{p.label}</span>
+                  <div className="track">
+                    <div className={`fill ${p.color}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="pv">{v}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
-        <GlassCard className="activity-panel">
-          <h2>最近动态</h2>
-          <ul className="activity-list">
-            {(activities ?? []).slice(0, 5).map((a) => (
-              <li key={a.id}>
-                <strong>{a.title}</strong>
-                <span>{a.description}</span>
-                <time>{formatRelativeTime(a.created_at)}</time>
-              </li>
-            ))}
-          </ul>
-        </GlassCard>
-      </div>
+        <div className="panel">
+          <div className="section-head" style={{ marginTop: 0 }}>
+            <h3>最近活动</h3>
+            <Link to="/agent" className="more">
+              查看全部 →
+            </Link>
+          </div>
+          <div className="activity-list">
+            {(activities ?? []).length === 0 ? (
+              <div style={{ padding: '20px 12px', color: 'var(--text-400)', fontSize: 12, textAlign: 'center' }}>
+                暂无活动
+              </div>
+            ) : (
+              (activities ?? []).slice(0, 5).map((a) => (
+                <Link key={a.id} className="activity-item" to="/agent">
+                  <div className="activity-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14}>
+                      <path d="M21 15a3 3 0 0 1-3 3H8l-5 4V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v9z" />
+                    </svg>
+                  </div>
+                  <div className="activity-body">
+                    <div className="activity-title">{a.title}</div>
+                    <div className="activity-desc">{a.description}</div>
+                  </div>
+                  <span className="activity-time">{formatRelativeTime(a.created_at)}</span>
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
 
-      <GlassCard className="agent-summary" onClick={() => navigate('/agent')}>
-        <h2>Agent 周报</h2>
-        <p>{profile?.history_summary ?? '本周暂无学习摘要'}</p>
-        <span className="agent-summary__cta">查看 Agent Chat →</span>
-      </GlassCard>
+      <section className="row-2col">
+        <div className="panel">
+          <div className="section-head" style={{ marginTop: 0 }}>
+            <h3>为你推荐</h3>
+            <Link to="/projects" className="more">
+              查看全部 →
+            </Link>
+          </div>
+          <div className="project-list">
+            {recommended.map((p, i) => {
+              const { owner, repo } = splitRepoName(p.name);
+              return (
+                <Link key={p.id} className="project-item" to={`/projects/${p.id}`}>
+                  <div
+                    className="project-avatar"
+                    style={{ background: REPO_AVATAR_GRADIENTS[i % REPO_AVATAR_GRADIENTS.length] }}
+                  >
+                    {(repo[0] ?? '?').toUpperCase()}
+                  </div>
+                  <div className="project-info">
+                    <div className="project-name">
+                      <span className="owner">{owner}</span>
+                      <span className="slash">/</span>
+                      <span>{repo}</span>
+                    </div>
+                    <div className="project-desc">{p.description ?? ''}</div>
+                  </div>
+                  <span className="project-stars">⭐ {formatNumber(p.stars)}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
 
-      <section className="continue-learning">
-        <h2>继续学习</h2>
-        <div className="project-cards-row">
-          {(recent?.items ?? []).slice(0, 3).map((p) => (
-            <GlassCard
-              key={p.id}
-              className="project-mini-card"
-              onClick={() => navigate(`/projects/${p.id}`)}
-            >
-              <span className="font-mono">{p.name}</span>
-              <span>{p.language}</span>
-            </GlassCard>
-          ))}
+        <div className="panel">
+          <div className="section-head" style={{ marginTop: 0 }}>
+            <h3>最近笔记</h3>
+            <Link to="/notes" className="more">
+              查看全部 →
+            </Link>
+          </div>
+          <div className="notes-list">
+            {recentNotes.length === 0 ? (
+              <div style={{ padding: '20px 12px', color: 'var(--text-400)', fontSize: 12, textAlign: 'center' }}>
+                暂无笔记
+              </div>
+            ) : (
+              recentNotes.map((n) => {
+                const project = projectsData?.items.find((p) => p.id === n.project_id);
+                return (
+                  <Link key={n.id} className="note-item" to="/notes">
+                    <div className="note-title">{n.title}</div>
+                    <div className="note-meta">
+                      <span className="tag-link">{project?.name ?? n.project_id}</span>
+                      <span>·</span>
+                      <span>{formatRelativeTime(n.updated_at)}</span>
+                    </div>
+                  </Link>
+                );
+              })
+            )}
+          </div>
         </div>
       </section>
 
       <section className="trending-section">
-        <h2>GitHub 热门</h2>
-        <div className="filter-tabs">
-          {(['daily', 'weekly', 'monthly'] as TrendingPeriod[]).map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={`filter-btn ${period === p ? 'active' : ''}`}
-              onClick={() => setPeriod(p)}
-            >
-              {p === 'daily' ? '今日' : p === 'weekly' ? '本周' : '本月'}
-            </button>
-          ))}
-          <select
-            className="input"
-            value={langFilter}
-            onChange={(e) => setLangFilter(e.target.value)}
-          >
-            <option value="">全部语言</option>
-            <option value="TypeScript">TypeScript</option>
-            <option value="Python">Python</option>
-            <option value="Rust">Rust</option>
-          </select>
+        <div className="trending-head">
+          <div className="trending-head-left">
+            <h2>
+              <span className="trending-fire" aria-hidden>
+                🔥
+              </span>
+              GitHub 近期热门
+            </h2>
+            <span className="trending-subtitle">基于 trending 数据，帮助你发现值得关注的项目</span>
+          </div>
+          <div className="period-toggle" role="tablist">
+            {(['daily', 'weekly', 'monthly'] as TrendingPeriod[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                className={`period-btn ${period === p ? 'active' : ''}`}
+                onClick={() => setPeriod(p)}
+              >
+                {p === 'daily' ? '今日' : p === 'weekly' ? '本周' : '本月'}
+              </button>
+            ))}
+          </div>
         </div>
-        <ul className="trending-list">
-          {(trending ?? []).map((r) => (
-            <li key={`${r.owner}/${r.repo}`}>
-              <a href={r.url} target="_blank" rel="noreferrer">
-                {r.owner}/{r.repo}
-              </a>
-              <span>{r.language}</span>
-              <span>★ {r.stars.toLocaleString()}</span>
-            </li>
-          ))}
-        </ul>
+        <div className="trending-grid">
+          {trending.length === 0 ? (
+            <div className="trending-empty">该周期暂无数据</div>
+          ) : (
+            trending.slice(0, 50).map((r, index) => {
+              const widthPct = Math.max(100 - index * trendStep, MIN_TREND_W);
+              const { owner, repo } = splitRepoName(`${r.owner}/${r.repo}`);
+              return (
+                <a
+                  key={`${r.owner}/${r.repo}`}
+                  className={`trending-card ${trendingVisible ? 'is-visible' : ''}`}
+                  style={{ ['--card-w' as string]: `${widthPct.toFixed(2)}%` }}
+                  href={r.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <div className="trending-rank">{r.rank ?? index + 1}</div>
+                  <div className="trending-body">
+                    <div className="trending-name">
+                      <span className="owner">{owner}</span>
+                      <span className="slash">/</span>
+                      <span>{repo}</span>
+                    </div>
+                    <div className="trending-desc">{r.description ?? ''}</div>
+                    <div className="trending-meta">
+                      <span className={`lang-dot ${langCssClass(r.language)}`}>
+                        {r.language ?? '-'}
+                      </span>
+                      <span className="stars">★ {formatNumber(r.stars)}</span>
+                    </div>
+                  </div>
+                </a>
+              );
+            })
+          )}
+        </div>
       </section>
-
-      <details className="product-intro glass">
-        <summary>RepoPilot 产品说明</summary>
-        <MarkdownRenderer content={PRODUCT_INTRO} />
-      </details>
-    </div>
+    </>
   );
 }

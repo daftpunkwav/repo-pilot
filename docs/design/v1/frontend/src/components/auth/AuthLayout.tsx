@@ -4,18 +4,27 @@ interface AuthLayoutProps {
   subtitle?: string;
 }
 
+/** 登录/注册页布局 — 对齐 archive/login.html */
 export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
   return (
-    <div className="auth-page">
-      <div className="auth-page__blob" aria-hidden />
-      <div className="auth-card glass">
-        <div className="auth-card__brand">
-          <div className="auth-card__logo">RP</div>
-          <span className="auth-card__name">RepoPilot</span>
+    <div className="auth-bg" style={{ minHeight: '100vh' }}>
+      <div
+        style={{
+          display: 'grid',
+          placeItems: 'center',
+          minHeight: '100vh',
+          padding: '48px 32px',
+        }}
+      >
+        <div className="auth-card">
+          <div className="auth-brand">
+            <div className="auth-logo">RP</div>
+            <h1 className="auth-title">{title}</h1>
+            {subtitle && <p className="auth-subtitle">{subtitle}</p>}
+          </div>
+          {children}
+          <p className="auth-version">RepoPilot v1.0.0</p>
         </div>
-        <h1 className="auth-card__title">{title}</h1>
-        {subtitle && <p className="auth-card__subtitle">{subtitle}</p>}
-        {children}
       </div>
     </div>
   );

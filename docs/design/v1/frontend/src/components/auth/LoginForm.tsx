@@ -26,7 +26,7 @@ export function LoginForm() {
       await login(username, password);
       navigate('/', { replace: true });
     } catch {
-      // error 已由 store 设置
+      // store 已设置 error
     } finally {
       setSubmitting(false);
     }
@@ -37,13 +37,14 @@ export function LoginForm() {
   return (
     <form className="auth-form" onSubmit={handleSubmit}>
       {(fieldError || error) && (
-        <div className="error-banner" role="alert">
-          {fieldError ?? error}
+        <div className="auth-alert" role="alert">
+          <strong>{fieldError ?? error}</strong>
         </div>
       )}
-      <label className="form-field">
-        <span>用户名</span>
+      <div className="field-group">
+        <label htmlFor="login-username">用户名</label>
         <input
+          id="login-username"
           className="input"
           type="text"
           name="username"
@@ -52,10 +53,11 @@ export function LoginForm() {
           onChange={(e) => setUsername(e.target.value)}
           disabled={busy}
         />
-      </label>
-      <label className="form-field">
-        <span>密码</span>
+      </div>
+      <div className="field-group">
+        <label htmlFor="login-password">密码</label>
         <input
+          id="login-password"
           className="input"
           type="password"
           name="password"
@@ -64,11 +66,12 @@ export function LoginForm() {
           onChange={(e) => setPassword(e.target.value)}
           disabled={busy}
         />
-      </label>
-      <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+      </div>
+      <button type="submit" className="auth-btn" disabled={busy}>
         {busy ? <LoadingSpinner label="" /> : '登录'}
       </button>
-      <p className="auth-form__footer">
+      <div className="auth-divider" />
+      <p className="auth-bottom">
         还没有账号？ <Link to="/register">注册</Link>
       </p>
     </form>

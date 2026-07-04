@@ -26,9 +26,15 @@ function applyTheme(theme: Theme): void {
   const root = document.documentElement;
   if (theme === 'system') {
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+    if (prefersDark) {
+      root.setAttribute('data-theme', 'dark');
+    } else {
+      root.removeAttribute('data-theme');
+    }
+  } else if (theme === 'dark') {
+    root.setAttribute('data-theme', 'dark');
   } else {
-    root.setAttribute('data-theme', theme);
+    root.removeAttribute('data-theme');
   }
 }
 
