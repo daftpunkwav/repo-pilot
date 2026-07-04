@@ -8,7 +8,7 @@ test.describe('auth', () => {
     await page.fill('[name="password"]', MOCK_USER.password);
     await page.click('button[type="submit"]');
     await expect(page).toHaveURL('/');
-    await expect(page.getByTestId('stats-cards')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('overview-hero')).toBeVisible({ timeout: 15000 });
   });
 
   test('redirects unauthenticated users', async ({ page }) => {

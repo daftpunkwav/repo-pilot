@@ -104,7 +104,7 @@ export function OverviewPage() {
 
   return (
     <>
-      <div className="overview-hero-wrap">
+      <div className="overview-hero-wrap" data-testid="overview-hero">
         <div className="overview-hero-art" aria-hidden>
           <span className="overview-hero-artword">
             {heroArtChars.map((char, index) => {
@@ -167,49 +167,16 @@ export function OverviewPage() {
         </section>
       </div>
 
-      <section className="stat-grid" data-testid="stats-cards">
-        <article className="stat-card">
-          <div className="stat-label">总项目数</div>
-          <div className="stat-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={18} height={18}>
-              <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
-            </svg>
-          </div>
-          <div className="stat-value">{total}</div>
-          <div className="stat-meta">
-            {Object.keys(stats?.by_language ?? {}).length} 种语言 · 多分类
-          </div>
-        </article>
-        <article className="stat-card stat-green">
-          <div className="stat-label">已掌握</div>
-          <div className="stat-value">{byProgress.mastered}</div>
-          <div className="stat-meta">
-            {total ? Math.round((byProgress.mastered / total) * 100) : 0}% · 占比
-          </div>
-        </article>
-        <article className="stat-card stat-orange">
-          <div className="stat-label">学习中</div>
-          <div className="stat-value">{byProgress.learning}</div>
-          <div className="stat-meta">
-            {total ? Math.round((byProgress.learning / total) * 100) : 0}% · 占比
-          </div>
-        </article>
-        <article className="stat-card stat-purple">
-          <div className="stat-label">待开始</div>
-          <div className="stat-value">{byProgress.none}</div>
-          <div className="stat-meta">
-            {total ? Math.round((byProgress.none / total) * 100) : 0}% · 占比
-          </div>
-        </article>
-      </section>
-
       <AgentCarousel externalLookTarget={chatBtnLookTarget} />
 
       <section className="row-2col">
-        <div className="panel panel-progress">
+        <div className="panel panel-progress glass-card glass-card--panel">
           <h3>学习进度分布</h3>
           <div className="progress-panel-body">
-            <section className="agent-summary progress-panel-summary" aria-label="Mentor 学习周报">
+            <section
+              className="agent-summary progress-panel-summary glass-card glass-card--control"
+              aria-label="Mentor 学习周报"
+            >
               <div className="summary-head">
                 <div className="summary-avatar">M</div>
                 <div className="summary-meta">
@@ -249,10 +216,13 @@ export function OverviewPage() {
           </div>
         </div>
 
-        <div className="panel">
+        <div className="panel glass-card glass-card--panel">
           <div className="section-head" style={{ marginTop: 0 }}>
             <h3>最近活动</h3>
-            <Link to="/agent" className="more">
+            <Link
+              to="/agent"
+              className="more glass-card glass-card--control liquid-glass--pill liquid-glass--interactive"
+            >
               查看全部 →
             </Link>
           </div>
@@ -263,8 +233,12 @@ export function OverviewPage() {
               </div>
             ) : (
               (activities ?? []).slice(0, 5).map((a) => (
-                <Link key={a.id} className="activity-item" to="/agent">
-                  <div className="activity-icon">
+                <Link
+                  key={a.id}
+                  className="activity-item glass-card glass-card--control liquid-glass--interactive"
+                  to="/agent"
+                >
+                  <div className="activity-icon glass-card glass-card--control">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14}>
                       <path d="M21 15a3 3 0 0 1-3 3H8l-5 4V6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v9z" />
                     </svg>
@@ -282,10 +256,13 @@ export function OverviewPage() {
       </section>
 
       <section className="row-2col">
-        <div className="panel">
+        <div className="panel glass-card glass-card--panel">
           <div className="section-head" style={{ marginTop: 0 }}>
             <h3>为你推荐</h3>
-            <Link to="/projects" className="more">
+            <Link
+              to="/projects"
+              className="more glass-card glass-card--control liquid-glass--pill liquid-glass--interactive"
+            >
               查看全部 →
             </Link>
           </div>
@@ -293,7 +270,11 @@ export function OverviewPage() {
             {recommended.map((p, i) => {
               const { owner, repo } = splitRepoName(p.name);
               return (
-                <Link key={p.id} className="project-item" to={`/projects/${p.id}`}>
+                <Link
+                  key={p.id}
+                  className="project-item glass-card glass-card--control liquid-glass--interactive"
+                  to={`/projects/${p.id}`}
+                >
                   <div
                     className="project-avatar"
                     style={{ background: REPO_AVATAR_GRADIENTS[i % REPO_AVATAR_GRADIENTS.length] }}
@@ -315,10 +296,13 @@ export function OverviewPage() {
           </div>
         </div>
 
-        <div className="panel">
+        <div className="panel glass-card glass-card--panel">
           <div className="section-head" style={{ marginTop: 0 }}>
             <h3>最近笔记</h3>
-            <Link to="/notes" className="more">
+            <Link
+              to="/notes"
+              className="more glass-card glass-card--control liquid-glass--pill liquid-glass--interactive"
+            >
               查看全部 →
             </Link>
           </div>
@@ -331,7 +315,11 @@ export function OverviewPage() {
               recentNotes.map((n) => {
                 const project = projectsData?.items.find((p) => p.id === n.project_id);
                 return (
-                  <Link key={n.id} className="note-item" to="/notes">
+                  <Link
+                    key={n.id}
+                    className="note-item glass-card glass-card--control liquid-glass--interactive"
+                    to="/notes"
+                  >
                     <div className="note-title">{n.title}</div>
                     <div className="note-meta">
                       <span className="tag-link">{project?.name ?? n.project_id}</span>
@@ -357,12 +345,14 @@ export function OverviewPage() {
             </h2>
             <span className="trending-subtitle">基于 trending 数据，帮助你发现值得关注的项目</span>
           </div>
-          <div className="period-toggle" role="tablist">
+          <div className="period-toggle glass-card glass-card--panel" role="tablist">
             {(['daily', 'weekly', 'monthly'] as TrendingPeriod[]).map((p) => (
               <button
                 key={p}
                 type="button"
-                className={`period-btn ${period === p ? 'active' : ''}`}
+                className={`period-btn liquid-glass--pill${
+                  period === p ? ' glass-card glass-card--control active liquid-glass--interactive' : ''
+                }`}
                 onClick={() => setPeriod(p)}
               >
                 {p === 'daily' ? '今日' : p === 'weekly' ? '本周' : '本月'}
@@ -380,13 +370,15 @@ export function OverviewPage() {
               return (
                 <a
                   key={`${r.owner}/${r.repo}`}
-                  className={`trending-card ${trendingVisible ? 'is-visible' : ''}`}
+                  className={`trending-card glass-card glass-card--panel liquid-glass--interactive ${
+                    trendingVisible ? 'is-visible' : ''
+                  }`}
                   style={{ ['--card-w' as string]: `${widthPct.toFixed(2)}%` }}
                   href={r.url}
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <div className="trending-rank">{r.rank ?? index + 1}</div>
+                  <div className="trending-rank glass-card glass-card--control">{r.rank ?? index + 1}</div>
                   <div className="trending-body">
                     <div className="trending-name">
                       <span className="owner">{owner}</span>
