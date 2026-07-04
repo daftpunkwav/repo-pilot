@@ -7,6 +7,7 @@ import {
   useTrending,
 } from '@/hooks/useProjects';
 import { useOverviewRecentNotes, useRecommendedProjects } from '@/hooks/useOverview';
+import { useTrendingScoutSpot } from '@/hooks/useTrendingScoutSpot';
 import { useQuery } from '@tanstack/react-query';
 import { getApi } from '@/api/client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -40,22 +41,28 @@ export function OverviewPage() {
   });
 
   const trendingGridRef = useRef<HTMLDivElement>(null);
-  const scoutLeaveTimerRef = useRef<number | null>(null);
-  const [scoutRepo, setScoutRepo] = useState<TrendingRepo | null>(null);
-  const [scoutLook, setScoutLook] = useState<LookTarget | null>(null);
+  const recentNotesPanelRef = useRef<HTMLDivElement>(null);
+  const [scoutBubbleWidth, setScoutBubbleWidth] = useState<number | null>(null);
+  const scout = useTrendingScoutSpot(period);
   const [chatBtnLookTarget, setChatBtnLookTarget] = useState<LookTarget | null>(null);
   const [morseTick, setMorseTick] = useState(0);
 
   useEffect(() => {
-    setScoutRepo(null);
-    setScoutLook(null);
-  }, [period]);
+    const panel = recentNotesPanelRef.current;
+    if (!panel) return;
 
-  useEffect(() => {
+    const syncWidth = () => {
+      setScoutBubbleWidth(panel.getBoundingClientRect().width);
+    };
+
+    syncWidth();
+    const ro = new ResizeObserver(syncWidth);
+    ro.observe(panel);
+    window.addEventListener('resize', syncWidth);
+
     return () => {
-      if (scoutLeaveTimerRef.current !== null) {
-        window.clearTimeout(scoutLeaveTimerRef.current);
-      }
+      ro.disconnect();
+      window.removeEventListener('resize', syncWidth);
     };
   }, []);
 
@@ -135,29 +142,17 @@ export function OverviewPage() {
   const MIN_TREND_W = 38;
   const trendStep = trending.length > 1 ? (100 - MIN_TREND_W) / (trending.length - 1) : 0;
 
-  const clearScoutLeaveTimer = () => {
-    if (scoutLeaveTimerRef.current !== null) {
-      window.clearTimeout(scoutLeaveTimerRef.current);
-      scoutLeaveTimerRef.current = null;
-    }
-  };
-
   const handleTrendingCardEnter = (repo: TrendingRepo, event: ReactMouseEvent<HTMLAnchorElement>) => {
-    clearScoutLeaveTimer();
-    setScoutRepo(repo);
-    setScoutLook({ x: event.clientX, y: event.clientY });
+    scout.cancelHide();
+    scout.showForRepo(repo, { x: event.clientX, y: event.clientY });
   };
 
   const handleTrendingCardMove = (event: ReactMouseEvent<HTMLAnchorElement>) => {
-    setScoutLook({ x: event.clientX, y: event.clientY });
+    scout.updateLook({ x: event.clientX, y: event.clientY });
   };
 
   const handleTrendingGridLeave = () => {
-    clearScoutLeaveTimer();
-    scoutLeaveTimerRef.current = window.setTimeout(() => {
-      setScoutRepo(null);
-      setScoutLook(null);
-    }, 120);
+    scout.scheduleHide();
   };
 
   const heroArtChars = ['R', 'e', 'p', 'o', 'P', 'i', 'l', 'o', 't'];
@@ -366,7 +361,7 @@ export function OverviewPage() {
           </div>
         </div>
 
-        <div className="panel panel-notes glass-card glass-card--panel">
+        <div className="panel panel-notes glass-card glass-card--panel" ref={recentNotesPanelRef}>
           <div className="section-head" style={{ marginTop: 0 }}>
             <h3>最近笔记</h3>
             <Link
@@ -465,7 +460,14 @@ export function OverviewPage() {
         </div>
       </section>
 
-      <TrendingScoutSpot repo={scoutRepo} lookTarget={scoutLook} />
+      <TrendingScoutSpot
+        phase={scout.phase}
+        repo={scout.repo}
+        content={scout.content}
+        isStreaming={scout.isStreaming}
+        lookTarget={scout.lookTarget}
+        bubbleWidthPx={scoutBubbleWidth}
+      />
     </>
   );
 }

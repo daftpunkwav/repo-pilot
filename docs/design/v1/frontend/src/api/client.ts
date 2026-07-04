@@ -28,6 +28,7 @@ import type {
   Tag,
   TrendingPeriod,
   TrendingRepo,
+  TrendingScoutIntroParams,
   User,
   UserProfile,
 } from './types';
@@ -102,6 +103,8 @@ export interface IApiClient {
     period?: TrendingPeriod;
     language?: string;
   }): Promise<ApiResponse<TrendingRepo[]>>;
+  /** Scout 总览 trending 悬停介绍（SSE · 未来对接 LLM） */
+  streamTrendingScoutIntro(params: TrendingScoutIntroParams): AsyncGenerator<SSEEvent>;
   listActivities(): Promise<ApiResponse<ActivityItem[]>>;
   listRecommendedProjects(params?: {
     limit?: number;

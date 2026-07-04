@@ -1,42 +1,45 @@
 import { AgentAvatar, type LookTarget } from '@/components/agent/AgentAvatar';
 import type { TrendingRepo } from '@/api/types';
-import { formatNumber } from '@/utils/format';
+import type { TrendingScoutPhase } from '@/hooks/useTrendingScoutSpot';
+import type { CSSProperties } from 'react';
 
 interface TrendingScoutSpotProps {
+  phase: TrendingScoutPhase;
   repo: TrendingRepo | null;
+  content: string;
+  isStreaming: boolean;
   lookTarget: LookTarget | null;
+  bubbleWidthPx: number | null;
 }
 
-/** Scout 快速介绍文案 */
-export function buildTrendingScoutIntro(repo: TrendingRepo): string {
-  const name = `${repo.owner}/${repo.repo}`;
-  const extras: string[] = [];
-  if (repo.language) extras.push(repo.language);
-  if (repo.stars_today) extras.push(`今日 +${formatNumber(repo.stars_today)} ★`);
-  else if (repo.stars) extras.push(`${formatNumber(repo.stars)} ★`);
-
-  if (repo.description) {
-    return extras.length ? `${repo.description}（${extras.join(' · ')}）` : repo.description;
-  }
-  return extras.length
-    ? `${name} 正在 trending 上升：${extras.join(' · ')}`
-    : `${name} 值得 Scout 帮你快速扫一眼。`;
-}
-
-export function TrendingScoutSpot({ repo, lookTarget }: TrendingScoutSpotProps) {
-  if (!repo) return null;
+export function TrendingScoutSpot({
+  phase,
+  repo,
+  content,
+  isStreaming,
+  lookTarget,
+  bubbleWidthPx,
+}: TrendingScoutSpotProps) {
+  if (phase === 'hidden' || !repo) return null;
 
   const name = `${repo.owner}/${repo.repo}`;
+  const bubbleStyle = bubbleWidthPx
+    ? ({ '--scout-bubble-width': `${bubbleWidthPx}px` } as CSSProperties)
+    : undefined;
 
   return (
     <div
-      className="trending-scout-spot"
+      className={`trending-scout-spot trending-scout-spot--${phase}`}
+      style={bubbleStyle}
       aria-live="polite"
       aria-label={`Scout 正在介绍 ${name}`}
     >
       <div className="trending-scout-bubble glass-card glass-card--control overview-control-surface">
         <span className="trending-scout-bubble-label">Scout</span>
-        <p>{buildTrendingScoutIntro(repo)}</p>
+        <p className="trending-scout-bubble-text">
+          {content}
+          {isStreaming ? <span className="trending-scout-stream-cursor" aria-hidden /> : null}
+        </p>
       </div>
       <AgentAvatar
         agentId="scout"
