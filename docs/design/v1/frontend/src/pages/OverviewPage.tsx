@@ -14,6 +14,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { formatRelativeTime, formatDateTime } from '@/utils/date';
 import { formatNumber, langCssClass, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
 import { getMorseHopPx, HERO_MORSE_BITS, HERO_MORSE_INTERVAL_MS } from '@/utils/morse';
+import { HeroArtParticles } from '@/components/overview/HeroArtParticles';
 import { AgentCarousel } from '@/components/agent/AgentCarousel';
 import type { LookTarget } from '@/components/agent/AgentAvatar';
 import type { ProjectProgress, TrendingPeriod } from '@/api/types';
@@ -128,6 +129,7 @@ export function OverviewPage() {
               );
             })}
           </span>
+          <HeroArtParticles />
         </div>
         <div className="overview-hero-glass glass-card glass-card--panel" aria-hidden />
         <section className="overview-hero-content">
