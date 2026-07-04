@@ -82,34 +82,57 @@ export function OverviewPage() {
   const MIN_TREND_W = 38;
   const trendStep = trending.length > 1 ? (100 - MIN_TREND_W) / (trending.length - 1) : 0;
 
+  const heroArtChars = ['R', 'e', 'p', 'o', 'P', 'i', 'l', 'o', 't'];
+
   return (
     <>
-      <section className="overview-hero">
-        <h1>
-          你好，<span>{username}</span> 👋
-        </h1>
-        <p className="lede">{heroLede}</p>
-        <div className="quick-actions">
-          <Link
-            to="/agent"
-            className="btn btn-agent-chat"
-            onMouseEnter={handleChatBtnLook}
-            onMouseMove={handleChatBtnLook}
-            onMouseLeave={handleChatBtnLookEnd}
-          >
-            和 Agent 对话
-          </Link>
-          <Link to="/projects" className="btn btn-glass">
-            浏览项目库
-          </Link>
-          <Link to="/graph" className="btn btn-glass">
-            查看图谱
-          </Link>
-          <Link to="/settings" className="btn btn-glass">
-            设置
-          </Link>
+      <div className="overview-hero-wrap">
+        <div className="overview-hero-art" aria-hidden>
+          <span className="overview-hero-artword">
+            {heroArtChars.map((char, index) => (
+              <span key={`${char}-${index}`} className="overview-hero-art-char">
+                {char}
+              </span>
+            ))}
+          </span>
         </div>
-      </section>
+        <div className="overview-hero-glass glass-card glass-card--panel" aria-hidden />
+        <section className="overview-hero-content">
+          <h1>
+            你好，<span>{username}</span> 👋
+          </h1>
+          <p className="lede">{heroLede}</p>
+          <div className="quick-actions">
+            <Link
+              to="/agent"
+              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive liquid-glass--pulse liquid-glass-btn quick-action-brand"
+              onMouseEnter={handleChatBtnLook}
+              onMouseMove={handleChatBtnLook}
+              onMouseLeave={handleChatBtnLookEnd}
+            >
+              和 Agent 对话
+            </Link>
+            <Link
+              to="/projects"
+              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive liquid-glass-btn"
+            >
+              浏览项目库
+            </Link>
+            <Link
+              to="/graph"
+              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive liquid-glass-btn"
+            >
+              查看图谱
+            </Link>
+            <Link
+              to="/settings"
+              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive liquid-glass-btn"
+            >
+              设置
+            </Link>
+          </div>
+        </section>
+      </div>
 
       <section className="stat-grid" data-testid="stats-cards">
         <article className="stat-card">

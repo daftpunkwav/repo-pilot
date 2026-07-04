@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { initApiClient } from '@/api/client';
 import { App } from '@/App';
 import '@/styles/design-system.css';
+import '@/styles/liquid-glass.css';
 import '@/styles/shell.css';
 import '@/styles/pages/index.css';
 import '@/styles/global.css';

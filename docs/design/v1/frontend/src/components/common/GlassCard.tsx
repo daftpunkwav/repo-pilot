@@ -10,7 +10,7 @@ interface GlassCardProps {
 export function GlassCard({ children, className, padding = true, onClick }: GlassCardProps) {
   return (
     <div
-      className={cn('glass', padding && 'glass-padded', className)}
+      className={cn('glass-card', padding && 'liquid-glass-padded', className)}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
