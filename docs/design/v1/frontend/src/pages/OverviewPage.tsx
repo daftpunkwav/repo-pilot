@@ -90,8 +90,12 @@ export function OverviewPage() {
         <div className="overview-hero-art" aria-hidden>
           <span className="overview-hero-artword">
             {heroArtChars.map((char, index) => (
-              <span key={`${char}-${index}`} className="overview-hero-art-char">
-                {char}
+              <span
+                key={`${char}-${index}`}
+                className="overview-hero-art-char"
+                style={{ ['--art-i' as string]: index }}
+              >
+                <span className="overview-hero-art-char-glyph">{char}</span>
               </span>
             ))}
           </span>
