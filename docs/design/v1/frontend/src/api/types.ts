@@ -211,6 +211,13 @@ export interface TrendingRepo {
   rank?: number;
 }
 
+/** Scout 总览 trending 悬停介绍（SSE 流式） */
+export interface TrendingScoutIntroParams {
+  owner: string;
+  repo: string;
+  period?: TrendingPeriod;
+}
+
 export interface ActivityItem {
   id: string;
   type: 'import' | 'note' | 'agent' | 'progress';

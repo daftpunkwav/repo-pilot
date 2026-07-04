@@ -967,8 +967,11 @@
       .agent-character--blinking .agent-eye {
         animation: none;
       }
-      .trending-scout-spot {
+      .trending-scout-spot--visible,
+      .trending-scout-spot--leaving {
         animation: none;
+        opacity: 1;
+        transform: none;
       }
     }
 
@@ -1119,7 +1122,7 @@
       max-width: 100%;
     }
 
-    /* Scout 悬停解说 · 固定页面右下角 + 语言框 */
+    /* Scout 悬停解说 · 固定页面右下角 + 流式语言框 */
     .trending-scout-spot {
       position: fixed;
       right: 24px;
@@ -1130,21 +1133,39 @@
       align-items: flex-end;
       gap: 6px;
       pointer-events: none;
-      animation: trending-scout-pop 0.38s var(--ease-spring) both;
     }
-    @keyframes trending-scout-pop {
-      0% {
+    .trending-scout-spot--visible {
+      animation: trending-scout-in 0.38s var(--ease-spring) both;
+    }
+    .trending-scout-spot--leaving {
+      animation: trending-scout-out 0.38s var(--ease) both;
+    }
+    @keyframes trending-scout-in {
+      from {
         opacity: 0;
-        transform: translateY(8px) scale(0.92);
+        transform: translateY(14px) scale(0.92);
       }
-      100% {
+      to {
         opacity: 1;
         transform: translateY(0) scale(1);
       }
     }
+    @keyframes trending-scout-out {
+      from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+      to {
+        opacity: 0;
+        transform: translateY(10px) scale(0.94);
+      }
+    }
     .trending-scout-bubble {
       position: relative;
-      max-width: min(240px, 42vw);
+      box-sizing: border-box;
+      width: var(--scout-bubble-width, 280px);
+      min-width: var(--scout-bubble-width, 280px);
+      max-width: var(--scout-bubble-width, 280px);
       padding: 8px 11px 9px;
       border-radius: var(--radius-btn);
       text-align: left;
@@ -1161,15 +1182,26 @@
       text-transform: uppercase;
       color: #b8651b;
     }
-    .trending-scout-bubble p {
+    .trending-scout-bubble-text {
       margin: 0;
       font-size: 12px;
       line-height: 1.45;
       color: var(--text-700);
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 4;
-      overflow: hidden;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .trending-scout-stream-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 0.95em;
+      margin-left: 1px;
+      vertical-align: -0.12em;
+      background: var(--brand-500);
+      animation: trending-scout-cursor-blink 0.9s step-end infinite;
+    }
+    @keyframes trending-scout-cursor-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
     }
     .trending-scout-spot .agent-character {
       filter: drop-shadow(0 4px 12px rgba(255, 111, 0, 0.22));

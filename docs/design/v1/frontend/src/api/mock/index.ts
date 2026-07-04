@@ -30,6 +30,7 @@ import type {
   Tag,
   TrendingPeriod,
   TrendingRepo,
+  TrendingScoutIntroParams,
   User,
   UserProfile,
 } from '@/api/types';
@@ -56,6 +57,7 @@ import { findMockUser, MOCK_USERS } from './data/users';
 import {
   mockAfterQuestionAnswer,
   mockProjectAnalysis,
+  mockTrendingScoutIntro,
   selectChatScenario,
 } from './sse';
 
@@ -688,6 +690,22 @@ export class MockApiClient implements IApiClient {
     requireAuth();
     const repos = getTrendingRepos(params?.period ?? 'daily', params?.language);
     return wrapResponse(repos);
+  }
+
+  async *streamTrendingScoutIntro(
+    params: TrendingScoutIntroParams,
+  ): AsyncGenerator<SSEEvent> {
+    requireAuth();
+    const period = params.period ?? 'weekly';
+    const repos = getTrendingRepos(period);
+    const repo: TrendingRepo =
+      repos.find((r) => r.owner === params.owner && r.repo === params.repo) ?? {
+        owner: params.owner,
+        repo: params.repo,
+        url: `https://github.com/${params.owner}/${params.repo}`,
+        stars: 0,
+      };
+    yield* mockTrendingScoutIntro(repo, period);
   }
 
   async listActivities(): Promise<ApiResponse<ActivityItem[]>> {

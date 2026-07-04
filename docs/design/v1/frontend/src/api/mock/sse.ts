@@ -3,7 +3,10 @@ import type {
   AgentQuestion,
   SSEEvent,
   SSEEventType,
+  TrendingPeriod,
+  TrendingRepo,
 } from '@/api/types';
+import { formatNumber } from '@/utils/format';
 
 const CHAR_DELAY_MS = 18;
 
@@ -136,6 +139,40 @@ export async function* mockProjectAnalysis(
   yield {
     event: 'done',
     data: { usage: { tokens: analysis.length }, iterations: 1 },
+  };
+}
+
+/** Scout · 总览 trending 悬停快速介绍（Mock 流式，Real 端同接口接 LLM） */
+export async function* mockTrendingScoutIntro(
+  repo: TrendingRepo,
+  period: TrendingPeriod = 'weekly',
+): AsyncGenerator<SSEEvent> {
+  const name = `${repo.owner}/${repo.repo}`;
+  const periodLabel = period === 'daily' ? '今日' : period === 'weekly' ? '本周' : '本月';
+
+  yield {
+    event: 'thinking',
+    data: { content: `Scout 正在扫一眼 ${name}…` },
+  };
+  await sleep(220);
+
+  const parts: string[] = [
+    `${name} 出现在 GitHub ${periodLabel} trending 榜单`,
+  ];
+  if (repo.description) parts.push(`——${repo.description}`);
+  if (repo.language) parts.push(`\n\n主语言 ${repo.language}`);
+  if (repo.stars_today) {
+    parts.push(`，${periodLabel}新增 ${formatNumber(repo.stars_today)} stars`);
+  } else if (repo.stars) {
+    parts.push(`，累计 ${formatNumber(repo.stars)} stars`);
+  }
+  parts.push('。\n\n建议先看 README 的 Quick Start，再扫一眼最近 Issue 是否在修 breaking change。');
+
+  const text = parts.join('');
+  yield* streamText(text, 14);
+  yield {
+    event: 'done',
+    data: { usage: { tokens: text.length }, iterations: 1 },
   };
 }
 
