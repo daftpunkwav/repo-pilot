@@ -694,8 +694,7 @@ class IntentResult:
 │   └── GET  /
 ├── settings/
 │   ├── GET  /
-│   ├── PUT  /
-│   └── POST /test-llm
+│   └── PUT  /
 └── agent/
     ├── POST /chat
     ├── POST /question
@@ -764,7 +763,7 @@ class AgentRegistry:
 
     @classmethod
     def register(cls, definition: "AgentDefinition") -> None:
-        cls._agents[definition.agent_id] = definition
+        cls._agents[definition.id] = definition
 
     @classmethod
     def get(cls, agent_id: str) -> "AgentDefinition | None":
@@ -780,12 +779,12 @@ class AgentRegistry:
 ```python
 @dataclass
 class AgentDefinition:
-    """Agent 定义（C-12 修复：补充 capabilities 字段）"""
-    agent_id: str
-    display_name: str
-    description: str
-    tools: list[str]                         # 可用工具列表
-    capabilities: list[str] = field(default_factory=list)  # C-12: ["tools", "streaming", "vision"]
+    """Agent 定义（C-12 修复：补充 capabilities 字段；与 AGENT_SPEC §2.1 字段名对齐）"""
+    id: str                              # 唯一标识: "scout", "mentor", ...
+    name: str                            # 显示名称
+    description: str                     # 一句话描述
+    tools: list[str]                     # 可用工具列表
+    capabilities: list[str] = field(default_factory=list)
     model_override: str | None = None
     temperature: float = 0.7
     max_tokens: int = 4096
