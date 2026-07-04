@@ -913,6 +913,18 @@
     .agent-head .agent-eye-pupil {
       transition: transform 0.28s var(--ease);
     }
+    .agent-character--blinking .agent-eye {
+      transform-box: fill-box;
+      transform-origin: center center;
+      animation: agent-eye-blink 3.8s ease-in-out infinite;
+    }
+    .agent-character--blinking .agent-eye:nth-child(2) {
+      animation-delay: 0.05s;
+    }
+    @keyframes agent-eye-blink {
+      0%, 44%, 52%, 100% { transform: scaleY(1); }
+      48% { transform: scaleY(0.1); }
+    }
     .agent-head--focused {
       animation: agent-head-bob 0.45s var(--ease-spring);
     }
@@ -951,6 +963,12 @@
         opacity: 1;
         transform: none;
         transition: none !important;
+      }
+      .agent-character--blinking .agent-eye {
+        animation: none;
+      }
+      .trending-scout-spot {
+        animation: none;
       }
     }
 
@@ -1099,4 +1117,60 @@
       background: var(--bg-50); border: 1px dashed var(--bg-300); border-radius: var(--radius);
       color: var(--text-400); font-size: 13px;
       max-width: 100%;
+    }
+
+    /* Scout 悬停解说 · 固定页面右下角 + 语言框 */
+    .trending-scout-spot {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 120;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      pointer-events: none;
+      animation: trending-scout-pop 0.38s var(--ease-spring) both;
+    }
+    @keyframes trending-scout-pop {
+      0% {
+        opacity: 0;
+        transform: translateY(8px) scale(0.92);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    .trending-scout-bubble {
+      position: relative;
+      max-width: min(240px, 42vw);
+      padding: 8px 11px 9px;
+      border-radius: var(--radius-btn);
+      text-align: left;
+    }
+    .trending-scout-bubble > * {
+      position: relative;
+      z-index: 1;
+    }
+    .trending-scout-bubble-label {
+      display: block;
+      margin-bottom: 3px;
+      font: 700 9px/1 var(--font-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #b8651b;
+    }
+    .trending-scout-bubble p {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text-700);
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 4;
+      overflow: hidden;
+    }
+    .trending-scout-spot .agent-character {
+      filter: drop-shadow(0 4px 12px rgba(255, 111, 0, 0.22));
     }

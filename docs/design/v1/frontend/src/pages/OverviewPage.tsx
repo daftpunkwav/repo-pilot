@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -14,8 +14,9 @@ import { formatRelativeTime, formatDateTime } from '@/utils/date';
 import { formatNumber, langCssClass, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
 import { getMorseHopPx, HERO_MORSE_BITS, HERO_MORSE_INTERVAL_MS } from '@/utils/morse';
 import { AgentCarousel } from '@/components/agent/AgentCarousel';
+import { TrendingScoutSpot } from '@/components/agent/TrendingScoutSpot';
 import type { LookTarget } from '@/components/agent/AgentAvatar';
-import type { ProjectProgress, TrendingPeriod } from '@/api/types';
+import type { ProjectProgress, TrendingPeriod, TrendingRepo } from '@/api/types';
 
 const PROGRESS_ROWS: Array<{ key: ProjectProgress; label: string; color: string }> = [
   { key: 'none', label: '待开始', color: 'fill-none' },
@@ -39,8 +40,24 @@ export function OverviewPage() {
   });
 
   const trendingGridRef = useRef<HTMLDivElement>(null);
+  const scoutLeaveTimerRef = useRef<number | null>(null);
+  const [scoutRepo, setScoutRepo] = useState<TrendingRepo | null>(null);
+  const [scoutLook, setScoutLook] = useState<LookTarget | null>(null);
   const [chatBtnLookTarget, setChatBtnLookTarget] = useState<LookTarget | null>(null);
   const [morseTick, setMorseTick] = useState(0);
+
+  useEffect(() => {
+    setScoutRepo(null);
+    setScoutLook(null);
+  }, [period]);
+
+  useEffect(() => {
+    return () => {
+      if (scoutLeaveTimerRef.current !== null) {
+        window.clearTimeout(scoutLeaveTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -53,7 +70,7 @@ export function OverviewPage() {
     return () => window.clearInterval(id);
   }, []);
 
-  const handleChatBtnLook = (event: MouseEvent<HTMLAnchorElement>) => {
+  const handleChatBtnLook = (event: ReactMouseEvent<HTMLAnchorElement>) => {
     setChatBtnLookTarget({ x: event.clientX, y: event.clientY });
   };
 
@@ -117,6 +134,31 @@ export function OverviewPage() {
 
   const MIN_TREND_W = 38;
   const trendStep = trending.length > 1 ? (100 - MIN_TREND_W) / (trending.length - 1) : 0;
+
+  const clearScoutLeaveTimer = () => {
+    if (scoutLeaveTimerRef.current !== null) {
+      window.clearTimeout(scoutLeaveTimerRef.current);
+      scoutLeaveTimerRef.current = null;
+    }
+  };
+
+  const handleTrendingCardEnter = (repo: TrendingRepo, event: ReactMouseEvent<HTMLAnchorElement>) => {
+    clearScoutLeaveTimer();
+    setScoutRepo(repo);
+    setScoutLook({ x: event.clientX, y: event.clientY });
+  };
+
+  const handleTrendingCardMove = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+    setScoutLook({ x: event.clientX, y: event.clientY });
+  };
+
+  const handleTrendingGridLeave = () => {
+    clearScoutLeaveTimer();
+    scoutLeaveTimerRef.current = window.setTimeout(() => {
+      setScoutRepo(null);
+      setScoutLook(null);
+    }, 120);
+  };
 
   const heroArtChars = ['R', 'e', 'p', 'o', 'P', 'i', 'l', 'o', 't'];
 
@@ -378,23 +420,29 @@ export function OverviewPage() {
             ))}
           </div>
         </div>
-        <div className="trending-grid" ref={trendingGridRef}>
-          {trending.length === 0 ? (
-            <div className="trending-empty">该周期暂无数据</div>
-          ) : (
-            trending.slice(0, 50).map((r, index) => {
-              const widthPct = Math.max(100 - index * trendStep, MIN_TREND_W);
-              const { owner, repo } = splitRepoName(`${r.owner}/${r.repo}`);
-              return (
-                <a
-                  key={`${period}-${r.owner}/${r.repo}`}
-                  data-index={index}
-                  className="trending-card glass-card glass-card--panel liquid-glass--interactive"
-                  style={{ ['--card-w' as string]: `${widthPct.toFixed(2)}%` }}
-                  href={r.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
+        <div
+          className="trending-grid"
+          ref={trendingGridRef}
+          onMouseLeave={handleTrendingGridLeave}
+        >
+            {trending.length === 0 ? (
+              <div className="trending-empty">该周期暂无数据</div>
+            ) : (
+              trending.slice(0, 50).map((r, index) => {
+                const widthPct = Math.max(100 - index * trendStep, MIN_TREND_W);
+                const { owner, repo } = splitRepoName(`${r.owner}/${r.repo}`);
+                return (
+                  <a
+                    key={`${period}-${r.owner}/${r.repo}`}
+                    data-index={index}
+                    className="trending-card glass-card glass-card--panel liquid-glass--interactive"
+                    style={{ ['--card-w' as string]: `${widthPct.toFixed(2)}%` }}
+                    href={r.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onMouseEnter={(event) => handleTrendingCardEnter(r, event)}
+                    onMouseMove={handleTrendingCardMove}
+                  >
                   <div className="trending-rank glass-card glass-card--control">{r.rank ?? index + 1}</div>
                   <div className="trending-body">
                     <div className="trending-name">
@@ -416,6 +464,8 @@ export function OverviewPage() {
           )}
         </div>
       </section>
+
+      <TrendingScoutSpot repo={scoutRepo} lookTarget={scoutLook} />
     </>
   );
 }
