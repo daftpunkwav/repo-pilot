@@ -7,9 +7,11 @@ import type {
   AgentSession,
   ApiResponse,
   Category,
+  ContextWindowStats,
   CreateProjectInput,
   GitHubAccount,
   GraphData,
+  ImportAssistContext,
   ImportResult,
   LoginResponse,
   Note,
@@ -118,6 +120,24 @@ export interface IApiClient {
     answers: QuestionAnswer[]
   ): AsyncGenerator<SSEEvent>;
   analyzeProject(projectId: string, agent?: AgentId): AsyncGenerator<SSEEvent>;
+
+  /** 当前会话的上下文窗口用量 */
+  getContextWindow(sessionId?: string | null): Promise<ApiResponse<ContextWindowStats>>;
+
+  /** GitHub 仓库搜索（导入弹窗） */
+  searchGithubRepos(query: string): Promise<ApiResponse<StarRepo[]>>;
+
+  /** 导入助手对话（SSE） */
+  importAssistChat(
+    message: string,
+    context: ImportAssistContext
+  ): AsyncGenerator<SSEEvent>;
+
+  /** 图谱向导对话（SSE，专用 Atlas Agent） */
+  graphGuideChat(
+    message: string,
+    context?: { selected_node_id?: string | null }
+  ): AsyncGenerator<SSEEvent>;
 }
 
 async function createApiClient(): Promise<IApiClient> {

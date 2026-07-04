@@ -19,6 +19,8 @@ import type {
   ProjectListParams,
   ProjectProgress,
   ProjectStats,
+  ContextWindowStats,
+  ImportAssistContext,
   QuestionAnswer,
   Settings,
   SSEEvent,
@@ -44,6 +46,7 @@ import {
   MOCK_AGENT_SESSIONS,
 } from './data/sessions';
 import { DEFAULT_SETTINGS } from './data/settings';
+import { DEFAULT_USER_PROFILE } from './data/profile';
 import { MOCK_TAGS } from './data/tags';
 import { getTrendingRepos } from './data/trending';
 import { findMockUser, MOCK_USERS } from './data/users';
@@ -97,6 +100,7 @@ export class MockApiClient implements IApiClient {
   private sessions: AgentSession[] = clone(MOCK_AGENT_SESSIONS);
   private messages: Record<string, AgentMessage[]> = clone(MOCK_AGENT_MESSAGES);
   private settings: Settings = clone(DEFAULT_SETTINGS);
+  private userProfile: UserProfile = clone(DEFAULT_USER_PROFILE);
   private githubAccounts: GitHubAccount[] = [
     {
       id: 'gh_001',
@@ -740,18 +744,7 @@ export class MockApiClient implements IApiClient {
   async getUserProfile(): Promise<ApiResponse<UserProfile>> {
     await delay();
     requireAuth();
-    return wrapResponse({
-      tech_proficiency: {},
-      learning_preferences: {
-        style: 'hands_on',
-        depth_first: true,
-        verbosity: 'balanced',
-        language: 'zh-CN',
-      },
-      goals: [],
-      history_summary: '本周学习了 React Hooks 与 FastAPI 异步编程。',
-      extensions: {},
-    });
+    return wrapResponse(clone(this.userProfile));
   }
 
   async updateUserProfile(
@@ -759,8 +752,14 @@ export class MockApiClient implements IApiClient {
   ): Promise<ApiResponse<UserProfile>> {
     await delay();
     requireAuth();
-    const current = (await this.getUserProfile()).data;
-    return wrapResponse({ ...current, ...data });
+    this.userProfile = { ...this.userProfile, ...data };
+    if (data.memory_items) {
+      this.userProfile.memory_items = data.memory_items;
+    }
+    if (data.goals) {
+      this.userProfile.goals = data.goals;
+    }
+    return wrapResponse(clone(this.userProfile));
   }
 
   async getPermissions(): Promise<ApiResponse<AgentPermissions>> {
@@ -820,5 +819,111 @@ export class MockApiClient implements IApiClient {
     const project = this.projects.find((p) => p.id === projectId);
     const name = project?.name ?? projectId;
     yield* mockProjectAnalysis(name, agent ?? 'scout');
+  }
+
+  async getContextWindow(
+    sessionId?: string | null
+  ): Promise<ApiResponse<ContextWindowStats>> {
+    await delay(100);
+    requireAuth();
+    const msgs = sessionId ? (this.messages[sessionId] ?? []) : [];
+    const msgTokens = msgs.reduce((n, m) => n + (m.content?.length ?? 0) / 4, 0);
+    return wrapResponse({
+      session_id: sessionId ?? null,
+      model: this.settings.llm_model,
+      context_limit: 128000,
+      input_tokens: Math.round(2400 + msgTokens),
+      output_tokens: Math.round(1800 + msgTokens * 0.3),
+      total_tokens: Math.round(4200 + msgTokens * 1.3),
+      segments: [
+        { label: '系统提示词', tokens: 820, kind: 'system' },
+        { label: 'Agent Skills', tokens: 640, kind: 'skill' },
+        { label: '记忆摘要', tokens: 380, kind: 'memory' },
+        { label: '工具定义', tokens: 290, kind: 'tools' },
+        { label: '对话消息', tokens: Math.round(1270 + msgTokens), kind: 'messages' },
+      ],
+    });
+  }
+
+  async searchGithubRepos(query: string): Promise<ApiResponse<StarRepo[]>> {
+    await delay(300);
+    requireAuth();
+    const q = query.toLowerCase().trim();
+    const pool: StarRepo[] = [
+      ...MOCK_UNIMPORTED_STARS.map((s) => ({ ...s, already_imported: false })),
+      ...this.projects.map((p) => {
+        const [owner, repo] = p.name.split('/');
+        return {
+          owner: owner ?? 'unknown',
+          repo: repo ?? p.name,
+          url: p.url,
+          description: p.description,
+          language: p.language,
+          stars: p.stars,
+          already_imported: true,
+        };
+      }),
+    ];
+    const filtered = q
+      ? pool.filter(
+          (s) =>
+            `${s.owner}/${s.repo}`.toLowerCase().includes(q) ||
+            (s.description?.toLowerCase().includes(q) ?? false)
+        )
+      : pool.slice(0, 12);
+    return wrapResponse(filtered.slice(0, 20));
+  }
+
+  async *importAssistChat(
+    message: string,
+    context: ImportAssistContext
+  ): AsyncGenerator<SSEEvent> {
+    requireAuth();
+    const lower = message.toLowerCase();
+    const keys = context.available_repo_keys ?? [];
+    const picks = keys.filter((k) => {
+      if (lower.includes('python') || lower.includes('后端')) {
+        return /flask|fastapi|django|python/i.test(k);
+      }
+      if (lower.includes('react') || lower.includes('前端')) {
+        return /react|vue|vite|next/i.test(k);
+      }
+      if (lower.includes('ai') || lower.includes('机器学习')) {
+        return /langchain|pytorch|transformers|openai/i.test(k);
+      }
+      return false;
+    });
+    const reply =
+      picks.length > 0
+        ? `根据你的描述，我建议导入：\n\n${picks.map((p) => `- **${p}**`).join('\n')}\n\n你可以在左侧勾选后确认导入。`
+        : `我理解你想导入与「${message}」相关的项目。请尝试描述技术栈或场景（如「Python Web」「React 生态」），我会从列表中推荐匹配项。`;
+    for (const ch of reply) {
+      yield { event: 'text_delta', data: { content: ch } };
+      await delay(8);
+    }
+    yield {
+      event: 'done',
+      data: { usage: { tokens: reply.length }, iterations: 1 },
+    };
+  }
+
+  async *graphGuideChat(
+    message: string,
+    context?: { selected_node_id?: string | null }
+  ): AsyncGenerator<SSEEvent> {
+    requireAuth();
+    const nodeId = context?.selected_node_id;
+    const project = nodeId ? this.projects.find((p) => p.id === nodeId) : undefined;
+    const reply = project
+      ? `**${project.name}** 在图谱中与相邻节点通过 TF-IDF 相似度连接。双击节点可跳转详情；当前相似边表示技术栈或 README 文本接近。\n\n你问：${message}`
+      : `我是 **Atlas · 图谱向导**，专门解读项目关系网络。\n\n- 节点颜色 = 分类\n- 边粗细 ≈ 相似度\n- 点击节点查看详情\n\n你问：${message}`;
+    for (const ch of reply) {
+      yield { event: 'text_delta', data: { content: ch } };
+      await delay(6);
+    }
+    yield {
+      event: 'done',
+      data: { usage: { tokens: reply.length }, iterations: 1 },
+    };
   }
 }

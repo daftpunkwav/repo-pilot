@@ -364,3 +364,8 @@
       .gh-card { flex-wrap: wrap; }
       .gh-actions { width: 100%; }
     }
+
+.content:has(.settings-shell) {
+  max-width: none;
+  padding: 16px 24px;
+}

@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { StarRepo } from '@/api/types';
 import { useGithubStars, useImportProjects } from '@/hooks/useProjects';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
+import { ImportAgentModal } from './ImportAgentModal';
+import { EmbedAgentChat } from '@/components/agent/EmbedAgentChat';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
 interface ImportStarsDrawerProps {
@@ -22,7 +24,10 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
     if (!open) setSelected(new Set());
   }, [open]);
 
-  if (!open) return null;
+  const repoKeys = useMemo(
+    () => (stars ?? []).map((s) => `${s.owner}/${s.repo}`),
+    [stars]
+  );
 
   const toggle = (key: string) => {
     setSelected((prev) => {
@@ -54,62 +59,70 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
   const githubBound = user?.github_bound ?? false;
 
   return (
-    <div className="drawer-overlay" role="presentation" onClick={onClose}>
-      <aside
-        className="drawer glass"
-        role="dialog"
-        aria-label="导入 GitHub Stars"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="drawer__header">
-          <h2>同步 GitHub Stars</h2>
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
-            关闭
-          </button>
-        </header>
-        {!githubBound ? (
-          <div className="drawer__body">
-            <p>请先在设置中绑定 GitHub 账号。</p>
-            <Link to="/settings" className="btn btn-primary" onClick={onClose}>
-              去设置绑定
-            </Link>
-          </div>
-        ) : isLoading ? (
-          <LoadingSpinner />
-        ) : (
-          <div className="drawer__body">
-            <ul className="star-list">
-              {(stars ?? []).map((s: StarRepo) => {
-                const key = `${s.owner}/${s.repo}`;
-                return (
-                  <li key={key} className="star-list__item">
-                    <label>
-                      <input
-                        type="checkbox"
-                        disabled={s.already_imported}
-                        checked={selected.has(key) || s.already_imported}
-                        onChange={() => toggle(key)}
-                      />
-                      <span className="font-mono">{key}</span>
-                      {s.already_imported && (
-                        <span className="star-list__imported">已导入</span>
-                      )}
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
+    <ImportAgentModal
+      open={open}
+      onClose={onClose}
+      title="同步 GitHub Stars"
+      subtitle="左侧勾选要导入的仓库，右侧可让导入助手推荐"
+      agentPanel={
+        <EmbedAgentChat
+          mode="import"
+          title="导入助手"
+          subtitle="根据描述推荐 Stars"
+          agentInitial="I"
+          agentClassName="agent-curator"
+          importContext={{
+            mode: 'stars',
+            available_repo_keys: repoKeys,
+            selected_repo_keys: [...selected],
+          }}
+        />
+      }
+    >
+      {!githubBound ? (
+        <div className="import-biz-empty">
+          <p>请先在设置中绑定 GitHub 账号。</p>
+          <Link to="/settings" className="btn btn-primary" onClick={onClose}>
+            去设置绑定
+          </Link>
+        </div>
+      ) : isLoading ? (
+        <LoadingSpinner />
+      ) : (
+        <>
+          <div className="import-biz-toolbar">
+            <span className="muted">{(stars ?? []).length} 个 Star 仓库</span>
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-primary btn-sm"
               disabled={importMutation.isPending}
-              onClick={handleImport}
+              onClick={() => void handleImport()}
             >
-              {importMutation.isPending ? '导入中…' : '确认导入'}
+              导入选中 ({selected.size})
             </button>
           </div>
-        )}
-      </aside>
-    </div>
+          <ul className="import-repo-list">
+            {(stars ?? []).map((s: StarRepo) => {
+              const key = `${s.owner}/${s.repo}`;
+              return (
+                <li key={key} className="import-repo-item">
+                  <label>
+                    <input
+                      type="checkbox"
+                      disabled={s.already_imported}
+                      checked={selected.has(key) || s.already_imported}
+                      onChange={() => toggle(key)}
+                    />
+                    <span className="font-mono">{key}</span>
+                    {s.description && <span className="import-repo-desc">{s.description}</span>}
+                    {s.already_imported && <span className="badge">已导入</span>}
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+    </ImportAgentModal>
   );
 }
