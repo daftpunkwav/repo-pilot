@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGraph } from '@/hooks/useGraph';
-import { useCategories } from '@/hooks/useProjects';
 import { useGraphStore } from '@/stores/graphStore';
+import { useUIStore } from '@/stores/uiStore';
 import { ForceGraph } from '@/components/graph/ForceGraph';
-import { GraphControls } from '@/components/graph/GraphControls';
+import { GraphControls, getSimilarNodes } from '@/components/graph/GraphControls';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
-import { ProgressBadge } from '@/components/project/ProgressBadge';
+import { formatNumber, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
+import { categoryLabel } from '@/utils/labels';
 import type { GraphNode } from '@/api/types';
 
 export function GraphPage() {
   const { data, isLoading } = useGraph();
-  const { data: categories = [] } = useCategories();
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 800, height: 500 });
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId);
@@ -20,6 +20,9 @@ export function GraphPage() {
   const highlightNode = useGraphStore((s) => s.highlightNode);
   const searchQuery = useGraphStore((s) => s.searchQuery);
   const categoryFilter = useGraphStore((s) => s.categoryFilter);
+  const zoomLevel = useGraphStore((s) => s.zoomLevel);
+  const minSimilarity = useGraphStore((s) => s.minSimilarity);
+  const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,6 +60,8 @@ export function GraphPage() {
     (n) => n.id === selectedNodeId
   );
 
+  const similarNodes = selectedNode ? getSimilarNodes(data, selectedNode.id) : [];
+
   if (isLoading) return <LoadingSpinner fullScreen />;
 
   if ((data?.nodes.length ?? 0) < 2) {
@@ -73,32 +78,169 @@ export function GraphPage() {
   return (
     <div className="graph-content">
       <div className="graph-stage" ref={containerRef}>
-        <GraphControls categories={categories} nodeCount={filteredData.nodes.length} />
+        <GraphControls nodeCount={filteredData.nodes.length} edgeCount={filteredData.edges.length} />
+
+        <div className="graph-hint">
+          <div>
+            <kbd>滚轮</kbd> 缩放 · <kbd>拖拽</kbd> 移动
+          </div>
+          <div>
+            <kbd>点击</kbd> 节点查看详情 · <kbd>双击</kbd> 跳转
+          </div>
+        </div>
+
         <ForceGraph
           data={filteredData}
-          width={size.width - (selectedNode ? 320 : 0)}
+          width={size.width}
           height={size.height}
           onNodeClick={(n) => selectNode(n.id)}
           onNodeDoubleClick={(n) => navigate(`/projects/${n.id}`)}
         />
+
         {selectedNode && (
-          <aside className="graph-detail glass">
-            <h3 className="font-mono">{selectedNode.name}</h3>
-            <p>{selectedNode.language}</p>
-            <p>★ {selectedNode.stars.toLocaleString()}</p>
-            {selectedNode.progress && <ProgressBadge progress={selectedNode.progress} />}
+          <div className="node-detail">
+            <div className="node-detail-head">
+              <div
+                className="node-avatar"
+                style={{ background: REPO_AVATAR_GRADIENTS[0] }}
+              >
+                {(splitRepoName(selectedNode.name).repo[0] ?? 'P').toUpperCase()}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="node-meta-name">{selectedNode.name}</div>
+                <div className="node-meta-cat">{categoryLabel(selectedNode.category_id)}</div>
+              </div>
+              <button
+                type="button"
+                className="node-detail-close"
+                title="关闭"
+                onClick={() => selectNode(null)}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" width={12} height={12}>
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+            <div className="node-detail-section">
+              <div className="detail-label">基本信息</div>
+              <div className="detail-row">
+                <span className="muted">分类</span>
+                <strong>{categoryLabel(selectedNode.category_id)}</strong>
+              </div>
+              <div className="detail-row">
+                <span className="muted">主语言</span>
+                <strong>{selectedNode.language ?? '-'}</strong>
+              </div>
+              <div className="detail-row">
+                <span className="muted">Stars</span>
+                <strong>{formatNumber(selectedNode.stars)}</strong>
+              </div>
+            </div>
+            {similarNodes.length > 0 && (
+              <div className="node-detail-section">
+                <div className="detail-label">相似度最高的 {similarNodes.length} 个</div>
+                <div className="similar-list">
+                  {similarNodes.map(({ node, similarity }, i) => (
+                    <button
+                      key={node.id}
+                      type="button"
+                      className="similar-item"
+                      onClick={() => selectNode(node.id)}
+                    >
+                      <div
+                        className="similar-avatar"
+                        style={{ background: REPO_AVATAR_GRADIENTS[i % REPO_AVATAR_GRADIENTS.length] }}
+                      >
+                        {(splitRepoName(node.name).repo[0] ?? 'P').toUpperCase()}
+                      </div>
+                      <span className="similar-name">{node.name}</span>
+                      <span className="similar-score">{similarity.toFixed(2)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="detail-actions">
+              <button
+                type="button"
+                className="btn btn-primary btn-block"
+                onClick={() => navigate(`/projects/${selectedNode.id}`)}
+              >
+                查看详情
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-block"
+                onClick={() => navigate(`/agent`)}
+              >
+                Scout 快速分析
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="minimap">
+          <div className="minimap-head">
+            <span>缩略</span>
+            <span className="stat-mono">1:8</span>
+          </div>
+          <svg viewBox="0 0 140 88" preserveAspectRatio="xMidYMid meet">
+            <rect className="minimap-frame" x="32" y="20" width="64" height="48" />
+          </svg>
+        </div>
+
+        <div className="graph-statusbar">
+          <div>
+            <span className="stat-row">
+              <span className="stat-dot" />
+              <span className="stat-mono">60 FPS</span>
+            </span>
+            <span className="stat-row">
+              <span className="stat-mono">{filteredData.nodes.length} 节点</span>
+              <span className="muted">/</span>
+              <span className="stat-mono">{filteredData.edges.length} 连线</span>
+            </span>
+            <span className="stat-row">
+              <span className="muted">缩放</span>
+              <span className="stat-mono">{Math.round(zoomLevel * 100)}%</span>
+            </span>
+            <span className="stat-row">
+              <span className="muted">阈值</span>
+              <span className="stat-mono">≥ {minSimilarity.toFixed(2)}</span>
+            </span>
+          </div>
+          <div>
+            <span className="health-bar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width={11} height={11}>
+                <path d="M5 12l4 4L19 6" />
+              </svg>
+              图谱健康 · 力导向已收敛
+            </span>
+          </div>
+          <div className="export-actions">
             <button
               type="button"
-              className="btn btn-primary"
-              onClick={() => navigate(`/projects/${selectedNode.id}`)}
+              className="export-btn primary"
+              onClick={() => addToast({ type: 'info', message: 'PNG 导出（演示）' })}
             >
-              项目详情
+              PNG
             </button>
-            <button type="button" className="btn btn-ghost" onClick={() => selectNode(null)}>
-              关闭
+            <button
+              type="button"
+              className="export-btn"
+              onClick={() => addToast({ type: 'info', message: 'SVG 导出（演示）' })}
+            >
+              SVG
             </button>
-          </aside>
-        )}
+            <button
+              type="button"
+              className="export-btn"
+              onClick={() => addToast({ type: 'info', message: 'JSON 导出（演示）' })}
+            >
+              JSON
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

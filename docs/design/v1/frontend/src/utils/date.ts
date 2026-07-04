@@ -13,6 +13,24 @@ export function formatDateTime(iso: string): string {
   });
 }
 
+/** ISO 8601 → 本地化日期（如 2026/05/12） */
+export function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+}
+
+/** 消息时间（HH:mm） */
+export function formatMessageTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
 /** ISO 8601 → 相对时间（如「3 天前」） */
 export function formatRelativeTime(iso: string): string {
   const d = new Date(iso);

@@ -168,7 +168,7 @@ export function ForceGraph({
       ref={svgRef}
       width={width}
       height={height}
-      className="force-graph-svg"
+      className="graph-svg force-graph-svg"
       data-testid="force-graph-svg"
     />
   );
