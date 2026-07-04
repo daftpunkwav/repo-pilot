@@ -9,7 +9,7 @@
       background: var(--bg-50); color: var(--text-800); border: 1px solid var(--bg-300);
     }
     .btn-github .gh-dot {
-      width: 8px; height: 8px; border-radius: 999px;
+      width: 8px; height: 8px; border-radius: var(--radius-pill);
       background: var(--success); box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.18);
     }
 
@@ -18,7 +18,7 @@
     .stat-card .stat-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-500); display: flex; align-items: center; gap: 6px; }
     .stat-card .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 2px; }
     .stat-card .stat-delta { font-size: 12px; font-weight: 600; color: var(--success); display: inline-flex; align-items: center; gap: 4px; }
-    .stat-card .stat-icon { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: var(--brand-500); background: var(--brand-50); }
+    .stat-card .stat-icon { position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border-radius: var(--radius-icon); display: grid; place-items: center; color: var(--brand-500); background: var(--brand-50); }
     .stat-card.stat-green .stat-icon { color: var(--success); background: var(--success-surface); }
     .stat-card.stat-orange .stat-icon { color: var(--warning); background: var(--warning-surface); }
     .stat-card.stat-purple .stat-icon { color: var(--chart-4); background: #f3e8ff; }
@@ -52,7 +52,7 @@
     .table tbody tr:hover { background: var(--bg-100); cursor: pointer; }
 
     .repo-cell { display: flex; align-items: center; gap: 12px; min-width: 240px; }
-    .repo-avatar { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font: 700 13px/1 var(--font-mono); color: #fff; flex-shrink: 0; }
+    .repo-avatar { width: 36px; height: 36px; border-radius: var(--radius-icon); display: grid; place-items: center; font: 700 13px/1 var(--font-mono); color: #fff; flex-shrink: 0; }
     .repo-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .repo-name { font: 600 13px/1.3 var(--font-mono); color: var(--text-800); display: flex; align-items: center; gap: 6px; }
     .repo-name .owner { color: var(--text-500); font-weight: 500; }
@@ -60,7 +60,7 @@
     .repo-desc { font-size: 12px; color: var(--text-500); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .lang-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-700); }
-    .lang-dot::before { content: ''; width: 10px; height: 10px; border-radius: 999px; background: var(--bg-400); }
+    .lang-dot::before { content: ''; width: 10px; height: 10px; border-radius: var(--radius-pill); background: var(--bg-400); }
     .lang-js::before     { background: #f1e05a; }
     .lang-ts::before     { background: #3178c6; }
     .lang-py::before     { background: #3572a5; }
@@ -75,19 +75,19 @@
     .stars svg { width: 12px; height: 12px; color: var(--warning); }
 
     .tags { display: inline-flex; gap: 6px; flex-wrap: wrap; }
-    .tag { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 999px; background: var(--bg-200); color: var(--text-600); font-size: 11px; font-weight: 600; }
+    .tag { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: var(--radius-pill); background: var(--bg-200); color: var(--text-600); font-size: 11px; font-weight: 600; }
 
-    .btn-scout { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: 999px; background: var(--brand-50); color: var(--brand-700); font: 600 11px/1 var(--font-sans); border: 0; cursor: pointer; }
+    .btn-scout { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 10px; border-radius: var(--radius-pill); background: var(--brand-50); color: var(--brand-700); font: 600 11px/1 var(--font-sans); border: 0; cursor: pointer; }
     .btn-scout:hover { background: var(--brand-100); }
 
     .row-actions { display: inline-flex; align-items: center; gap: 4px; }
-    .icon-btn { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: transparent; border: 0; color: var(--text-500); cursor: pointer; }
+    .icon-btn { width: 28px; height: 28px; border-radius: var(--radius-sm); display: grid; place-items: center; background: transparent; border: 0; color: var(--text-500); cursor: pointer; }
     .icon-btn:hover { background: var(--bg-300); color: var(--text-800); }
 
     .pagination { display: flex; align-items: center; justify-content: space-between; padding: 14px 8px 0; }
     .pagination .info { color: var(--text-500); font-size: 12px; }
     .pagination .pages { display: inline-flex; gap: 4px; align-items: center; }
-    .page-btn { min-width: 32px; height: 32px; padding: 0 8px; border-radius: 8px; background: transparent; border: 0; color: var(--text-700); font: 600 12px/1 var(--font-sans); cursor: pointer; }
+    .page-btn { min-width: 32px; height: 32px; padding: 0 8px; border-radius: var(--radius-sm); background: transparent; border: 0; color: var(--text-700); font: 600 12px/1 var(--font-sans); cursor: pointer; }
     .page-btn:hover { background: var(--bg-300); }
     .page-btn.active { background: var(--brand-500); color: #fff; }
     .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -204,7 +204,7 @@
 
 .import-tab {
   padding: 6px 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--bg-300);
   background: var(--bg-100);
   font-size: 12px;

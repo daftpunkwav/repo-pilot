@@ -12,7 +12,7 @@
   gap: 6px;
   height: 32px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--bg-50);
   border: 1px solid var(--bg-300);
   font-size: 12px;

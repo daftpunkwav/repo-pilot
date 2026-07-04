@@ -55,7 +55,7 @@
     /* 红色未配置小点 */
     .dot-unset {
       width: 7px; height: 7px;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       background: var(--error);
       display: inline-block;
       margin-left: auto;
@@ -96,7 +96,7 @@
     /* 卡片内的缩略预览 */
     .theme-preview {
       height: 84px;
-      border-radius: 8px;
+      border-radius: var(--radius-sm);
       border: 1px solid var(--bg-300);
       margin-bottom: 10px;
       overflow: hidden;
@@ -104,9 +104,9 @@
       grid-template-columns: 28px 1fr;
     }
     .theme-preview .pv-side { padding: 8px 4px; display: flex; flex-direction: column; gap: 4px; }
-    .theme-preview .pv-side i { display: block; height: 4px; border-radius: 2px; }
+    .theme-preview .pv-side i { display: block; height: 4px; border-radius: var(--radius-2xs); }
     .theme-preview .pv-body { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
-    .theme-preview .pv-body i { display: block; height: 5px; border-radius: 2px; }
+    .theme-preview .pv-body i { display: block; height: 5px; border-radius: var(--radius-2xs); }
     /* 浅色预览 */
     .pv-light { background: #ffffff; }
     .pv-light .pv-side { background: #f2f2f7; }
@@ -136,7 +136,7 @@
     }
     .theme-card-check {
       width: 16px; height: 16px;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       background: var(--brand-500);
       color: #fff;
       display: grid; place-items: center;
@@ -160,7 +160,7 @@
       padding: 4px 10px;
       background: var(--bg-200);
       border: 1px solid var(--bg-300);
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       font-size: 12px; font-weight: 500;
       color: var(--text-700);
       cursor: pointer;
@@ -246,7 +246,7 @@
     }
     .gh-avatar {
       width: 44px; height: 44px;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       background: linear-gradient(135deg, #24292e, #586069);
       color: #fff;
       display: grid; place-items: center;
@@ -268,7 +268,7 @@
       width: 12px; height: 12px;
       border: 2px solid rgba(255,255,255,.35);
       border-top-color: #fff;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       animation: spin .8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -310,7 +310,7 @@
       border: 1px solid var(--error);
       color: var(--error);
       height: 32px; padding: 0 14px;
-      border-radius: 999px;
+      border-radius: var(--radius-pill);
       font: 600 12px/1 var(--font-sans);
       cursor: pointer;
     }
@@ -321,7 +321,7 @@
       display: flex; gap: 4px; margin-top: 6px;
     }
     .pwd-strength i {
-      flex: 1; height: 4px; border-radius: 2px;
+      flex: 1; height: 4px; border-radius: var(--radius-2xs);
       background: var(--bg-300);
     }
     .pwd-strength.s2 i:nth-child(-n+2) { background: var(--error); }

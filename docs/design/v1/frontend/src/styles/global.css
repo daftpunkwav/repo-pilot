@@ -45,7 +45,7 @@ a {
   background: var(--bg-50);
   color: var(--text-800);
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   border: 1px solid var(--bg-300);
   box-shadow: var(--shadow-md);
   font-size: 13px;
