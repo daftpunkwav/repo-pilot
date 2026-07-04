@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -13,6 +13,7 @@ import { getApi } from '@/api/client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { formatRelativeTime, formatDateTime } from '@/utils/date';
 import { formatNumber, langCssClass, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
+import { getMorseHopPx, HERO_MORSE_BITS, HERO_MORSE_INTERVAL_MS } from '@/utils/morse';
 import { AgentCarousel } from '@/components/agent/AgentCarousel';
 import type { LookTarget } from '@/components/agent/AgentAvatar';
 import type { ProjectProgress, TrendingPeriod } from '@/api/types';
@@ -40,6 +41,18 @@ export function OverviewPage() {
 
   const [trendingVisible, setTrendingVisible] = useState(false);
   const [chatBtnLookTarget, setChatBtnLookTarget] = useState<LookTarget | null>(null);
+  const [morseTick, setMorseTick] = useState(0);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (mq.matches) return;
+
+    const id = window.setInterval(() => {
+      setMorseTick((t) => t + 1);
+    }, HERO_MORSE_INTERVAL_MS);
+
+    return () => window.clearInterval(id);
+  }, []);
 
   const handleChatBtnLook = (event: MouseEvent<HTMLAnchorElement>) => {
     setChatBtnLookTarget({ x: event.clientX, y: event.clientY });
@@ -84,20 +97,36 @@ export function OverviewPage() {
 
   const heroArtChars = ['R', 'e', 'p', 'o', 'P', 'i', 'l', 'o', 't'];
 
+  const morseActiveIndex = morseTick % heroArtChars.length;
+  const morseBit = HERO_MORSE_BITS[morseTick % HERO_MORSE_BITS.length] ?? 0;
+  const morseRound = Math.floor(morseTick / HERO_MORSE_BITS.length);
+  const morseInvert = morseRound % 2 === 1;
+
   return (
     <>
       <div className="overview-hero-wrap">
         <div className="overview-hero-art" aria-hidden>
           <span className="overview-hero-artword">
-            {heroArtChars.map((char, index) => (
-              <span
-                key={`${char}-${index}`}
-                className="overview-hero-art-char"
-                style={{ ['--art-i' as string]: index }}
-              >
-                <span className="overview-hero-art-char-glyph">{char}</span>
-              </span>
-            ))}
+            {heroArtChars.map((char, index) => {
+              const isMorseActive = index === morseActiveIndex;
+              const hopPx = isMorseActive ? getMorseHopPx(index, morseBit, morseInvert) : 0;
+
+              return (
+                <span key={`${char}-${index}`} className="overview-hero-art-char">
+                  <span
+                    key={isMorseActive ? `morse-${morseTick}` : 'rest'}
+                    className={`overview-hero-art-char-glyph${isMorseActive ? ' morse-hopping' : ''}`}
+                    style={
+                      isMorseActive
+                        ? ({ '--morse-hop': `${hopPx}px` } as CSSProperties)
+                        : undefined
+                    }
+                  >
+                    {char}
+                  </span>
+                </span>
+              );
+            })}
           </span>
         </div>
         <div className="overview-hero-glass glass-card glass-card--panel" aria-hidden />
@@ -109,7 +138,7 @@ export function OverviewPage() {
           <div className="quick-actions">
             <Link
               to="/agent"
-              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive liquid-glass-btn quick-action-brand"
+              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive liquid-glass--pulse liquid-glass-btn quick-action-brand"
               onMouseEnter={handleChatBtnLook}
               onMouseMove={handleChatBtnLook}
               onMouseLeave={handleChatBtnLookEnd}
