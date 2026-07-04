@@ -38,4 +38,4 @@ export function getMorseHopPx(letterIndex: number, bit: 0 | 1, invert: boolean):
   return table[letterIndex % table.length] ?? (isHigh ? 18 : 7);
 }
 
-export const HERO_MORSE_INTERVAL_MS = 618;
+export const HERO_MORSE_INTERVAL_MS = 1618;
