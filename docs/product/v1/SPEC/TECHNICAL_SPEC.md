@@ -244,7 +244,7 @@ AgentSession 1──N AgentMessage
 | created_at | TIMESTAMP    | DEFAULT NOW          | 创建时间                                 |
 | updated_at | TIMESTAMP    | DEFAULT NOW          | 更新时间                                 |
 
-**索引:** `idx_agent_sessions_user ON agent_sessions(user_id, created_at)`
+**索引:** `idx_agent_sessions_user ON agent_sessions(user_id, updated_at DESC)`
 
 #### agent_messages
 
@@ -1431,7 +1431,7 @@ async def read_source_file(repo: str, path: str, ref: str = "main",
         },
         "required": ["query"],
     },
-    allowed_agents=["scout", "mentor", "navigator", "curator", "scribe", "hub"],
+    allowed_agents=["scout", "mentor", "navigator", "curator", "scribe"],
 )
 async def search_web(query: str, max_results: int = 5,
                       context: ExecutionContext = None, **kwargs) -> ToolResult:
