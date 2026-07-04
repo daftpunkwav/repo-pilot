@@ -13,6 +13,8 @@ interface AgentAvatarProps {
   size?: number;
   /** 轮播位移时刷新注视方向 */
   gazeRevision?: number;
+  /** 待机眨眼 */
+  blink?: boolean;
 }
 
 function computeGaze(avatarRect: DOMRect, target: LookTarget, isFocused: boolean): GazeOffset {
@@ -36,6 +38,7 @@ export function AgentAvatar({
   isFocused,
   size = 54,
   gazeRevision = 0,
+  blink = false,
 }: AgentAvatarProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [gaze, setGaze] = useState<GazeOffset>({ x: 0, y: 0 });
@@ -66,7 +69,7 @@ export function AgentAvatar({
   return (
     <div
       ref={rootRef}
-      className="agent-character"
+      className={`agent-character${blink ? ' agent-character--blinking' : ''}`}
       style={{ width: size, height: size }}
       aria-hidden
     >

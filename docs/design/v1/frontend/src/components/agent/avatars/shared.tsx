@@ -21,10 +21,12 @@ export function Eye({ cx, cy, look, rx = 4.2, ry = 4.8, pupilR = 2.1, maxShift =
   const py = look.y * maxShift;
   return (
     <g transform={`translate(${cx} ${cy})`}>
-      <ellipse cx={0} cy={0} rx={rx} ry={ry} fill="#fff" />
-      <g className="agent-eye-pupil" transform={`translate(${px} ${py})`}>
-        <circle cx={0} cy={0} r={pupilR} fill="#1d1d1f" />
-        <circle cx={0.55} cy={-0.55} r={0.65} fill="#fff" opacity={0.92} />
+      <g className="agent-eye">
+        <ellipse cx={0} cy={0} rx={rx} ry={ry} fill="#fff" />
+        <g className="agent-eye-pupil" transform={`translate(${px} ${py})`}>
+          <circle cx={0} cy={0} r={pupilR} fill="#1d1d1f" />
+          <circle cx={0.55} cy={-0.55} r={0.65} fill="#fff" opacity={0.92} />
+        </g>
       </g>
     </g>
   );
