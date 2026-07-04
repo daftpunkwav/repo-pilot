@@ -129,6 +129,31 @@
   --lg-shadow-inset-glow: var(--lg-panel-inset-glow);
 }
 
+/* 透明中层 · 不渲染底板，仅保留内层 control 玻璃 */
+.glass-card--panel-clear,
+.liquid-glass--panel-clear {
+  --lg-tint: transparent;
+  --lg-panel-tint: transparent;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.glass-card--panel-clear::before,
+.glass-card--panel-clear::after,
+.liquid-glass--panel-clear::before,
+.liquid-glass--panel-clear::after {
+  display: none;
+}
+
+.glass-card--panel-clear.liquid-glass--interactive:hover,
+.liquid-glass--panel-clear.liquid-glass--interactive:hover {
+  box-shadow: none;
+  --lg-shadow-outer: none;
+}
+
 /* 上层 · 控件按钮（更实、强 blur、内发光） */
 .glass-card--control,
 .liquid-glass--control {

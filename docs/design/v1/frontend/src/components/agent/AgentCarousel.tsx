@@ -243,7 +243,7 @@ export function AgentCarousel({
               {loopAgents.map((agent, i) => (
                 <Link
                   key={`${agent.id}-${i}`}
-                  className="agent-carousel-card glass-card glass-card--panel liquid-glass--interactive"
+                  className="agent-carousel-card glass-card glass-card--panel-clear liquid-glass--interactive"
                   to={`/agent?agent=${agent.id}`}
                   onMouseEnter={(e) => handleCardEnter(e, agent.id)}
                 >

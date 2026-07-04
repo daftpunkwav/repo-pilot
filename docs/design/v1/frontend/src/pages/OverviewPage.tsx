@@ -170,7 +170,7 @@ export function OverviewPage() {
       <AgentCarousel externalLookTarget={chatBtnLookTarget} />
 
       <section className="row-2col">
-        <div className="panel panel-progress glass-card glass-card--panel">
+        <div className="panel panel-progress glass-card glass-card--panel-clear">
           <h3>学习进度分布</h3>
           <div className="progress-panel-body">
             <section
@@ -216,7 +216,7 @@ export function OverviewPage() {
           </div>
         </div>
 
-        <div className="panel glass-card glass-card--panel">
+        <div className="panel glass-card glass-card--panel-clear">
           <div className="section-head" style={{ marginTop: 0 }}>
             <h3>最近活动</h3>
             <Link
@@ -256,7 +256,7 @@ export function OverviewPage() {
       </section>
 
       <section className="row-2col">
-        <div className="panel glass-card glass-card--panel">
+        <div className="panel glass-card glass-card--panel-clear">
           <div className="section-head" style={{ marginTop: 0 }}>
             <h3>为你推荐</h3>
             <Link
@@ -296,7 +296,7 @@ export function OverviewPage() {
           </div>
         </div>
 
-        <div className="panel glass-card glass-card--panel">
+        <div className="panel glass-card glass-card--panel-clear">
           <div className="section-head" style={{ marginTop: 0 }}>
             <h3>最近笔记</h3>
             <Link
@@ -345,7 +345,7 @@ export function OverviewPage() {
             </h2>
             <span className="trending-subtitle">基于 trending 数据，帮助你发现值得关注的项目</span>
           </div>
-          <div className="period-toggle glass-card glass-card--panel" role="tablist">
+          <div className="period-toggle glass-card glass-card--panel-clear" role="tablist">
             {(['daily', 'weekly', 'monthly'] as TrendingPeriod[]).map((p) => (
               <button
                 key={p}
@@ -370,7 +370,7 @@ export function OverviewPage() {
               return (
                 <a
                   key={`${r.owner}/${r.repo}`}
-                  className={`trending-card glass-card glass-card--panel liquid-glass--interactive ${
+                  className={`trending-card glass-card glass-card--panel-clear liquid-glass--interactive ${
                     trendingVisible ? 'is-visible' : ''
                   }`}
                   style={{ ['--card-w' as string]: `${widthPct.toFixed(2)}%` }}
