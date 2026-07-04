@@ -65,14 +65,198 @@ textarea {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 100vh;
 }
 
 .app-content {
   flex: 1;
+  min-height: 0;
+  overflow: auto;
+  scroll-padding-top: calc(var(--topbar-h) + calc(var(--sp) * 4));
   padding: calc(var(--sp) * 5);
   max-width: var(--content-max);
   width: 100%;
   margin: 0 auto;
+}
+
+/* Topbar BEM（与 Topbar.tsx 对齐） */
+.topbar {
+  flex-shrink: 0;
+  justify-content: space-between;
+  overflow: visible;
+}
+
+.topbar__breadcrumb {
+  font-size: 0.8125rem;
+  color: var(--text-500);
+  font-weight: 600;
+}
+
+.topbar__user {
+  position: relative;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.topbar__user-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--sp) * 2);
+  padding: calc(var(--sp) * 1) calc(var(--sp) * 2);
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--text-800);
+  font-size: 0.8125rem;
+  max-width: 200px;
+}
+
+.topbar__user-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.topbar__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.topbar__avatar--placeholder {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--chart-4), var(--chart-5));
+  color: #fff;
+  font-weight: 700;
+}
+
+.topbar__menu {
+  position: absolute;
+  top: calc(100% + calc(var(--sp) * 2));
+  right: 0;
+  min-width: 160px;
+  padding: calc(var(--sp) * 2);
+  border-radius: var(--radius);
+  z-index: var(--z-dropdown);
+}
+
+.topbar__menu-item {
+  display: block;
+  width: 100%;
+  padding: calc(var(--sp) * 2) calc(var(--sp) * 3);
+  border: none;
+  background: transparent;
+  text-align: left;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: inherit;
+  font-size: 0.875rem;
+}
+
+.topbar__menu-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.topbar__menu-divider {
+  border: none;
+  border-top: 1px solid var(--bg-300);
+  margin: calc(var(--sp) * 2) 0;
+}
+
+/* Sidebar BEM（与 Sidebar.tsx 对齐） */
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--sp) * 3);
+  padding: calc(var(--sp) * 2) calc(var(--sp) * 3) calc(var(--sp) * 5);
+}
+
+.sidebar__logo {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9375rem;
+}
+
+.sidebar__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--sp) * 1);
+  flex: 1;
+}
+
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--sp) * 2);
+  padding: calc(var(--sp) * 2) calc(var(--sp) * 3);
+  border-radius: var(--radius-sm);
+  color: var(--text-800);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  transition: background 0.18s var(--ease);
+}
+
+.sidebar__link:hover {
+  background: rgba(0, 0, 0, 0.04);
+  text-decoration: none;
+}
+
+.sidebar__link--active {
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.15), rgba(0, 122, 255, 0.08));
+  color: var(--brand-700);
+  font-weight: 600;
+}
+
+.sidebar__link-label {
+  flex: 1;
+}
+
+.sidebar__badge {
+  margin-left: auto;
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  font-family: var(--font-mono);
+}
+
+.sidebar__badge--ai {
+  background: linear-gradient(135deg, var(--chart-5), var(--chart-4));
+  color: #fff;
+}
+
+.sidebar__toggle {
+  margin-top: auto;
+  border: none;
+  background: transparent;
+  padding: calc(var(--sp) * 2);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  color: var(--text-500);
+}
+
+.sidebar--collapsed {
+  width: 72px;
+}
+
+.sidebar--collapsed .sidebar__title,
+.sidebar--collapsed .sidebar__badge,
+.sidebar--collapsed .sidebar__link-label {
+  display: none;
 }
 
 .page {
@@ -379,12 +563,17 @@ textarea {
   display: grid;
   grid-template-columns: 260px 1fr;
   gap: calc(var(--sp) * 4);
-  height: calc(100vh - var(--topbar-h) - calc(var(--sp) * 10));
-  min-height: 500px;
+  flex: 1;
+  min-height: 520px;
+  /* 使用 flex 填充主内容区，避免 vh 计算导致内容与 sticky topbar 重叠 */
 }
 .agent-sessions {
   padding: calc(var(--sp) * 4);
   overflow-y: auto;
+}
+
+.agent-sessions [data-testid='new-session-btn'] {
+  scroll-margin-top: calc(var(--topbar-h) + calc(var(--sp) * 4));
 }
 .session-list {
   list-style: none;

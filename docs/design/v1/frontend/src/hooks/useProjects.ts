@@ -1,10 +1,28 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useShallow } from 'zustand/react/shallow';
 import { getApi } from '@/api/client';
 import type { CreateProjectInput, Project, ProjectProgress } from '@/api/types';
 import { useProjectStore } from '@/stores/projectStore';
 
+/** 从 store 派生查询参数；必须用 useShallow，避免每次返回新对象触发无限重渲染 */
+function useProjectListParams() {
+  return useProjectStore(
+    useShallow((s) => ({
+      search: s.search || undefined,
+      category_id: s.categoryId ?? undefined,
+      language: s.language ?? undefined,
+      progress: s.progress ?? undefined,
+      tag_id: s.tagId ?? undefined,
+      sort_by: s.sortBy,
+      sort_order: s.sortOrder,
+      page: s.page,
+      page_size: s.pageSize,
+    }))
+  );
+}
+
 export function useProjects() {
-  const params = useProjectStore((s) => s.toApiParams());
+  const params = useProjectListParams();
   return useQuery({
     queryKey: ['projects', params],
     queryFn: async () => {
