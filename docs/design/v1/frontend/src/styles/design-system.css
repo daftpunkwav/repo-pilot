@@ -204,112 +204,35 @@ img, svg { display: block; max-width: 100%; }
 
 /* ==========================================================================
    iOS LIQUID GLASS · 液态玻璃系统
-   关键特性：多层 backdrop-filter、refraction tint、specular highlight、噪点
+   核心实现已迁移至 liquid-glass.css（单一来源）
+   文档：docs/liquid-glass.md
    ========================================================================== */
 
-/* 基础液态玻璃：用于导航栏、按钮、卡片表面 */
-.glass {
-  position: relative;
-  background: var(--glass-tint);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  border: 1px solid var(--glass-border);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
-    inset 0 -1px 0 0 rgba(255, 255, 255, 0.1),
-    var(--shadow-md);
-  isolation: isolate;
-}
-
-/* 液态玻璃 - 强模糊（用于模态、悬浮大面板） */
-.glass-strong {
-  position: relative;
-  background: var(--glass-tint);
-  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturation));
-  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturation));
-  border: 1px solid var(--glass-border);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.55),
-    inset 0 -1px 0 0 rgba(255, 255, 255, 0.1),
-    var(--shadow-xl);
-}
-
-/* 液态玻璃 - 弱模糊（用于密集列表） */
+/* 弱模糊变体（密集列表） */
+.liquid-glass--soft,
 .glass-soft {
-  position: relative;
-  background: var(--glass-tint);
-  backdrop-filter: blur(var(--glass-blur-soft)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--glass-blur-soft)) saturate(140%);
-  border: 1px solid var(--glass-border);
+  --lg-tint: rgba(255, 255, 255, 0.05);
+  --lg-blur: 8px;
   box-shadow: var(--shadow-xs);
 }
 
-/* 液态玻璃 - 彩色 tint（按品牌色着色） */
-.glass-tinted-brand {
-  background: linear-gradient(135deg, rgba(0,122,255,0.18), rgba(0,122,255,0.06));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  border: 1px solid rgba(0,122,255,0.25);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255,255,255,0.4),
-    0 4px 24px rgba(0,122,255,0.15);
-}
+/* 彩色 tint 扩展（非品牌主色，按需使用） */
+.liquid-glass--violet,
 .glass-tinted-violet {
-  background: linear-gradient(135deg, rgba(94,92,230,0.18), rgba(191,90,242,0.06));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  border: 1px solid rgba(94,92,230,0.25);
+  --lg-tint: rgba(94, 92, 230, 0.18);
+  --lg-border: rgba(94, 92, 230, 0.28);
+  --lg-shadow-outer: 0 8px 32px rgba(94, 92, 230, 0.12);
 }
+
+.liquid-glass--green,
 .glass-tinted-green {
-  background: linear-gradient(135deg, rgba(52,199,89,0.18), rgba(48,209,88,0.06));
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  border: 1px solid rgba(52,199,89,0.25);
+  --lg-tint: rgba(52, 199, 89, 0.18);
+  --lg-border: rgba(52, 199, 89, 0.28);
+  --lg-shadow-outer: 0 8px 32px rgba(52, 199, 89, 0.12);
 }
 
-/* 液态玻璃的 specular highlight（高光斜面） */
-.glass::before,
-.glass-strong::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--glass-specular);
-  opacity: 0.5;
-  mix-blend-mode: overlay;
-  pointer-events: none;
-  z-index: -1;
-}
-
-/* 液态玻璃的噪点纹理（高级质感） */
-.glass::after,
-.glass-strong::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background-image: var(--glass-noise);
-  opacity: 0.6;
-  mix-blend-mode: overlay;
-  pointer-events: none;
-}
-
-/* 玻璃圆角变体 */
-.glass-rounded { border-radius: var(--radius); }
-.glass-pill    { border-radius: var(--radius-pill); }
-.glass-square  { border-radius: var(--radius-2xs); }
-
-/* 玻璃悬浮（hover 时上浮 + 增强高光） */
-.glass-hover {
-  transition: transform 0.25s var(--ease-spring), box-shadow 0.25s var(--ease);
-}
-.glass-hover:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.6),
-    inset 0 -1px 0 0 rgba(255, 255, 255, 0.15),
-    var(--shadow-lg);
-}
+/* Legacy：glass-padded → liquid-glass-padded */
+.glass-padded { padding: 16px 18px; }
 
 /* ==========================================================================
    App Shell · 玻璃侧边栏 + 玻璃顶栏
@@ -511,16 +434,7 @@ img, svg { display: block; max-width: 100%; }
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,122,255,0.45), inset 0 1px 0 rgba(255,255,255,0.4); }
 .btn-primary:active { transform: translateY(0); }
 
-/* 玻璃次按钮 */
-.btn-glass {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  color: var(--text-800);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.04);
-}
-.btn-glass:hover { background: rgba(255, 255, 255, 0.7); transform: translateY(-1px); }
+/* 玻璃次按钮：请使用 .btn.liquid-glass.liquid-glass--pill，见 docs/liquid-glass.md */
 
 /* 文本按钮 */
 .btn-text {
