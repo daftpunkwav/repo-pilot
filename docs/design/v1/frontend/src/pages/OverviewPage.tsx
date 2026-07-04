@@ -143,16 +143,15 @@ export function OverviewPage() {
   const trendStep = trending.length > 1 ? (100 - MIN_TREND_W) / (trending.length - 1) : 0;
 
   const handleTrendingCardEnter = (repo: TrendingRepo, event: ReactMouseEvent<HTMLAnchorElement>) => {
-    scout.cancelHide();
     scout.showForRepo(repo, { x: event.clientX, y: event.clientY });
+  };
+
+  const handleTrendingCardLeave = () => {
+    scout.leaveTrendingCard();
   };
 
   const handleTrendingCardMove = (event: ReactMouseEvent<HTMLAnchorElement>) => {
     scout.updateLook({ x: event.clientX, y: event.clientY });
-  };
-
-  const handleTrendingGridLeave = () => {
-    scout.scheduleHide();
   };
 
   const heroArtChars = ['R', 'e', 'p', 'o', 'P', 'i', 'l', 'o', 't'];
@@ -415,11 +414,7 @@ export function OverviewPage() {
             ))}
           </div>
         </div>
-        <div
-          className="trending-grid"
-          ref={trendingGridRef}
-          onMouseLeave={handleTrendingGridLeave}
-        >
+        <div className="trending-grid" ref={trendingGridRef}>
             {trending.length === 0 ? (
               <div className="trending-empty">该周期暂无数据</div>
             ) : (
@@ -436,6 +431,7 @@ export function OverviewPage() {
                     target="_blank"
                     rel="noreferrer"
                     onMouseEnter={(event) => handleTrendingCardEnter(r, event)}
+                    onMouseLeave={handleTrendingCardLeave}
                     onMouseMove={handleTrendingCardMove}
                   >
                   <div className="trending-rank glass-card glass-card--control">{r.rank ?? index + 1}</div>
