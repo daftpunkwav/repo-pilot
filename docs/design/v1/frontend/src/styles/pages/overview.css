@@ -313,7 +313,9 @@
     .overview-control-surface.glass-card--control,
     .agent-summary.glass-card--control,
     .activity-item.glass-card--control,
-    .agent-card-meta.glass-card--control {
+    .agent-card-meta.glass-card--control,
+    .project-item.glass-card--control,
+    .note-item.glass-card--control {
       border-radius: var(--radius-btn);
     }
     .summary-avatar.glass-card--control,
@@ -325,8 +327,6 @@
     }
     /* 其余 control 子元素保留较小圆角 */
     .activity-icon.glass-card--control,
-    .project-item.glass-card--control,
-    .note-item.glass-card--control,
     .trending-rank.glass-card--control {
       border-radius: var(--radius-sm);
     }
@@ -382,6 +382,24 @@
       margin: 0 0 12px;
       font-size: 14px;
       font-weight: 700;
+    }
+    .panel-title-with-sub {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .panel-title-sub {
+      font-size: 0.8em;
+      font-weight: 500;
+      color: var(--text-500);
+      letter-spacing: 0;
+    }
+    .panel-empty {
+      padding: 20px 12px;
+      color: var(--text-400);
+      font-size: 12px;
+      text-align: center;
     }
 
     /* 学习进度分布 · 黄金比例分区（AI 总结 : 分类总览 = 1.618 : 1） */
@@ -611,17 +629,72 @@
     .activity-desc { font-size: 12px; color: var(--text-500); }
     .activity-time { font-size: 11px; color: var(--text-400); font-family: var(--font-mono); flex-shrink: 0; }
 
-    /* 项目推荐 · 上层 control 列表项 */
-    .project-list { display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 1; }
+    /* 项目推荐 · 悬停时介绍交叉淡入为推荐理由 */
+    .project-list { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
     .project-item {
-      display: flex; gap: 12px; align-items: center;
-      padding: 10px 12px;
-      text-decoration: none; color: inherit;
+      position: relative;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 9px 12px 7px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .project-desc-swap {
+      position: relative;
+      height: calc(12px * 1.4 * 2);
+      margin-top: 5px;
+      overflow: hidden;
+    }
+    .project-desc,
+    .project-reason {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      transition:
+        opacity 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+        transform 0.42s var(--ease-out),
+        filter 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .project-desc {
+      color: var(--text-500);
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+    .project-reason {
+      color: var(--text-700);
+      opacity: 0;
+      transform: translateY(6px);
+      filter: blur(4px);
+      transition-delay: 0.02s;
+    }
+    .project-item:hover .project-desc,
+    .project-item:focus-visible .project-desc {
+      opacity: 0;
+      transform: translateY(-6px);
+      filter: blur(3px);
+      transition-delay: 0s;
+    }
+    .project-item:hover .project-reason,
+    .project-item:focus-visible .project-reason {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+      transition-delay: 0.08s;
     }
     .project-avatar {
       width: 36px; height: 36px; border-radius: var(--radius-icon); flex-shrink: 0;
       display: grid; place-items: center; color: #fff;
       font: 700 13px/1 var(--font-mono);
+      margin-top: 1px;
     }
     .project-info { flex: 1; min-width: 0; }
     .project-name {
@@ -630,11 +703,16 @@
     }
     .project-name .owner { color: var(--text-500); font-weight: 500; }
     .project-name .slash { color: var(--text-300); }
-    .project-desc {
-      font-size: 12px; color: var(--text-500);
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    .project-stars {
+      font-size: 12px;
+      color: var(--text-700);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      flex-shrink: 0;
+      margin-top: 2px;
     }
-    .project-stars { font-size: 12px; color: var(--text-700); font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
 
     /* Agent 轮播入口（视口 4 列 · 黄金比例卡片内布局 0.618:1） */
     .agent-carousel {
@@ -861,10 +939,16 @@
       .overview-hero-art-char-glyph.morse-hopping {
         animation: none;
       }
+      .project-desc,
+      .project-reason {
+        transition: opacity 0.15s ease;
+        filter: none;
+        transform: none;
+      }
     }
 
     /* 最近笔记 · 上层 control 列表项 */
-    .notes-list { display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 1; }
+    .notes-list { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
     .note-item {
       padding: 10px 12px;
       text-decoration: none; color: inherit;

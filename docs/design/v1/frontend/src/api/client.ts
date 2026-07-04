@@ -15,11 +15,13 @@ import type {
   ImportResult,
   LoginResponse,
   Note,
+  OverviewRecentNote,
   PaginatedList,
   Project,
   ProjectListParams,
   ProjectStats,
   QuestionAnswer,
+  RecommendedProject,
   Settings,
   SSEEvent,
   StarRepo,
@@ -101,6 +103,12 @@ export interface IApiClient {
     language?: string;
   }): Promise<ApiResponse<TrendingRepo[]>>;
   listActivities(): Promise<ApiResponse<ActivityItem[]>>;
+  listRecommendedProjects(params?: {
+    limit?: number;
+  }): Promise<ApiResponse<RecommendedProject[]>>;
+  listOverviewRecentNotes(params?: {
+    limit?: number;
+  }): Promise<ApiResponse<OverviewRecentNote[]>>;
 
   listAgentSessions(): Promise<ApiResponse<AgentSession[]>>;
   getAgentSession(

@@ -225,6 +225,29 @@ export interface ActivityItem {
 // ========================================
 
 export type AgentId = 'hub' | 'scout' | 'mentor' | 'navigator' | 'curator' | 'scribe';
+
+/** Agent 个性化推荐项目（总览「为你推荐」） */
+export interface RecommendedProject {
+  id: string;
+  project_id: string;
+  name: string;
+  url: string;
+  description?: string;
+  language?: string;
+  stars: number;
+  /** Agent 推荐理由，悬停展示 */
+  reason: string;
+  recommended_by: AgentId;
+}
+
+/** 总览最近笔记（含项目名称，便于列表展示） */
+export interface OverviewRecentNote {
+  id: string;
+  project_id: string;
+  project_name: string;
+  title: string;
+  updated_at: string;
+}
 export type MessageRole = 'user' | 'assistant' | 'tool' | 'system';
 
 export interface AgentSession {

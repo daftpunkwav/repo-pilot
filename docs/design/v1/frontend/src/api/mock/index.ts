@@ -14,6 +14,7 @@ import type {
   ImportResult,
   LoginResponse,
   Note,
+  OverviewRecentNote,
   PaginatedList,
   Project,
   ProjectListParams,
@@ -22,6 +23,7 @@ import type {
   ContextWindowStats,
   ImportAssistContext,
   QuestionAnswer,
+  RecommendedProject,
   Settings,
   SSEEvent,
   StarRepo,
@@ -33,6 +35,7 @@ import type {
 } from '@/api/types';
 import type { IApiClient } from '@/api/client';
 import { MOCK_ACTIVITIES } from './data/activities';
+import { buildMockRecommendedProjects } from './data/recommendations';
 import { MOCK_CATEGORIES } from './data/categories';
 import { MOCK_GRAPH } from './data/graph';
 import { MOCK_NOTES } from './data/notes';
@@ -691,6 +694,35 @@ export class MockApiClient implements IApiClient {
     await delay();
     requireAuth();
     return wrapResponse([...MOCK_ACTIVITIES]);
+  }
+
+  async listRecommendedProjects(params?: {
+    limit?: number;
+  }): Promise<ApiResponse<RecommendedProject[]>> {
+    await delay();
+    requireAuth();
+    const limit = params?.limit ?? 5;
+    return wrapResponse(buildMockRecommendedProjects(limit));
+  }
+
+  async listOverviewRecentNotes(params?: {
+    limit?: number;
+  }): Promise<ApiResponse<OverviewRecentNote[]>> {
+    await delay();
+    requireAuth();
+    const limit = params?.limit ?? 4;
+    const projectNameById = new Map(this.projects.map((p) => [p.id, p.name]));
+    const items: OverviewRecentNote[] = [...this.notes]
+      .sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at))
+      .slice(0, limit)
+      .map((n) => ({
+        id: n.id,
+        project_id: n.project_id,
+        project_name: projectNameById.get(n.project_id) ?? n.project_id,
+        title: n.title,
+        updated_at: n.updated_at,
+      }));
+    return wrapResponse(items);
   }
 
   // ─── Agent ────────────────────────────────────────────
