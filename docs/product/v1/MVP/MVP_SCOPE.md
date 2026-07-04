@@ -269,14 +269,19 @@ v1.0 范围内**完整实现**以下端点（非 501 占位）：
 
 ### 5.1 MVP 实现的页面
 
+> **前端 Mock 分步开发文档：** `docs/design/v1/process/README.md`（2026-07-05 更新：总览与项目库分离，新增笔记页与个人资料页）
+
 | 路由 | 页面 | 实现要求 |
 |------|------|---------|
 | /login | LoginPage | 用户名+密码表单，表单校验，错误提示，登录成功跳转 |
 | /register | RegisterPage | 注册表单，密码强度提示（≥ 8 字符 + 字母数字），注册成功自动登录 |
-| / | DashboardPage | 项目列表 (表格视图)，搜索栏，筛选面板 (分类/语言/进度/标签)，分页，**快捷操作按钮：① GitHub Star 同步（仅在已绑定 GitHub 时显示）② 批量导入（手动粘贴 URL 列表）**（D-14 补全） |
+| / | OverviewPage | **总览页**：产品简介、库统计、学习进度分布、最近活动、GitHub 热门项目（Mock）、快捷入口（导入/项目库/图谱/Agent） |
+| /projects | ProjectsPage | **项目库**：表格视图（v1.0 不做卡片双视图，见 §2.2），搜索栏，筛选 (分类/语言/进度/标签)，分页；**导入：① GitHub Star 抽屉（已绑定 GitHub 时）② URL 批量粘贴 Modal**（D-14）；无独立导入路由 |
 | /projects/:id | ProjectDetailPage | 项目基础信息卡片，README 查看器（从 `projects.readme` 字段渲染，详见 §8.4），笔记面板 (列表+编辑器+预览)，学习进度选择器，**Scout 快速分析按钮** |
 | /graph | GraphPage | D3.js 力导向图，节点可点击跳转详情，支持缩放/拖拽/搜索高亮 |
-| /settings | SettingsPage | 主题切换，字体缩放，GitHub 账号绑定管理（增/查/删），LLM 配置面板 (provider 选择/model 输入/api_key 输入/连通测试) |
+| /notes | NotesPage | 跨项目笔记列表 + 搜索（v1.0 客户端过滤）+ 编辑/预览 |
+| /settings | SettingsPage | **应用设置**：主题、字体缩放 (0.8–1.5)、GitHub 绑定、LLM BYOK、数据导出 |
+| /profile | ProfilePage | **个人资料**（Topbar 入口）：头像 URL、用户 ID（只读）、改密、账号信息展示 |
 | /agent | AgentPage | Agent 对话页面（v1.0 完整版，含反问面板、SSE 流式渲染、6 个 Agent 切换），见 AGENT_SPEC §8 |
 
 ### 5.2 v1.0 不实现的页面（推迟到 v1.1+）
@@ -294,17 +299,18 @@ v1.0 范围内**完整实现**以下端点（非 501 占位）：
 │ Sidebar (固定 240px)                               │
 │  Logo + 项目名                                     │
 │  ────────────                                     │
-│  Dashboard    (/)                                 │
-│  Projects     (/ — 等同 Dashboard)                  │
-│  Graph        (/graph)                            │
-│  Agent Chat   (/agent) ← v1.0 启用                  │
-│  Settings     (/settings)                         │
+│  总览         (/)                                 │
+│  项目库       (/projects)                          │
+│  Agent Chat   (/agent)                            │
+│  图谱         (/graph)                            │
+│  笔记         (/notes)                            │
+│  设置         (/settings)                         │
 │  ────────────                                     │
 │  [Stats]     (灰色禁用态，tooltip: "v1.2 推出")       │
 ├──────────────────────────────────────────────────┤
 │ Main Content Area                                │
 │  ┌─ Topbar ──────────────────────────────────┐   │
-│  │ 面包屑 / 搜索 / 用户头像+下拉 (设置/登出)      │   │
+│  │ 面包屑 / 用户头像+下拉 (个人资料/设置/登出)   │   │
 │  └────────────────────────────────────────────┘   │
 │  ┌─ Page Content ────────────────────────────┐   │
 │  │                                           │   │
