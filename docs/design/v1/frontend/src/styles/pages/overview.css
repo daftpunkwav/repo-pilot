@@ -29,8 +29,7 @@
       height: 100%;
       margin-inline: auto;
       gap: clamp(1.98px, 0.792vw, 11.88px);
-      filter: saturate(1.12);
-      transform: scaleX(1.1);
+      filter: saturate(1.38) contrast(1.05) brightness(1.04);
       transform-origin: center center;
     }
     .overview-hero-art-char {
@@ -40,15 +39,23 @@
       align-items: center;
       justify-content: center;
       font: 900 clamp(3.3rem, 9.36vw, 6.3rem) / 0.9 var(--font-sans);
+      font-stretch: expanded;
     }
     .overview-hero-art-char-glyph {
       display: inline-block;
       background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      -webkit-text-stroke: 1px rgba(255, 255, 255, 0.28);
+      --art-scale-x: 1.2;
+      --art-scale-y: 1;
+      --art-skew-x: 0deg;
+      --art-stroke-width: 1.2px;
+      -webkit-text-stroke: var(--art-stroke-width) rgba(255, 255, 255, 0.32);
+      background-size: 180% 180%;
       transform: translateY(var(--art-rest-y, 0)) rotate(var(--art-rest-rot, 0deg))
-        scale(var(--art-rest-scale, 1));
+        skewX(var(--art-skew-x, 0deg))
+        scaleX(var(--art-scale-x, 1.2))
+        scaleY(calc(var(--art-scale-y, 1) * var(--art-rest-scale, 1)));
       transform-origin: center bottom;
       will-change: transform;
     }
@@ -58,92 +65,203 @@
     @keyframes morse-hop-once {
       0%, 100% {
         transform: translateY(var(--art-rest-y, 0)) rotate(var(--art-rest-rot, 0deg))
-          scale(var(--art-rest-scale, 1));
+          skewX(var(--art-skew-x, 0deg))
+          scaleX(var(--art-scale-x, 1.2))
+          scaleY(calc(var(--art-scale-y, 1) * var(--art-rest-scale, 1)));
       }
       28% {
         transform: translateY(calc(var(--art-rest-y, 0px) - var(--morse-hop, 12px)))
           rotate(calc(var(--art-rest-rot, 0deg) + var(--art-hop-tilt, 3deg)))
-          scale(calc(var(--art-rest-scale, 1) * 1.025));
+          skewX(var(--art-skew-x, 0deg))
+          scaleX(var(--art-scale-x, 1.2))
+          scaleY(calc(var(--art-scale-y, 1) * var(--art-rest-scale, 1) * 1.025));
       }
       52% {
         transform: translateY(calc(var(--art-rest-y, 0px) - calc(var(--morse-hop, 12px) * 0.35)))
           rotate(calc(var(--art-rest-rot, 0deg) - calc(var(--art-hop-tilt, 3deg) * 0.5)))
-          scale(var(--art-rest-scale, 1));
+          skewX(var(--art-skew-x, 0deg))
+          scaleX(var(--art-scale-x, 1.2))
+          scaleY(calc(var(--art-scale-y, 1) * var(--art-rest-scale, 1)));
       }
       72% {
         transform: translateY(calc(var(--art-rest-y, 0px) - calc(var(--morse-hop, 12px) * 0.55)))
           rotate(var(--art-rest-rot, 0deg))
-          scale(var(--art-rest-scale, 1));
+          skewX(var(--art-skew-x, 0deg))
+          scaleX(var(--art-scale-x, 1.2))
+          scaleY(calc(var(--art-scale-y, 1) * var(--art-rest-scale, 1)));
       }
     }
-    .overview-hero-art-char:nth-child(1) { --art-hop-tilt: 4deg; }
-    .overview-hero-art-char:nth-child(2) { --art-hop-tilt: -3deg; }
-    .overview-hero-art-char:nth-child(3) { --art-hop-tilt: 2.5deg; }
-    .overview-hero-art-char:nth-child(4) { --art-hop-tilt: -4deg; }
-    .overview-hero-art-char:nth-child(5) { --art-hop-tilt: 3.5deg; }
-    .overview-hero-art-char:nth-child(6) { --art-hop-tilt: -2deg; }
-    .overview-hero-art-char:nth-child(7) { --art-hop-tilt: 3deg; }
-    .overview-hero-art-char:nth-child(8) { --art-hop-tilt: -3.5deg; }
-    .overview-hero-art-char:nth-child(9) { --art-hop-tilt: 2deg; }
+    .overview-hero-art-char:nth-child(1) {
+      --art-hop-tilt: 4deg;
+      --art-skew-x: -2.5deg;
+    }
     .overview-hero-art-char:nth-child(1) .overview-hero-art-char-glyph {
-      background-image: linear-gradient(135deg, #007aff 0%, #5ac8fa 55%, #64d2ff 100%);
+      --art-scale-x: 1.22;
+      --art-scale-y: 1.04;
+      --art-stroke-width: 1.45px;
+      background-image: linear-gradient(
+        128deg,
+        #0066ff 0%,
+        #00c2ff 28%,
+        #7b61ff 58%,
+        #ff4fd8 82%,
+        #ffd166 100%
+      );
     }
     .overview-hero-art-char:nth-child(2) {
+      --art-hop-tilt: -3deg;
       --art-rest-y: 2px;
       --art-rest-rot: -2deg;
+      --art-skew-x: 3.5deg;
     }
     .overview-hero-art-char:nth-child(2) .overview-hero-art-char-glyph {
-      background-image: linear-gradient(135deg, #5e5ce6 0%, #bf5af2 60%, #da8fff 100%);
+      --art-scale-x: 1.18;
+      --art-scale-y: 0.98;
+      --art-stroke-width: 1.05px;
+      background-image: linear-gradient(
+        152deg,
+        #4f46e5 0%,
+        #9333ea 24%,
+        #ec4899 52%,
+        #fb7185 76%,
+        #fbbf24 100%
+      );
     }
     .overview-hero-art-char:nth-child(3) {
+      --art-hop-tilt: 2.5deg;
       --art-rest-y: -1px;
       --art-rest-rot: 1.5deg;
+      --art-skew-x: -5deg;
     }
     .overview-hero-art-char:nth-child(3) .overview-hero-art-char-glyph {
-      background-image: linear-gradient(135deg, #ff375f 0%, #ff6482 50%, #ff9f0a 100%);
+      --art-scale-x: 1.26;
+      --art-scale-y: 1.02;
+      --art-stroke-width: 1.35px;
+      background-image: linear-gradient(
+        118deg,
+        #ff006e 0%,
+        #ff477e 22%,
+        #ff7b54 48%,
+        #ffb703 72%,
+        #06d6a0 100%
+      );
     }
+    /* 第一个 o：偏扁、略向右倾 */
     .overview-hero-art-char:nth-child(4) {
+      --art-hop-tilt: -4deg;
       --art-rest-y: 3px;
-      --art-rest-rot: -1deg;
+      --art-rest-rot: -2.5deg;
+      --art-skew-x: 7deg;
     }
     .overview-hero-art-char:nth-child(4) .overview-hero-art-char-glyph {
-      background-image: linear-gradient(135deg, #ff9f0a 0%, #ffd60a 55%, #ff6b6b 100%);
+      --art-scale-x: 1.34;
+      --art-scale-y: 0.86;
+      --art-stroke-width: 1.6px;
+      background-image: linear-gradient(
+        168deg,
+        #ff9500 0%,
+        #ffcc00 20%,
+        #a3e635 45%,
+        #22d3ee 70%,
+        #6366f1 100%
+      );
     }
     .overview-hero-art-char:nth-child(5) {
+      --art-hop-tilt: 3.5deg;
       --art-rest-y: -2px;
       --art-rest-rot: 2deg;
-      --art-rest-scale: 1.03;
+      --art-skew-x: -3deg;
     }
     .overview-hero-art-char:nth-child(5) .overview-hero-art-char-glyph {
-      background-image: linear-gradient(135deg, #30d158 0%, #34c759 45%, #00c7be 100%);
+      --art-scale-x: 1.24;
+      --art-scale-y: 1.05;
+      --art-stroke-width: 1.5px;
+      background-image: linear-gradient(
+        142deg,
+        #00f5a0 0%,
+        #00d9f5 25%,
+        #0099ff 50%,
+        #7c3aed 75%,
+        #f72585 100%
+      );
     }
     .overview-hero-art-char:nth-child(6) {
+      --art-hop-tilt: -2deg;
       --art-rest-y: 1px;
       --art-rest-rot: -1.5deg;
+      --art-skew-x: 2deg;
     }
     .overview-hero-art-char:nth-child(6) .overview-hero-art-char-glyph {
-      background-image: linear-gradient(135deg, #64d2ff 0%, #007aff 50%, #5856d6 100%);
+      --art-scale-x: 1.16;
+      --art-scale-y: 1.08;
+      --art-stroke-width: 0.9px;
+      background-image: linear-gradient(
+        110deg,
+        #38bdf8 0%,
+        #818cf8 30%,
+        #c084fc 55%,
+        #f472b6 78%,
+        #fb923c 100%
+      );
     }
     .overview-hero-art-char:nth-child(7) {
+      --art-hop-tilt: 3deg;
       --art-rest-y: 2px;
       --art-rest-rot: 1deg;
+      --art-skew-x: -6deg;
     }
     .overview-hero-art-char:nth-child(7) .overview-hero-art-char-glyph {
-      background-image: linear-gradient(135deg, #bf5af2 0%, #ff375f 55%, #ff9f0a 100%);
+      --art-scale-x: 1.2;
+      --art-scale-y: 1.1;
+      --art-stroke-width: 1.25px;
+      background-image: linear-gradient(
+        156deg,
+        #a855f7 0%,
+        #e879f9 22%,
+        #f43f5e 46%,
+        #f97316 68%,
+        #eab308 100%
+      );
     }
+    /* 第二个 o：偏瘦高、向左倾，描边更细 */
     .overview-hero-art-char:nth-child(8) {
+      --art-hop-tilt: -3.5deg;
       --art-rest-y: -1px;
-      --art-rest-rot: -2deg;
+      --art-rest-rot: -5deg;
+      --art-skew-x: -4deg;
     }
     .overview-hero-art-char:nth-child(8) .overview-hero-art-char-glyph {
-      background-image: linear-gradient(135deg, #ffd60a 0%, #ff9500 50%, #ff6482 100%);
+      --art-scale-x: 1.11;
+      --art-scale-y: 1.14;
+      --art-stroke-width: 0.85px;
+      background-image: linear-gradient(
+        134deg,
+        #fde047 0%,
+        #fb923c 24%,
+        #ef4444 50%,
+        #db2777 74%,
+        #8b5cf6 100%
+      );
     }
     .overview-hero-art-char:nth-child(9) {
+      --art-hop-tilt: 2deg;
       --art-rest-y: 2px;
       --art-rest-rot: 1.5deg;
+      --art-skew-x: 4deg;
     }
     .overview-hero-art-char:nth-child(9) .overview-hero-art-char-glyph {
-      background-image: linear-gradient(135deg, #007aff 0%, #5e5ce6 45%, #bf5af2 100%);
+      --art-scale-x: 1.23;
+      --art-scale-y: 0.96;
+      --art-stroke-width: 1.4px;
+      background-image: linear-gradient(
+        162deg,
+        #14b8a6 0%,
+        #0ea5e9 22%,
+        #3b82f6 44%,
+        #8b5cf6 66%,
+        #d946ef 88%,
+        #f97316 100%
+      );
     }
 
     /* 中间层 · 玻璃面板（独立层，blur 底层字母） */
