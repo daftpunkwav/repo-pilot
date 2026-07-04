@@ -335,7 +335,8 @@
     .overview-hero-glass.glass-card--panel,
     .agent-card-glass.glass-card--panel,
     .panel.glass-card--panel,
-    .agent-carousel-nav.glass-card--panel {
+    .agent-carousel-nav.glass-card--panel,
+    .trending-card.glass-card--panel {
       border-radius: var(--lg-radius-card, 20px);
     }
 
@@ -945,6 +946,12 @@
         filter: none;
         transform: none;
       }
+      .trending-card {
+        max-width: 100%;
+        opacity: 1;
+        transform: none;
+        transition: none !important;
+      }
     }
 
     /* 最近笔记 · 上层 control 列表项 */
@@ -970,13 +977,8 @@
       gap: 12px; margin-bottom: 12px;
     }
     .trending-head-left { display: flex; align-items: baseline; gap: 10px; }
-    .trending-head h2 { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin: 0; display: flex; align-items: center; gap: 8px; }
+    .trending-head h2 { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
     .trending-head .trending-subtitle { font-size: 12px; color: var(--text-500); }
-    .trending-fire {
-      display: inline-grid; place-items: center;
-      width: 26px; height: 26px; border-radius: var(--radius-sm);
-      background: linear-gradient(135deg,#ff9f0a,#ff375f); color: #fff;
-    }
     .period-toggle {
       display: inline-flex;
       padding: 3px;
@@ -1009,6 +1011,8 @@
       display: flex; gap: 12px; align-items: flex-start;
       padding: 14px 16px;
       text-decoration: none; color: inherit;
+      position: relative;
+      isolation: isolate;
       /* 阶梯宽度由 --card-w 控制；初始隐藏等待入场动画 */
       max-width: 0;
       width: var(--card-w, 100%);
@@ -1023,12 +1027,16 @@
         border-color 0.18s var(--ease);
       will-change: max-width, opacity, transform;
     }
+    .trending-card > * {
+      position: relative;
+      z-index: 1;
+    }
     .trending-card.is-visible {
       max-width: 100%;
       opacity: 1;
       transform: translateX(0);
     }
-    .trending-card.is-visible:hover { transform: translateY(-1px); }
+    .trending-card.is-visible:hover { transform: translateY(-2px); }
     .trending-rank {
       flex-shrink: 0;
       width: 32px; height: 32px;
