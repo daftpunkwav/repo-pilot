@@ -16,7 +16,7 @@
 
 | # | 任务 | 参考 |
 |---|------|------|
-| 0.1 | 在 `frontend/` 按 FRONTEND_SPEC §2 初始化 Vite + React + TS | §1, §2 |
+| 0.1 | 在 `docs/design/v1/frontend/` 按 FRONTEND_SPEC §2 初始化 Vite + React + TS | §1, §2 |
 | 0.2 | 配置 `tsconfig` strict、`@/*` 别名、ESLint、Prettier | §1.3, §13 |
 | 0.3 | 安装依赖：zustand, @tanstack/react-query, react-router-dom, d3, react-markdown, remark-gfm | §1.1 |
 | 0.4 | 复制 `docs/design/v1/assets/design-system.css` → `src/styles/design-system.css` | 原型 |

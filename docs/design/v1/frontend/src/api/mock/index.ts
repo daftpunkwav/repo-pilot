@@ -1,0 +1,824 @@
+import type {
+  ActivityItem,
+  AgentId,
+  AgentMessage,
+  AgentPermissions,
+  AgentProfile,
+  AgentSession,
+  ApiError,
+  ApiResponse,
+  Category,
+  CreateProjectInput,
+  GitHubAccount,
+  GraphData,
+  ImportResult,
+  LoginResponse,
+  Note,
+  PaginatedList,
+  Project,
+  ProjectListParams,
+  ProjectProgress,
+  ProjectStats,
+  QuestionAnswer,
+  Settings,
+  SSEEvent,
+  StarRepo,
+  Tag,
+  TrendingPeriod,
+  TrendingRepo,
+  User,
+  UserProfile,
+} from '@/api/types';
+import type { IApiClient } from '@/api/client';
+import { MOCK_ACTIVITIES } from './data/activities';
+import { MOCK_CATEGORIES } from './data/categories';
+import { MOCK_GRAPH } from './data/graph';
+import { MOCK_NOTES } from './data/notes';
+import {
+  MOCK_PROJECTS,
+  MOCK_UNIMPORTED_STARS,
+} from './data/projects';
+import {
+  MOCK_AGENT_MESSAGES,
+  MOCK_AGENT_PROFILES,
+  MOCK_AGENT_SESSIONS,
+} from './data/sessions';
+import { DEFAULT_SETTINGS } from './data/settings';
+import { MOCK_TAGS } from './data/tags';
+import { getTrendingRepos } from './data/trending';
+import { findMockUser, MOCK_USERS } from './data/users';
+import {
+  mockAfterQuestionAnswer,
+  mockProjectAnalysis,
+  selectChatScenario,
+} from './sse';
+
+const MIN_DELAY = 200;
+const MAX_DELAY = 500;
+const TOKEN_KEY = 'rp_token';
+const REFRESH_KEY = 'rp_refresh';
+
+function delay(ms?: number): Promise<void> {
+  const duration = ms ?? MIN_DELAY + Math.random() * (MAX_DELAY - MIN_DELAY);
+  return new Promise((resolve) => setTimeout(resolve, duration));
+}
+
+function wrapResponse<T>(
+  data: T,
+  meta?: Partial<ApiResponse<T>['meta']>
+): ApiResponse<T> {
+  return { data, meta: { ts: Date.now(), ...meta } };
+}
+
+function throwError(code: string, message: string): never {
+  const err: ApiError = { error: { code, message } };
+  throw err;
+}
+
+function requireAuth(): void {
+  if (!localStorage.getItem(TOKEN_KEY)) {
+    throwError('UNAUTHORIZED', '请先登录');
+  }
+}
+
+function newId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+export class MockApiClient implements IApiClient {
+  private projects: Project[] = clone(MOCK_PROJECTS);
+  private notes: Note[] = clone(MOCK_NOTES);
+  private categories: Category[] = clone(MOCK_CATEGORIES);
+  private tags: Tag[] = clone(MOCK_TAGS);
+  private sessions: AgentSession[] = clone(MOCK_AGENT_SESSIONS);
+  private messages: Record<string, AgentMessage[]> = clone(MOCK_AGENT_MESSAGES);
+  private settings: Settings = clone(DEFAULT_SETTINGS);
+  private githubAccounts: GitHubAccount[] = [
+    {
+      id: 'gh_001',
+      username: 'zhang-jie',
+      avatar_url: 'https://avatars.githubusercontent.com/u/1?v=4',
+      bound_at: '2026-05-12T10:00:00Z',
+    },
+  ];
+  private currentUser: User | null = null;
+
+  constructor() {
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) {
+      const main = MOCK_USERS[0];
+      if (main) this.currentUser = { ...main.user };
+    }
+  }
+
+  // ─── Auth ─────────────────────────────────────────────
+
+  async register(params: {
+    username: string;
+    password: string;
+  }): Promise<ApiResponse<LoginResponse>> {
+    await delay();
+    if (findMockUser(params.username)) {
+      throwError('USERNAME_EXISTS', '用户名已存在');
+    }
+    const user: User = {
+      id: newId('usr'),
+      username: params.username,
+      github_bound: false,
+      created_at: new Date().toISOString(),
+    };
+    MOCK_USERS.push({ user, password: params.password });
+    return this.issueTokens(user);
+  }
+
+  async login(params: {
+    username: string;
+    password: string;
+  }): Promise<ApiResponse<LoginResponse>> {
+    await delay();
+    const record = findMockUser(params.username);
+    if (!record || record.password !== params.password) {
+      throwError('AUTH_FAILED', '用户名或密码错误');
+    }
+    return this.issueTokens(record.user);
+  }
+
+  private async issueTokens(user: User): Promise<ApiResponse<LoginResponse>> {
+    const access = `mock_token_${Date.now()}`;
+    const refresh = `mock_refresh_${Date.now()}`;
+    localStorage.setItem(TOKEN_KEY, access);
+    localStorage.setItem(REFRESH_KEY, refresh);
+    this.currentUser = { ...user };
+    return wrapResponse({ access_token: access, refresh_token: refresh, user });
+  }
+
+  async logout(): Promise<ApiResponse<{ success: boolean }>> {
+    await delay(100);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+    this.currentUser = null;
+    return wrapResponse({ success: true });
+  }
+
+  async refresh(): Promise<ApiResponse<{ access_token: string }>> {
+    await delay(100);
+    const refresh = localStorage.getItem(REFRESH_KEY);
+    if (!refresh) throwError('AUTH_FAILED', 'Refresh token 无效');
+    const access = `mock_token_${Date.now()}`;
+    localStorage.setItem(TOKEN_KEY, access);
+    return wrapResponse({ access_token: access });
+  }
+
+  async me(): Promise<ApiResponse<User>> {
+    await delay(100);
+    requireAuth();
+    if (!this.currentUser) throwError('UNAUTHORIZED', '未登录');
+    return wrapResponse(this.currentUser);
+  }
+
+  async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
+    await delay();
+    requireAuth();
+    if (!this.currentUser) throwError('UNAUTHORIZED', '未登录');
+    this.currentUser = { ...this.currentUser, ...data };
+    const idx = MOCK_USERS.findIndex((u) => u.user.id === this.currentUser?.id);
+    if (idx >= 0 && MOCK_USERS[idx]) {
+      MOCK_USERS[idx].user = { ...this.currentUser };
+    }
+    return wrapResponse(this.currentUser);
+  }
+
+  async changePassword(params: {
+    old_password: string;
+    new_password: string;
+  }): Promise<ApiResponse<{ success: boolean }>> {
+    await delay();
+    requireAuth();
+    if (!this.currentUser) throwError('UNAUTHORIZED', '未登录');
+    const record = MOCK_USERS.find((u) => u.user.id === this.currentUser?.id);
+    if (!record || record.password !== params.old_password) {
+      throwError('AUTH_FAILED', '旧密码不正确');
+    }
+    record.password = params.new_password;
+    await this.logout();
+    return wrapResponse({ success: true });
+  }
+
+  // ─── GitHub ───────────────────────────────────────────
+
+  async listGithubAccounts(): Promise<ApiResponse<GitHubAccount[]>> {
+    await delay();
+    requireAuth();
+    return wrapResponse([...this.githubAccounts]);
+  }
+
+  async bindGithub(params: {
+    username: string;
+    pat: string;
+  }): Promise<ApiResponse<GitHubAccount>> {
+    await delay();
+    requireAuth();
+    void params.pat;
+    const account: GitHubAccount = {
+      id: newId('gh'),
+      username: params.username,
+      bound_at: new Date().toISOString(),
+    };
+    this.githubAccounts.push(account);
+    if (this.currentUser) {
+      this.currentUser.github_bound = true;
+      this.currentUser.github_login = params.username;
+    }
+    return wrapResponse(account);
+  }
+
+  async unbindGithub(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    await delay();
+    requireAuth();
+    this.githubAccounts = this.githubAccounts.filter((a) => a.id !== id);
+    if (this.githubAccounts.length === 0 && this.currentUser) {
+      this.currentUser.github_bound = false;
+      this.currentUser.github_login = undefined;
+    }
+    return wrapResponse({ success: true });
+  }
+
+  async listStars(): Promise<ApiResponse<StarRepo[]>> {
+    await delay();
+    requireAuth();
+    const importedNames = new Set(this.projects.map((p) => p.name));
+    const fromProjects: StarRepo[] = this.projects.slice(0, 5).map((p) => {
+      const [owner = '', repo = ''] = p.name.split('/');
+      return {
+        owner,
+        repo,
+        url: p.url,
+        description: p.description,
+        language: p.language,
+        stars: p.stars,
+        already_imported: true,
+      };
+    });
+    const unimported: StarRepo[] = MOCK_UNIMPORTED_STARS.map((s) => ({
+      ...s,
+      already_imported: importedNames.has(`${s.owner}/${s.repo}`),
+    }));
+    return wrapResponse([...fromProjects, ...unimported]);
+  }
+
+  async importProjects(
+    repos: Array<{ owner: string; repo: string; url: string }>
+  ): Promise<ApiResponse<ImportResult>> {
+    await delay(400);
+    requireAuth();
+    let succeeded = 0;
+    let failed = 0;
+    const errors: Array<{ repo: string; reason: string }> = [];
+
+    for (const r of repos) {
+      const name = `${r.owner}/${r.repo}`;
+      if (this.projects.some((p) => p.url === r.url || p.name === name)) {
+        failed += 1;
+        errors.push({ repo: name, reason: '已存在' });
+        continue;
+      }
+      const project: Project = {
+        id: newId('p'),
+        name,
+        url: r.url,
+        stars: Math.floor(Math.random() * 50000) + 1000,
+        progress: 'none',
+        tags: [],
+        source: 'github',
+        imported_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      this.projects.push(project);
+      succeeded += 1;
+    }
+
+    const summary = `成功导入 ${succeeded} 个，失败 ${failed} 个`;
+    return wrapResponse({ succeeded, failed, summary, errors });
+  }
+
+  // ─── Projects ─────────────────────────────────────────
+
+  async listProjects(
+    params?: ProjectListParams
+  ): Promise<ApiResponse<PaginatedList<Project>>> {
+    await delay();
+    requireAuth();
+    let items = [...this.projects];
+    const search = params?.search?.toLowerCase();
+    if (search) {
+      items = items.filter(
+        (p) =>
+          p.name.toLowerCase().includes(search) ||
+          (p.description?.toLowerCase().includes(search) ?? false)
+      );
+    }
+    if (params?.category_id) {
+      items = items.filter((p) => p.category_id === params.category_id);
+    }
+    if (params?.language) {
+      items = items.filter((p) => p.language === params.language);
+    }
+    if (params?.progress) {
+      items = items.filter((p) => p.progress === params.progress);
+    }
+    if (params?.tag_id) {
+      items = items.filter((p) => p.tags.includes(params.tag_id ?? ''));
+    }
+
+    const sortBy = params?.sort_by ?? 'imported_at';
+    const sortOrder = params?.sort_order ?? 'desc';
+    items.sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'name') cmp = a.name.localeCompare(b.name);
+      else if (sortBy === 'stars') cmp = a.stars - b.stars;
+      else if (sortBy === 'updated_at') {
+        cmp =
+          new Date(a.updated_at ?? a.imported_at).getTime() -
+          new Date(b.updated_at ?? b.imported_at).getTime();
+      } else {
+        cmp = new Date(a.imported_at).getTime() - new Date(b.imported_at).getTime();
+      }
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+
+    const page = params?.page ?? 1;
+    const pageSize = params?.page_size ?? 20;
+    const start = (page - 1) * pageSize;
+    const slice = items.slice(start, start + pageSize);
+
+    return wrapResponse(
+      { items: slice, total: items.length, page, page_size: pageSize },
+      { page, page_size: pageSize, total: items.length }
+    );
+  }
+
+  async getProject(id: string): Promise<ApiResponse<Project>> {
+    await delay();
+    requireAuth();
+    const project = this.projects.find((p) => p.id === id);
+    if (!project) throwError('NOT_FOUND', '项目不存在');
+    return wrapResponse(project);
+  }
+
+  async createProject(data: CreateProjectInput): Promise<ApiResponse<Project>> {
+    await delay();
+    requireAuth();
+    if (this.projects.some((p) => p.url === data.url)) {
+      throwError('DUPLICATE_URL', '该 URL 已存在');
+    }
+    const project: Project = {
+      id: newId('p'),
+      name: data.name,
+      url: data.url,
+      description: data.description,
+      category_id: data.category_id,
+      progress: 'none',
+      tags: data.tags ?? [],
+      source: 'manual',
+      stars: 0,
+      imported_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    this.projects.push(project);
+    return wrapResponse(project);
+  }
+
+  async updateProject(
+    id: string,
+    data: Partial<Project>
+  ): Promise<ApiResponse<Project>> {
+    await delay();
+    requireAuth();
+    const idx = this.projects.findIndex((p) => p.id === id);
+    if (idx < 0) throwError('NOT_FOUND', '项目不存在');
+    const existing = this.projects[idx];
+    if (!existing) throwError('NOT_FOUND', '项目不存在');
+    const updated: Project = {
+      ...existing,
+      ...data,
+      id: existing.id,
+      updated_at: new Date().toISOString(),
+    };
+    this.projects[idx] = updated;
+    return wrapResponse(updated);
+  }
+
+  async deleteProject(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    await delay();
+    requireAuth();
+    const idx = this.projects.findIndex((p) => p.id === id);
+    if (idx < 0) throwError('NOT_FOUND', '项目不存在');
+    this.projects.splice(idx, 1);
+    this.notes = this.notes.filter((n) => n.project_id !== id);
+    return wrapResponse({ success: true });
+  }
+
+  async updateProgress(
+    id: string,
+    progress: ProjectProgress
+  ): Promise<ApiResponse<{ id: string; progress: string }>> {
+    await delay();
+    requireAuth();
+    const project = this.projects.find((p) => p.id === id);
+    if (!project) throwError('NOT_FOUND', '项目不存在');
+    project.progress = progress;
+    project.updated_at = new Date().toISOString();
+    return wrapResponse({ id, progress });
+  }
+
+  async getProjectStats(): Promise<ApiResponse<ProjectStats>> {
+    await delay();
+    requireAuth();
+    const by_progress: Record<ProjectProgress, number> = {
+      none: 0,
+      learning: 0,
+      learned: 0,
+      mastered: 0,
+    };
+    const by_category: Record<string, number> = {};
+    const by_language: Record<string, number> = {};
+
+    for (const p of this.projects) {
+      by_progress[p.progress] += 1;
+      if (p.category_id) {
+        by_category[p.category_id] = (by_category[p.category_id] ?? 0) + 1;
+      }
+      if (p.language) {
+        by_language[p.language] = (by_language[p.language] ?? 0) + 1;
+      }
+    }
+
+    return wrapResponse({
+      total: this.projects.length,
+      by_progress,
+      by_category,
+      by_language,
+    });
+  }
+
+  async exportProjects(): Promise<ApiResponse<Project[]>> {
+    await delay(300);
+    requireAuth();
+    return wrapResponse([...this.projects]);
+  }
+
+  // ─── Categories & Tags ────────────────────────────────
+
+  async listCategories(): Promise<ApiResponse<Category[]>> {
+    await delay();
+    requireAuth();
+    return wrapResponse([...this.categories]);
+  }
+
+  async createCategory(data: { name: string }): Promise<ApiResponse<Category>> {
+    await delay();
+    requireAuth();
+    const cat: Category = {
+      id: newId('cat'),
+      name: data.name,
+      is_preset: false,
+    };
+    this.categories.push(cat);
+    return wrapResponse(cat);
+  }
+
+  async updateCategory(
+    id: string,
+    data: { name: string }
+  ): Promise<ApiResponse<Category>> {
+    await delay();
+    requireAuth();
+    const cat = this.categories.find((c) => c.id === id);
+    if (!cat) throwError('NOT_FOUND', '分类不存在');
+    cat.name = data.name;
+    return wrapResponse(cat);
+  }
+
+  async deleteCategory(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    await delay();
+    requireAuth();
+    const cat = this.categories.find((c) => c.id === id);
+    if (!cat) throwError('NOT_FOUND', '分类不存在');
+    if (cat.is_preset) throwError('FORBIDDEN', '预设分类不可删除');
+    this.categories = this.categories.filter((c) => c.id !== id);
+    return wrapResponse({ success: true });
+  }
+
+  async listTags(): Promise<ApiResponse<Tag[]>> {
+    await delay();
+    requireAuth();
+    return wrapResponse([...this.tags]);
+  }
+
+  async createTag(data: { name: string }): Promise<ApiResponse<Tag>> {
+    await delay();
+    requireAuth();
+    const tag: Tag = { id: newId('tag'), name: data.name, count: 0 };
+    this.tags.push(tag);
+    return wrapResponse(tag);
+  }
+
+  async deleteTag(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    await delay();
+    requireAuth();
+    this.tags = this.tags.filter((t) => t.id !== id);
+    for (const p of this.projects) {
+      p.tags = p.tags.filter((tid) => tid !== id);
+    }
+    return wrapResponse({ success: true });
+  }
+
+  async setProjectTags(
+    projectId: string,
+    tagIds: string[]
+  ): Promise<ApiResponse<{ project_id: string; tag_ids: string[] }>> {
+    await delay();
+    requireAuth();
+    const project = this.projects.find((p) => p.id === projectId);
+    if (!project) throwError('NOT_FOUND', '项目不存在');
+    project.tags = [...tagIds];
+    project.updated_at = new Date().toISOString();
+    return wrapResponse({ project_id: projectId, tag_ids: tagIds });
+  }
+
+  // ─── Notes ────────────────────────────────────────────
+
+  async listNotes(projectId: string): Promise<ApiResponse<Note[]>> {
+    await delay();
+    requireAuth();
+    return wrapResponse(this.notes.filter((n) => n.project_id === projectId));
+  }
+
+  async listAllNotes(): Promise<ApiResponse<Note[]>> {
+    await delay();
+    requireAuth();
+    return wrapResponse([...this.notes]);
+  }
+
+  async getNote(id: string): Promise<ApiResponse<Note>> {
+    await delay();
+    requireAuth();
+    const note = this.notes.find((n) => n.id === id);
+    if (!note) throwError('NOT_FOUND', '笔记不存在');
+    return wrapResponse(note);
+  }
+
+  async createNote(
+    projectId: string,
+    data: { title: string; content: string }
+  ): Promise<ApiResponse<Note>> {
+    await delay();
+    requireAuth();
+    const now = new Date().toISOString();
+    const note: Note = {
+      id: newId('n'),
+      project_id: projectId,
+      title: data.title,
+      content: data.content,
+      created_at: now,
+      updated_at: now,
+    };
+    this.notes.push(note);
+    return wrapResponse(note);
+  }
+
+  async updateNote(
+    id: string,
+    data: Partial<Note>
+  ): Promise<ApiResponse<Note>> {
+    await delay();
+    requireAuth();
+    const idx = this.notes.findIndex((n) => n.id === id);
+    if (idx < 0) throwError('NOT_FOUND', '笔记不存在');
+    const existing = this.notes[idx];
+    if (!existing) throwError('NOT_FOUND', '笔记不存在');
+    const updated: Note = {
+      ...existing,
+      ...data,
+      id: existing.id,
+      updated_at: new Date().toISOString(),
+    };
+    this.notes[idx] = updated;
+    return wrapResponse(updated);
+  }
+
+  async deleteNote(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    await delay();
+    requireAuth();
+    this.notes = this.notes.filter((n) => n.id !== id);
+    return wrapResponse({ success: true });
+  }
+
+  // ─── Graph ────────────────────────────────────────────
+
+  async getGraph(params?: {
+    min_similarity?: number;
+    max_edges?: number;
+  }): Promise<ApiResponse<GraphData>> {
+    await delay(300);
+    requireAuth();
+    const minSim = params?.min_similarity ?? 0.1;
+    const maxEdges = params?.max_edges ?? 500;
+    const nodeIds = new Set(this.projects.map((p) => p.id));
+    const nodes = MOCK_GRAPH.nodes.filter((n) => nodeIds.has(n.id));
+    let edges = MOCK_GRAPH.edges.filter(
+      (e) =>
+        nodeIds.has(e.source) &&
+        nodeIds.has(e.target) &&
+        e.similarity >= minSim
+    );
+    edges = edges.slice(0, maxEdges);
+    return wrapResponse({ nodes, edges });
+  }
+
+  // ─── Settings ─────────────────────────────────────────
+
+  async getSettings(): Promise<ApiResponse<Settings>> {
+    await delay();
+    requireAuth();
+    return wrapResponse({ ...this.settings });
+  }
+
+  async updateSettings(data: Partial<Settings>): Promise<ApiResponse<Settings>> {
+    await delay();
+    requireAuth();
+    this.settings = { ...this.settings, ...data };
+    return wrapResponse({ ...this.settings });
+  }
+
+  async testLLM(): Promise<
+    ApiResponse<{ success: boolean; latency_ms: number; model: string }>
+  > {
+    await delay(800);
+    requireAuth();
+    const latency = 350 + Math.floor(Math.random() * 200);
+    this.settings.llm_last_test = new Date().toISOString();
+    this.settings.llm_latency_ms = latency;
+    this.settings.llm_configured = true;
+    return wrapResponse({
+      success: true,
+      latency_ms: latency,
+      model: this.settings.llm_model,
+    });
+  }
+
+  // ─── Overview 扩展 ────────────────────────────────────
+
+  async listTrending(params?: {
+    period?: TrendingPeriod;
+    language?: string;
+  }): Promise<ApiResponse<TrendingRepo[]>> {
+    await delay();
+    requireAuth();
+    const repos = getTrendingRepos(params?.period ?? 'daily', params?.language);
+    return wrapResponse(repos);
+  }
+
+  async listActivities(): Promise<ApiResponse<ActivityItem[]>> {
+    await delay();
+    requireAuth();
+    return wrapResponse([...MOCK_ACTIVITIES]);
+  }
+
+  // ─── Agent ────────────────────────────────────────────
+
+  async listAgentSessions(): Promise<ApiResponse<AgentSession[]>> {
+    await delay();
+    requireAuth();
+    return wrapResponse([...this.sessions]);
+  }
+
+  async getAgentSession(
+    id: string
+  ): Promise<ApiResponse<AgentSession & { messages: AgentMessage[] }>> {
+    await delay();
+    requireAuth();
+    const session = this.sessions.find((s) => s.id === id);
+    if (!session) throwError('NOT_FOUND', '会话不存在');
+    const msgs = this.messages[id] ?? [];
+    return wrapResponse({ ...session, messages: [...msgs] });
+  }
+
+  async createAgentSession(): Promise<ApiResponse<AgentSession>> {
+    await delay();
+    requireAuth();
+    const session: AgentSession = {
+      id: newId('sess'),
+      title: '新对话',
+      agent: 'hub',
+      updated_at: new Date().toISOString(),
+      unread: false,
+    };
+    this.sessions.unshift(session);
+    this.messages[session.id] = [];
+    return wrapResponse(session);
+  }
+
+  async deleteAgentSession(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    await delay();
+    requireAuth();
+    this.sessions = this.sessions.filter((s) => s.id !== id);
+    delete this.messages[id];
+    return wrapResponse({ success: true });
+  }
+
+  async getAgentProfiles(): Promise<ApiResponse<AgentProfile[]>> {
+    await delay();
+    requireAuth();
+    return wrapResponse([...MOCK_AGENT_PROFILES]);
+  }
+
+  async getUserProfile(): Promise<ApiResponse<UserProfile>> {
+    await delay();
+    requireAuth();
+    return wrapResponse({
+      tech_proficiency: {},
+      learning_preferences: {
+        style: 'hands_on',
+        depth_first: true,
+        verbosity: 'balanced',
+        language: 'zh-CN',
+      },
+      goals: [],
+      history_summary: '本周学习了 React Hooks 与 FastAPI 异步编程。',
+      extensions: {},
+    });
+  }
+
+  async updateUserProfile(
+    data: Partial<UserProfile>
+  ): Promise<ApiResponse<UserProfile>> {
+    await delay();
+    requireAuth();
+    const current = (await this.getUserProfile()).data;
+    return wrapResponse({ ...current, ...data });
+  }
+
+  async getPermissions(): Promise<ApiResponse<AgentPermissions>> {
+    await delay();
+    requireAuth();
+    return wrapResponse({
+      allow_web_search: true,
+      allow_github_api: true,
+      allow_file_write: false,
+      max_iterations: 10,
+      max_tokens_per_turn: 4096,
+    });
+  }
+
+  async *chatAgent(sessionId: string, message: string): AsyncGenerator<SSEEvent> {
+    requireAuth();
+    const session = this.sessions.find((s) => s.id === sessionId);
+    if (!session) {
+      yield { event: 'error', data: { code: 'NOT_FOUND', message: '会话不存在' } };
+      return;
+    }
+
+    const userMsg: AgentMessage = {
+      id: newId('msg'),
+      session_id: sessionId,
+      agent: session.agent,
+      role: 'user',
+      content: message,
+      created_at: new Date().toISOString(),
+    };
+    const msgs = this.messages[sessionId] ?? [];
+    msgs.push(userMsg);
+    this.messages[sessionId] = msgs;
+    session.updated_at = new Date().toISOString();
+    if (session.title === '新对话') {
+      session.title = message.slice(0, 30);
+    }
+
+    const scenario = selectChatScenario(message);
+    yield* scenario();
+  }
+
+  async *answerQuestion(
+    _sessionId: string,
+    _questionId: string,
+    _answers: QuestionAnswer[]
+  ): AsyncGenerator<SSEEvent> {
+    requireAuth();
+    yield* mockAfterQuestionAnswer();
+  }
+
+  async *analyzeProject(
+    projectId: string,
+    agent?: AgentId
+  ): AsyncGenerator<SSEEvent> {
+    requireAuth();
+    const project = this.projects.find((p) => p.id === projectId);
+    const name = project?.name ?? projectId;
+    yield* mockProjectAnalysis(name, agent ?? 'scout');
+  }
+}
