@@ -11,6 +11,8 @@ interface AgentAvatarProps {
   lookTarget: LookTarget | null;
   isFocused: boolean;
   size?: number;
+  /** 轮播位移时刷新注视方向 */
+  gazeRevision?: number;
 }
 
 function computeGaze(avatarRect: DOMRect, target: LookTarget, isFocused: boolean): GazeOffset {
@@ -33,6 +35,7 @@ export function AgentAvatar({
   lookTarget,
   isFocused,
   size = 54,
+  gazeRevision = 0,
 }: AgentAvatarProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [gaze, setGaze] = useState<GazeOffset>({ x: 0, y: 0 });
@@ -58,7 +61,7 @@ export function AgentAvatar({
       ro.disconnect();
       window.removeEventListener('scroll', update, true);
     };
-  }, [lookTarget, isFocused, agentId]);
+  }, [lookTarget, isFocused, agentId, gazeRevision]);
 
   return (
     <div

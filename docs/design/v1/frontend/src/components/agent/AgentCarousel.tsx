@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { AgentAvatar, type LookTarget } from '@/components/agent/AgentAvatar';
 import {
@@ -9,7 +9,7 @@ import {
   type AgentDefinition,
 } from '@/constants/agentCatalog';
 
-const GAP_PX = 12;
+const GAP_PX = 16;
 const MOBILE_BREAKPOINT_PX = 1200;
 const MOBILE_VISIBLE_COUNT = 2;
 /** 轮播卡片头像尺寸（54px × 1.2） */
@@ -43,6 +43,13 @@ function usePrefersReducedMotion() {
   return reduced;
 }
 
+function elementLookPoint(rect: DOMRect): LookTarget {
+  return {
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
+  };
+}
+
 function cardLookPoint(rect: DOMRect): LookTarget {
   return {
     x: rect.left + rect.width * 0.22,
@@ -50,14 +57,30 @@ function cardLookPoint(rect: DOMRect): LookTarget {
   };
 }
 
+function NavChevron({ direction }: { direction: 'prev' | 'next' }) {
+  /* 张角 ×1.2（90° → 108°，半角 54°） */
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+      {direction === 'prev' ? (
+        <path d="M14 3.74 L8 12 L14 20.26" strokeLinecap="round" strokeLinejoin="round" />
+      ) : (
+        <path d="M10 3.74 L16 12 L10 20.26" strokeLinecap="round" strokeLinejoin="round" />
+      )}
+    </svg>
+  );
+}
+
 interface AgentCarouselProps {
   agents?: AgentDefinition[];
   visibleCount?: number;
+  /** 外部注入的注视点（如总览页「和 Agent 对话」按钮悬停） */
+  externalLookTarget?: LookTarget | null;
 }
 
 export function AgentCarousel({
   agents = AGENT_CATALOG,
   visibleCount = AGENT_CAROUSEL_VISIBLE,
+  externalLookTarget = null,
 }: AgentCarouselProps) {
   const resolvedVisible = useResponsiveVisibleCount(visibleCount);
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -66,15 +89,19 @@ export function AgentCarousel({
   const [paused, setPaused] = useState(false);
   const [noTransition, setNoTransition] = useState(false);
   const [stepPx, setStepPx] = useState(0);
+  const [cardWidthPx, setCardWidthPx] = useState(0);
   const [lookTarget, setLookTarget] = useState<LookTarget | null>(null);
   const [focusedAgentId, setFocusedAgentId] = useState<string | null>(null);
+  const indexRef = useRef(0);
+  indexRef.current = index;
 
   const loopAgents = useMemo(
     () => (agents.length > resolvedVisible ? [...agents, ...agents] : agents),
     [agents, resolvedVisible],
   );
 
-  const canScroll = agents.length > resolvedVisible && !prefersReducedMotion;
+  const hasOverflow = agents.length > resolvedVisible;
+  const autoScroll = hasOverflow && !prefersReducedMotion && !paused;
 
   useEffect(() => {
     setIndex(0);
@@ -87,7 +114,9 @@ export function AgentCarousel({
 
     const measure = () => {
       const width = viewport.clientWidth;
-      const cardWidth = (width - GAP_PX * (resolvedVisible - 1)) / resolvedVisible;
+      const slots = agents.length > resolvedVisible ? resolvedVisible : agents.length;
+      const cardWidth = slots > 0 ? (width - GAP_PX * (slots - 1)) / slots : width;
+      setCardWidthPx(cardWidth);
       setStepPx(cardWidth + GAP_PX);
     };
 
@@ -95,20 +124,20 @@ export function AgentCarousel({
     const observer = new ResizeObserver(measure);
     observer.observe(viewport);
     return () => observer.disconnect();
-  }, [resolvedVisible]);
+  }, [resolvedVisible, agents.length]);
 
   useEffect(() => {
-    if (!canScroll || paused) return;
+    if (!autoScroll) return;
 
     const timer = window.setInterval(() => {
       setIndex((prev) => prev + 1);
     }, AGENT_CAROUSEL_INTERVAL_MS);
 
     return () => window.clearInterval(timer);
-  }, [canScroll, paused, agents.length]);
+  }, [autoScroll, agents.length]);
 
   useEffect(() => {
-    if (!canScroll || index !== agents.length) return;
+    if (!hasOverflow || index !== agents.length) return;
 
     const resetTimer = window.setTimeout(() => {
       setNoTransition(true);
@@ -119,7 +148,7 @@ export function AgentCarousel({
     }, AGENT_CAROUSEL_TRANSITION_MS);
 
     return () => window.clearTimeout(resetTimer);
-  }, [index, agents.length, canScroll]);
+  }, [index, agents.length, hasOverflow]);
 
   const handleCarouselLeave = () => {
     setPaused(false);
@@ -133,7 +162,46 @@ export function AgentCarousel({
     setLookTarget(cardLookPoint(event.currentTarget.getBoundingClientRect()));
   };
 
-  const offsetPx = canScroll ? index * stepPx : 0;
+  const handleNavEnter = (event: MouseEvent<HTMLButtonElement>) => {
+    setPaused(true);
+    setFocusedAgentId(null);
+    setLookTarget(elementLookPoint(event.currentTarget.getBoundingClientRect()));
+  };
+
+  const goNext = useCallback(() => {
+    if (!hasOverflow) return;
+    setPaused(true);
+    setFocusedAgentId(null);
+    setIndex((prev) => prev + 1);
+  }, [hasOverflow]);
+
+  const goPrev = useCallback(() => {
+    if (!hasOverflow) return;
+    setPaused(true);
+    setFocusedAgentId(null);
+
+    const prev = indexRef.current;
+    if (prev > 0) {
+      setIndex(prev - 1);
+      return;
+    }
+
+    setNoTransition(true);
+    setIndex(agents.length);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setNoTransition(false);
+        setIndex(agents.length - 1);
+      });
+    });
+  }, [agents.length, hasOverflow]);
+
+  const offsetPx = hasOverflow ? index * stepPx : 0;
+  const trackTransition = noTransition
+    ? 'none'
+    : `transform ${AGENT_CAROUSEL_TRANSITION_MS}ms var(--ease)`;
+  const effectiveLookTarget = externalLookTarget ?? lookTarget;
+  const externalLookActive = externalLookTarget != null;
 
   return (
     <section
@@ -142,39 +210,74 @@ export function AgentCarousel({
       style={{ '--agent-visible': resolvedVisible, '--agent-gap': `${GAP_PX}px` } as CSSProperties}
       onMouseLeave={handleCarouselLeave}
     >
-      <div className="agent-carousel-viewport" ref={viewportRef}>
-        <div
-          className="agent-carousel-track"
-          style={{
-            transform: `translateX(-${offsetPx}px)`,
-            transition: noTransition
-              ? 'none'
-              : `transform ${AGENT_CAROUSEL_TRANSITION_MS}ms var(--ease)`,
-          }}
-        >
-          {loopAgents.map((agent, i) => (
-            <Link
-              key={`${agent.id}-${i}`}
-              className="agent-carousel-card"
-              to={`/agent?agent=${agent.id}`}
-              onMouseEnter={(e) => handleCardEnter(e, agent.id)}
+      <div className="agent-carousel-rail">
+        {hasOverflow && (
+          <button
+            type="button"
+            className="agent-carousel-nav agent-carousel-nav--prev"
+            aria-label="上一个 Agent"
+            onClick={goPrev}
+            onMouseEnter={handleNavEnter}
+          >
+            <NavChevron direction="prev" />
+          </button>
+        )}
+
+        <div className="agent-carousel-shell">
+          <div
+            className="agent-carousel-viewport"
+            ref={viewportRef}
+            style={
+              cardWidthPx
+                ? ({ '--agent-card-width': `${cardWidthPx}px` } as CSSProperties)
+                : undefined
+            }
+          >
+            <div
+              className="agent-carousel-track"
+              style={{
+                transform: `translateX(-${offsetPx}px)`,
+                transition: trackTransition,
+              }}
             >
-              <div className="agent-card-meta">
-                <AgentAvatar
-                  agentId={agent.id}
-                  lookTarget={lookTarget}
-                  isFocused={focusedAgentId === agent.id}
-                  size={AGENT_AVATAR_SIZE}
-                />
-                <div className="agent-name">{agent.name}</div>
-              </div>
-              <div className="agent-card-body">
-                <p className="agent-card-tagline">{agent.tagline}</p>
-                <p className="agent-card-intro">{agent.intro}</p>
-              </div>
-            </Link>
-          ))}
+              {loopAgents.map((agent, i) => (
+                <Link
+                  key={`${agent.id}-${i}`}
+                  className="agent-carousel-card"
+                  to={`/agent?agent=${agent.id}`}
+                  onMouseEnter={(e) => handleCardEnter(e, agent.id)}
+                >
+                  <div className="agent-card-meta">
+                    <AgentAvatar
+                      agentId={agent.id}
+                      lookTarget={effectiveLookTarget}
+                      isFocused={!externalLookActive && focusedAgentId === agent.id}
+                      size={AGENT_AVATAR_SIZE}
+                      gazeRevision={index}
+                    />
+                    <div className="agent-name">{agent.name}</div>
+                  </div>
+                  <div className="agent-card-body">
+                    <p className="agent-card-tagline">{agent.tagline}</p>
+                    <p className="agent-card-intro">{agent.intro}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
+
+        {hasOverflow && (
+          <button
+            type="button"
+            className="agent-carousel-nav agent-carousel-nav--next"
+            aria-label="下一个 Agent"
+            onClick={goNext}
+            onMouseEnter={handleNavEnter}
+          >
+            <NavChevron direction="next" />
+          </button>
+        )}
       </div>
     </section>
   );

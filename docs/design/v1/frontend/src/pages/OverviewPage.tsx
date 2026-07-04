@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -14,6 +14,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { formatRelativeTime, formatDateTime } from '@/utils/date';
 import { formatNumber, langCssClass, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
 import { AgentCarousel } from '@/components/agent/AgentCarousel';
+import type { LookTarget } from '@/components/agent/AgentAvatar';
 import type { ProjectProgress, TrendingPeriod } from '@/api/types';
 
 const PROGRESS_ROWS: Array<{ key: ProjectProgress; label: string; color: string }> = [
@@ -38,6 +39,16 @@ export function OverviewPage() {
   });
 
   const [trendingVisible, setTrendingVisible] = useState(false);
+  const [chatBtnLookTarget, setChatBtnLookTarget] = useState<LookTarget | null>(null);
+
+  const handleChatBtnLook = (event: MouseEvent<HTMLAnchorElement>) => {
+    setChatBtnLookTarget({ x: event.clientX, y: event.clientY });
+  };
+
+  const handleChatBtnLookEnd = () => {
+    setChatBtnLookTarget(null);
+  };
+
   useEffect(() => {
     const t = setTimeout(() => setTrendingVisible(true), 80);
     return () => clearTimeout(t);
@@ -79,7 +90,13 @@ export function OverviewPage() {
         </h1>
         <p className="lede">{heroLede}</p>
         <div className="quick-actions">
-          <Link to="/agent" className="btn btn-primary">
+          <Link
+            to="/agent"
+            className="btn btn-agent-chat"
+            onMouseEnter={handleChatBtnLook}
+            onMouseMove={handleChatBtnLook}
+            onMouseLeave={handleChatBtnLookEnd}
+          >
             和 Agent 对话
           </Link>
           <Link to="/projects" className="btn btn-glass">
@@ -130,7 +147,7 @@ export function OverviewPage() {
         </article>
       </section>
 
-      <AgentCarousel />
+      <AgentCarousel externalLookTarget={chatBtnLookTarget} />
 
       <section className="row-2col">
         <div className="panel panel-progress">
