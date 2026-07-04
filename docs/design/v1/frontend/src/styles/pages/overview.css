@@ -321,7 +321,7 @@
     .agent-card-meta.glass-card--control {
       border-radius: var(--agent-card-radius);
     }
-    .agent-carousel-nav.glass-card--control {
+    .agent-carousel-nav.glass-card--panel {
       border-radius: var(--agent-card-radius);
     }
 
@@ -671,7 +671,7 @@
       min-width: 0;
       overflow: hidden;
     }
-    /* 方形导航钮 · 上层 control，圆角与中层 panel 一致 */
+    /* 方形导航钮 · 中层 panel 液态玻璃，圆角与 Agent 卡一致 */
     .agent-carousel-nav {
       justify-self: center;
       width: var(--agent-nav-width);
@@ -723,36 +723,6 @@
     }
     .agent-carousel-card:hover {
       transform: translateY(-1px);
-    }
-    /* 底层 · Agent 名彩色艺术字（对齐 Hero art 层） */
-    .agent-card-art {
-      position: absolute;
-      inset: 10px 14px 10px 18px;
-      z-index: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-      user-select: none;
-      overflow: hidden;
-    }
-    .agent-card-art-glyph {
-      display: block;
-      width: 100%;
-      text-align: center;
-      font: 900 clamp(2.4rem, 5vw, 3.2rem) / 0.88 var(--font-sans);
-      font-stretch: expanded;
-      letter-spacing: -0.03em;
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      -webkit-text-stroke: 0.8px rgba(255, 255, 255, 0.28);
-      filter: saturate(1.35) contrast(1.04);
-      transform: scaleX(1.15);
-      transform-origin: center center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: clip;
     }
     /* 中层 · 玻璃面板 */
     .agent-card-glass {

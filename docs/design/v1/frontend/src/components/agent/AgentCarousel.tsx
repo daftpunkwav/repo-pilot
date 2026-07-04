@@ -247,14 +247,6 @@ export function AgentCarousel({
                   to={`/agent?agent=${agent.id}`}
                   onMouseEnter={(e) => handleCardEnter(e, agent.id)}
                 >
-                  <div className="agent-card-art" aria-hidden>
-                    <span
-                      className="agent-card-art-glyph"
-                      style={{ backgroundImage: agent.color } as CSSProperties}
-                    >
-                      {agent.name}
-                    </span>
-                  </div>
                   <div className="agent-card-glass glass-card glass-card--panel" aria-hidden />
                   <div className="agent-card-content">
                     <div className="agent-card-meta glass-card glass-card--control">
@@ -281,7 +273,7 @@ export function AgentCarousel({
         {hasOverflow && (
           <button
             type="button"
-            className="agent-carousel-nav agent-carousel-nav--next glass-card glass-card--control liquid-glass--interactive"
+            className="agent-carousel-nav agent-carousel-nav--next glass-card glass-card--panel liquid-glass--interactive"
             aria-label="下一个 Agent"
             onClick={goNext}
             onMouseEnter={handleNavEnter}
