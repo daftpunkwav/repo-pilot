@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -38,7 +38,7 @@ export function OverviewPage() {
     queryFn: async () => (await getApi().getUserProfile()).data,
   });
 
-  const [trendingVisible, setTrendingVisible] = useState(false);
+  const trendingGridRef = useRef<HTMLDivElement>(null);
   const [chatBtnLookTarget, setChatBtnLookTarget] = useState<LookTarget | null>(null);
   const [morseTick, setMorseTick] = useState(0);
 
@@ -62,8 +62,41 @@ export function OverviewPage() {
   };
 
   useEffect(() => {
-    const t = setTimeout(() => setTrendingVisible(true), 80);
-    return () => clearTimeout(t);
+    const grid = trendingGridRef.current;
+    if (!grid || trending.length === 0) return;
+
+    const cards = grid.querySelectorAll<HTMLElement>('.trending-card');
+    cards.forEach((card) => card.classList.remove('is-visible'));
+
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (mq.matches) {
+      cards.forEach((card) => card.classList.add('is-visible'));
+      return;
+    }
+
+    if (typeof IntersectionObserver === 'undefined') {
+      cards.forEach((card) => card.classList.add('is-visible'));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target as HTMLElement;
+          const idx = Number(el.dataset.index) || 0;
+          window.setTimeout(
+            () => el.classList.add('is-visible'),
+            Math.min(idx * 60, 800),
+          );
+          observer.unobserve(el);
+        });
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -40px 0px' },
+    );
+
+    cards.forEach((card) => observer.observe(card));
+    return () => observer.disconnect();
   }, [period, trending]);
 
   if (statsLoading) return <LoadingSpinner />;
@@ -327,12 +360,7 @@ export function OverviewPage() {
       <section className="trending-section">
         <div className="trending-head">
           <div className="trending-head-left">
-            <h2>
-              <span className="trending-fire" aria-hidden>
-                🔥
-              </span>
-              GitHub 近期热门
-            </h2>
+            <h2>GitHub 近期热门</h2>
             <span className="trending-subtitle">基于 trending 数据，帮助你发现值得关注的项目</span>
           </div>
           <div className="period-toggle glass-card glass-card--panel-clear" role="tablist">
@@ -350,7 +378,7 @@ export function OverviewPage() {
             ))}
           </div>
         </div>
-        <div className="trending-grid">
+        <div className="trending-grid" ref={trendingGridRef}>
           {trending.length === 0 ? (
             <div className="trending-empty">该周期暂无数据</div>
           ) : (
@@ -359,10 +387,9 @@ export function OverviewPage() {
               const { owner, repo } = splitRepoName(`${r.owner}/${r.repo}`);
               return (
                 <a
-                  key={`${r.owner}/${r.repo}`}
-                  className={`trending-card glass-card glass-card--panel-clear liquid-glass--interactive ${
-                    trendingVisible ? 'is-visible' : ''
-                  }`}
+                  key={`${period}-${r.owner}/${r.repo}`}
+                  data-index={index}
+                  className="trending-card glass-card glass-card--panel liquid-glass--interactive"
                   style={{ ['--card-w' as string]: `${widthPct.toFixed(2)}%` }}
                   href={r.url}
                   target="_blank"
