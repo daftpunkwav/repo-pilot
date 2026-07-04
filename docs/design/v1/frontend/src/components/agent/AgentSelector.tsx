@@ -1,5 +1,6 @@
 import type { AgentId, AgentProfile } from '@/api/types';
 import { useAgentStore } from '@/stores/agentStore';
+import { AGENT_INITIALS } from '@/utils/labels';
 
 interface AgentSelectorProps {
   profiles: AgentProfile[];
@@ -10,17 +11,16 @@ export function AgentSelector({ profiles }: AgentSelectorProps) {
   const setActiveAgent = useAgentStore((s) => s.setActiveAgent);
 
   return (
-    <div className="agent-selector">
+    <div className="agent-switcher" title="切换 Agent">
       {profiles.map((p) => (
         <button
           key={p.id}
           type="button"
-          className={`agent-selector__btn ${activeAgent === p.id ? 'active' : ''}`}
+          className={`agent-avatar agent-${p.id} ${activeAgent === p.id ? 'active' : ''}`}
+          title={`${p.name} · ${p.description}`}
           onClick={() => setActiveAgent(p.id as AgentId)}
-          title={p.description}
         >
-          <span className="agent-selector__emoji">{p.avatar_emoji}</span>
-          <span>{p.name}</span>
+          <span>{AGENT_INITIALS[p.id] ?? p.name[0]}</span>
         </button>
       ))}
     </div>

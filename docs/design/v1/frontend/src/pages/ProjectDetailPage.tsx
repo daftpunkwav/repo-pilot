@@ -1,20 +1,18 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useProjectNotes } from '@/hooks/useNotes';
 import {
   useDeleteProject,
   useProject,
-  useSetProjectTags,
-  useTags,
+  useProjects,
   useUpdateProgress,
 } from '@/hooks/useProjects';
+import { useGraph } from '@/hooks/useGraph';
 import { useUIStore } from '@/stores/uiStore';
 import { getApi } from '@/api/client';
-import type { ProjectProgress } from '@/api/types';
+import type { AgentId, ProjectProgress } from '@/api/types';
 import { asSSETextDelta } from '@/utils/sse-helpers';
-import { ProgressBadge } from '@/components/project/ProgressBadge';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
-import { NoteList } from '@/components/note/NoteList';
 import { NoteEditor } from '@/components/note/NoteEditor';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -22,12 +20,21 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { StreamRenderer } from '@/components/agent/StreamRenderer';
 import {
   useCreateNote,
-  useDeleteNote,
   useUpdateNote,
 } from '@/hooks/useNotes';
 import { useNoteStore } from '@/stores/noteStore';
+import { formatNumber, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
+import { formatDate } from '@/utils/date';
+import { AGENT_CARDS, categoryLabel } from '@/utils/labels';
 
-const PROGRESS_OPTIONS: ProjectProgress[] = ['none', 'learning', 'learned', 'mastered'];
+const PD_PROGRESS: { id: ProjectProgress; label: string; className: string }[] = [
+  { id: 'none', label: '未开始', className: 'progress-none' },
+  { id: 'learning', label: '学习中', className: 'progress-learning' },
+  { id: 'learned', label: '已入门', className: 'progress-learned' },
+  { id: 'mastered', label: '已掌握', className: 'progress-mastered' },
+];
+
+type DetailTab = 'readme' | 'notes' | 'ai' | 'related';
 
 export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -35,20 +42,20 @@ export function ProjectDetailPage() {
   const addToast = useUIStore((s) => s.addToast);
   const { data: project, isLoading, isError } = useProject(id);
   const { data: notes = [] } = useProjectNotes(id);
-  const { data: tags = [] } = useTags();
+  const { data: graphData } = useGraph();
+  const { data: allProjects } = useProjects();
   const updateProgress = useUpdateProgress();
-  const setProjectTags = useSetProjectTags();
   const deleteProject = useDeleteProject();
   const createNote = useCreateNote();
   const updateNote = useUpdateNote();
-  const deleteNote = useDeleteNote();
   const editingNoteId = useNoteStore((s) => s.editingNoteId);
   const startEditing = useNoteStore((s) => s.startEditing);
 
-  const [tab, setTab] = useState<'readme' | 'notes' | 'agent'>('readme');
+  const [tab, setTab] = useState<DetailTab>('readme');
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [scoutContent, setScoutContent] = useState('');
   const [scoutStreaming, setScoutStreaming] = useState(false);
+  const [fontSize, setFontSize] = useState(14);
 
   useEffect(() => {
     if (isError) {
@@ -57,8 +64,33 @@ export function ProjectDetailPage() {
     }
   }, [isError, navigate, addToast]);
 
+  const related = useMemo(() => {
+    if (!graphData || !id) return [];
+    return graphData.edges
+      .filter((e) => e.source === id || e.target === id)
+      .map((e) => ({
+        id: e.source === id ? e.target : e.source,
+        sim: e.similarity,
+      }))
+      .sort((a, b) => b.sim - a.sim)
+      .slice(0, 5);
+  }, [graphData, id]);
+
+  const projectMap = useMemo(() => {
+    const m = new Map<string, { name: string }>();
+    for (const p of allProjects?.items ?? []) {
+      m.set(p.id, { name: p.name });
+    }
+    return m;
+  }, [allProjects]);
+
+  const recommendedAgent: AgentId = project?.progress === 'mastered' ? 'mentor' : 'scout';
+  const { repo } = splitRepoName(project?.name ?? '');
+  const scribeName = repo || project?.name || '';
+
   const runScout = async () => {
     if (!id) return;
+    setTab('ai');
     setScoutStreaming(true);
     setScoutContent('');
     const stream = getApi().analyzeProject(id, 'scout');
@@ -86,147 +118,410 @@ export function ProjectDetailPage() {
     addToast({ type: 'success', message: '笔记已保存' });
   };
 
+  const copyReadme = async () => {
+    if (!project?.readme) return;
+    try {
+      await navigator.clipboard.writeText(project.readme);
+      addToast({ type: 'success', message: 'README 已复制' });
+    } catch {
+      addToast({ type: 'error', message: '复制失败' });
+    }
+  };
+
   if (isLoading || !project) return <LoadingSpinner />;
 
-  const projectNames = new Map([[project.id, project.name]]);
-
   return (
-    <div className="page project-detail-page">
-      <header className="pd-header glass">
-        <h1 className="font-mono">{project.name}</h1>
-        <p>{project.description}</p>
-        <div className="pd-header__meta">
-          <span>{project.language}</span>
-          <span>★ {project.stars.toLocaleString()}</span>
-          <ProgressBadge progress={project.progress} />
-        </div>
-        <div className="pd-header__actions">
-          <a
-            href={project.url}
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-ghost"
-          >
-            打开 GitHub
-          </a>
-          <button type="button" className="btn btn-primary" onClick={() => void runScout()}>
-            Scout 分析
-          </button>
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={() => setDeleteOpen(true)}
-          >
-            删除
-          </button>
-        </div>
-        <div className="progress-pills">
-          {PROGRESS_OPTIONS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={`filter-btn ${project.progress === p ? 'active' : ''}`}
-              onClick={() => updateProgress.mutate({ id: project.id, progress: p })}
-            >
-              <ProgressBadge progress={p} />
-            </button>
-          ))}
-        </div>
-        <div className="tag-editor">
-          {tags.map((t) => (
-            <label key={t.id} className="tag">
-              <input
-                type="checkbox"
-                checked={project.tags.includes(t.id)}
-                onChange={(e) => {
-                  const next = e.target.checked
-                    ? [...project.tags, t.id]
-                    : project.tags.filter((x) => x !== t.id);
-                  setProjectTags.mutate({ projectId: project.id, tagIds: next });
-                }}
-              />
-              {t.name}
-            </label>
-          ))}
-        </div>
-      </header>
-
-      {scoutContent && (
-        <div className="scout-panel glass">
-          <StreamRenderer content={scoutContent} streaming={scoutStreaming} />
-        </div>
-      )}
-
-      <div className="pd-tabs">
-        {(['readme', 'notes', 'agent'] as const).map((t) => (
-          <button
-            key={t}
-            type="button"
-            data-testid={t === 'notes' ? 'tab-notes' : undefined}
-            className={`filter-btn ${tab === t ? 'active' : ''}`}
-            onClick={() => setTab(t)}
-          >
-            {t === 'readme' ? 'README' : t === 'notes' ? `笔记 (${notes.length})` : 'Agent'}
-          </button>
-        ))}
-      </div>
-
-      <div className="pd-content">
-        {tab === 'readme' &&
-          (project.readme ? (
-            <div data-testid="readme-content">
-              <MarkdownRenderer content={project.readme} />
+    <div className="pd-shell">
+      <section className="pd-main">
+        <div className="card pd-hero">
+          <div className="pd-avatar">
+            <svg viewBox="-11.5 -10.232 23 20.464" fill="none">
+              <circle r="2.05" fill="#fff" />
+              <g stroke="#fff" strokeWidth="1" fill="none">
+                <ellipse rx="11" ry="4.2" />
+                <ellipse rx="11" ry="4.2" transform="rotate(60)" />
+                <ellipse rx="11" ry="4.2" transform="rotate(120)" />
+              </g>
+            </svg>
+          </div>
+          <div className="pd-hero-body">
+            <h1 className="pd-title">{project.name}</h1>
+            <p className="pd-desc">{project.description}</p>
+            <div className="pd-meta">
+              <span className="pd-meta-item">
+                <svg viewBox="0 0 24 24" fill="currentColor" width={14} height={14}>
+                  <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                </svg>
+                <strong>{formatNumber(project.stars)}</strong>&nbsp;stars
+              </span>
+              <span className="pd-meta-sep" />
+              <span className="pd-meta-item">
+                <strong>{project.language ?? '-'}</strong>
+              </span>
+              <span className="pd-meta-sep" />
+              <span className="pd-meta-item">
+                添加于 <strong>{formatDate(project.imported_at)}</strong>
+              </span>
             </div>
-          ) : (
-            <EmptyState title="暂无 README" description="Mock 数据中部分项目未包含 README" />
-          ))}
-        {tab === 'notes' && (
-          <div className="pd-notes">
-            <NoteList
-              notes={notes}
-              projectNames={projectNames}
-              selectedId={editingNoteId}
-              onSelect={(n) => startEditing(n.id, n.title, n.content)}
-            />
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => startEditing('new', '新笔记', '')}
-            >
-              新建笔记
+          </div>
+          <div className="pd-hero-actions">
+            <button type="button" className="btn btn-primary" onClick={() => void runScout()}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14}>
+                <circle cx="11" cy="11" r="8" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              Scout 快速分析
             </button>
-            {editingNoteId && (
+            <a
+              className="btn btn-github-outline"
+              href={project.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              在 GitHub 打开
+            </a>
+          </div>
+        </div>
+
+        <div className="card pd-progress">
+          <div className="pd-progress-head">
+            <span className="label">学习进度</span>
+          </div>
+          <div className="pd-progress-list" role="radiogroup" aria-label="学习进度">
+            {PD_PROGRESS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`pd-progress-pill ${p.className}`}
+                aria-selected={project.progress === p.id ? 'true' : 'false'}
+                onClick={() => updateProgress.mutate({ id: project.id, progress: p.id })}
+              >
+                <span className="dot" />
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="pd-scribe-tip">
+            <div className="tip-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={16} height={16}>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+            </div>
+            <div>
+              <strong style={{ color: 'var(--chart-4)' }}>Scribe Agent</strong>
+              &nbsp;我可以基于 <span className="mono">{scribeName}</span> 的源码帮你生成笔记大纲，要试试吗？
+            </div>
+            <Link className="tip-cta" to={`/notes?project=${project.id}`}>
+              生成笔记
+            </Link>
+          </div>
+        </div>
+
+        <div className="pd-tabs" role="tablist">
+          {(
+            [
+              ['readme', 'README', notes.length, false],
+              ['notes', '笔记', notes.length, true],
+              ['ai', 'AI 分析', 0, false],
+              ['related', '关联项目', related.length, true],
+            ] as const
+          ).map(([key, label, count, showCount]) => (
+            <button
+              key={key}
+              type="button"
+              className="pd-tab"
+              role="tab"
+              aria-selected={tab === key ? 'true' : 'false'}
+              data-testid={key === 'notes' ? 'tab-notes' : undefined}
+              onClick={() => setTab(key)}
+            >
+              {label}
+              {showCount && <span className="pd-tab-count">{count}</span>}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'readme' && (
+          <article className="pd-readme">
+            <div className="pd-readme-toolbar">
+              <div className="left">
+                <span>README.md</span>
+              </div>
+              <div style={{ flex: 1 }} />
+              <span style={{ fontSize: 12, color: 'var(--text-500)' }}>字号</span>
+              <div className="font-ctrl">
+                <button type="button" aria-label="缩小字号" onClick={() => setFontSize((f) => Math.max(11, f - 1))}>
+                  −
+                </button>
+                <span className="font-display">{fontSize > 14 ? 'A+' : 'A'}</span>
+                <button type="button" aria-label="放大字号" onClick={() => setFontSize((f) => Math.min(20, f + 1))}>
+                  +
+                </button>
+              </div>
+              <button type="button" className="btn btn-sm" style={{ height: 28, marginLeft: 4 }} onClick={() => void copyReadme()}>
+                复制全文
+              </button>
+            </div>
+            <div
+              className="pd-readme-body markdown"
+              data-testid="readme-content"
+              style={{ fontSize }}
+            >
+              {project.readme ? (
+                <MarkdownRenderer content={project.readme} />
+              ) : (
+                <p style={{ color: 'var(--text-400)' }}>该项目暂无 README</p>
+              )}
+            </div>
+          </article>
+        )}
+
+        {tab === 'notes' && (
+          <div className="card" style={{ padding: 20 }}>
+            {notes.length === 0 && !editingNoteId ? (
+              <EmptyState title="暂无笔记" description="写第一篇学习笔记" />
+            ) : (
               <>
-                <NoteEditor
-                  onSave={() => void handleSaveNote()}
-                  saving={createNote.isPending || updateNote.isPending}
-                />
-                {editingNoteId.startsWith('n_') && (
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={() => void deleteNote.mutateAsync(editingNoteId)}
-                  >
-                    删除笔记
-                  </button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  style={{ marginBottom: 12 }}
+                  onClick={() => startEditing('new', '新笔记', '')}
+                >
+                  新建笔记
+                </button>
+                {editingNoteId && (
+                  <NoteEditor
+                    onSave={() => void handleSaveNote()}
+                    saving={createNote.isPending || updateNote.isPending}
+                  />
                 )}
               </>
             )}
           </div>
         )}
-        {tab === 'agent' && (
-          <div className="pd-agent-tab">
-            <p>在此项目中与 Agent 对话</p>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => navigate('/agent')}
-            >
-              打开 Agent Chat
-            </button>
+
+        {tab === 'ai' && (
+          <div className="card pd-readme" style={{ minHeight: 200 }}>
+            <div className="pd-readme-toolbar">
+              <div className="left">Scout AI 分析</div>
+              {!scoutContent && (
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => void runScout()}>
+                  开始分析
+                </button>
+              )}
+            </div>
+            <div className="pd-readme-body">
+              {scoutContent ? (
+                <StreamRenderer content={scoutContent} streaming={scoutStreaming} />
+              ) : (
+                <p className="muted">点击「Scout 快速分析」或「开始分析」生成项目速览</p>
+              )}
+            </div>
           </div>
         )}
-      </div>
+
+        {tab === 'related' && (
+          <div className="card" style={{ padding: 16 }}>
+            {related.length === 0 ? (
+              <p className="muted" style={{ textAlign: 'center', padding: 24 }}>
+                暂无关联项目
+              </p>
+            ) : (
+              <div className="pd-related-list">
+                {related.map((r, i) => {
+                  const p = projectMap.get(r.id);
+                  if (!p) return null;
+                  const [, repoName] = p.name.split('/');
+                  return (
+                    <Link key={r.id} className="pd-related-item" to={`/projects/${r.id}`}>
+                      <div
+                        className="pd-related-avatar"
+                        style={{ background: REPO_AVATAR_GRADIENTS[i % REPO_AVATAR_GRADIENTS.length] }}
+                      >
+                        {(repoName?.[0] ?? 'P').toUpperCase()}
+                      </div>
+                      <span className="pd-related-name">{p.name}</span>
+                      <span className="pd-related-sim">{r.sim.toFixed(2)}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+
+      <aside className="pd-side">
+        <div className="card">
+          <div className="card-header" style={{ marginBottom: 12 }}>
+            <div className="card-title">项目信息</div>
+            <span className="card-subtitle">#{project.id}</span>
+          </div>
+          <div className="pd-info-list">
+            <div className="pd-info-row">
+              <span className="k">URL</span>
+              <span className="v">
+                <a href={project.url} target="_blank" rel="noreferrer">
+                  {project.url.replace('https://github.com/', '')} ↗
+                </a>
+              </span>
+            </div>
+            <div className="pd-info-row">
+              <span className="k">分类</span>
+              <span className="v">
+                <span className="badge">{categoryLabel(project.category_id)}</span>
+              </span>
+            </div>
+            <div className="pd-info-row">
+              <span className="k">语言</span>
+              <span className="v">{project.language ?? '-'}</span>
+            </div>
+            <div className="pd-info-row">
+              <span className="k">添加时间</span>
+              <span className="v mono" style={{ fontSize: 12 }}>
+                {formatDate(project.imported_at)}
+              </span>
+            </div>
+            <div className="pd-info-row">
+              <span className="k">数据来源</span>
+              <span className="v">{project.source === 'github' ? 'GitHub Star 导入' : '手动添加'}</span>
+            </div>
+          </div>
+          <div className="pd-info-actions">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => addToast({ type: 'info', message: '编辑项目（演示）' })}
+            >
+              编辑项目
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => addToast({ type: 'info', message: '重新分类（演示）' })}
+            >
+              重新分类
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ color: 'var(--error)' }}
+              onClick={() => setDeleteOpen(true)}
+            >
+              删除项目
+            </button>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">AI 学习助手</div>
+            <span className="card-subtitle">6 agents</span>
+          </div>
+          <div className="pd-agent-grid">
+            {AGENT_CARDS.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                className={`pd-agent ${a.id === recommendedAgent ? 'recommended' : ''}`}
+                onClick={() => navigate(`/agent?analyze=${project.id}&agent=${a.id}`)}
+              >
+                <div className="pd-agent-icon" style={{ background: a.color }}>
+                  {a.name[0]}
+                </div>
+                <div className="pd-agent-name">{a.name}</div>
+                <div className="pd-agent-desc">{a.desc}</div>
+                <span className="btn btn-sm">调用</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">
+              我的笔记{' '}
+              <span style={{ color: 'var(--text-400)', fontWeight: 500 }}>({notes.length})</span>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => {
+                startEditing('new', '新笔记', '');
+                setTab('notes');
+              }}
+            >
+              新建
+            </button>
+          </div>
+          <div className="pd-note-list">
+            {notes.length === 0 ? (
+              <div style={{ padding: 14, textAlign: 'center', color: 'var(--text-400)', fontSize: 12 }}>
+                暂无笔记
+                <br />
+                <br />
+                <Link to={`/notes?project=${project.id}`} style={{ color: 'var(--brand-500)', fontWeight: 600 }}>
+                  写第一篇笔记 →
+                </Link>
+              </div>
+            ) : (
+              notes.slice(0, 5).map((n) => (
+                <button
+                  key={n.id}
+                  type="button"
+                  className="pd-note"
+                  onClick={() => {
+                    startEditing(n.id, n.title, n.content);
+                    setTab('notes');
+                  }}
+                >
+                  <div className="pd-note-title">{n.title}</div>
+                  <div className="pd-note-meta">{formatDate(n.updated_at)}</div>
+                  <div className="pd-note-summary">
+                    {n.content.replace(/[#*`]/g, '').slice(0, 80)}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">相似的项目</div>
+            <Link className="card-subtitle" to="/graph" style={{ color: 'var(--brand-500)' }}>
+              查看图谱 →
+            </Link>
+          </div>
+          <div className="pd-related-list">
+            {related.length === 0 ? (
+              <div style={{ padding: 14, textAlign: 'center', color: 'var(--text-400)', fontSize: 12 }}>
+                暂无关联项目
+              </div>
+            ) : (
+              related.map((r, i) => {
+                const p = projectMap.get(r.id);
+                if (!p) return null;
+                const [, repoName] = p.name.split('/');
+                return (
+                  <Link key={r.id} className="pd-related-item" to={`/projects/${r.id}`}>
+                    <div
+                      className="pd-related-avatar"
+                      style={{ background: REPO_AVATAR_GRADIENTS[i % REPO_AVATAR_GRADIENTS.length] }}
+                    >
+                      {(repoName?.[0] ?? 'P').toUpperCase()}
+                    </div>
+                    <span className="pd-related-name">{p.name}</span>
+                    <span className="pd-related-sim">{r.sim.toFixed(2)}</span>
+                  </Link>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </aside>
 
       <ConfirmDialog
         open={deleteOpen}
