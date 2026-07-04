@@ -82,13 +82,13 @@ export function OverviewPage() {
           <Link to="/agent" className="btn btn-primary">
             和 Agent 对话
           </Link>
-          <Link to="/projects" className="btn">
+          <Link to="/projects" className="btn btn-glass">
             浏览项目库
           </Link>
-          <Link to="/graph" className="btn">
+          <Link to="/graph" className="btn btn-glass">
             查看图谱
           </Link>
-          <Link to="/settings" className="btn">
+          <Link to="/settings" className="btn btn-glass">
             设置
           </Link>
         </div>
@@ -145,43 +145,46 @@ export function OverviewPage() {
       </section>
 
       <section className="row-2col">
-        <div className="panel">
+        <div className="panel panel-progress">
           <h3>学习进度分布</h3>
-          <section className="agent-summary" aria-label="Mentor 学习周报">
-            <div className="summary-head">
-              <div className="summary-avatar">M</div>
-              <div className="summary-meta">
-                <div className="summary-agent">Mentor · 本周学习总结</div>
-                <div className="summary-time">由 AI 自动生成</div>
-              </div>
-              <span className="summary-badge">AI</span>
-            </div>
-            <div className="summary-body">
-              <p
-                dangerouslySetInnerHTML={{
-                  __html:
-                    profile?.history_summary ??
-                    `${username}，本周继续保持学习节奏，Agent 将为你生成个性化周报。`,
-                }}
-              />
-            </div>
-          </section>
-          <div className="progress-divider" />
-          <p className="progress-section-title">分类总览</p>
-          <div className="progress-bars">
-            {PROGRESS_ROWS.map((p) => {
-              const v = byProgress[p.key] ?? 0;
-              const pct = Math.round((v / maxProgress) * 100);
-              return (
-                <div key={p.key} className="progress-row">
-                  <span className="pl">{p.label}</span>
-                  <div className="track">
-                    <div className={`fill ${p.color}`} style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="pv">{v}</span>
+          <div className="progress-panel-body">
+            <section className="agent-summary progress-panel-summary" aria-label="Mentor 学习周报">
+              <div className="summary-head">
+                <div className="summary-avatar">M</div>
+                <div className="summary-meta">
+                  <div className="summary-agent">Mentor · 本周学习总结</div>
+                  <div className="summary-time">由 AI 自动生成</div>
                 </div>
-              );
-            })}
+                <span className="summary-badge">AI</span>
+              </div>
+              <div className="summary-body">
+                <p
+                  dangerouslySetInnerHTML={{
+                    __html:
+                      profile?.history_summary ??
+                      `${username}，本周继续保持学习节奏，Agent 将为你生成个性化周报。`,
+                  }}
+                />
+              </div>
+            </section>
+            <div className="progress-overview">
+              <p className="progress-section-title">分类总览</p>
+              <div className="progress-bars">
+                {PROGRESS_ROWS.map((p) => {
+                  const v = byProgress[p.key] ?? 0;
+                  const pct = Math.round((v / maxProgress) * 100);
+                  return (
+                    <div key={p.key} className="progress-row">
+                      <span className="pl">{p.label}</span>
+                      <div className="track">
+                        <div className={`fill ${p.color}`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="pv">{v}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 

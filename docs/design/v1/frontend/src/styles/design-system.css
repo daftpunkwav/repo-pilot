@@ -78,9 +78,29 @@
 
   /* Spacing / Radius / Shadow */
   --sp: 4px;
-  --radius: 14px;
-  --radius-lg: 20px;
-  --radius-sm: 10px;
+
+  /* Golden Ratio (φ) Radius Scale — base unit 8px，每级 × 或 ÷ φ */
+  --phi: 1.6180339887;
+  --radius-unit: 8px;
+  --radius-2xs: 3px;   /* unit / φ² */
+  --radius-xs: 5px;    /* unit / φ   */
+  --radius-sm: var(--radius-unit);
+  --radius: 13px;      /* unit × φ   */
+  --radius-lg: 21px;   /* unit × φ²  */
+  --radius-xl: 34px;   /* unit × φ³  */
+  --radius-pill: 9999px;
+
+  /* 控件圆角 = 控件尺寸 / φ */
+  --radius-btn: calc(38px / var(--phi));
+  --radius-btn-sm: calc(30px / var(--phi));
+  --radius-btn-lg: calc(48px / var(--phi));
+  --radius-icon: calc(36px / var(--phi));
+  --radius-icon-sm: calc(28px / var(--phi));
+  --radius-tile: calc(32px / var(--phi));
+  --radius-avatar-lg: calc(72px / var(--phi));
+  --radius-bubble: calc(39px / var(--phi));
+  --radius-field: calc(44px / var(--phi));
+  --radius-nav: var(--radius-btn);
 
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.05);
@@ -276,8 +296,8 @@ img, svg { display: block; max-width: 100%; }
 
 /* 玻璃圆角变体 */
 .glass-rounded { border-radius: var(--radius); }
-.glass-pill    { border-radius: 999px; }
-.glass-square  { border-radius: 4px; }
+.glass-pill    { border-radius: var(--radius-pill); }
+.glass-square  { border-radius: var(--radius-2xs); }
 
 /* 玻璃悬浮（hover 时上浮 + 增强高光） */
 .glass-hover {
@@ -330,7 +350,7 @@ img, svg { display: block; max-width: 100%; }
 .sidebar-logo {
   width: 36px; height: 36px;
   background: linear-gradient(135deg, var(--brand-500), var(--brand-700));
-  border-radius: 10px;
+  border-radius: var(--radius-icon);
   display: grid; place-items: center;
   color: #fff; font-weight: 700; font-size: 15px;
   box-shadow: 0 4px 12px rgba(0, 122, 255, 0.35), inset 0 1px 0 rgba(255,255,255,0.4);
@@ -345,7 +365,7 @@ img, svg { display: block; max-width: 100%; }
 .nav-item {
   display: flex; align-items: center; gap: 10px;
   padding: 9px 12px;
-  border-radius: 10px;
+  border-radius: var(--radius-nav);
   color: var(--text-800);
   font-size: 13px;
   font-weight: 500;
@@ -375,7 +395,7 @@ img, svg { display: block; max-width: 100%; }
   background: rgba(0,0,0,0.08);
   color: var(--text-800);
   font-size: 10px; font-weight: 700;
-  padding: 2px 8px; border-radius: 999px;
+  padding: 2px 8px; border-radius: var(--radius-pill);
   font-family: var(--font-mono);
 }
 .nav-item.active .nav-badge { background: var(--brand-500); color: #fff; }
@@ -413,7 +433,7 @@ img, svg { display: block; max-width: 100%; }
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 10px;
+  border-radius: var(--radius-icon);
   color: var(--text-500);
   font-size: 13px;
 }
@@ -424,7 +444,7 @@ img, svg { display: block; max-width: 100%; }
   padding: 1px 5px;
   background: rgba(255, 255, 255, 0.6);
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 4px;
+  border-radius: var(--radius-2xs);
   font-family: var(--font-mono);
   font-size: 10px;
   color: var(--text-500);
@@ -433,7 +453,7 @@ img, svg { display: block; max-width: 100%; }
 .topbar-action {
   display: grid; place-items: center;
   width: 36px; height: 36px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--text-500);
   border: 0; background: transparent;
   transition: all 0.18s var(--ease);
@@ -443,13 +463,13 @@ img, svg { display: block; max-width: 100%; }
 .topbar-action .dot {
   position: absolute; top: 8px; right: 9px;
   width: 7px; height: 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--error);
   border: 1.5px solid var(--bg-50);
 }
 .avatar {
   width: 32px; height: 32px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: linear-gradient(135deg, var(--chart-4), var(--chart-5));
   color: #fff;
   display: grid; place-items: center;
@@ -472,7 +492,7 @@ img, svg { display: block; max-width: 100%; }
   display: inline-flex; align-items: center; justify-content: center;
   gap: 6px;
   height: 38px; padding: 0 18px;
-  border: 0; border-radius: 999px;
+  border: 0; border-radius: var(--radius-btn);
   font: 600 13px/1 var(--font-sans);
   transition: all 0.18s var(--ease);
   position: relative;
@@ -518,15 +538,15 @@ img, svg { display: block; max-width: 100%; }
 }
 
 /* 尺寸 */
-.btn-sm { height: 30px; padding: 0 12px; font-size: 12px; }
-.btn-lg { height: 48px; padding: 0 28px; font-size: 15px; }
+.btn-sm { height: 30px; padding: 0 12px; font-size: 12px; border-radius: var(--radius-btn-sm); }
+.btn-lg { height: 48px; padding: 0 28px; font-size: 15px; border-radius: var(--radius-btn-lg); }
 .btn-block { width: 100%; }
 
 /* 玻璃图标按钮 */
 .icon-btn {
   display: grid; place-items: center;
   width: 36px; height: 36px;
-  border-radius: 10px;
+  border-radius: var(--radius-icon);
   background: transparent;
   color: var(--text-500);
   border: 0;
@@ -578,7 +598,7 @@ img, svg { display: block; max-width: 100%; }
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 10px;
+  border-radius: var(--radius-field);
   color: var(--text-800);
   font: 14px/1 var(--font-sans);
   transition: all 0.18s var(--ease);
@@ -607,7 +627,7 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
 .badge {
   display: inline-flex; align-items: center; gap: 4px;
   height: 22px; padding: 0 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(0, 0, 0, 0.06);
   color: var(--text-700);
   font-size: 11px; font-weight: 600;
@@ -621,7 +641,7 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
 .badge-dot::before {
   content: ''; position: absolute; left: 8px; top: 50%;
   transform: translateY(-50%);
-  width: 6px; height: 6px; border-radius: 999px;
+  width: 6px; height: 6px; border-radius: var(--radius-pill);
   background: currentColor;
 }
 
@@ -643,7 +663,7 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
 .progress-pill {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 11px; font-weight: 600;
   background: rgba(0, 0, 0, 0.06); color: var(--text-700);
 }
@@ -703,7 +723,7 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   height: 32px; padding: 0 12px;
   background: rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 12px; font-weight: 600;
   color: var(--text-700);
   cursor: pointer;
@@ -766,7 +786,7 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   display: inline-block;
   width: 44px; height: 26px;
   background: rgba(0, 0, 0, 0.15);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   position: relative;
   cursor: pointer;
   transition: background 0.18s var(--ease);
@@ -778,7 +798,7 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   top: 3px; left: 3px;
   width: 20px; height: 20px;
   background: #fff;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
   transition: transform 0.18s var(--ease-spring);
 }
@@ -795,13 +815,13 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
 .markdown p { margin: 0 0 14px; line-height: 1.75; color: var(--text-700); }
 .markdown ul, .markdown ol { padding-left: 22px; margin: 0 0 14px; color: var(--text-700); }
 .markdown li { margin-bottom: 6px; line-height: 1.6; }
-.markdown code { font-family: var(--font-mono); font-size: 13px; padding: 2px 6px; background: rgba(0, 122, 255, 0.08); border-radius: 4px; color: var(--brand-700); }
+.markdown code { font-family: var(--font-mono); font-size: 13px; padding: 2px 6px; background: rgba(0, 122, 255, 0.08); border-radius: var(--radius-2xs); color: var(--brand-700); }
 .markdown pre {
   background: rgba(28, 28, 30, 0.95);
   backdrop-filter: blur(10px);
   color: #f5f5f7;
   padding: 16px 18px;
-  border-radius: 10px;
+  border-radius: var(--radius);
   overflow-x: auto;
   font-size: 12px; line-height: 1.6;
   border: 1px solid rgba(255,255,255,0.1);
@@ -812,7 +832,7 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   padding: 8px 16px; margin: 14px 0;
   color: var(--text-500);
   background: rgba(0, 122, 255, 0.04);
-  border-radius: 0 8px 8px 0;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 .markdown table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
 .markdown th, .markdown td { padding: 8px 12px; border: 1px solid rgba(0,0,0,0.08); }
@@ -832,7 +852,7 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   width: 18px; height: 18px;
   border: 2px solid rgba(0, 122, 255, 0.2);
   border-top-color: var(--brand-500);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -880,7 +900,7 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   background: linear-gradient(90deg, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.04) 100%);
   background-size: 1000px 100%;
   animation: shimmer 1.6s infinite;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
 }
 
 /* Toast */
@@ -893,7 +913,7 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   background: rgba(28, 28, 30, 0.92);
   backdrop-filter: blur(20px);
   color: #fff;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: 13px; font-weight: 600;
   z-index: var(--z-modal);
   box-shadow: 0 8px 24px rgba(0,0,0,0.3);
