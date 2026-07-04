@@ -214,7 +214,7 @@ export function AgentCarousel({
         {hasOverflow && (
           <button
             type="button"
-            className="agent-carousel-nav agent-carousel-nav--prev glass-card glass-card--control liquid-glass--interactive liquid-glass--square"
+            className="agent-carousel-nav agent-carousel-nav--prev glass-card glass-card--panel liquid-glass--interactive"
             aria-label="上一个 Agent"
             onClick={goPrev}
             onMouseEnter={handleNavEnter}
@@ -281,7 +281,7 @@ export function AgentCarousel({
         {hasOverflow && (
           <button
             type="button"
-            className="agent-carousel-nav agent-carousel-nav--next glass-card glass-card--control liquid-glass--interactive liquid-glass--square"
+            className="agent-carousel-nav agent-carousel-nav--next glass-card glass-card--control liquid-glass--interactive"
             aria-label="下一个 Agent"
             onClick={goNext}
             onMouseEnter={handleNavEnter}
