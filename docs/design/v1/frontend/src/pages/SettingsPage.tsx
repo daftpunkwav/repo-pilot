@@ -4,10 +4,17 @@ import { useGithubAccounts } from '@/hooks/useProjects';
 import { getApi } from '@/api/client';
 import { useUIStore } from '@/stores/uiStore';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { GlassCard } from '@/components/common/GlassCard';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 type Section = 'appearance' | 'github' | 'llm' | 'data' | 'about';
+
+const NAV: { id: Section; label: string; icon: string }[] = [
+  { id: 'appearance', label: '外观', icon: '◐' },
+  { id: 'github', label: 'GitHub', icon: '⌂' },
+  { id: 'llm', label: 'LLM', icon: '◇' },
+  { id: 'data', label: '数据', icon: '▤' },
+  { id: 'about', label: '关于', icon: 'i' },
+];
 
 export function SettingsPage() {
   const { settings, isLoading, updateSettings, testLLM, isTestingLLM, testResult } =
@@ -42,9 +49,7 @@ export function SettingsPage() {
 
   const exportProjects = async () => {
     const res = await getApi().exportProjects();
-    const blob = new Blob([JSON.stringify(res.data, null, 2)], {
-      type: 'application/json',
-    });
+    const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -55,9 +60,7 @@ export function SettingsPage() {
 
   const exportNotes = async () => {
     const res = await getApi().listAllNotes();
-    const blob = new Blob([JSON.stringify(res.data, null, 2)], {
-      type: 'application/json',
-    });
+    const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -67,110 +70,137 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="page settings-page">
-      <nav className="settings-subnav glass">
-        {(
-          [
-            ['appearance', '外观'],
-            ['github', 'GitHub'],
-            ['llm', 'LLM'],
-            ['data', '数据'],
-            ['about', '关于'],
-          ] as const
-        ).map(([key, label]) => (
+    <div className="settings-shell">
+      <nav className="subnav" aria-label="设置分类">
+        <div className="subnav-title">设置</div>
+        {NAV.map((item) => (
           <button
-            key={key}
+            key={item.id}
             type="button"
-            className={`settings-subnav__item ${section === key ? 'active' : ''}`}
-            onClick={() => setSection(key)}
+            className={`subnav-item ${section === item.id ? 'active' : ''}`}
+            onClick={() => setSection(item.id)}
           >
-            {label}
-            {key === 'llm' && !settings.llm_configured && (
-              <span className="dot-unset" aria-label="未配置" />
-            )}
+            <span aria-hidden>{item.icon}</span>
+            {item.label}
+            {item.id === 'llm' && !settings.llm_configured && <span className="dot-unset" />}
           </button>
         ))}
       </nav>
 
       <div className="settings-main">
         {section === 'appearance' && (
-          <GlassCard>
+          <section className="settings-section card">
             <h2>外观</h2>
-            <label className="form-field">
-              主题
-              <select
-                className="input"
-                value={theme}
-                onChange={(e) => {
-                  const v = e.target.value as 'dark' | 'light' | 'system';
-                  setTheme(v);
-                  if (v !== 'system') {
-                    void updateSettings({ theme: v });
-                  }
-                }}
-              >
-                <option value="light">浅色</option>
-                <option value="dark">深色</option>
-                <option value="system">跟随系统</option>
-              </select>
-            </label>
-            <label className="form-field">
-              字体缩放 {fontScale.toFixed(1)}
-              <input
-                type="range"
-                min={0.8}
-                max={1.5}
-                step={0.1}
-                value={fontScale}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  setFontScale(v);
-                  void updateSettings({ font_scale: v });
-                }}
-              />
-            </label>
-          </GlassCard>
+            <p className="section-desc">主题与阅读舒适度</p>
+            <div className="theme-cards">
+              {(['light', 'dark', 'system'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`theme-card ${theme === t ? 'active' : ''}`}
+                  onClick={() => {
+                    setTheme(t);
+                    if (t !== 'system') void updateSettings({ theme: t });
+                  }}
+                >
+                  <div className={`theme-preview pv-${t === 'system' ? 'auto' : t}`}>
+                    <div className="pv-side">
+                      <i className="on" />
+                      <i />
+                      <i />
+                    </div>
+                    <div className="pv-body">
+                      <i className="t" />
+                      <i />
+                    </div>
+                  </div>
+                  <div className="theme-card-label">
+                    {t === 'light' ? '浅色' : t === 'dark' ? '深色' : '跟随系统'}
+                    <span className="theme-card-check">✓</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="font-row" style={{ marginTop: 24 }}>
+              <div className="font-slider-block form-row">
+                <label className="field-label">
+                  字体缩放 <span className="val">{fontScale.toFixed(1)}×</span>
+                </label>
+                <input
+                  type="range"
+                  className="slider"
+                  min={0.8}
+                  max={1.5}
+                  step={0.1}
+                  value={fontScale}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    setFontScale(v);
+                    void updateSettings({ font_scale: v });
+                  }}
+                />
+              </div>
+              <div className="font-preview">
+                <div className="fp-sample">
+                  <span className="fp-aa">Aa</span>
+                  <span className="fp-cn">阅读预览</span>
+                </div>
+                <div className="fp-en">The quick brown fox</div>
+              </div>
+            </div>
+          </section>
         )}
 
         {section === 'github' && (
-          <GlassCard>
-            <h2>GitHub 绑定</h2>
-            <ul>
-              {accounts.map((a) => (
-                <li key={a.id}>
-                  {a.username}
-                  <button type="button" className="btn btn-ghost" onClick={() => setUnbindId(a.id)}>
+          <section className="settings-section card">
+            <h2>GitHub</h2>
+            <p className="section-desc">绑定账号以同步 Stars</p>
+            {accounts.map((a) => (
+              <div key={a.id} className="gh-card" style={{ marginBottom: 16 }}>
+                <div className="gh-avatar">{a.username[0]?.toUpperCase()}</div>
+                <div className="gh-meta">
+                  <div className="gh-handle">@{a.username}</div>
+                  <div className="gh-sub">已绑定 · {new Date(a.bound_at).toLocaleDateString('zh-CN')}</div>
+                </div>
+                <div className="gh-actions">
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setUnbindId(a.id)}>
                     解绑
                   </button>
-                </li>
-              ))}
-            </ul>
-            <label className="form-field">
-              GitHub 用户名
-              <input className="input" value={ghUser} onChange={(e) => setGhUser(e.target.value)} />
-            </label>
-            <label className="form-field">
-              Personal Access Token
+                </div>
+              </div>
+            ))}
+            <div className="form-row">
+              <label>GitHub 用户名</label>
+              <input className="field input" value={ghUser} onChange={(e) => setGhUser(e.target.value)} />
+            </div>
+            <div className="form-row">
+              <label>Personal Access Token</label>
               <input
-                className="input"
+                className="field input"
                 type="password"
                 value={ghPat}
                 onChange={(e) => setGhPat(e.target.value)}
               />
-            </label>
+            </div>
             <button type="button" className="btn btn-primary" onClick={() => void bindGithub()}>
-              绑定
+              绑定账号
             </button>
-          </GlassCard>
+          </section>
         )}
 
         {section === 'llm' && (
-          <GlassCard>
+          <section className="settings-section card">
             <h2>LLM 配置</h2>
-            <label className="form-field">
-              Provider
+            <p className="section-desc">Agent 对话使用的模型与 API</p>
+            {!settings.llm_configured && (
+              <div className="alert alert-warning">
+                <strong>未配置</strong> — Agent 将使用规则降级模式。
+              </div>
+            )}
+            <div className="form-row">
+              <label>Provider</label>
               <select
-                className="input"
+                className="field input"
                 value={settings.llm_provider}
                 onChange={(e) => void updateSettings({ llm_provider: e.target.value })}
               >
@@ -178,34 +208,27 @@ export function SettingsPage() {
                 <option value="anthropic">Anthropic</option>
                 <option value="local">Local</option>
               </select>
-            </label>
-            <label className="form-field">
-              Model
+            </div>
+            <div className="form-row">
+              <label>Model</label>
               <input
-                className="input"
+                className="field input"
                 value={settings.llm_model}
                 onChange={(e) => void updateSettings({ llm_model: e.target.value })}
               />
-            </label>
-            <label className="form-field">
-              API Base
-              <input
-                className="input"
-                value={settings.llm_api_base ?? ''}
-                onChange={(e) => void updateSettings({ llm_api_base: e.target.value || null })}
-              />
-            </label>
-            <label className="form-field">
-              API Key（当前：{settings.llm_api_key_masked}）
-              <input
-                className="input"
-                type="password"
-                placeholder="sk-…"
-                value={llmKey}
-                onChange={(e) => setLlmKey(e.target.value)}
-              />
-            </label>
-            <div className="settings-actions">
+            </div>
+            <div className="form-row">
+              <label>API Key（当前 {settings.llm_api_key_masked}）</label>
+              <div className="field-with-action">
+                <input
+                  type="password"
+                  placeholder="sk-…"
+                  value={llmKey}
+                  onChange={(e) => setLlmKey(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="settings-actions" style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button
                 type="button"
                 className="btn btn-primary"
@@ -215,6 +238,7 @@ export function SettingsPage() {
                       llm_api_key_masked: `sk-****${llmKey.slice(-4)}`,
                       llm_configured: true,
                     });
+                    addToast({ type: 'success', message: '已保存' });
                   }
                 }}
               >
@@ -230,33 +254,38 @@ export function SettingsPage() {
               </button>
               {testResult && (
                 <span className={testResult.success ? 'text-success' : 'text-error'}>
-                  {testResult.success
-                    ? `成功 · ${testResult.latency_ms}ms`
-                    : '测试失败'}
+                  {testResult.success ? `成功 · ${testResult.latency_ms}ms` : '失败'}
                 </span>
               )}
             </div>
-          </GlassCard>
+          </section>
         )}
 
         {section === 'data' && (
-          <GlassCard>
-            <h2>数据导出</h2>
-            <button type="button" className="btn btn-primary" onClick={() => void exportProjects()}>
+          <section className="settings-section card">
+            <h2>数据</h2>
+            <p className="section-desc">导出本地项目与笔记</p>
+            <button type="button" className="btn btn-primary" style={{ marginRight: 8 }} onClick={() => void exportProjects()}>
               导出项目 JSON
             </button>
             <button type="button" className="btn btn-ghost" onClick={() => void exportNotes()}>
               导出笔记 JSON
             </button>
-          </GlassCard>
+          </section>
         )}
 
         {section === 'about' && (
-          <GlassCard>
-            <h2>关于</h2>
-            <p>RepoPilot v1.0.0</p>
-            <p>GitHub 项目学习驾驶舱</p>
-          </GlassCard>
+          <section className="settings-section about-card">
+            <h2>关于 RepoPilot</h2>
+            <div className="about-row">
+              <span className="k">版本</span>
+              <span>v1.0.0</span>
+            </div>
+            <div className="about-row">
+              <span className="k">定位</span>
+              <span>GitHub 项目学习驾驶舱</span>
+            </div>
+          </section>
         )}
       </div>
 

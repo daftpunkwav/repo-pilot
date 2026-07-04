@@ -460,5 +460,40 @@ export interface UserProfile {
   learning_preferences: LearningPreferences;
   goals: Goal[];
   history_summary: string;
+  /** Agent 维护的记忆条目（摘要 / 目标 / 技术栈 / 偏好） */
+  memory_items?: MemoryItem[];
   extensions: Record<string, unknown>;
+}
+
+/** Agent 维护的用户记忆片段 */
+export interface MemoryItem {
+  id: string;
+  category: 'summary' | 'goal' | 'tech' | 'preference';
+  content: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+/** LLM 上下文窗口用量（后端按会话维护） */
+export interface ContextWindowSegment {
+  label: string;
+  tokens: number;
+  kind: 'system' | 'skill' | 'memory' | 'tools' | 'messages' | 'other';
+}
+
+export interface ContextWindowStats {
+  session_id: string | null;
+  model: string;
+  context_limit: number;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  segments: ContextWindowSegment[];
+}
+
+/** 导入助手对话上下文 */
+export interface ImportAssistContext {
+  mode: 'stars' | 'urls' | 'search';
+  available_repo_keys?: string[];
+  selected_repo_keys?: string[];
 }
