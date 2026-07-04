@@ -13,7 +13,7 @@ import { getApi } from '@/api/client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { formatRelativeTime, formatDateTime } from '@/utils/date';
 import { formatNumber, langCssClass, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
-import { AGENT_CARDS } from '@/utils/labels';
+import { AgentCarousel } from '@/components/agent/AgentCarousel';
 import type { ProjectProgress, TrendingPeriod } from '@/api/types';
 
 const PROGRESS_ROWS: Array<{ key: ProjectProgress; label: string; color: string }> = [
@@ -130,19 +130,7 @@ export function OverviewPage() {
         </article>
       </section>
 
-      <section className="agent-grid">
-        {AGENT_CARDS.map((a) => (
-          <Link key={a.id} className="agent-card" to={`/agent?agent=${a.id}`}>
-            <div className="agent-icon" style={{ background: a.color }}>
-              {a.name[0]}
-            </div>
-            <div>
-              <div className="agent-name">{a.name}</div>
-              <div className="agent-desc">{a.desc}</div>
-            </div>
-          </Link>
-        ))}
-      </section>
+      <AgentCarousel />
 
       <section className="row-2col">
         <div className="panel panel-progress">

@@ -411,23 +411,172 @@
     }
     .project-stars { font-size: 12px; color: var(--text-700); font-weight: 600; display: inline-flex; align-items: center; gap: 3px; }
 
-    /* 6 Agent 入口 */
-    .agent-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
-    .agent-card {
-      display: flex; flex-direction: column; gap: 8px;
-      padding: 14px 12px; border-radius: var(--radius);
-      background: var(--bg-50); border: 1px solid var(--bg-300);
-      cursor: pointer; transition: all 0.18s var(--ease);
-      text-decoration: none; color: inherit;
+    /* Agent 轮播入口（视口 4 列 · 黄金比例卡片内布局 0.618:1） */
+    .agent-carousel {
+      --agent-visible: 4;
+      --agent-gap: 12px;
+      --agent-tagline-base: 12px;
+      --agent-tagline-size: calc(var(--agent-tagline-base) * 1.3 * 1.2);
+      --agent-intro-size: calc(var(--agent-tagline-size) * 0.861);
+      --agent-avatar-size: calc(54px * 1.2);
+      margin-bottom: 20px;
     }
-    .agent-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--brand-300); }
-    .agent-icon {
-      width: 36px; height: 36px; border-radius: var(--radius-icon);
-      display: grid; place-items: center; color: #fff;
-      font: 700 14px/1 var(--font-sans);
+    .agent-carousel-viewport {
+      overflow: hidden;
+      width: 100%;
     }
-    .agent-name { font-size: 13px; font-weight: 700; }
-    .agent-desc { font-size: 11px; color: var(--text-500); line-height: 1.4; }
+    .agent-carousel-track {
+      display: flex;
+      gap: var(--agent-gap);
+      will-change: transform;
+    }
+    .agent-carousel-card {
+      flex: 0 0 calc(
+        (100% - (var(--agent-visible) - 1) * var(--agent-gap)) / var(--agent-visible)
+      );
+      min-width: 0;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: calc(var(--radius-unit) / var(--phi) * var(--phi));
+      padding: calc(var(--radius-unit) / var(--phi) * var(--phi)) calc(var(--radius-unit) * var(--phi) / var(--phi)) calc(var(--radius-unit) / var(--phi) * var(--phi)) calc(var(--radius-unit) / var(--phi) * var(--phi));
+      min-height: calc(112px * 1.2);
+      border-radius: var(--radius);
+      background: var(--bg-50);
+      border: 1px solid var(--bg-300);
+      cursor: pointer;
+      transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease), border-color 0.18s var(--ease);
+      text-decoration: none;
+      color: inherit;
+    }
+    .agent-carousel-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--brand-300);
+    }
+    .agent-carousel-card:hover .agent-card-meta {
+      background-color: rgba(255, 255, 255, 0.72);
+      border-color: rgba(255, 255, 255, 0.85);
+    }
+    /* 左侧 · 无色液态玻璃 */
+    .agent-card-meta {
+      position: relative;
+      flex: 0.618;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 16px 10px;
+      text-align: center;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      isolation: isolate;
+      background-color: var(--glass-tint);
+      -webkit-backdrop-filter: blur(var(--glass-blur-soft)) saturate(var(--glass-saturation));
+      backdrop-filter: blur(var(--glass-blur-soft)) saturate(var(--glass-saturation));
+      border: 1px solid var(--glass-border);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.65),
+        0 1px 2px rgba(15, 23, 42, 0.04);
+      transition: background-color 0.18s var(--ease), border-color 0.18s var(--ease);
+    }
+    .agent-card-meta::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: var(--glass-highlight);
+      opacity: 0.45;
+      pointer-events: none;
+    }
+    .agent-card-meta::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background-image: var(--glass-noise);
+      background-size: 200px 200px;
+      opacity: 0.35;
+      mix-blend-mode: overlay;
+      pointer-events: none;
+    }
+    .agent-card-meta > * { position: relative; z-index: 1; }
+    [data-theme="dark"] .agent-card-meta {
+      background-color: var(--glass-tint);
+      border-color: var(--glass-border);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        0 1px 2px rgba(0, 0, 0, 0.2);
+    }
+    [data-theme="dark"] .agent-carousel-card:hover .agent-card-meta {
+      background-color: rgba(44, 44, 46, 0.72);
+    }
+    .agent-card-titles { min-width: 0; width: 100%; text-align: center; }
+    /* 右侧 · 标签与简介（间距/分区按 φ，自然纵向排版） */
+    .agent-card-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: calc(var(--agent-tagline-size) * 0.861 / var(--phi));
+      padding: 0 calc(var(--radius-unit) / var(--phi));
+    }
+    .agent-card-tagline {
+      flex: 0 0 auto;
+      margin: 0;
+      font-size: var(--agent-tagline-size);
+      font-weight: 700;
+      line-height: 1.25;
+      letter-spacing: 0.02em;
+      color: var(--text-800);
+    }
+    .agent-card-intro {
+      flex: 0 1 auto;
+      margin: 0;
+      padding: 0;
+      font-size: var(--agent-intro-size);
+      font-weight: 500;
+      line-height: var(--phi);
+      color: var(--text-500);
+      text-align: center;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
+    }
+    .agent-character {
+      flex-shrink: 0;
+      filter: drop-shadow(0 3px 8px rgba(15, 23, 42, 0.1));
+      transition: transform 0.25s var(--ease-spring);
+    }
+    .agent-carousel-card:hover .agent-character {
+      transform: scale(1.04);
+    }
+    .agent-head .agent-eye-pupil {
+      transition: transform 0.28s var(--ease);
+    }
+    .agent-head--focused {
+      animation: agent-head-bob 0.45s var(--ease-spring);
+    }
+    @keyframes agent-head-bob {
+      0%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-2px); }
+    }
+    .agent-name {
+      font-size: var(--agent-tagline-size);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .agent-carousel-track { transition: none !important; }
+    }
 
     /* 最近笔记 */
     .notes-list { display: flex; flex-direction: column; gap: 8px; }
@@ -444,7 +593,7 @@
 
     @media (max-width: 1200px) {
       .stat-grid { grid-template-columns: repeat(2, 1fr); }
-      .agent-grid { grid-template-columns: repeat(3, 1fr); }
+      .agent-carousel { --agent-visible: 2; }
       .row-2col { grid-template-columns: 1fr; }
     }
 
