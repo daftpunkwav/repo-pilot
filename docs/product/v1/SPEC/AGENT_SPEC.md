@@ -1305,7 +1305,7 @@ agent:
 | POST | /agent/analyze/{project_id} | 分析指定项目            | JWT | 10/min/user |
 
 **POST /agent/chat：** `{"session_id": "uuid", "message": "...", "agent_id": null}`
-**SSE 事件：** text_delta → tool_call → tool_result → done
+**SSE 事件流（与 StreamEventType 8 种枚举对齐）:** text_delta → thinking → tool_call → tool_result → agent_switch → question → done / error
 **POST /agent/question：** `{"session_id": "uuid", "answers": [{"type": "radio", "question_id": "q1", "value": "..."}]}`
 
 ### §8.2 便捷端点（F5-27 修复）
