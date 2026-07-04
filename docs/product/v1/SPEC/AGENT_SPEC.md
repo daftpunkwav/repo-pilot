@@ -783,7 +783,7 @@ async def read_source_file(repo, path, ref="main", start_line=1, end_line=200, c
           "query": {"type": "string", "description": "搜索词（禁止含 URL scheme）"},
           "max_results": {"type": "integer", "default": 5},
       }, "required": ["query"]},
-      allowed_agents=["scout","mentor","navigator","curator","scribe","hub"], timeout_ms=15000)
+      allowed_agents=["scout","mentor","navigator","curator","scribe"], timeout_ms=15000)
 async def search_web(query, max_results=5, context=None, **kw):
     """接口契约：
     | 约束 | 说明 |
@@ -808,7 +808,7 @@ async def search_web(query, max_results=5, context=None, **kw):
       parameters={"type": "object", "properties": {
           "project_id": {"type": "string"}, "analysis_type": {"type": "string", "enum": ["scout","mentor"]},
       }, "required": ["project_id"]},
-      allowed_agents=["hub","mentor"], timeout_ms=10000)
+      allowed_agents=["mentor"], timeout_ms=10000)
 async def get_project_analysis(project_id, analysis_type="scout", context=None, **kw):
     a = await context.db.get_latest_analysis(project_id, analysis_type)
     if not a: return {"status": "no_analysis"}
@@ -893,7 +893,7 @@ async def ask_user_question(intro, questions, allow_skip=True, skip_text="跳过
           "content": {"type": "string"}, "category": {"type": "string", "enum": ["insight","fact","preference","goal","note"]},
           "project_id": {"type": "string"}, "tags": {"type": "array", "items": {"type": "string"}},
       }, "required": ["content","category"]},
-      allowed_agents=["scout","mentor","navigator","curator","scribe","hub"], timeout_ms=10000)
+      allowed_agents=["scout","mentor","navigator","curator","scribe"], timeout_ms=10000)
 async def save_to_memory(content, category, project_id=None, tags=None, context=None, **kw):
     from datetime import datetime
     await context.db.save_memory_item({"user_id": context.user_id, "agent_id": context.agent_id,
