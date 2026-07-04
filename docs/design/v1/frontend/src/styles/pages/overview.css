@@ -618,9 +618,15 @@
       --agent-tagline-size: calc(var(--agent-tagline-base) * 1.3 * 1.2);
       --agent-intro-size: calc(var(--agent-tagline-size) * 0.861);
       --agent-body-tagline-size: calc(var(--agent-tagline-size) * 0.9);
-      --agent-body-intro-size: calc(var(--agent-intro-size) * 0.9);
+      --agent-body-intro-size: var(--agent-intro-size);
       --agent-avatar-size: calc(54px * 1.2);
       --agent-card-height: calc(112px * 1.2);
+      --agent-card-pad: 10px;
+      --agent-card-inner-height: calc(var(--agent-card-height) - 2 * var(--agent-card-pad));
+      --agent-meta-width: 38%;
+      --agent-tagline-row-height: calc(var(--agent-body-tagline-size) * 1.25);
+      --agent-intro-row-height: calc(var(--agent-body-intro-size) * var(--phi));
+      --agent-intro-block-height: calc(var(--agent-intro-row-height) * 3);
       --agent-nav-arrow-size: calc(20px * 0.8);
       --agent-nav-width: calc(var(--agent-nav-arrow-size) * 1.25);
       --agent-nav-height: calc(var(--agent-card-height) * 0.618);
@@ -697,62 +703,119 @@
       min-width: var(--agent-card-width, 220px);
       max-width: var(--agent-card-width, 220px);
       box-sizing: border-box;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: calc(var(--radius-unit) / var(--phi) * var(--phi));
-      padding: calc(var(--radius-unit) / var(--phi) * var(--phi)) calc(var(--radius-unit) * var(--phi) / var(--phi)) calc(var(--radius-unit) / var(--phi) * var(--phi)) calc(var(--radius-unit) / var(--phi) * var(--phi));
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      height: var(--agent-card-height);
       min-height: var(--agent-card-height);
+      border-radius: var(--lg-radius-card, 20px);
       cursor: pointer;
       text-decoration: none;
       color: inherit;
+      transition: transform 0.2s var(--ease);
     }
-    /* 左侧 meta · 上层 control */
-    .agent-card-meta {
-      flex: 0.618;
-      min-width: 0;
+    .agent-carousel-card:hover {
+      transform: translateY(-1px);
+    }
+    /* 底层 · Agent 名彩色艺术字（对齐 Hero art 层） */
+    .agent-card-art {
+      position: absolute;
+      inset: 10px 14px;
+      z-index: 0;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
+      pointer-events: none;
+      user-select: none;
+      overflow: hidden;
+    }
+    .agent-card-art-glyph {
+      display: block;
+      width: 100%;
+      text-align: center;
+      font: 900 clamp(2.4rem, 5vw, 3.2rem) / 0.88 var(--font-sans);
+      font-stretch: expanded;
+      letter-spacing: -0.03em;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      -webkit-text-stroke: 0.8px rgba(255, 255, 255, 0.28);
+      filter: saturate(1.35) contrast(1.04);
+      transform: scaleX(1.15);
+      transform-origin: center center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: clip;
+    }
+    /* 中层 · 玻璃面板 */
+    .agent-card-glass {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      border-radius: inherit;
+    }
+    /* 上层 · 内容 + control meta（固定网格，跨卡对齐） */
+    .agent-card-content {
+      position: relative;
+      z-index: 2;
+      box-sizing: border-box;
+      display: grid;
+      grid-template-columns: var(--agent-meta-width) minmax(0, 1fr);
+      align-items: center;
       gap: 10px;
-      padding: 16px 10px;
+      height: 100%;
+      padding: var(--agent-card-pad) 12px var(--agent-card-pad) 10px;
+    }
+    /* 左侧 meta · 固定宽高 */
+    .agent-card-meta {
+      width: 100%;
+      height: var(--agent-card-inner-height);
+      box-sizing: border-box;
+      display: grid;
+      grid-template-rows: var(--agent-avatar-size) minmax(0, 1fr);
+      align-items: center;
+      justify-items: center;
+      gap: 8px;
+      padding: 12px 8px 10px;
       text-align: center;
       border-radius: var(--radius-sm);
     }
     .agent-card-meta > * { position: relative; z-index: 1; }
     .agent-card-titles { min-width: 0; width: 100%; text-align: center; }
-    /* 右侧 · 左对齐、上下居中，字号 ×0.9 */
+    /* 右侧 · 标题行 + 简介块固定高度 */
     .agent-card-body {
-      flex: 1;
+      height: var(--agent-card-inner-height);
+      box-sizing: border-box;
+      display: grid;
+      grid-template-rows: var(--agent-tagline-row-height) var(--agent-intro-block-height);
+      align-content: start;
+      gap: 6px;
       min-width: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      justify-content: center;
-      text-align: left;
-      gap: calc(var(--agent-body-tagline-size) * 0.861 / var(--phi));
-      padding: 0 calc(var(--radius-unit) / var(--phi)) 0 0;
+      padding: 0 4px 0 0;
     }
     .agent-card-tagline {
-      flex: 0 0 auto;
       margin: 0;
       width: 100%;
+      height: var(--agent-tagline-row-height);
       font-size: var(--agent-body-tagline-size);
       font-weight: 700;
-      line-height: 1.25;
+      line-height: var(--agent-tagline-row-height);
       letter-spacing: 0.02em;
       color: var(--text-800);
       text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .agent-card-intro {
-      flex: 0 1 auto;
       margin: 0;
       padding: 0;
       width: 100%;
+      height: var(--agent-intro-block-height);
       font-size: var(--agent-body-intro-size);
       font-weight: 500;
-      line-height: var(--phi);
+      line-height: var(--agent-intro-row-height);
       color: var(--text-500);
       text-align: left;
       display: -webkit-box;
@@ -779,10 +842,18 @@
       40% { transform: translateY(-2px); }
     }
     .agent-name {
+      width: 100%;
+      margin: 0;
       font-size: var(--agent-tagline-size);
       font-weight: 700;
       letter-spacing: -0.02em;
       line-height: 1.2;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      text-align: center;
+      align-self: end;
     }
 
     @media (prefers-reduced-motion: reduce) {

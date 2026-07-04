@@ -243,23 +243,34 @@ export function AgentCarousel({
               {loopAgents.map((agent, i) => (
                 <Link
                   key={`${agent.id}-${i}`}
-                  className="agent-carousel-card glass-card glass-card--panel-clear liquid-glass--interactive"
+                  className="agent-carousel-card"
                   to={`/agent?agent=${agent.id}`}
                   onMouseEnter={(e) => handleCardEnter(e, agent.id)}
                 >
-                  <div className="agent-card-meta glass-card glass-card--control">
-                    <AgentAvatar
-                      agentId={agent.id}
-                      lookTarget={effectiveLookTarget}
-                      isFocused={!externalLookActive && focusedAgentId === agent.id}
-                      size={AGENT_AVATAR_SIZE}
-                      gazeRevision={index}
-                    />
-                    <div className="agent-name">{agent.name}</div>
+                  <div className="agent-card-art" aria-hidden>
+                    <span
+                      className="agent-card-art-glyph"
+                      style={{ backgroundImage: agent.color } as CSSProperties}
+                    >
+                      {agent.name}
+                    </span>
                   </div>
-                  <div className="agent-card-body">
-                    <p className="agent-card-tagline">{agent.tagline}</p>
-                    <p className="agent-card-intro">{agent.intro}</p>
+                  <div className="agent-card-glass glass-card glass-card--panel" aria-hidden />
+                  <div className="agent-card-content">
+                    <div className="agent-card-meta glass-card glass-card--control">
+                      <AgentAvatar
+                        agentId={agent.id}
+                        lookTarget={effectiveLookTarget}
+                        isFocused={!externalLookActive && focusedAgentId === agent.id}
+                        size={AGENT_AVATAR_SIZE}
+                        gazeRevision={index}
+                      />
+                      <div className="agent-name">{agent.name}</div>
+                    </div>
+                    <div className="agent-card-body">
+                      <p className="agent-card-tagline">{agent.tagline}</p>
+                      <p className="agent-card-intro">{agent.intro}</p>
+                    </div>
                   </div>
                 </Link>
               ))}
