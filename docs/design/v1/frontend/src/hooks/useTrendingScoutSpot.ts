@@ -50,6 +50,7 @@ export function useTrendingScoutSpot(period: TrendingPeriod) {
 
   const finishHide = useCallback(() => {
     abortStream();
+    cardHoverCountRef.current = 0;
     setPhase('hidden');
     setRepo(null);
     setContent('');
@@ -69,17 +70,10 @@ export function useTrendingScoutSpot(period: TrendingPeriod) {
   const scheduleHide = useCallback(() => {
     clearLeaveTimer();
     leaveTimerRef.current = window.setTimeout(() => {
+      if (cardHoverCountRef.current > 0) return;
       startHide();
     }, TRENDING_SCOUT_LEAVE_DELAY_MS);
   }, [clearLeaveTimer, startHide]);
-
-  const cancelHide = useCallback(() => {
-    clearLeaveTimer();
-    clearHideAnimTimer();
-    if (phase === 'leaving') {
-      setPhase('visible');
-    }
-  }, [clearHideAnimTimer, clearLeaveTimer, phase]);
 
   const startStream = useCallback(
     async (target: TrendingRepo) => {
@@ -112,8 +106,9 @@ export function useTrendingScoutSpot(period: TrendingPeriod) {
     [period],
   );
 
-  const showForRepo = useCallback(
+  const onTrendingCardEnter = useCallback(
     (target: TrendingRepo, look: LookTarget) => {
+      cardHoverCountRef.current += 1;
       clearLeaveTimer();
       clearHideAnimTimer();
       setLookTarget(look);
@@ -131,11 +126,36 @@ export function useTrendingScoutSpot(period: TrendingPeriod) {
     [clearHideAnimTimer, clearLeaveTimer, startStream],
   );
 
+  const onTrendingCardLeave = useCallback(() => {
+    cardHoverCountRef.current = Math.max(0, cardHoverCountRef.current - 1);
+    if (cardHoverCountRef.current === 0) {
+      scheduleHide();
+    }
+  }, [scheduleHide]);
+
+  const cancelHide = useCallback(() => {
+    clearLeaveTimer();
+    clearHideAnimTimer();
+    setPhase((current) => (current === 'leaving' ? 'visible' : current));
+  }, [clearHideAnimTimer, clearLeaveTimer]);
+
+  const showForRepo = useCallback(
+    (target: TrendingRepo, look: LookTarget) => {
+      onTrendingCardEnter(target, look);
+    },
+    [onTrendingCardEnter],
+  );
+
+  const leaveTrendingCard = useCallback(() => {
+    onTrendingCardLeave();
+  }, [onTrendingCardLeave]);
+
   const updateLook = useCallback((look: LookTarget) => {
     setLookTarget(look);
   }, []);
 
   useEffect(() => {
+    cardHoverCountRef.current = 0;
     clearLeaveTimer();
     clearHideAnimTimer();
     finishHide();
@@ -157,6 +177,7 @@ export function useTrendingScoutSpot(period: TrendingPeriod) {
     isStreaming,
     lookTarget,
     showForRepo,
+    leaveTrendingCard,
     updateLook,
     scheduleHide,
     cancelHide,
