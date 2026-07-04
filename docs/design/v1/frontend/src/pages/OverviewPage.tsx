@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import {
   useActivities,
   useProjectStats,
-  useProjects,
   useTrending,
 } from '@/hooks/useProjects';
-import { useAllNotes } from '@/hooks/useNotes';
+import { useOverviewRecentNotes, useRecommendedProjects } from '@/hooks/useOverview';
 import { useQuery } from '@tanstack/react-query';
 import { getApi } from '@/api/client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -28,8 +27,8 @@ const PROGRESS_ROWS: Array<{ key: ProjectProgress; label: string; color: string 
 export function OverviewPage() {
   const user = useAuthStore((s) => s.user);
   const { data: stats, isLoading: statsLoading } = useProjectStats();
-  const { data: notes = [] } = useAllNotes();
-  const { data: projectsData } = useProjects();
+  const { data: recommended = [] } = useRecommendedProjects(5);
+  const { data: recentNotes = [] } = useOverviewRecentNotes(4);
   const { data: activities } = useActivities();
   const [period, setPeriod] = useState<TrendingPeriod>('weekly');
   const { data: trending = [] } = useTrending(period);
@@ -66,15 +65,6 @@ export function OverviewPage() {
     const t = setTimeout(() => setTrendingVisible(true), 80);
     return () => clearTimeout(t);
   }, [period, trending]);
-
-  const recommended = useMemo(() => {
-    const items = projectsData?.items ?? [];
-    return [...items].sort((a, b) => b.stars - a.stars).slice(0, 5);
-  }, [projectsData]);
-
-  const recentNotes = useMemo(() => {
-    return [...notes].sort((a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at)).slice(0, 4);
-  }, [notes]);
 
   if (statsLoading) return <LoadingSpinner />;
 
@@ -255,48 +245,53 @@ export function OverviewPage() {
         </div>
       </section>
 
-      <section className="row-2col">
-        <div className="panel glass-card glass-card--panel-clear">
-          <div className="section-head" style={{ marginTop: 0 }}>
-            <h3>为你推荐</h3>
-            <Link
-              to="/projects"
-              className="more glass-card glass-card--control liquid-glass--pill liquid-glass--interactive"
-            >
-              查看全部 →
-            </Link>
-          </div>
+      <section className="row-2col row-2col--phi">
+        <div className="panel panel-recommend glass-card glass-card--panel">
+          <h3 className="panel-title-with-sub">
+            为你推荐
+            <span className="panel-title-sub">Agent 根据学习记录和喜好推荐</span>
+          </h3>
           <div className="project-list">
-            {recommended.map((p, i) => {
-              const { owner, repo } = splitRepoName(p.name);
-              return (
-                <Link
-                  key={p.id}
-                  className="project-item glass-card glass-card--control liquid-glass--interactive"
-                  to={`/projects/${p.id}`}
-                >
-                  <div
-                    className="project-avatar"
-                    style={{ background: REPO_AVATAR_GRADIENTS[i % REPO_AVATAR_GRADIENTS.length] }}
+            {recommended.length === 0 ? (
+              <div className="panel-empty">暂无推荐</div>
+            ) : (
+              recommended.map((item, i) => {
+                const { owner, repo } = splitRepoName(item.name);
+                return (
+                  <Link
+                    key={item.id}
+                    className="project-item overview-control-surface glass-card glass-card--control liquid-glass--interactive"
+                    to={`/projects/${item.project_id}`}
+                    aria-describedby={`rec-reason-${item.id}`}
                   >
-                    {(repo[0] ?? '?').toUpperCase()}
-                  </div>
-                  <div className="project-info">
-                    <div className="project-name">
-                      <span className="owner">{owner}</span>
-                      <span className="slash">/</span>
-                      <span>{repo}</span>
+                    <div
+                      className="project-avatar"
+                      style={{ background: REPO_AVATAR_GRADIENTS[i % REPO_AVATAR_GRADIENTS.length] }}
+                    >
+                      {(repo[0] ?? '?').toUpperCase()}
                     </div>
-                    <div className="project-desc">{p.description ?? ''}</div>
-                  </div>
-                  <span className="project-stars">⭐ {formatNumber(p.stars)}</span>
-                </Link>
-              );
-            })}
+                    <div className="project-info">
+                      <div className="project-name">
+                        <span className="owner">{owner}</span>
+                        <span className="slash">/</span>
+                        <span>{repo}</span>
+                      </div>
+                      <div className="project-desc-swap">
+                        <p className="project-desc">{item.description ?? ''}</p>
+                        <p className="project-reason" id={`rec-reason-${item.id}`}>
+                          {item.reason}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="project-stars">⭐ {formatNumber(item.stars)}</span>
+                  </Link>
+                );
+              })
+            )}
           </div>
         </div>
 
-        <div className="panel glass-card glass-card--panel-clear">
+        <div className="panel panel-notes glass-card glass-card--panel">
           <div className="section-head" style={{ marginTop: 0 }}>
             <h3>最近笔记</h3>
             <Link
@@ -308,27 +303,22 @@ export function OverviewPage() {
           </div>
           <div className="notes-list">
             {recentNotes.length === 0 ? (
-              <div style={{ padding: '20px 12px', color: 'var(--text-400)', fontSize: 12, textAlign: 'center' }}>
-                暂无笔记
-              </div>
+              <div className="panel-empty">暂无笔记</div>
             ) : (
-              recentNotes.map((n) => {
-                const project = projectsData?.items.find((p) => p.id === n.project_id);
-                return (
-                  <Link
-                    key={n.id}
-                    className="note-item glass-card glass-card--control liquid-glass--interactive"
-                    to="/notes"
-                  >
-                    <div className="note-title">{n.title}</div>
-                    <div className="note-meta">
-                      <span className="tag-link">{project?.name ?? n.project_id}</span>
-                      <span>·</span>
-                      <span>{formatRelativeTime(n.updated_at)}</span>
-                    </div>
-                  </Link>
-                );
-              })
+              recentNotes.map((n) => (
+                <Link
+                  key={n.id}
+                  className="note-item overview-control-surface glass-card glass-card--control liquid-glass--interactive"
+                  to="/notes"
+                >
+                  <div className="note-title">{n.title}</div>
+                  <div className="note-meta">
+                    <span className="tag-link">{n.project_name}</span>
+                    <span>·</span>
+                    <span>{formatRelativeTime(n.updated_at)}</span>
+                  </div>
+                </Link>
+              ))
             )}
           </div>
         </div>
