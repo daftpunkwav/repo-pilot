@@ -496,7 +496,7 @@ class LLMConfig(BaseModel):
     model: str
     api_key: str
     api_base: str | None = None
-    max_context_tokens: int = 128000
+    max_context_tokens: int = 8000
     max_output_tokens: int = 4096
 
     @field_validator("api_base")
@@ -1039,7 +1039,7 @@ CREATE TABLE agent_messages (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 -- C-07 修复：补充索引
-CREATE INDEX idx_messages_session ON agent_messages(session_id, created_at);
+CREATE INDEX idx_agent_messages_session ON agent_messages(session_id, created_at);
 
 CREATE TABLE project_analyses (
     id UUID PRIMARY KEY, project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
