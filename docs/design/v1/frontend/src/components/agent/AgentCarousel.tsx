@@ -214,7 +214,7 @@ export function AgentCarousel({
         {hasOverflow && (
           <button
             type="button"
-            className="agent-carousel-nav agent-carousel-nav--prev"
+            className="agent-carousel-nav agent-carousel-nav--prev glass-card glass-card--control liquid-glass--interactive liquid-glass--square"
             aria-label="上一个 Agent"
             onClick={goPrev}
             onMouseEnter={handleNavEnter}
@@ -243,11 +243,11 @@ export function AgentCarousel({
               {loopAgents.map((agent, i) => (
                 <Link
                   key={`${agent.id}-${i}`}
-                  className="agent-carousel-card"
+                  className="agent-carousel-card glass-card glass-card--panel liquid-glass--interactive"
                   to={`/agent?agent=${agent.id}`}
                   onMouseEnter={(e) => handleCardEnter(e, agent.id)}
                 >
-                  <div className="agent-card-meta">
+                  <div className="agent-card-meta glass-card glass-card--control">
                     <AgentAvatar
                       agentId={agent.id}
                       lookTarget={effectiveLookTarget}
@@ -270,7 +270,7 @@ export function AgentCarousel({
         {hasOverflow && (
           <button
             type="button"
-            className="agent-carousel-nav agent-carousel-nav--next"
+            className="agent-carousel-nav agent-carousel-nav--next glass-card glass-card--control liquid-glass--interactive liquid-glass--square"
             aria-label="下一个 Agent"
             onClick={goNext}
             onMouseEnter={handleNavEnter}

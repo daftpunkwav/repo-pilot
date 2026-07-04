@@ -8,7 +8,7 @@ export const MOCK_USER = {
 
 /**
  * 登录并等待受保护页面就绪。
- * 总览页 stats-cards 出现即表示 auth + 数据查询均正常。
+ * 总览页 overview-hero 出现即表示 auth + 数据查询均正常。
  */
 export async function loginAsMockUser(page: Page, landingPath = '/') {
   await page.goto('/login');
@@ -16,5 +16,5 @@ export async function loginAsMockUser(page: Page, landingPath = '/') {
   await page.fill('[name="password"]', MOCK_USER.password);
   await page.click('button[type="submit"]');
   await expect(page).toHaveURL(landingPath);
-  await expect(page.getByTestId('stats-cards')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId('overview-hero')).toBeVisible({ timeout: 15000 });
 }

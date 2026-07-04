@@ -307,26 +307,19 @@
       font-weight: 600;
     }
 
-    /* 4 列统计卡 */
-    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
-    .stat-card {
-      background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius);
-      padding: 18px 20px; box-shadow: var(--shadow-xs); position: relative; overflow: hidden;
+    /* 总览卡片 · control 子元素使用较小圆角 */
+    .activity-item.glass-card--control,
+    .activity-icon.glass-card--control,
+    .project-item.glass-card--control,
+    .note-item.glass-card--control,
+    .agent-summary.glass-card--control,
+    .agent-card-meta.glass-card--control,
+    .trending-rank.glass-card--control {
+      border-radius: var(--radius-sm);
     }
-    .stat-card .stat-label {
-      font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-      color: var(--text-500); display: flex; align-items: center; gap: 6px;
+    .agent-carousel-nav.glass-card--control {
+      border-radius: calc(var(--agent-nav-width) / var(--phi));
     }
-    .stat-card .stat-value { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 8px 0 4px; }
-    .stat-card .stat-meta { font-size: 12px; color: var(--text-500); font-weight: 500; }
-    .stat-card .stat-icon {
-      position: absolute; top: 16px; right: 16px; width: 34px; height: 34px;
-      border-radius: var(--radius-icon); display: grid; place-items: center;
-      color: var(--brand-500); background: var(--brand-50);
-    }
-    .stat-card.stat-green .stat-icon { color: var(--success); background: var(--success-surface); }
-    .stat-card.stat-orange .stat-icon { color: var(--warning); background: var(--warning-surface); }
-    .stat-card.stat-purple .stat-icon { color: var(--chart-4); background: #f3e8ff; }
 
     /* 区块标题 */
     .section-head {
@@ -334,16 +327,28 @@
       margin: 8px 0 12px;
     }
     .section-head h2 { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
-    .section-head .more { font-size: 12px; color: var(--brand-500); font-weight: 600; text-decoration: none; }
-    .section-head .more:hover { text-decoration: underline; }
+    .section-head .more {
+      font-size: 12px;
+      color: var(--brand-500);
+      font-weight: 600;
+      text-decoration: none;
+      padding: 6px 12px;
+      height: auto;
+    }
+    .section-head .more:hover { color: var(--brand-600); text-decoration: none; }
 
-    /* 2 列布局：左 7 / 右 5 */
+    /* 2 列布局：左 7 / 右 5 · 中层 panel */
     .row-2col { display: grid; grid-template-columns: 7fr 5fr; gap: 16px; margin-bottom: 20px; align-items: stretch; }
     .panel {
-      background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius);
-      box-shadow: var(--shadow-xs); padding: 16px 18px;
+      padding: 16px 18px;
     }
-    .panel h3 { margin: 0 0 12px; font-size: 14px; font-weight: 700; }
+    .panel h3 {
+      position: relative;
+      z-index: 1;
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 700;
+    }
 
     /* 学习进度分布 · 黄金比例分区（AI 总结 : 分类总览 = 1.618 : 1） */
     .panel-progress {
@@ -397,48 +402,11 @@
     /* 学习进度分布 */
     .progress-bars { display: flex; flex-direction: column; gap: 10px; }
 
-    /* ===== Agent 学习周报卡（iOS Liquid Glass · 无色） ===== */
+    /* ===== Agent 学习周报 · 上层 control ===== */
     .agent-summary {
-      position: relative;
       margin: 2px 0 14px;
       padding: 14px 16px;
-      border-radius: var(--radius);
-      /* 三层堆叠：玻璃色片 + 高光 + 噪点 */
-      background-color: var(--glass-tint);
-      -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-      backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-      border: 1px solid var(--glass-border);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.7),
-        0 1px 2px rgba(15, 23, 42, 0.04),
-        0 8px 24px rgba(15, 23, 42, 0.06);
-      overflow: hidden;
-      isolation: isolate;
     }
-    .agent-summary::before {
-      /* 顶部高光反射（玻璃材质标志） */
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: var(--glass-highlight);
-      pointer-events: none;
-      border-radius: inherit;
-      z-index: 0;
-    }
-    .agent-summary::after {
-      /* 微噪点纹理：让玻璃看起来"有质感"而非纯塑料 */
-      content: '';
-      position: absolute;
-      inset: 0;
-      background-image: var(--glass-noise);
-      background-size: 200px 200px;
-      opacity: 0.4;
-      pointer-events: none;
-      mix-blend-mode: overlay;
-      border-radius: inherit;
-      z-index: 0;
-    }
-    /* 让卡片内所有子元素浮在玻璃层之上 */
     .agent-summary > * { position: relative; z-index: 1; }
 
     .summary-head {
@@ -597,33 +565,33 @@
     .fill-learned { background: var(--brand-300); }
     .fill-mastered { background: var(--success); }
 
-    /* 最近活动 */
-    .activity-list { display: flex; flex-direction: column; gap: 10px; }
+    /* 最近活动 · 上层 control 列表项 */
+    .activity-list { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
     .activity-item {
       display: flex; gap: 10px; align-items: flex-start;
-      padding: 10px 12px; border-radius: var(--radius-sm);
-      transition: background 0.15s;
+      padding: 10px 12px;
+      text-decoration: none;
+      color: inherit;
     }
-    .activity-item:hover { background: var(--bg-100); }
     .activity-icon {
-      width: 28px; height: 28px; border-radius: var(--radius-icon-sm); flex-shrink: 0;
+      width: 28px; height: 28px;
+      border-radius: var(--radius-icon-sm);
+      flex-shrink: 0;
       display: grid; place-items: center;
-      color: var(--brand-500); background: var(--brand-50);
+      color: var(--brand-500);
     }
     .activity-body { flex: 1; min-width: 0; }
     .activity-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
     .activity-desc { font-size: 12px; color: var(--text-500); }
     .activity-time { font-size: 11px; color: var(--text-400); font-family: var(--font-mono); flex-shrink: 0; }
 
-    /* 项目推荐卡 */
-    .project-list { display: flex; flex-direction: column; gap: 8px; }
+    /* 项目推荐 · 上层 control 列表项 */
+    .project-list { display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 1; }
     .project-item {
       display: flex; gap: 12px; align-items: center;
-      padding: 10px 12px; border-radius: var(--radius-sm);
-      transition: background 0.15s;
+      padding: 10px 12px;
       text-decoration: none; color: inherit;
     }
-    .project-item:hover { background: var(--bg-100); }
     .project-avatar {
       width: 36px; height: 36px; border-radius: var(--radius-icon); flex-shrink: 0;
       display: grid; place-items: center; color: #fff;
@@ -664,7 +632,7 @@
     .content:has(.agent-carousel) {
       overflow-x: visible;
     }
-    /* 箭头在两侧沟槽，中间卡片区与 stat-grid 同宽 */
+    /* 箭头在两侧沟槽，中间卡片区与主内容同宽 */
     .agent-carousel-rail {
       display: grid;
       grid-template-columns: var(--agent-nav-width) minmax(0, 1fr) var(--agent-nav-width);
@@ -690,53 +658,17 @@
       min-width: 0;
       overflow: hidden;
     }
-    /* 方形无色液态玻璃导航钮（φ 圆角 · 高为卡片 0.618） */
+    /* 方形液态玻璃导航钮 · 上层 control */
     .agent-carousel-nav {
-      position: relative;
       justify-self: center;
       width: var(--agent-nav-width);
       height: var(--agent-nav-height);
       padding: 0;
-      border: 1px solid var(--glass-border);
       border-radius: calc(var(--agent-nav-width) / var(--phi));
       display: grid;
       place-items: center;
       color: var(--text-700);
       cursor: pointer;
-      isolation: isolate;
-      overflow: hidden;
-      background-color: var(--glass-tint);
-      -webkit-backdrop-filter: blur(var(--glass-blur-soft)) saturate(var(--glass-saturation));
-      backdrop-filter: blur(var(--glass-blur-soft)) saturate(var(--glass-saturation));
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.65),
-        0 1px 2px rgba(15, 23, 42, 0.04);
-      transition:
-        transform 0.28s var(--ease-spring),
-        box-shadow 0.28s var(--ease),
-        background-color 0.22s var(--ease),
-        border-color 0.22s var(--ease),
-        color 0.22s var(--ease);
-    }
-    .agent-carousel-nav::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background: var(--glass-highlight);
-      opacity: 0.45;
-      pointer-events: none;
-    }
-    .agent-carousel-nav::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background-image: var(--glass-noise);
-      background-size: 200px 200px;
-      opacity: 0.35;
-      mix-blend-mode: overlay;
-      pointer-events: none;
     }
     .agent-carousel-nav svg {
       position: relative;
@@ -745,27 +677,11 @@
       height: var(--agent-nav-arrow-size);
       transition: transform 0.28s var(--ease-spring);
     }
-    .agent-carousel-nav:hover {
-      background-color: rgba(255, 255, 255, 0.72);
-      border-color: rgba(255, 255, 255, 0.85);
-      color: var(--text-900);
-      transform: scale(1.06);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.8),
-        0 4px 14px rgba(15, 23, 42, 0.08);
-    }
     .agent-carousel-nav--prev:hover svg { transform: translateX(-2px); }
     .agent-carousel-nav--next:hover svg { transform: translateX(2px); }
     .agent-carousel-nav:active {
       transform: scale(0.96);
       transition-duration: 0.12s;
-    }
-    [data-theme="dark"] .agent-carousel-nav {
-      background-color: var(--glass-tint);
-      border-color: var(--glass-border);
-    }
-    [data-theme="dark"] .agent-carousel-nav:hover {
-      background-color: rgba(44, 44, 46, 0.72);
     }
     .agent-carousel-track {
       display: flex;
@@ -787,26 +703,12 @@
       gap: calc(var(--radius-unit) / var(--phi) * var(--phi));
       padding: calc(var(--radius-unit) / var(--phi) * var(--phi)) calc(var(--radius-unit) * var(--phi) / var(--phi)) calc(var(--radius-unit) / var(--phi) * var(--phi)) calc(var(--radius-unit) / var(--phi) * var(--phi));
       min-height: var(--agent-card-height);
-      border-radius: var(--radius);
-      background: var(--bg-50);
-      border: 1px solid var(--bg-300);
       cursor: pointer;
-      transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease), border-color 0.18s var(--ease);
       text-decoration: none;
       color: inherit;
     }
-    .agent-carousel-card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-      border-color: var(--brand-300);
-    }
-    .agent-carousel-card:hover .agent-card-meta {
-      background-color: rgba(255, 255, 255, 0.72);
-      border-color: rgba(255, 255, 255, 0.85);
-    }
-    /* 左侧 · 无色液态玻璃 */
+    /* 左侧 meta · 上层 control */
     .agent-card-meta {
-      position: relative;
       flex: 0.618;
       min-width: 0;
       display: flex;
@@ -817,48 +719,8 @@
       padding: 16px 10px;
       text-align: center;
       border-radius: var(--radius-sm);
-      overflow: hidden;
-      isolation: isolate;
-      background-color: var(--glass-tint);
-      -webkit-backdrop-filter: blur(var(--glass-blur-soft)) saturate(var(--glass-saturation));
-      backdrop-filter: blur(var(--glass-blur-soft)) saturate(var(--glass-saturation));
-      border: 1px solid var(--glass-border);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.65),
-        0 1px 2px rgba(15, 23, 42, 0.04);
-      transition: background-color 0.18s var(--ease), border-color 0.18s var(--ease);
-    }
-    .agent-card-meta::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background: var(--glass-highlight);
-      opacity: 0.45;
-      pointer-events: none;
-    }
-    .agent-card-meta::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background-image: var(--glass-noise);
-      background-size: 200px 200px;
-      opacity: 0.35;
-      mix-blend-mode: overlay;
-      pointer-events: none;
     }
     .agent-card-meta > * { position: relative; z-index: 1; }
-    [data-theme="dark"] .agent-card-meta {
-      background-color: var(--glass-tint);
-      border-color: var(--glass-border);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.12),
-        0 1px 2px rgba(0, 0, 0, 0.2);
-    }
-    [data-theme="dark"] .agent-carousel-card:hover .agent-card-meta {
-      background-color: rgba(44, 44, 46, 0.72);
-    }
     .agent-card-titles { min-width: 0; width: 100%; text-align: center; }
     /* 右侧 · 左对齐、上下居中，字号 ×0.9 */
     .agent-card-body {
@@ -930,21 +792,18 @@
       }
     }
 
-    /* 最近笔记 */
-    .notes-list { display: flex; flex-direction: column; gap: 8px; }
+    /* 最近笔记 · 上层 control 列表项 */
+    .notes-list { display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 1; }
     .note-item {
-      padding: 10px 12px; border-radius: var(--radius-sm);
-      transition: background 0.15s;
+      padding: 10px 12px;
       text-decoration: none; color: inherit;
       display: block;
     }
-    .note-item:hover { background: var(--bg-100); }
     .note-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
     .note-meta { font-size: 11px; color: var(--text-500); display: flex; gap: 8px; }
     .note-meta .tag-link { color: var(--brand-500); font-family: var(--font-mono); }
 
     @media (max-width: 1200px) {
-      .stat-grid { grid-template-columns: repeat(2, 1fr); }
       .agent-carousel { --agent-visible: 2; }
       .row-2col { grid-template-columns: 1fr; }
     }
@@ -963,19 +822,25 @@
       width: 26px; height: 26px; border-radius: var(--radius-sm);
       background: linear-gradient(135deg,#ff9f0a,#ff375f); color: #fff;
     }
-    .period-toggle, .sort-toggle {
-      display: inline-flex; padding: 3px;
-      background: var(--bg-200); border-radius: var(--radius-pill); gap: 2px;
+    .period-toggle {
+      display: inline-flex;
+      padding: 3px;
+      gap: 2px;
+      border-radius: var(--radius-pill);
     }
-    .period-btn, .sort-btn {
-      padding: 5px 12px; border: 0; background: transparent;
-      color: var(--text-500); font: 600 12px/1 var(--font-sans);
-      border-radius: var(--radius-pill); cursor: pointer; transition: all 0.15s;
+    .period-btn {
+      padding: 5px 12px;
+      border: 0;
+      background: transparent;
+      color: var(--text-500);
+      font: 600 12px/1 var(--font-sans);
+      cursor: pointer;
+      box-shadow: none;
     }
-    .period-btn:hover, .sort-btn:hover { color: var(--text-800); }
-    .period-btn.active, .sort-btn.active {
-      background: var(--bg-50); color: var(--brand-700);
-      box-shadow: var(--shadow-xs); font-weight: 700;
+    .period-btn:hover { color: var(--text-800); }
+    .period-btn.active {
+      color: var(--brand-700);
+      font-weight: 700;
     }
 
     /* 倒阶梯容器：单列 flex，左对齐 */
@@ -988,8 +853,6 @@
     .trending-card {
       display: flex; gap: 12px; align-items: flex-start;
       padding: 14px 16px;
-      background: var(--bg-50); border: 1px solid var(--bg-300);
-      border-radius: var(--radius); box-shadow: var(--shadow-xs);
       text-decoration: none; color: inherit;
       /* 阶梯宽度由 --card-w 控制；初始隐藏等待入场动画 */
       max-width: 0;
@@ -1010,12 +873,7 @@
       opacity: 1;
       transform: translateX(0);
     }
-    .trending-card:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-      border-color: var(--brand-300);
-    }
-    .trending-card.is-visible:hover { transform: translateY(-2px); }
+    .trending-card.is-visible:hover { transform: translateY(-1px); }
     .trending-rank {
       flex-shrink: 0;
       width: 32px; height: 32px;
@@ -1023,11 +881,22 @@
       display: grid; place-items: center;
       font: 700 14px/1 var(--font-mono);
       color: var(--text-500);
-      background: var(--bg-100);
     }
-    .trending-card:nth-child(1) .trending-rank { background: linear-gradient(135deg,#ffd700,#ff9f0a); color: #fff; }
-    .trending-card:nth-child(2) .trending-rank { background: linear-gradient(135deg,#c0c0c0,#8e8e93); color: #fff; }
-    .trending-card:nth-child(3) .trending-rank { background: linear-gradient(135deg,#cd7f32,#a05a2c); color: #fff; }
+    .trending-card:nth-child(1) .trending-rank {
+      background: linear-gradient(135deg, #ffd700, #ff9f0a);
+      color: #fff;
+      border-color: transparent;
+    }
+    .trending-card:nth-child(2) .trending-rank {
+      background: linear-gradient(135deg, #c0c0c0, #8e8e93);
+      color: #fff;
+      border-color: transparent;
+    }
+    .trending-card:nth-child(3) .trending-rank {
+      background: linear-gradient(135deg, #cd7f32, #a05a2c);
+      color: #fff;
+      border-color: transparent;
+    }
     .trending-body { flex: 1; min-width: 0; }
     .trending-name {
       font: 600 13px/1.3 var(--font-mono);
