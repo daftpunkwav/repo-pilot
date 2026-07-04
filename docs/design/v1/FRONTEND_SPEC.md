@@ -1,7 +1,8 @@
 # RepoPilot v1.0 — 前端技术规格书 (Frontend Specification)
 
 > 版本: 1.0.0 | 日期: 2026-07-04 | 状态: 草稿
-> 权威来源: TECHNICAL_SPEC.md §12 · MVP_SCOPE.md §8 · API_SPEC.md
+> 权威来源: TECHNICAL_SPEC.md §12 · MVP_SCOPE.md §5 · API_SPEC.md
+> **分步开发流程:** [process/README.md](./process/README.md)（按页面 Phase + 审查门禁）
 > 本文档是前端开发的唯一权威参考。所有前端代码必须遵循本文档的架构、类型、接口和规范。
 
 ---
