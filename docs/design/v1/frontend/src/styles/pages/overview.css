@@ -315,12 +315,14 @@
     .project-item.glass-card--control,
     .note-item.glass-card--control,
     .agent-summary.glass-card--control,
-    .agent-card-meta.glass-card--control,
     .trending-rank.glass-card--control {
       border-radius: var(--radius-sm);
     }
+    .agent-card-meta.glass-card--control {
+      border-radius: var(--agent-card-radius);
+    }
     .agent-carousel-nav.glass-card--control {
-      border-radius: calc(var(--agent-nav-width) / var(--phi));
+      border-radius: var(--agent-card-radius);
     }
 
     /* 区块标题 */
@@ -616,6 +618,7 @@
     .agent-carousel {
       --agent-visible: 4;
       --agent-gap: 16px;
+      --agent-card-radius: var(--lg-radius-card, 20px);
       --agent-tagline-base: 12px;
       --agent-tagline-size: calc(var(--agent-tagline-base) * 1.3 * 1.2);
       --agent-intro-size: calc(var(--agent-tagline-size) * 0.861);
@@ -634,7 +637,6 @@
       --agent-nav-arrow-size: calc(20px * 0.8);
       --agent-nav-width: calc(var(--agent-nav-arrow-size) * 1.25);
       --agent-nav-height: calc(var(--agent-card-height) * 0.618);
-      --agent-meta-radius: calc(var(--agent-card-inner-height) / var(--phi));
       --agent-nav-gap: 10px;
       --agent-nav-gutter: calc(var(--agent-nav-width) + var(--agent-nav-gap));
       margin-bottom: 20px;
@@ -669,13 +671,13 @@
       min-width: 0;
       overflow: hidden;
     }
-    /* 方形液态玻璃导航钮 · 上层 control */
+    /* 方形导航钮 · 上层 control，圆角与中层 panel 一致 */
     .agent-carousel-nav {
       justify-self: center;
       width: var(--agent-nav-width);
       height: var(--agent-nav-height);
       padding: 0;
-      border-radius: calc(var(--agent-nav-width) / var(--phi));
+      border-radius: var(--agent-card-radius);
       display: grid;
       place-items: center;
       color: var(--text-700);
@@ -713,7 +715,7 @@
       isolation: isolate;
       height: var(--agent-card-height);
       min-height: var(--agent-card-height);
-      border-radius: var(--lg-radius-card, 20px);
+      border-radius: var(--agent-card-radius);
       cursor: pointer;
       text-decoration: none;
       color: inherit;
@@ -785,7 +787,7 @@
       gap: 8px;
       padding: 12px 8px 10px;
       text-align: center;
-      border-radius: var(--radius-sm);
+      border-radius: var(--agent-card-radius);
     }
     .agent-card-meta > * { position: relative; z-index: 1; }
     .agent-card-titles { min-width: 0; width: 100%; text-align: center; }
