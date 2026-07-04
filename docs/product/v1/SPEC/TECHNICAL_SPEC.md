@@ -88,7 +88,7 @@ Router → Service → Data
 ### 2.1 ER 关系概览
 
 ```
-User 1──N UserSetting
+User 1──1 UserSetting
 User 1──N Project
 User 1──N Category
 User 1──N Tag
@@ -390,13 +390,13 @@ except ImportError:
 | ---------- | -------------------- | --- | ----------------- |
 | Auth       | `/api/v1/auth`       | 7   | 注册/登录/刷新/注销/密码    |
 | GitHub     | `/api/v1/github`     | 5   | Star 同步/账号管理      |
-| Projects   | `/api/v1/projects`   | 11  | CRUD/导入/导出/搜索/笔记  |
+| Projects   | `/api/v1/projects`   | 12  | CRUD/导入/导出/搜索/笔记  |
 | Categories | `/api/v1/categories` | 4   | 分类 CRUD           |
 | Tags       | `/api/v1/tags`       | 3   | 标签 CRUD           |
 | Notes      | `/api/v1/notes`      | 4   | 笔记 CRUD/搜索        |
 | Graph      | `/api/v1/graph`      | 1   | 图谱数据              |
-| Settings   | `/api/v1/settings`   | 3   | 用户设置/LLM 测试       |
-| Agent      | `/api/v1/agent`      | 20  | 对话/反问/分析/会话/配置/权限 |
+| Settings   | `/api/v1/settings`   | 2   | 用户设置              |
+| Agent      | `/api/v1/agent`      | 23  | 对话/反问/分析/会话/配置/权限 |
 
 ### 3.3 统一响应格式
 
@@ -556,7 +556,7 @@ class ExecutionContext:
     project_id: str | None = None
     memory_service: "MemoryService | None" = None
     llm_provider: "LLMProvider | None" = None    # B-02: 统一为 llm_provider
-    db: "DatabaseService" = None                  # B-01: 数据库访问层
+    db: "DatabaseService | None" = None              # B-01: 数据库访问层
     http_client: "AsyncHTTPClient | None" = None
     github: "GitHubClient | None" = None
     tool_registry: "ToolRegistry | None" = None
@@ -638,8 +638,8 @@ class IntentResult:
 | `ExecutionContext`           | §6.1, §6.3  | 工具执行上下文    |
 | `Session`                    | §7.3        | 会话         |
 | `ProjectContext`             | §7.3        | 项目上下文      |
-| `ConversationContext`        | §4.4.2      | 意图分类上下文    |
-| `IntentResult` / `SubIntent` | §4.4.2      | 意图分类结果     |
+| `ConversationContext`        | §4.5        | 意图分类上下文    |
+| `IntentResult` / `SubIntent` | §4.5        | 意图分类结果     |
 
 ---
 
@@ -1145,7 +1145,7 @@ class ReActEngine:
             ):
                 if chunk.type == "text":
                     collector.append_text(chunk.text)
-                    yield {"event": "text", "data": {"content": chunk.text}}
+                    yield {"event": "text_delta", "data": {"content": chunk.text}}
 
                 elif chunk.type == "tool_call":
                     collector.add_tool_call(chunk.tool_call)
@@ -1745,8 +1745,8 @@ agents/
 ### 9.3 config.yaml Schema
 
 ```yaml
-agent_id: string           # 唯一标识
-display_name: string       # 显示名称
+id: string               # 唯一标识
+name: string             # 显示名称
 description: string        # 描述
 model_override: string?    # 模型覆盖（可选）
 temperature: float         # 温度（0.0-1.0）
@@ -1761,33 +1761,34 @@ capabilities: list[str]    # Agent 能力声明
 ### 9.4 mentor config.yaml 示例
 
 ```yaml
-agent_id: mentor
-display_name: "深度导师"
+id: mentor
+name: "深度讲解 Agent"
 description: "逐层拆解项目，反问了解用户水平，定制化讲解"
 model_override: null
 temperature: 0.7
 max_tokens: 4096
 streaming: true
 auto_trigger: false
-priority: 10
+priority: 20
 capabilities:
   - tools
   - streaming
   - vision
 tools:
+  - query_user_projects
+  - read_readme
   - read_source_file
   - search_web
   - get_project_analysis
-  - query_user_projects
   - compare_projects
+  - update_user_profile
   - ask_user_question
   - save_to_memory
   - recall_from_memory
-  - update_user_profile
-  - build_learning_path
+  - get_user_profile
 ```
 
-> **工具列表一致性（F5-41 修复）：** mentor 的 config.yaml 列出 10 个工具，与 §6.3 工具实现和 agent_permissions JSON Schema（§2.2 H4 修复）保持一致。
+> **工具列表一致性（F5-41 修复）：** mentor 的 config.yaml 列出 11 个工具，与 §6.3 工具实现和 agent_permissions JSON Schema（§2.2 P0 修复）保持一致。
 
 ---
 
@@ -2162,7 +2163,7 @@ function ForceGraph({ data }: { data: GraphData }) {
   useEffect(() => {
     const simulation = d3.forceSimulation(data.nodes)
       .force("link", d3.forceLink(data.edges)
-        .id((d: any) => d.id)
+        .id((d: d3.SimulationNodeDatum) => d.id)
         .distance(100))
       .force("charge", d3.forceManyBody().strength(-200))
       .force("center", d3.forceCenter(width / 2, height / 2))
