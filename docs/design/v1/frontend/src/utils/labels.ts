@@ -1,4 +1,8 @@
 import type { ProjectProgress } from '@/api/types';
+import { AGENT_CATALOG } from '@/constants/agentCatalog';
+
+export type { AgentDefinition } from '@/constants/agentCatalog';
+export { AGENT_CATALOG } from '@/constants/agentCatalog';
 
 /** 与原型 app-shell.js PROGRESS_MAP 对齐 */
 export const PROGRESS_LABELS: Record<ProjectProgress, string> = {
@@ -60,11 +64,11 @@ export const AGENT_ROLE_LABELS: Record<string, string> = {
   scribe: '笔记助手',
 };
 
-export const AGENT_CARDS = [
-  { id: 'hub', name: 'Hub', desc: '对话管家', color: 'linear-gradient(135deg,#4a3aff,#9d4edd)' },
-  { id: 'scout', name: 'Scout', desc: '快速分析', color: 'linear-gradient(135deg,#ff9f0a,#ff6f00)' },
-  { id: 'mentor', name: 'Mentor', desc: '深度讲解', color: 'linear-gradient(135deg,#9d4edd,#c879ff)' },
-  { id: 'navigator', name: 'Navigator', desc: '学习规划', color: 'linear-gradient(135deg,#00b8d4,#00d4aa)' },
-  { id: 'curator', name: 'Curator', desc: '分类管家', color: 'linear-gradient(135deg,#34c759,#30d158)' },
-  { id: 'scribe', name: 'Scribe', desc: '笔记助手', color: 'linear-gradient(135deg,#ff375f,#ff6b8a)' },
-] as const;
+/** @deprecated 请优先使用 AGENT_CATALOG；保留兼容字段 desc */
+export const AGENT_CARDS = AGENT_CATALOG.map((a) => ({
+  id: a.id,
+  name: a.name,
+  desc: a.tagline,
+  intro: a.intro,
+  color: a.color,
+}));
