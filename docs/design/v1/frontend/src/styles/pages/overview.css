@@ -3,6 +3,19 @@
 
     /* ===== Hero 三层：艺术字底 → 玻璃面板 → 玻璃按钮 ===== */
     .overview-hero-wrap {
+      --hero-art-interval: 0.618s;
+      --hero-art-bounce: 0.52s;
+      --hero-art-phi-pause: 1.618s;
+      --hero-art-count: 9;
+      --hero-art-last-index: 8;
+      --hero-art-last-end: calc(
+        var(--hero-art-last-index) * var(--hero-art-interval) + var(--hero-art-bounce)
+      );
+      --hero-art-btn-bounce: 0.52s;
+      --hero-art-btn-start: calc(var(--hero-art-last-end) + var(--hero-art-phi-pause));
+      --hero-art-cycle: calc(
+        var(--hero-art-btn-start) + var(--hero-art-btn-bounce) + var(--hero-art-phi-pause)
+      );
       position: relative;
       margin-bottom: 20px;
       border-radius: var(--lg-radius-card, 20px);
@@ -12,13 +25,6 @@
 
     /* 最底层 · 五彩字母，铺满中间层区域、四周留边 */
     .overview-hero-art {
-      --hero-art-interval: 0.618s;
-      --hero-art-bounce: 0.45s;
-      --hero-art-pause: 3s;
-      --hero-art-count: 9;
-      --hero-art-cycle: calc(
-        (var(--hero-art-count) - 1) * var(--hero-art-interval) + var(--hero-art-bounce) + var(--hero-art-pause)
-      );
       position: absolute;
       inset: 22px 32px;
       z-index: 0;
@@ -56,20 +62,40 @@
       -webkit-text-stroke: 1px rgba(255, 255, 255, 0.28);
       transform: translateY(var(--art-rest-y, 0)) rotate(var(--art-rest-rot, 0deg))
         scale(var(--art-rest-scale, 1));
-      animation: hero-art-letter-hop var(--hero-art-cycle) var(--ease-spring) infinite;
-      animation-delay: calc(var(--art-i, 0) * var(--hero-art-interval) * -1);
+      animation: hero-art-letter-hop var(--hero-art-cycle) cubic-bezier(0.33, 1.18, 0.55, 1) infinite;
+      animation-delay: calc(var(--art-i, 0) * var(--hero-art-interval));
       will-change: transform;
     }
     @keyframes hero-art-letter-hop {
-      0%, 5.36%, 100% {
+      0%, 5.8%, 100% {
         transform: translateY(var(--art-rest-y, 0)) rotate(var(--art-rest-rot, 0deg))
           scale(var(--art-rest-scale, 1));
       }
-      2.68% {
-        transform: translateY(calc(var(--art-rest-y, 0px) - 10px)) rotate(var(--art-rest-rot, 0deg))
+      1.2% {
+        transform: translateY(calc(var(--art-rest-y, 0px) - 14px))
+          rotate(calc(var(--art-rest-rot, 0deg) + var(--art-hop-tilt, 3deg)))
+          scale(calc(var(--art-rest-scale, 1) * 1.025));
+      }
+      2.6% {
+        transform: translateY(calc(var(--art-rest-y, 0px) - 5px))
+          rotate(calc(var(--art-rest-rot, 0deg) - var(--art-hop-tilt, 3deg)))
+          scale(var(--art-rest-scale, 1));
+      }
+      4.1% {
+        transform: translateY(calc(var(--art-rest-y, 0px) - 9px))
+          rotate(calc(var(--art-rest-rot, 0deg) + 1.2deg))
           scale(var(--art-rest-scale, 1));
       }
     }
+    .overview-hero-art-char:nth-child(1) { --art-hop-tilt: 4deg; }
+    .overview-hero-art-char:nth-child(2) { --art-hop-tilt: -3deg; }
+    .overview-hero-art-char:nth-child(3) { --art-hop-tilt: 2.5deg; }
+    .overview-hero-art-char:nth-child(4) { --art-hop-tilt: -4deg; }
+    .overview-hero-art-char:nth-child(5) { --art-hop-tilt: 3.5deg; }
+    .overview-hero-art-char:nth-child(6) { --art-hop-tilt: -2deg; }
+    .overview-hero-art-char:nth-child(7) { --art-hop-tilt: 3deg; }
+    .overview-hero-art-char:nth-child(8) { --art-hop-tilt: -3.5deg; }
+    .overview-hero-art-char:nth-child(9) { --art-hop-tilt: 2deg; }
     .overview-hero-art-char:nth-child(1) .overview-hero-art-char-glyph {
       background-image: linear-gradient(135deg, #007aff 0%, #5ac8fa 55%, #64d2ff 100%);
     }
@@ -79,6 +105,7 @@
     }
     .overview-hero-art-char:nth-child(2) .overview-hero-art-char-glyph {
       background-image: linear-gradient(135deg, #5e5ce6 0%, #bf5af2 60%, #da8fff 100%);
+      animation-timing-function: cubic-bezier(0.36, 1.22, 0.48, 1);
     }
     .overview-hero-art-char:nth-child(3) {
       --art-rest-y: -1px;
@@ -93,6 +120,7 @@
     }
     .overview-hero-art-char:nth-child(4) .overview-hero-art-char-glyph {
       background-image: linear-gradient(135deg, #ff9f0a 0%, #ffd60a 55%, #ff6b6b 100%);
+      animation-timing-function: cubic-bezier(0.28, 1.15, 0.62, 1);
     }
     .overview-hero-art-char:nth-child(5) {
       --art-rest-y: -2px;
@@ -108,6 +136,7 @@
     }
     .overview-hero-art-char:nth-child(6) .overview-hero-art-char-glyph {
       background-image: linear-gradient(135deg, #64d2ff 0%, #007aff 50%, #5856d6 100%);
+      animation-timing-function: cubic-bezier(0.38, 1.28, 0.52, 1);
     }
     .overview-hero-art-char:nth-child(7) {
       --art-rest-y: 2px;
@@ -129,6 +158,7 @@
     }
     .overview-hero-art-char:nth-child(9) .overview-hero-art-char-glyph {
       background-image: linear-gradient(135deg, #007aff 0%, #5e5ce6 45%, #bf5af2 100%);
+      animation-timing-function: cubic-bezier(0.32, 1.2, 0.58, 1);
     }
 
     /* 中间层 · 玻璃面板（独立层，blur 底层字母） */
@@ -172,6 +202,17 @@
     .quick-actions .btn.quick-action-brand {
       color: var(--brand-600);
       font-weight: 600;
+      animation: hero-agent-btn-hop var(--hero-art-cycle) cubic-bezier(0.34, 1.2, 0.56, 1) infinite;
+      animation-delay: var(--hero-art-btn-start);
+    }
+    @keyframes hero-agent-btn-hop {
+      0%, 5.8%, 100% { transform: translateY(0) rotate(0deg); }
+      1.4% { transform: translateY(-5px) rotate(-1.5deg); }
+      2.8% { transform: translateY(-9px) rotate(1deg); }
+      4.2% { transform: translateY(-3px) rotate(-0.5deg); }
+    }
+    .quick-actions .btn.quick-action-brand:hover {
+      animation-play-state: paused;
     }
 
     /* 4 列统计卡 */
@@ -792,7 +833,8 @@
 
     @media (prefers-reduced-motion: reduce) {
       .agent-carousel-track { transition: none !important; }
-      .overview-hero-art-char-glyph {
+      .overview-hero-art-char-glyph,
+      .quick-actions .btn.quick-action-brand {
         animation: none;
       }
     }

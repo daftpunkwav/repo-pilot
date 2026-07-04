@@ -109,7 +109,7 @@ export function OverviewPage() {
           <div className="quick-actions">
             <Link
               to="/agent"
-              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive liquid-glass--pulse liquid-glass-btn quick-action-brand"
+              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive liquid-glass-btn quick-action-brand"
               onMouseEnter={handleChatBtnLook}
               onMouseMove={handleChatBtnLook}
               onMouseLeave={handleChatBtnLookEnd}
