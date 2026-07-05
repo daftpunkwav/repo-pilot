@@ -3,6 +3,8 @@
 > 版本: 1.0.0 | 日期: 2026-07-05 | 状态: 执行中
 > 权威来源: [FRONTEND_SPEC.md](../FRONTEND_SPEC.md) · [docs/product/v1](../../../product/v1/)
 > 视觉参考: [docs/design/v1](../) HTML 原型
+>
+> **与 Monorepo 的关系：** 本流程在 **`docs/design/v1/frontend/`** 执行（Mock 优先）。`apps/web/` 为正式应用占位，**全部 Phase 审查通过后再迁入**。架构见 [`docs/architecture/OVERVIEW.md`](../../architecture/OVERVIEW.md)。
 
 ---
 
@@ -83,7 +85,7 @@ flowchart TD
 ### 4.2 目录
 
 ```
-frontend/src/
+docs/design/v1/frontend/src/   # Mock 实施目录（下文简称 frontend/src）
 ├── api/types.ts          # 全部 API 类型（Mock/Real 共享）
 ├── api/client.ts         # getApi() + Mock 切换
 ├── api/mock/             # MockApiClient + data/

@@ -1,8 +1,10 @@
 # RepoPilot v1.0 — MVP 实施规格
 
-> 版本: 1.0.0 | 日期: 2026-07-03 | 状态: 审核通过 - daftpunkwav
+> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 状态: 审核通过 - daftpunkwav
 > 权威来源: `v1/PRD/PRD.md` (产品需求) · `v1/SPEC/TECHNICAL_SPEC.md` (技术规格)
 > 本文档定义 **v1.0 单版本发布** 的实施范围。所有设计细节以 PRD 和 SPEC 为准，本文档仅标注裁剪决策和扩展预留。
+>
+> **仓库布局：** Monorepo。文中 `backend/`、`frontend/` 对照 [`docs/architecture/PATH_MAPPING.md`](../../architecture/PATH_MAPPING.md)。UI Mock 阶段以 `docs/design/v1/frontend/` 为准。
 
 ---
 
@@ -465,7 +467,7 @@ ERROR_CODES = {
 | 接口 | 实现要求 | 验证方式 |
 |------|---------|---------|
 | **LLMProvider** | 完整实现 `complete()` 和 `test_connection()`，v1.0 启用 LiteLLM（决策 D-11：v1.0 完整实现含 `complete()`） | 单元测试覆盖 `complete()` 的 mock 调用，集成测试覆盖 `test_connection()` |
-| **AgentRegistry** | 完整实现 SPEC §2.1 的 `AgentDefinition` 和 `AgentRegistry`。`backend/agents/` 目录结构就位 (scout/mentor/navigator/curator/scribe/hub 六个子目录，含 AGENT.md/SOUL.md/system_prompt.j2/config.yaml) | AgentRegistry 扫描目录并加载 6 个 Agent 配置 |
+| **AgentRegistry** | 完整实现 SPEC §2.1 的 `AgentDefinition` 和 `AgentRegistry`。`services/api/backend/agents/` 目录结构就位 (scout/mentor/navigator/curator/scribe/hub 六个子目录，含 AGENT.md/SOUL.md/system_prompt.j2/config.yaml) | AgentRegistry 扫描目录并加载 6 个 Agent 配置 |
 | **ToolRegistry** | 完整实现 SPEC §4.2 的 `ToolDefinition` 和 `ToolRegistry`。注册全部 14 个工具（详见 §7.4） | 单元测试覆盖注册和执行 |
 | **CapabilityDetector** | 完整实现 SPEC §5.3，`has_llm` 根据 user_settings 表判断 | 单元测试覆盖有/无 Key 两种场景 |
 | **MemoryService** | 完整实现 `get_user_profile()`、`save_session()`、`recall()` 等 | 集成测试覆盖用户画像读写 |

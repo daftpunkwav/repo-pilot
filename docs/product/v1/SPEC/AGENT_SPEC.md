@@ -1,9 +1,11 @@
 # RepoPilot v1.0 Agent 系统规格书
 
-> 版本: 1.0.0 | 日期: 2026-07-04 | 状态: 审核通过 - daftpunkwav
+> 版本: 1.0.0 | 日期: 2026-07-04 | 路径更新: 2026-07-05 | 状态: 审核通过 - daftpunkwav
 > 本文档是 Agent 系统的**唯一权威来源**。所有 Agent 相关的代码定义、工具规格、记忆系统、反问系统、行为规范以本文档为准。
 > TECHNICAL_SPEC.md §4-§9 仅提供架构概览，完整实现细节以本文档为准。
 > 依赖文档: AGENT_PRD.md (产品需求), TECHNICAL_SPEC.md (总体架构), MVP_SCOPE.md (实施范围)
+>
+> **路径说明：** 下文 `backend/agents/` 指 **`services/api/backend/agents/`**（v1.0）；目标独立服务为 **`services/agent/`**。对照表见 [`docs/architecture/PATH_MAPPING.md`](../../../architecture/PATH_MAPPING.md)。
 
 ---
 

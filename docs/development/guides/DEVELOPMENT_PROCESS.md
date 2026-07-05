@@ -1,6 +1,8 @@
 # RepoPilot — 开发流程文档
 
-> 版本: 1.0.0 | 日期: 2026-07-03
+> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05
+>
+> **仓库布局：** Monorepo（`apps/` · `services/` · `packages/`）。下文若出现 `frontend/`、`backend/`，对照 [`docs/architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)。**当前 UI Mock 开发在** `docs/design/v1/frontend/`。
 
 ---
 
@@ -35,14 +37,14 @@
 
 **执行方式:**
 ```bash
-# 后端测试
-pytest backend/ -v --cov=backend --cov-report=term-missing
+# 后端测试（API 服务）
+pytest services/api/backend/ -v --cov=backend --cov-report=term-missing
 
-# 前端测试
-cd frontend && npm run test
+# 前端单元测试（Mock 开发沙盒）
+cd docs/design/v1/frontend && npm run test
 
-# E2E 测试
-cd frontend && npx playwright test
+# E2E 测试（Mock 开发沙盒）
+cd docs/design/v1/frontend && npx playwright test
 
 # 全量测试 (CI)
 make test-all
@@ -97,15 +99,15 @@ make test-all
 **代码规范工具:**
 
 ```bash
-# Python
-ruff check backend/          # Lint
-ruff format backend/         # Format
-mypy backend/                # Type check
+# Python（API 服务包）
+ruff check services/api/backend/
+ruff format services/api/backend/
+mypy services/api/backend/
 
-# TypeScript/React
-npx eslint src/              # Lint
-npx prettier --write src/    # Format
-npx tsc --noEmit             # Type check
+# TypeScript/React（在对应前端目录执行，Mock 阶段见 docs/design/v1/frontend）
+npx eslint src/
+npx prettier --write src/
+npx tsc --noEmit
 ```
 
 ---
@@ -198,14 +200,18 @@ APP_PORT=19876
 ### 4.3 启动命令
 
 ```bash
-# 后端
+# API 服务（需 pip install -e "./services/api[dev]"）
+cd services/api
 uvicorn backend.main:app --reload --host 127.0.0.1 --port 19876
 
-# 前端
-cd frontend && pnpm dev
+# Web — Mock 开发（当前主流程）
+cd docs/design/v1/frontend && npm run dev
 
-# 桌面端 (打包后)
-python main.py
+# Web — Monorepo 正式应用（审查通过后）
+npm run dev:web   # 仓库根目录
+
+# 桌面端 (打包后，规划中)
+# 见 apps/desktop/README.md
 ```
 
 ---

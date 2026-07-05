@@ -2,6 +2,8 @@
 
 React + Vite + TypeScript 实现，数据来自 `MockApiClient`（`VITE_USE_MOCK=true`）。
 
+> **定位：** 当前 **UI 主开发目录**。Monorepo 正式应用位为仓库根 `apps/web/`（审查通过后迁入）。见 [`docs/architecture/PATH_MAPPING.md`](../../architecture/PATH_MAPPING.md)。
+
 ## 快速开始
 
 ```bash

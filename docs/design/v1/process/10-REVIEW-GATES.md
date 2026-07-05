@@ -172,7 +172,7 @@
 | F-X1 | `api/types.ts` 为唯一 API 类型源 |
 | F-X2 | Mock/Real 共享 `IApiClient` |
 | F-X3 | 单组件文件 <300 行（超出已拆分） |
-| F-X4 | 无死代码（未使用的旧 `frontend` 文件已删除或迁移） |
+| F-X4 | 无死代码（`docs/design/v1/frontend` 内未使用文件已删除；迁入 `apps/web` 时同步清理） |
 
 ### F.7 终检通过后
 

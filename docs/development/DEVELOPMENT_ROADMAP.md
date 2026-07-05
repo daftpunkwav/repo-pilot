@@ -1,7 +1,9 @@
 # RepoPilot v1.0 — 开发路线图 (Development Roadmap)
 
-> 版本: 1.0.0 | 日期: 2026-07-03 | 状态: 草案
+> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 状态: 草案
 > 权威来源: `v1/PRD/PRD.md` (产品需求) · `v1/SPEC/TECHNICAL_SPEC.md` (技术规格) · `v1/MVP/MVP_SCOPE.md` (实施范围)
+>
+> **仓库布局：** Monorepo。下文任务清单中的 `backend/`、`frontend/` 路径见 [`docs/architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)（API → `services/api/backend/`，正式 Web → `apps/web/`，**当前 Mock UI → `docs/design/v1/frontend/`**）。
 >
 > **本文档定位:** v1.0 单版本完整发布的开发路线图，**取代已删除的 `DEVELOPMENT_STEPS.md`**。本文档与 MVP_SCOPE §10 的开发顺序保持一致，**MVP_SCOPE §10 是 v1.0 详细开发步骤，本文档提供更高的视角**（含风险评估、依赖关系、参考资源）。
 
@@ -64,17 +66,18 @@
 **目标：** 建立项目骨架，开发工具链就绪
 
 **任务清单：**
-- [ ] 验证 `backend/` 目录的 Python 入口和依赖配置
-- [ ] 验证 `frontend/` 目录的 Vite 配置和 TypeScript 配置
+- [ ] 验证 `services/api/` 的 Python 入口和依赖配置
+- [ ] 验证 `docs/design/v1/frontend/`（Mock）与 `apps/web/`（正式位）的 Vite/TS 配置
 - [ ] 配置 Alembic 数据库迁移工具
 - [ ] 配置 ESLint / Ruff / Prettier / commitlint
 - [ ] 建立 CI 流程（GitHub Actions：lint + test）
 - [ ] 配置 pre-commit hooks
 
 **关键文件：**
-- `pyproject.toml` / `requirements.txt` (后端依赖)
-- `frontend/package.json` (前端依赖)
-- `backend/alembic.ini` + `backend/migrations/` (数据库迁移)
+- `pyproject.toml` + `services/api/pyproject.toml` (API 依赖)
+- `docs/design/v1/frontend/package.json` (Mock 前端依赖)
+- `apps/web/package.json` (正式 Web 脚手架)
+- `services/api/backend/migrations/` (数据库迁移)
 - `.github/workflows/ci.yml` (CI 配置)
 - `.pre-commit-config.yaml` (pre-commit 配置)
 

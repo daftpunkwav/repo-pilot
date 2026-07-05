@@ -86,27 +86,33 @@ product/
 ### 3.2 `architecture/` — 架构设计层 (怎么设计)
 
 **存放：**
-- 系统结构设计
-- Agent 架构
-- Memory / Tool / Workflow 设计
+- 系统结构与 Monorepo 布局
+- 运行时架构（Web / API / Agent / MCP）
+- 路径对照（历史文档 `frontend/`、`backend/` → 现行路径）
 
 **职责：** 描述系统如何组织运行。
 
-**特点：**
-- 偏设计文档
-- 不直接记录开发过程
+**现行入口（2026-07-05 起）：**
 
-**子结构（计划）：**
+| 文档 | 内容 |
+|------|------|
+| [`architecture/OVERVIEW.md`](architecture/OVERVIEW.md) | 运行时架构、双轨前端策略 |
+| [`architecture/REPO_LAYOUT.md`](architecture/REPO_LAYOUT.md) | `apps/` · `services/` · `packages/` 目录 |
+| [`architecture/PATH_MAPPING.md`](architecture/PATH_MAPPING.md) | 旧路径对照表（文档统一基准） |
+
+**子结构（计划拆分）：**
 
 ```
 architecture/
-├── overview.md              # 系统总览
-├── agent-architecture.md    # Agent 架构
-├── memory-system.md         # 记忆系统
-└── tool-calling.md          # 工具调用
+├── OVERVIEW.md              # 系统总览（已创建）
+├── REPO_LAYOUT.md           # Monorepo 布局（已创建）
+├── PATH_MAPPING.md          # 路径对照（已创建）
+├── agent-architecture.md    # Agent 架构（待填充）
+├── memory-system.md         # 记忆系统（待填充）
+└── tool-calling.md          # 工具调用（待填充）
 ```
 
-> 当前 `architecture/` 目录已创建（待填充内容）。架构内容目前分散在 `product/v1/spec/TECHNICAL_SPEC.md` 中，后续按此结构拆分。
+> 进程内分层（Router → Service → Data）仍见 `product/v1/SPEC/TECHNICAL_SPEC.md` §1；仓库级组织以本目录为准。
 
 ---
 
