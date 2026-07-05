@@ -309,13 +309,23 @@
       font-weight: 600;
     }
 
-    /* 总览内层 control · 与 Hero「和 Agent 对话」按钮同参数（glass-card--control） */
+    /* 总览外层 panel · Hero / Agent 卡 / 进度 / 活动 / 推荐 / 笔记 */
+    .overview-hero-glass.glass-card--panel,
+    .agent-card-glass.glass-card--panel,
+    .panel.glass-card--panel,
+    .agent-carousel-card .agent-card-glass.glass-card--panel {
+      border-radius: var(--lg-radius-card, 20px);
+    }
+
+    /* 总览内层 control · 与 Hero 快捷按钮同参数 */
     .overview-control-surface.glass-card--control,
     .agent-summary.glass-card--control,
     .activity-item.glass-card--control,
     .agent-card-meta.glass-card--control,
     .project-item.glass-card--control,
-    .note-item.glass-card--control {
+    .note-item.glass-card--control,
+    .trending-card.glass-card--control,
+    .agent-carousel-nav.glass-card--control {
       border-radius: var(--radius-btn);
     }
     .summary-avatar.glass-card--control,
@@ -325,19 +335,9 @@
     .summary-badge.glass-card--control {
       border-radius: var(--radius-pill);
     }
-    /* 其余 control 子元素保留较小圆角 */
     .activity-icon.glass-card--control,
     .trending-rank.glass-card--control {
       border-radius: var(--radius-sm);
-    }
-
-    /* 总览外层 panel · Hero / Agent 卡 / 进度 / 活动 / 导航 */
-    .overview-hero-glass.glass-card--panel,
-    .agent-card-glass.glass-card--panel,
-    .panel.glass-card--panel,
-    .agent-carousel-nav.glass-card--panel,
-    .trending-card.glass-card--panel {
-      border-radius: var(--lg-radius-card, 20px);
     }
 
     /* 区块标题 */
@@ -472,11 +472,6 @@
       background: rgba(15, 23, 42, 0.14);
       border-radius: var(--radius-pill);
     }
-    /* 列表 panel 去掉内层矩形 inset 光晕，避免列表区出现直角灰框 */
-    .panel-activity.glass-card--panel,
-    .panel-notes.glass-card--panel {
-      --lg-panel-inset-glow: none;
-    }
     .panel-recommend {
       display: flex;
       flex-direction: column;
@@ -487,8 +482,24 @@
     .panel-recommend .project-list {
       flex: 1;
       min-height: 0;
+      overflow-x: hidden;
       overflow-y: auto;
+      background: transparent;
+      border: none;
+      box-shadow: none;
       scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
+    }
+    .panel-recommend .project-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    .panel-recommend .project-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .panel-recommend .project-list::-webkit-scrollbar-thumb {
+      background: rgba(15, 23, 42, 0.14);
+      border-radius: var(--radius-pill);
     }
     .panel-notes {
       display: flex;
@@ -705,26 +716,6 @@
     .fill-learning { background: var(--warning); }
     .fill-learned { background: var(--brand-300); }
     .fill-mastered { background: var(--success); }
-
-    .activity-item.overview-list-item,
-    .note-item.overview-list-item {
-      background: rgba(255, 255, 255, 0.62);
-      border: 1px solid rgba(255, 255, 255, 0.78);
-      border-radius: var(--radius-btn);
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      transition:
-        transform 0.2s var(--ease),
-        box-shadow 0.2s var(--ease);
-    }
-    .activity-item.overview-list-item:hover,
-    .note-item.overview-list-item:hover {
-      transform: translateY(-1px);
-      box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.85),
-        0 4px 14px rgba(15, 23, 42, 0.06);
-    }
 
     /* 最近活动 · 上层 control 列表项 */
     .activity-list { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
