@@ -423,11 +423,29 @@
     }
     .panel-activity .activity-list,
     .panel-notes .notes-list {
-      flex: 0 1 auto;
-      overflow: visible;
+      flex: 1;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
       background: transparent;
       border: none;
       box-shadow: none;
+      padding-bottom: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
+    }
+    .panel-activity .activity-list::-webkit-scrollbar,
+    .panel-notes .notes-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    .panel-activity .activity-list::-webkit-scrollbar-track,
+    .panel-notes .notes-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .panel-activity .activity-list::-webkit-scrollbar-thumb,
+    .panel-notes .notes-list::-webkit-scrollbar-thumb {
+      background: rgba(15, 23, 42, 0.14);
+      border-radius: var(--radius-pill);
     }
     /* 列表 panel 去掉内层矩形 inset 光晕，避免列表区出现直角灰框 */
     .panel-activity.glass-card--panel,
