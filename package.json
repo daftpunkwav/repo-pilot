@@ -1,0 +1,14 @@
+{
+  "name": "repopilot",
+  "private": true,
+  "version": "2.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w @repopilot/web",
+    "build:web": "npm run build -w @repopilot/web",
+    "preview:web": "npm run preview -w @repopilot/web"
+  }
+}
