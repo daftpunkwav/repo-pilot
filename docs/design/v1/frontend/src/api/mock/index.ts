@@ -115,12 +115,25 @@ export class MockApiClient implements IApiClient {
     },
   ];
   private currentUser: User | null = null;
+  private activities: ActivityItem[] = clone(MOCK_ACTIVITIES);
 
   constructor() {
     const token = localStorage.getItem(TOKEN_KEY);
     if (token) {
       const main = MOCK_USERS[0];
       if (main) this.currentUser = { ...main.user };
+    }
+  }
+
+  /** 模拟后端 Activity Feed：新活动插入列表头部 */
+  private prependActivity(entry: Omit<ActivityItem, 'id' | 'created_at'>) {
+    this.activities.unshift({
+      ...entry,
+      id: newId('act'),
+      created_at: new Date().toISOString(),
+    });
+    if (this.activities.length > 50) {
+      this.activities.length = 50;
     }
   }
 
@@ -287,6 +300,7 @@ export class MockApiClient implements IApiClient {
     let succeeded = 0;
     let failed = 0;
     const errors: Array<{ repo: string; reason: string }> = [];
+    let lastImportedId: string | undefined;
 
     for (const r of repos) {
       const name = `${r.owner}/${r.repo}`;
@@ -307,10 +321,25 @@ export class MockApiClient implements IApiClient {
         updated_at: new Date().toISOString(),
       };
       this.projects.push(project);
+      lastImportedId = project.id;
       succeeded += 1;
     }
 
     const summary = `成功导入 ${succeeded} 个，失败 ${failed} 个`;
+    if (succeeded > 0) {
+      const lastImported = lastImportedId
+        ? this.projects.find((p) => p.id === lastImportedId)
+        : undefined;
+      this.prependActivity({
+        type: 'import',
+        title:
+          succeeded === 1 && lastImported
+            ? `导入 ${lastImported.name}`
+            : `批量导入 ${succeeded} 个项目`,
+        description: summary,
+        project_id: succeeded === 1 ? lastImportedId : undefined,
+      });
+    }
     return wrapResponse({ succeeded, failed, summary, errors });
   }
 
@@ -441,6 +470,18 @@ export class MockApiClient implements IApiClient {
     if (!project) throwError('NOT_FOUND', '项目不存在');
     project.progress = progress;
     project.updated_at = new Date().toISOString();
+    const progressLabel: Record<ProjectProgress, string> = {
+      none: '待开始',
+      learning: '学习中',
+      learned: '已学习',
+      mastered: '已掌握',
+    };
+    this.prependActivity({
+      type: 'progress',
+      title: `${project.name.split('/')[1] ?? project.name} 标记为${progressLabel[progress]}`,
+      description: `${project.name} 学习进度更新`,
+      project_id: id,
+    });
     return wrapResponse({ id, progress });
   }
 
@@ -597,6 +638,13 @@ export class MockApiClient implements IApiClient {
       updated_at: now,
     };
     this.notes.push(note);
+    const project = this.projects.find((p) => p.id === projectId);
+    this.prependActivity({
+      type: 'note',
+      title: `创建笔记「${data.title}」`,
+      description: project?.name ?? '项目笔记',
+      project_id: projectId,
+    });
     return wrapResponse(note);
   }
 
@@ -617,6 +665,13 @@ export class MockApiClient implements IApiClient {
       updated_at: new Date().toISOString(),
     };
     this.notes[idx] = updated;
+    const project = this.projects.find((p) => p.id === updated.project_id);
+    this.prependActivity({
+      type: 'note',
+      title: `更新笔记「${updated.title}」`,
+      description: project?.name ?? '项目笔记',
+      project_id: updated.project_id,
+    });
     return wrapResponse(updated);
   }
 
@@ -711,7 +766,7 @@ export class MockApiClient implements IApiClient {
   async listActivities(): Promise<ApiResponse<ActivityItem[]>> {
     await delay();
     requireAuth();
-    return wrapResponse([...MOCK_ACTIVITIES]);
+    return wrapResponse([...this.activities]);
   }
 
   async listRecommendedProjects(params?: {
