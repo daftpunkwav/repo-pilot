@@ -40,7 +40,7 @@ npm-debug.log*
 .obsidian/
 
 # TypeScript/Vite 产物
-frontend/tsconfig.tsbuildinfo
+apps/web/tsconfig.tsbuildinfo
 
 # Playwright / 浏览器自动化产物
 docs/design/v1/frontend/output/

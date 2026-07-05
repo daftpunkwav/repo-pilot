@@ -8,8 +8,18 @@ from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / "data"
+def _repo_root() -> Path:
+    """定位 monorepo 根目录（含 apps/ 与 services/）"""
+    current = Path(__file__).resolve()
+    for parent in current.parents:
+        if (parent / "apps").is_dir() and (parent / "services").is_dir():
+            return parent
+    # fallback: services/api/backend -> 仓库根
+    return current.parents[3]
+
+
+REPO_ROOT = _repo_root()
+DATA_DIR = REPO_ROOT / "data"
 
 
 class Settings(BaseSettings):
