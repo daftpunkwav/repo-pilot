@@ -95,7 +95,14 @@ export function useTrendingScoutSpot(period: TrendingPeriod) {
           if (event.event === 'text_delta') {
             const delta = asSSETextDelta(event.data);
             setContent((prev) => prev + delta.content);
+          } else if (event.event === 'error') {
+            setContent('Scout 暂时无法生成介绍，请稍后再试。');
+            break;
           }
+        }
+      } catch {
+        if (streamGenRef.current === gen && activeRepoKeyRef.current === key) {
+          setContent((prev) => prev || 'Scout 暂时无法生成介绍，请稍后再试。');
         }
       } finally {
         if (streamGenRef.current === gen && activeRepoKeyRef.current === key) {
