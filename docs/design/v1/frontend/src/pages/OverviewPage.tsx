@@ -296,7 +296,7 @@ export function OverviewPage() {
               activityItems.map((a) => (
                 <Link
                   key={a.id}
-                  className="activity-item overview-control-surface glass-card glass-card--control liquid-glass--interactive"
+                  className="activity-item overview-list-item liquid-glass--interactive"
                   to={activityItemHref(a)}
                   data-testid="overview-activity-item"
                 >
@@ -401,7 +401,7 @@ export function OverviewPage() {
               recentNotes.map((n) => (
                 <Link
                   key={n.id}
-                  className="note-item overview-control-surface glass-card glass-card--control liquid-glass--interactive"
+                  className="note-item overview-list-item liquid-glass--interactive"
                   to={`/projects/${n.project_id}`}
                   data-testid="overview-note-item"
                 >
