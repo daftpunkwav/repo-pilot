@@ -443,6 +443,7 @@
       background: transparent;
       border: none;
       box-shadow: none;
+      border-radius: var(--radius-sm);
       padding-bottom: 2px;
       scrollbar-width: thin;
       scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
@@ -455,6 +456,7 @@
       background: transparent;
       border: none;
       box-shadow: none;
+      border-radius: var(--radius-sm);
       padding-bottom: 2px;
       scrollbar-width: thin;
       scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
@@ -472,6 +474,12 @@
       background: rgba(15, 23, 42, 0.14);
       border-radius: var(--radius-pill);
     }
+    /* 含滚动列表的外层 panel：保留 Hero 外层 tint/blur/outer shadow，仅去掉大幅 inset 光晕（none 会使整条 box-shadow 失效） */
+    .panel-activity.glass-card--panel,
+    .panel-notes.glass-card--panel,
+    .panel-recommend.glass-card--panel {
+      --lg-panel-inset-glow: inset 0 0 0 0 transparent;
+    }
     .panel-recommend {
       display: flex;
       flex-direction: column;
@@ -487,6 +495,7 @@
       background: transparent;
       border: none;
       box-shadow: none;
+      border-radius: var(--radius-sm);
       scrollbar-gutter: stable;
       scrollbar-width: thin;
       scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
