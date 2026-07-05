@@ -313,6 +313,7 @@
     .overview-hero-glass.glass-card--panel,
     .agent-card-glass.glass-card--panel,
     .panel.glass-card--panel,
+    .panel-trending.glass-card--panel,
     .agent-carousel-card .agent-card-glass.glass-card--panel {
       border-radius: var(--lg-radius-card, 20px);
     }
@@ -320,11 +321,7 @@
     /* 总览内层 control · 与 Hero 快捷按钮同参数 */
     .overview-control-surface.glass-card--control,
     .agent-summary.glass-card--control,
-    .activity-item.glass-card--control,
     .agent-card-meta.glass-card--control,
-    .project-item.glass-card--control,
-    .note-item.glass-card--control,
-    .trending-card.glass-card--control,
     .agent-carousel-nav.glass-card--control {
       border-radius: var(--radius-btn);
     }
@@ -443,8 +440,7 @@
       background: transparent;
       border: none;
       box-shadow: none;
-      border-radius: var(--radius-sm);
-      padding-bottom: 2px;
+      padding: 0 0 2px;
       scrollbar-width: thin;
       scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
     }
@@ -456,8 +452,7 @@
       background: transparent;
       border: none;
       box-shadow: none;
-      border-radius: var(--radius-sm);
-      padding-bottom: 2px;
+      padding: 0 0 2px;
       scrollbar-width: thin;
       scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
     }
@@ -474,12 +469,6 @@
       background: rgba(15, 23, 42, 0.14);
       border-radius: var(--radius-pill);
     }
-    /* 含滚动列表的外层 panel：保留 Hero 外层 tint/blur/outer shadow，仅去掉大幅 inset 光晕（none 会使整条 box-shadow 失效） */
-    .panel-activity.glass-card--panel,
-    .panel-notes.glass-card--panel,
-    .panel-recommend.glass-card--panel {
-      --lg-panel-inset-glow: inset 0 0 0 0 transparent;
-    }
     .panel-recommend {
       display: flex;
       flex-direction: column;
@@ -495,7 +484,7 @@
       background: transparent;
       border: none;
       box-shadow: none;
-      border-radius: var(--radius-sm);
+      padding: 0;
       scrollbar-gutter: stable;
       scrollbar-width: thin;
       scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
@@ -726,8 +715,30 @@
     .fill-learned { background: var(--brand-300); }
     .fill-mastered { background: var(--success); }
 
-    /* 最近活动 · 上层 control 列表项 */
+    /* 最近活动 · 条目直接落在外层 panel（同分类总览进度条，无逐条 glass） */
     .activity-list { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
+    .panel-activity .activity-item,
+    .panel-recommend .project-item,
+    .panel-notes .note-item,
+    .panel-trending .trending-card {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+    .panel-activity .activity-item,
+    .panel-recommend .project-item,
+    .panel-notes .note-item {
+      border-radius: var(--radius-sm);
+      transition: background 0.15s var(--ease);
+    }
+    .panel-activity .activity-item:hover,
+    .panel-recommend .project-item:hover,
+    .panel-notes .note-item:hover,
+    .panel-trending .trending-card.is-visible:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
     .panel-activity .activity-item {
       flex-shrink: 0;
       min-height: var(--overview-activity-item-h);
@@ -751,7 +762,7 @@
     .activity-desc { font-size: 12px; color: var(--text-500); }
     .activity-time { font-size: 11px; color: var(--text-400); font-family: var(--font-mono); flex-shrink: 0; }
 
-    /* 项目推荐 · 悬停时介绍交叉淡入为推荐理由 */
+    /* 项目推荐 · 条目直接落在外层 panel */
     .project-list { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
     .project-item {
       position: relative;
@@ -1106,7 +1117,7 @@
       }
     }
 
-    /* 最近笔记 · 上层 control 列表项 */
+    /* 最近笔记 · 条目直接落在外层 panel */
     .notes-list { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
     .note-item {
       padding: 10px 12px;
@@ -1124,6 +1135,19 @@
 
     /* ===== GitHub 近期热门（倒阶梯单列布局） ===== */
     .trending-section { margin-bottom: 20px; }
+    .panel-trending {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      padding: 12px 14px;
+    }
+    .panel-trending > * {
+      position: relative;
+      z-index: 1;
+    }
+    .panel-trending .trending-grid {
+      gap: 8px;
+    }
     .trending-head {
       display: flex; align-items: center; justify-content: space-between;
       gap: 12px; margin-bottom: 12px;
