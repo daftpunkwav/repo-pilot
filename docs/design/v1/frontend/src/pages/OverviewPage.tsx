@@ -14,7 +14,11 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { formatRelativeTime, formatDateTime } from '@/utils/date';
 import { formatNumber, langCssClass, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
 import { activityItemHref } from '@/utils/overviewLinks';
-import { OVERVIEW_INNER_GLASS, OVERVIEW_OUTER_GLASS } from '@/constants/overviewGlass';
+import {
+  OVERVIEW_INNER_GLASS,
+  OVERVIEW_LIST_INNER_GLASS,
+  OVERVIEW_OUTER_GLASS,
+} from '@/constants/overviewGlass';
 import { getMorseHopPx, HERO_MORSE_BITS, HERO_MORSE_INTERVAL_MS } from '@/utils/morse';
 import { AgentCarousel } from '@/components/agent/AgentCarousel';
 import { TrendingScoutSpot } from '@/components/agent/TrendingScoutSpot';
@@ -290,7 +294,7 @@ export function OverviewPage() {
               查看全部 →
             </Link>
           </div>
-          <div className="activity-list">
+          <div className={`activity-list overview-list-inner ${OVERVIEW_LIST_INNER_GLASS}`}>
             {activityItems.length === 0 ? (
               <div className="panel-empty">暂无活动</div>
             ) : (
@@ -324,7 +328,7 @@ export function OverviewPage() {
             为你推荐
             <span className="panel-title-sub">Agent 根据学习记录和喜好推荐</span>
           </h3>
-          <div className="project-list">
+          <div className={`project-list overview-list-inner ${OVERVIEW_LIST_INNER_GLASS}`}>
             {recommendSlots.map((item, i) => {
               if (!item) {
                 return (
@@ -395,7 +399,7 @@ export function OverviewPage() {
               查看全部 →
             </Link>
           </div>
-          <div className="notes-list">
+          <div className={`notes-list overview-list-inner ${OVERVIEW_LIST_INNER_GLASS}`}>
             {recentNotes.length === 0 ? (
               <div className="panel-empty">暂无笔记</div>
             ) : (
@@ -441,7 +445,7 @@ export function OverviewPage() {
           </div>
         </div>
         <div className={`panel panel-trending ${OVERVIEW_OUTER_GLASS}`}>
-          <div className="trending-grid" ref={trendingGridRef}>
+          <div className={`trending-grid overview-list-inner ${OVERVIEW_LIST_INNER_GLASS}`} ref={trendingGridRef}>
             {trending.length === 0 ? (
               <div className="trending-empty">该周期暂无数据</div>
             ) : (
