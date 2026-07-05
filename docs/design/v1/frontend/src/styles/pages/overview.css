@@ -423,9 +423,8 @@
     }
     .panel-activity .activity-list,
     .panel-notes .notes-list {
-      flex: 1;
-      min-height: 0;
-      overflow: hidden;
+      flex: 0 1 auto;
+      overflow: visible;
     }
     .panel-recommend {
       display: flex;
@@ -447,12 +446,6 @@
     }
     .panel-notes > .section-head {
       flex-shrink: 0;
-    }
-    .panel-notes .notes-list {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      scrollbar-gutter: stable;
     }
 
     /* 学习进度分布 · 黄金比例分区（AI 总结 : 分类总览 = 1.618 : 1） */
