@@ -1,10 +1,12 @@
 # RepoPilot v2 — Technical Specification
 
-> 版本: 2.0.0 | 日期: 2026-07-04 | 状态: 草稿
+> 版本: 2.0.0 | 日期: 2026-07-04 | 路径更新: 2026-07-05 | 状态: 草稿
 >
 > 本文档是 v2 系统架构和技术实现的权威来源。基于 v1.0 技术基础迭代，沿用 v1 的安全/认证/加密方案，新增 Memory/Context/Knowledge 层设计。
 >
 > **引用约定:** 凡注明"沿用 v1 §X"的章节，其实现细节以 v1 Technical Spec 对应章节为权威来源，本文档仅记录 v2 差异。
+>
+> **仓库布局：** 沿用 v1 Monorepo（`apps/` · `services/` · `packages/`），见 [`docs/architecture/PATH_MAPPING.md`](../../architecture/PATH_MAPPING.md)。
 
 ---
 

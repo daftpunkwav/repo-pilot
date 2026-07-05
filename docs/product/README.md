@@ -48,6 +48,8 @@ docs/product/
 
 > **命名规范：** 目录名使用大写（`PRD/`、`SPEC/`、`MVP/`），不使用小写。
 
+**仓库布局（Monorepo）：** 自 2026-07-05 起，代码位于 `apps/`、`services/`、`packages/`。与历史文档路径对照见 [`../architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)。
+
 ---
 
 ## 3. 文档权威链
@@ -145,6 +147,8 @@ DEVELOPMENT_ROADMAP   ← 12 Phase 开发计划（Phase 0~11）
 
 | 文档 | 路径 | 关系 |
 |------|------|------|
+| 架构总览 | `../../architecture/OVERVIEW.md` | Monorepo 运行时架构 |
+| 路径对照 | `../../architecture/PATH_MAPPING.md` | 历史路径 → 现行路径 |
 | 审查报告 | `v1/RepoPilot-v1-审查报告-第8轮.md` | 最近一次全面审查（开发者就绪性） |
 | 修复报告 | `v1/RepoPilot-v1-修复报告-第6次.md` | 第 8 轮审查问题修复记录 |
 

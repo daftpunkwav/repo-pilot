@@ -69,8 +69,10 @@
 
 ## §2 项目目录结构
 
+> **路径说明（2026-07-05）：** 本规格描述的**实施目录**为 `docs/design/v1/frontend/`（Mock 开发沙盒）。审查通过并迁入 Monorepo 后，目标目录为 `apps/web/`。对照见 [`docs/architecture/PATH_MAPPING.md`](../../architecture/PATH_MAPPING.md)。
+
 ```
-frontend/
+docs/design/v1/frontend/    # 下文简称 frontend/
 ├── public/
 │   └── favicon.svg
 ├── src/

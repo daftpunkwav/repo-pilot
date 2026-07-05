@@ -1,12 +1,23 @@
 # RepoPilot v1.0 技术规格书
 
-> 版本: 1.0.0 | 日期: 2026-07-04 | 状态: 审核通过 - daftpunkwav
+> 版本: 1.0.0 | 日期: 2026-07-04 | 路径更新: 2026-07-05 | 状态: 审核通过 - daftpunkwav
 > 权威来源: 本文档是 RepoPilot v1.0 **技术实现**的权威来源。产品需求见 PRD.md，Agent 行为需求见 AGENT_PRD.md。
 > Agent 系统的详细技术规格请参阅 AGENT_SPEC.md。本文档 §4-§9 提供架构概览，完整代码实现以 AGENT_SPEC.md 为准（决策 C-05 补全）。
+>
+> **仓库布局：** 自 2026-07-05 起为 Monorepo（`apps/` · `services/` · `packages/`）。下文 §1 描述**进程内逻辑分层**（Router → Service → Data），与仓库目录并非一一对应。路径对照见 [`docs/architecture/PATH_MAPPING.md`](../../architecture/PATH_MAPPING.md)；运行时多服务模型见 [`docs/architecture/OVERVIEW.md`](../../architecture/OVERVIEW.md)。
 
 ---
 
 ## 1. 系统架构总览
+
+### 1.0 仓库与服务（Monorepo）
+
+| 运行时 | 现行目录 | v1.0 说明 |
+|--------|----------|-----------|
+| Web 客户端 | `apps/web/` | 正式应用位；**UI Mock 开发在** `docs/design/v1/frontend/` |
+| API 服务 | `services/api/backend/` | 本文档 §1.1 图中「API Layer」+ 数据层的主要实现位置 |
+| Agent 服务 | `services/agent/`（占位） | v1.0 Agent 逻辑暂在 `services/api/backend/agents/` |
+| MCP 服务 | `services/mcp/`（占位） | v1.4+ |
 
 ### 1.1 架构分层
 

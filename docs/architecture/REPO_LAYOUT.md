@@ -1,6 +1,8 @@
 # RepoPilot Monorepo 布局
 
 > 版本: 2026-07-05 | 状态: 已落地目录骨架，服务逐步填充
+>
+> **相关文档：** 运行时架构 [`OVERVIEW.md`](./OVERVIEW.md) · 路径对照 [`PATH_MAPPING.md`](./PATH_MAPPING.md)
 
 ## 目录总览
 
@@ -44,7 +46,7 @@ RepoPilot/
 
 | 模块 | 状态 | 代码位置 |
 |------|------|----------|
-| Web | ✅ 开发中 | `apps/web/` |
+| Web | ✅ 开发中 | `apps/web/`（脚手架；**主 UI 开发在** `docs/design/v1/frontend/`） |
 | API | ✅ 开发中 | `services/api/backend/` |
 | Agent | 🟡 占位 | 逻辑在 `services/api/backend/agents/`，待迁 |
 | MCP | ⬜ 占位 | `services/mcp/` |
