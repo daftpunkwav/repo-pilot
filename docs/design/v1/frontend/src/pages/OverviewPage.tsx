@@ -297,7 +297,7 @@ export function OverviewPage() {
               activityItems.map((a) => (
                 <Link
                   key={a.id}
-                  className={`activity-item ${OVERVIEW_INNER_GLASS}`}
+                  className="activity-item"
                   to={activityItemHref(a)}
                   data-testid="overview-activity-item"
                 >
@@ -330,7 +330,7 @@ export function OverviewPage() {
                 return (
                   <div
                     key={`rec-empty-${i}`}
-                    className={`project-item project-item--placeholder ${OVERVIEW_INNER_GLASS}`}
+                    className="project-item project-item--placeholder"
                     aria-hidden
                   >
                     <div
@@ -350,7 +350,7 @@ export function OverviewPage() {
               return (
                 <Link
                   key={item.id}
-                  className={`project-item ${OVERVIEW_INNER_GLASS}`}
+                  className="project-item"
                   to={`/projects/${item.project_id}`}
                   aria-describedby={`rec-reason-${item.id}`}
                   data-testid="overview-recommend-item"
@@ -402,7 +402,7 @@ export function OverviewPage() {
               recentNotes.map((n) => (
                 <Link
                   key={n.id}
-                  className={`note-item ${OVERVIEW_INNER_GLASS}`}
+                  className="note-item"
                   to={`/projects/${n.project_id}`}
                   data-testid="overview-note-item"
                 >
@@ -440,7 +440,8 @@ export function OverviewPage() {
             ))}
           </div>
         </div>
-        <div className="trending-grid" ref={trendingGridRef}>
+        <div className={`panel panel-trending ${OVERVIEW_OUTER_GLASS}`}>
+          <div className="trending-grid" ref={trendingGridRef}>
             {trending.length === 0 ? (
               <div className="trending-empty">该周期暂无数据</div>
             ) : (
@@ -451,7 +452,7 @@ export function OverviewPage() {
                   <a
                     key={`${period}-${r.owner}/${r.repo}`}
                     data-index={index}
-                    className={`trending-card ${OVERVIEW_INNER_GLASS}`}
+                    className="trending-card"
                     data-testid="overview-trending-card"
                     style={{ ['--card-w' as string]: `${widthPct.toFixed(2)}%` }}
                     href={r.url}
@@ -480,6 +481,7 @@ export function OverviewPage() {
               );
             })
           )}
+          </div>
         </div>
       </section>
 
