@@ -8,6 +8,7 @@ import {
   AGENT_CATALOG,
   type AgentDefinition,
 } from '@/constants/agentCatalog';
+import { OVERVIEW_INNER_GLASS, OVERVIEW_OUTER_GLASS } from '@/constants/overviewGlass';
 
 const GAP_PX = 16;
 const MOBILE_BREAKPOINT_PX = 1200;
@@ -214,7 +215,7 @@ export function AgentCarousel({
         {hasOverflow && (
           <button
             type="button"
-            className="agent-carousel-nav agent-carousel-nav--prev glass-card glass-card--panel liquid-glass--interactive"
+            className="agent-carousel-nav agent-carousel-nav--prev glass-card glass-card--control liquid-glass--pill liquid-glass--interactive"
             aria-label="上一个 Agent"
             onClick={goPrev}
             onMouseEnter={handleNavEnter}
@@ -247,9 +248,9 @@ export function AgentCarousel({
                   to={`/agent?agent=${agent.id}`}
                   onMouseEnter={(e) => handleCardEnter(e, agent.id)}
                 >
-                  <div className="agent-card-glass glass-card glass-card--panel" aria-hidden />
+                  <div className={`agent-card-glass ${OVERVIEW_OUTER_GLASS}`} aria-hidden />
                   <div className="agent-card-content">
-                    <div className="agent-card-meta overview-control-surface glass-card glass-card--control">
+                    <div className={`agent-card-meta ${OVERVIEW_INNER_GLASS}`}>
                       <AgentAvatar
                         agentId={agent.id}
                         lookTarget={effectiveLookTarget}
@@ -273,7 +274,7 @@ export function AgentCarousel({
         {hasOverflow && (
           <button
             type="button"
-            className="agent-carousel-nav agent-carousel-nav--next glass-card glass-card--panel liquid-glass--interactive"
+            className="agent-carousel-nav agent-carousel-nav--next glass-card glass-card--control liquid-glass--pill liquid-glass--interactive"
             aria-label="下一个 Agent"
             onClick={goNext}
             onMouseEnter={handleNavEnter}

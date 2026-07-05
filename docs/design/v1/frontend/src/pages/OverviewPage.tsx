@@ -14,6 +14,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { formatRelativeTime, formatDateTime } from '@/utils/date';
 import { formatNumber, langCssClass, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
 import { activityItemHref } from '@/utils/overviewLinks';
+import { OVERVIEW_INNER_GLASS, OVERVIEW_OUTER_GLASS } from '@/constants/overviewGlass';
 import { getMorseHopPx, HERO_MORSE_BITS, HERO_MORSE_INTERVAL_MS } from '@/utils/morse';
 import { AgentCarousel } from '@/components/agent/AgentCarousel';
 import { TrendingScoutSpot } from '@/components/agent/TrendingScoutSpot';
@@ -195,7 +196,7 @@ export function OverviewPage() {
             })}
           </span>
         </div>
-        <div className="overview-hero-glass glass-card glass-card--panel" aria-hidden />
+        <div className={`overview-hero-glass ${OVERVIEW_OUTER_GLASS}`} aria-hidden />
         <section className="overview-hero-content">
           <h1>
             你好，<span>{username}</span> 👋
@@ -236,11 +237,11 @@ export function OverviewPage() {
       <AgentCarousel externalLookTarget={chatBtnLookTarget} />
 
       <section className="row-2col row-2col--phi">
-        <div className="panel panel-progress glass-card glass-card--panel" data-testid="overview-progress">
+        <div className={`panel panel-progress ${OVERVIEW_OUTER_GLASS}`} data-testid="overview-progress">
           <h3>学习进度分布</h3>
           <div className="progress-panel-body">
             <section
-              className="agent-summary progress-panel-summary overview-control-surface glass-card glass-card--control"
+              className={`agent-summary progress-panel-summary ${OVERVIEW_INNER_GLASS}`}
               aria-label="Mentor 学习周报"
             >
               <div className="summary-head">
@@ -279,7 +280,7 @@ export function OverviewPage() {
           </div>
         </div>
 
-        <div className="panel panel-activity glass-card glass-card--panel" data-testid="overview-activities">
+        <div className={`panel panel-activity ${OVERVIEW_OUTER_GLASS}`} data-testid="overview-activities">
           <div className="section-head" style={{ marginTop: 0 }}>
             <h3>最近活动</h3>
             <Link
@@ -296,7 +297,7 @@ export function OverviewPage() {
               activityItems.map((a) => (
                 <Link
                   key={a.id}
-                  className="activity-item overview-list-item liquid-glass--interactive"
+                  className={`activity-item ${OVERVIEW_INNER_GLASS}`}
                   to={activityItemHref(a)}
                   data-testid="overview-activity-item"
                 >
@@ -318,7 +319,7 @@ export function OverviewPage() {
       </section>
 
       <section className="row-2col row-2col--phi">
-        <div className="panel panel-recommend glass-card glass-card--panel" data-testid="overview-recommendations">
+        <div className={`panel panel-recommend ${OVERVIEW_OUTER_GLASS}`} data-testid="overview-recommendations">
           <h3 className="panel-title-with-sub">
             为你推荐
             <span className="panel-title-sub">Agent 根据学习记录和喜好推荐</span>
@@ -329,7 +330,7 @@ export function OverviewPage() {
                 return (
                   <div
                     key={`rec-empty-${i}`}
-                    className="project-item project-item--placeholder overview-control-surface glass-card glass-card--control"
+                    className={`project-item project-item--placeholder ${OVERVIEW_INNER_GLASS}`}
                     aria-hidden
                   >
                     <div
@@ -349,7 +350,7 @@ export function OverviewPage() {
               return (
                 <Link
                   key={item.id}
-                  className="project-item overview-control-surface glass-card glass-card--control liquid-glass--interactive"
+                  className={`project-item ${OVERVIEW_INNER_GLASS}`}
                   to={`/projects/${item.project_id}`}
                   aria-describedby={`rec-reason-${item.id}`}
                   data-testid="overview-recommend-item"
@@ -381,7 +382,7 @@ export function OverviewPage() {
         </div>
 
         <div
-          className="panel panel-notes glass-card glass-card--panel"
+          className={`panel panel-notes ${OVERVIEW_OUTER_GLASS}`}
           ref={recentNotesPanelRef}
           data-testid="overview-notes"
         >
@@ -401,7 +402,7 @@ export function OverviewPage() {
               recentNotes.map((n) => (
                 <Link
                   key={n.id}
-                  className="note-item overview-list-item liquid-glass--interactive"
+                  className={`note-item ${OVERVIEW_INNER_GLASS}`}
                   to={`/projects/${n.project_id}`}
                   data-testid="overview-note-item"
                 >
@@ -450,7 +451,7 @@ export function OverviewPage() {
                   <a
                     key={`${period}-${r.owner}/${r.repo}`}
                     data-index={index}
-                    className="trending-card glass-card glass-card--panel liquid-glass--interactive"
+                    className={`trending-card ${OVERVIEW_INNER_GLASS}`}
                     data-testid="overview-trending-card"
                     style={{ ['--card-w' as string]: `${widthPct.toFixed(2)}%` }}
                     href={r.url}
