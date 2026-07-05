@@ -476,7 +476,8 @@
     /* 含滚动列表的外层 panel：去掉大幅 inset 光晕，避免列表区直角灰框（条目各自为内层 glass） */
     .panel-activity.glass-card--panel,
     .panel-notes.glass-card--panel,
-    .panel-recommend.glass-card--panel {
+    .panel-recommend.glass-card--panel,
+    .panel-trending.glass-card--panel {
       --lg-panel-inset-glow: inset 0 0 0 0 transparent;
     }
     .panel-recommend {
@@ -727,12 +728,21 @@
 
     /* 最近活动 · 每条为独立内层 glass（图二右侧） */
     .activity-list { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
+    /* 列表条目内层 glass 去掉外层 drop shadow（用透明 0 阴影，勿写 none 以免整条 box-shadow 失效） */
     .panel-activity .activity-item.glass-card--control,
     .panel-recommend .project-item.glass-card--control,
     .panel-notes .note-item.glass-card--control,
     .panel-trending .trending-card.glass-card--control {
+      --lg-shadow-outer: 0 0 0 0 transparent;
       position: relative;
       isolation: isolate;
+    }
+    .panel-activity .activity-item.liquid-glass--interactive:hover,
+    .panel-recommend .project-item.liquid-glass--interactive:hover,
+    .panel-notes .note-item.liquid-glass--interactive:hover,
+    .panel-trending .trending-card.liquid-glass--interactive.is-visible:hover {
+      --lg-shadow-outer: 0 4px 14px rgba(15, 23, 42, 0.07);
+      transform: translateY(-1px);
     }
     .panel-activity .activity-item.glass-card--control > *,
     .panel-recommend .project-item.glass-card--control > *,
