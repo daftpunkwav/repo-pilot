@@ -13,6 +13,7 @@ import { getApi } from '@/api/client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { formatRelativeTime, formatDateTime } from '@/utils/date';
 import { formatNumber, langCssClass, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
+import { activityItemHref } from '@/utils/overviewLinks';
 import { getMorseHopPx, HERO_MORSE_BITS, HERO_MORSE_INTERVAL_MS } from '@/utils/morse';
 import { AgentCarousel } from '@/components/agent/AgentCarousel';
 import { TrendingScoutSpot } from '@/components/agent/TrendingScoutSpot';
@@ -292,7 +293,7 @@ export function OverviewPage() {
                 <Link
                   key={a.id}
                   className="activity-item overview-control-surface glass-card glass-card--control liquid-glass--interactive"
-                  to="/agent"
+                  to={activityItemHref(a)}
                 >
                   <div className="activity-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14}>
@@ -375,7 +376,7 @@ export function OverviewPage() {
                 <Link
                   key={n.id}
                   className="note-item overview-control-surface glass-card glass-card--control liquid-glass--interactive"
-                  to="/notes"
+                  to={`/projects/${n.project_id}`}
                 >
                   <div className="note-title">{n.title}</div>
                   <div className="note-meta">
