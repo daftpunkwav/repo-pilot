@@ -28,7 +28,7 @@ const PROGRESS_ROWS: Array<{ key: ProjectProgress; label: string; color: string 
 ];
 
 const RECOMMEND_SLOT_COUNT = 5;
-const ACTIVITY_SLOT_COUNT = 5;
+const ACTIVITY_SLOT_COUNT = 10;
 
 export function OverviewPage() {
   const user = useAuthStore((s) => s.user);

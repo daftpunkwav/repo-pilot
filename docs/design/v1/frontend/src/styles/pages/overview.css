@@ -405,7 +405,19 @@
 
     /* 总览区块固定高度 · 左列定高、右列跟随；第二行推荐定高、笔记跟随 */
     :root {
-      --overview-progress-panel-h: 392px;
+      --overview-activity-item-h: 60px;
+      --overview-activity-gap: 10px;
+      --overview-activity-visible: 5;
+      --overview-activity-list-h: calc(
+        var(--overview-activity-visible) * var(--overview-activity-item-h) +
+          (var(--overview-activity-visible) - 1) * var(--overview-activity-gap)
+      );
+      --overview-activity-section-head-h: 48px;
+      --overview-panel-pad-v: 32px;
+      --overview-progress-panel-h: calc(
+        var(--overview-panel-pad-v) + var(--overview-activity-section-head-h) +
+          var(--overview-activity-list-h)
+      );
       --overview-recommend-panel-h: 368px;
     }
     .row-2col--phi > .panel-progress,
@@ -421,7 +433,20 @@
     .panel-activity > .section-head {
       flex-shrink: 0;
     }
-    .panel-activity .activity-list,
+    .panel-activity .activity-list {
+      flex: 0 0 auto;
+      height: var(--overview-activity-list-h);
+      max-height: var(--overview-activity-list-h);
+      min-height: var(--overview-activity-list-h);
+      overflow-x: hidden;
+      overflow-y: auto;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding-bottom: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
+    }
     .panel-notes .notes-list {
       flex: 1;
       min-height: 0;
@@ -703,6 +728,11 @@
 
     /* 最近活动 · 上层 control 列表项 */
     .activity-list { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
+    .panel-activity .activity-item {
+      flex-shrink: 0;
+      min-height: var(--overview-activity-item-h);
+      box-sizing: border-box;
+    }
     .activity-item {
       display: flex; gap: 10px; align-items: flex-start;
       padding: 10px 12px;
