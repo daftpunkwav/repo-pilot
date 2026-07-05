@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getApi } from '@/api/client';
 import { useNoteStore } from '@/stores/noteStore';
+import { invalidateOverviewQueries } from '@/utils/invalidateOverview';
 
 export function useAllNotes() {
   return useQuery({
@@ -57,6 +58,7 @@ export function useCreateNote() {
     },
     onSuccess: (note) => {
       void qc.invalidateQueries({ queryKey: ['notes'] });
+      void invalidateOverviewQueries(qc);
       useNoteStore.getState().startEditing(note.id, note.title, note.content);
     },
   });
@@ -80,6 +82,7 @@ export function useUpdateNote() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['notes'] });
+      void invalidateOverviewQueries(qc);
     },
   });
 }
@@ -93,6 +96,7 @@ export function useDeleteNote() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['notes'] });
+      void invalidateOverviewQueries(qc);
       useNoteStore.getState().stopEditing();
     },
   });

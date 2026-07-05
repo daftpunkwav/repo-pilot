@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { getApi } from '@/api/client';
 import type { CreateProjectInput, Project, ProjectProgress } from '@/api/types';
 import { useProjectStore } from '@/stores/projectStore';
+import { invalidateOverviewQueries } from '@/utils/invalidateOverview';
 
 /** 从 store 派生查询参数；必须用 useShallow，避免每次返回新对象触发无限重渲染 */
 function useProjectListParams() {
@@ -111,7 +112,7 @@ export function useCreateProject() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['projects'] });
-      void qc.invalidateQueries({ queryKey: ['projectStats'] });
+      void invalidateOverviewQueries(qc);
     },
   });
 }
@@ -126,7 +127,7 @@ export function useImportProjects() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['projects'] });
-      void qc.invalidateQueries({ queryKey: ['projectStats'] });
+      void invalidateOverviewQueries(qc);
     },
   });
 }
@@ -141,7 +142,7 @@ export function useUpdateProgress() {
     onSuccess: (_d, vars) => {
       void qc.invalidateQueries({ queryKey: ['projects'] });
       void qc.invalidateQueries({ queryKey: ['project', vars.id] });
-      void qc.invalidateQueries({ queryKey: ['projectStats'] });
+      void invalidateOverviewQueries(qc);
     },
   });
 }
@@ -155,7 +156,7 @@ export function useDeleteProject() {
     },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['projects'] });
-      void qc.invalidateQueries({ queryKey: ['projectStats'] });
+      void invalidateOverviewQueries(qc);
     },
   });
 }
