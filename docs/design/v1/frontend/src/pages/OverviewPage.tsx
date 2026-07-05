@@ -245,13 +245,10 @@ export function OverviewPage() {
                 <span className="summary-badge glass-card glass-card--control">AI</span>
               </div>
               <div className="summary-body">
-                <p
-                  dangerouslySetInnerHTML={{
-                    __html:
-                      profile?.history_summary ??
-                      `${username}，本周继续保持学习节奏，Agent 将为你生成个性化周报。`,
-                  }}
-                />
+                <p>
+                  {profile?.history_summary ??
+                    `${username}，本周继续保持学习节奏，Agent 将为你生成个性化周报。`}
+                </p>
               </div>
             </section>
             <div className="progress-overview">
