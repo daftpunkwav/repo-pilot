@@ -118,10 +118,45 @@ Body: { repos: [{ owner, repo, url }] }
 
 前端粘贴多行 URL 时，**后端负责解析行数、去重、校验**；响应 `ImportResult.summary` 人类可读摘要。
 
+前端粘贴多行 URL 时，**后端负责解析行数、去重、校验**；响应 `ImportResult.summary` 人类可读摘要。
+
+### 7. 总览页（Overview）
+
+| 方法 | 建议 REST | 说明 |
+|------|-----------|------|
+| `getProjectStats()` | `GET /api/projects/stats` | 进度/分类/语言聚合 |
+| `getUserProfile()` | `GET /api/user/profile` | `history_summary` 由 Mentor Agent 定时/事件生成（Markdown 纯文本） |
+| `listActivities()` | `GET /api/overview/activities` | 用户事件流，按 `created_at` 降序 |
+| `listRecommendedProjects({ limit })` | `GET /api/overview/recommendations?limit=5` | Agent 推荐；**刷新策略由后端控制**（cron/事件），响应含 `meta.generated_at` |
+| `listOverviewRecentNotes({ limit })` | `GET /api/overview/recent-notes?limit=4` | 最近笔记 + `project_name` |
+| `listTrending({ period, language? })` | `GET /api/overview/trending?period=weekly` | GitHub 热门代理 |
+| `streamTrendingScoutIntro(params)` | `POST /api/overview/trending/scout-intro` SSE | Scout 悬停介绍；需 per-user 限流 |
+
+```ts
+interface RecommendedProject {
+  id: string;
+  project_id: string;
+  name: string;
+  reason: string;           // Agent 生成
+  recommended_by: AgentId;
+  // 后端扩展建议：
+  generated_at?: string;
+}
+
+interface TrendingScoutIntroParams {
+  owner: string;
+  repo: string;
+  period?: 'daily' | 'weekly' | 'monthly';
+}
+```
+
+**缓存策略（前端）**：用户 mutation（import / note / progress）后 invalidate 总览 query；**推荐列表不由用户手动刷新**，后端重算后前端 refetch 即可。
+
 ## 页面与接口映射
 
 | 页面 | 关键接口 |
 |------|----------|
+| 总览 | `getProjectStats`, `getUserProfile`, `listActivities`, `listRecommendedProjects`, `listOverviewRecentNotes`, `listTrending`, `streamTrendingScoutIntro` |
 | 设置 | `getSettings`, `updateSettings`, `bindGithub` |
 | Agent Chat | `chatAgent`, `getContextWindow`, `getUserProfile`, `updateUserProfile` |
 | 图谱 | `getGraph`, `graphGuideChat` |
