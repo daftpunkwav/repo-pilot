@@ -8,7 +8,7 @@ import {
   AGENT_CATALOG,
   type AgentDefinition,
 } from '@/constants/agentCatalog';
-import { OVERVIEW_INNER_GLASS, OVERVIEW_OUTER_GLASS } from '@/constants/overviewGlass';
+import { HERO_INNER_GLASS, HERO_OUTER_GLASS } from '@/constants/overviewGlass';
 
 const GAP_PX = 16;
 const MOBILE_BREAKPOINT_PX = 1200;
@@ -248,9 +248,9 @@ export function AgentCarousel({
                   to={`/agent?agent=${agent.id}`}
                   onMouseEnter={(e) => handleCardEnter(e, agent.id)}
                 >
-                  <div className={`agent-card-glass ${OVERVIEW_OUTER_GLASS}`} aria-hidden />
+                  <div className={`agent-card-glass ${HERO_OUTER_GLASS}`} aria-hidden />
                   <div className="agent-card-content">
-                    <div className={`agent-card-meta ${OVERVIEW_INNER_GLASS}`}>
+                    <div className={`agent-card-meta ${HERO_INNER_GLASS}`}>
                       <AgentAvatar
                         agentId={agent.id}
                         lookTarget={effectiveLookTarget}
