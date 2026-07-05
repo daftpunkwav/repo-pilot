@@ -40,7 +40,7 @@ test.describe('总览 Mock 三轮场景', () => {
 
     await expect(page.getByTestId('overview-progress')).toBeVisible();
     await expect(page.getByText('分类总览')).toBeVisible();
-    await expect(page.getByTestId('overview-activity-item')).toHaveCount(5);
+    await expect(page.getByTestId('overview-activity-item')).toHaveCount(10);
     await expect(page.getByTestId('overview-recommend-item')).toHaveCount(5);
     await expect(page.getByTestId('overview-note-item')).toHaveCount(4);
     await expect(page.getByTestId('overview-trending-card')).not.toHaveCount(0);
@@ -52,7 +52,7 @@ test.describe('总览 Mock 三轮场景', () => {
   test('Round 2 · 增量笔记与活动', async ({ page }) => {
     await openOverviewRound(page, 2);
 
-    await expect(page.getByTestId('overview-activity-item')).toHaveCount(5);
+    await expect(page.getByTestId('overview-activity-item')).toHaveCount(10);
     await expect(
       page.getByTestId('overview-activities').getByText('创建笔记「D3 力导向图初探」'),
     ).toBeVisible();

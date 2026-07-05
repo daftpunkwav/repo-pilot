@@ -63,7 +63,7 @@ function buildRound1(): OverviewScenarioSnapshot {
     notes: clone(MOCK_NOTES).sort(
       (a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at),
     ).slice(0, 4),
-    activities: clone(MOCK_ACTIVITIES).slice(0, 5),
+    activities: clone(MOCK_ACTIVITIES).slice(0, 10),
     historySummary: DEFAULT_USER_PROFILE.history_summary ?? '本周学习了 React Hooks 与 FastAPI 异步编程。',
     recommendations: buildMockRecommendedProjects(projects, 5),
     trendingWeekly: clone(getTrendingRepos('weekly')),
@@ -112,7 +112,7 @@ function buildRound2(base: OverviewScenarioSnapshot): OverviewScenarioSnapshot {
       project_id: 'p_supabase',
     },
     ...clone(base.activities),
-  ].slice(0, 7);
+  ].slice(0, 10);
 
   return {
     ...base,
