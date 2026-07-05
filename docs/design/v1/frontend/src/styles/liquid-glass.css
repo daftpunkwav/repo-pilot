@@ -303,3 +303,46 @@
     animation: none;
   }
 }
+
+/* --------------------------------------------------------------------------
+   总览专用分层变体 · 外层更透/更柔，内层更实/更亮（不影响 Hero/Agent 标准 token）
+   -------------------------------------------------------------------------- */
+.glass-card--panel.glass-card--panel-overview {
+  --lg-panel-tint: rgba(255, 255, 255, 0.25);
+  --lg-panel-blur: 11px;
+  --lg-panel-border: rgba(255, 255, 255, 0.22);
+  --lg-panel-inset-glow: inset 0 0 24px 12px rgba(255, 255, 255, 0.12);
+  --lg-panel-edge-top: rgba(255, 255, 255, 0.65);
+  --lg-panel-edge-left-top: rgba(255, 255, 255, 0.55);
+  --lg-panel-edge-left-mid: rgba(255, 255, 255, 0.2);
+}
+
+.glass-card--control.glass-card--control-overview {
+  --lg-tint: rgba(255, 255, 255, 0.58);
+  --lg-blur: 12px;
+  --lg-border: rgba(255, 255, 255, 0.6);
+  --lg-shadow-inset-glow: inset 0 0 4px 2px rgba(255, 255, 255, 0.28);
+  --lg-edge-top: rgba(255, 255, 255, 0.92);
+  --lg-edge-left-top: rgba(255, 255, 255, 0.85);
+  --lg-edge-left-mid: rgba(255, 255, 255, 0.35);
+}
+
+[data-theme='dark'] .glass-card--panel.glass-card--panel-overview {
+  --lg-panel-tint: rgba(255, 255, 255, 0.14);
+  --lg-panel-blur: 11px;
+  --lg-panel-border: rgba(255, 255, 255, 0.14);
+  --lg-panel-inset-glow: inset 0 0 24px 12px rgba(255, 255, 255, 0.06);
+  --lg-panel-edge-top: rgba(255, 255, 255, 0.38);
+  --lg-panel-edge-left-top: rgba(255, 255, 255, 0.32);
+  --lg-panel-edge-left-mid: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .glass-card--control.glass-card--control-overview {
+  --lg-tint: rgba(255, 255, 255, 0.22);
+  --lg-blur: 12px;
+  --lg-border: rgba(255, 255, 255, 0.32);
+  --lg-shadow-inset-glow: inset 0 0 4px 2px rgba(255, 255, 255, 0.1);
+  --lg-edge-top: rgba(255, 255, 255, 0.5);
+  --lg-edge-left-top: rgba(255, 255, 255, 0.42);
+  --lg-edge-left-mid: rgba(255, 255, 255, 0.14);
+}

@@ -14,7 +14,12 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { formatRelativeTime, formatDateTime } from '@/utils/date';
 import { formatNumber, langCssClass, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
 import { activityItemHref } from '@/utils/overviewLinks';
-import { OVERVIEW_INNER_GLASS, OVERVIEW_OUTER_GLASS } from '@/constants/overviewGlass';
+import {
+  HERO_OUTER_GLASS,
+  OVERVIEW_INNER_GLASS,
+  OVERVIEW_OUTER_GLASS,
+  OVERVIEW_SUMMARY_INNER_GLASS,
+} from '@/constants/overviewGlass';
 import { getMorseHopPx, HERO_MORSE_BITS, HERO_MORSE_INTERVAL_MS } from '@/utils/morse';
 import { AgentCarousel } from '@/components/agent/AgentCarousel';
 import { TrendingScoutSpot } from '@/components/agent/TrendingScoutSpot';
@@ -196,7 +201,7 @@ export function OverviewPage() {
             })}
           </span>
         </div>
-        <div className={`overview-hero-glass ${OVERVIEW_OUTER_GLASS}`} aria-hidden />
+        <div className={`overview-hero-glass ${HERO_OUTER_GLASS}`} aria-hidden />
         <section className="overview-hero-content">
           <h1>
             你好，<span>{username}</span> 👋
@@ -241,7 +246,7 @@ export function OverviewPage() {
           <h3>学习进度分布</h3>
           <div className="progress-panel-body">
             <section
-              className={`agent-summary progress-panel-summary ${OVERVIEW_INNER_GLASS}`}
+              className={`agent-summary progress-panel-summary ${OVERVIEW_SUMMARY_INNER_GLASS}`}
               aria-label="Mentor 学习周报"
             >
               <div className="summary-head">
