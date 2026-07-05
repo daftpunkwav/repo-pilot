@@ -445,8 +445,7 @@ export function OverviewPage() {
             ))}
           </div>
         </div>
-        <div className={`panel panel-trending ${OVERVIEW_OUTER_GLASS}`}>
-          <div className="trending-grid" ref={trendingGridRef}>
+        <div className="trending-grid" ref={trendingGridRef}>
             {trending.length === 0 ? (
               <div className="trending-empty">该周期暂无数据</div>
             ) : (
@@ -486,7 +485,6 @@ export function OverviewPage() {
               );
             })
           )}
-          </div>
         </div>
       </section>
 
