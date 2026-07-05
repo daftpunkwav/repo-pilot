@@ -320,6 +320,7 @@
 
     /* 总览内层 control · 与 Hero 快捷按钮同参数 */
     .overview-control-surface.glass-card--control,
+    .overview-list-inner.glass-card--control,
     .agent-summary.glass-card--control,
     .agent-card-meta.glass-card--control,
     .agent-carousel-nav.glass-card--control {
@@ -430,29 +431,25 @@
     .panel-activity > .section-head {
       flex-shrink: 0;
     }
-    .panel-activity .activity-list {
+    .panel-activity .activity-list.overview-list-inner {
       flex: 0 0 auto;
+      box-sizing: border-box;
       height: var(--overview-activity-list-h);
       max-height: var(--overview-activity-list-h);
       min-height: var(--overview-activity-list-h);
       overflow-x: hidden;
       overflow-y: auto;
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      padding: 0 0 2px;
+      padding: 10px 12px;
       scrollbar-width: thin;
       scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
     }
-    .panel-notes .notes-list {
+    .panel-notes .notes-list.overview-list-inner {
       flex: 1;
       min-height: 0;
+      box-sizing: border-box;
       overflow-x: hidden;
       overflow-y: auto;
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      padding: 0 0 2px;
+      padding: 10px 12px;
       scrollbar-width: thin;
       scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
     }
@@ -476,15 +473,13 @@
       min-height: var(--overview-recommend-panel-h);
       max-height: var(--overview-recommend-panel-h);
     }
-    .panel-recommend .project-list {
+    .panel-recommend .project-list.overview-list-inner {
       flex: 1;
       min-height: 0;
+      box-sizing: border-box;
       overflow-x: hidden;
       overflow-y: auto;
-      background: transparent;
-      border: none;
-      box-shadow: none;
-      padding: 0;
+      padding: 10px 12px;
       scrollbar-gutter: stable;
       scrollbar-width: thin;
       scrollbar-color: rgba(15, 23, 42, 0.14) transparent;
@@ -540,6 +535,21 @@
       font-size: 13px;
       line-height: 1.65;
     }
+
+    /* 列表区内层 glass · 对齐 Mentor 周报（整块可见 border，条目 plain） */
+    .overview-list-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+      margin: 0;
+      isolation: isolate;
+    }
+    .overview-list-inner > * {
+      position: relative;
+      z-index: 1;
+    }
+
     .progress-overview {
       flex: 1 1 0;
       min-height: 0;
@@ -715,28 +725,28 @@
     .fill-learned { background: var(--brand-300); }
     .fill-mastered { background: var(--success); }
 
-    /* 最近活动 · 条目直接落在外层 panel（同分类总览进度条，无逐条 glass） */
+    /* 列表条目 · 落在外层 panel 的内层 glass 内（同分类总览进度条，无逐条 glass） */
     .activity-list { display: flex; flex-direction: column; gap: 10px; position: relative; z-index: 1; }
-    .panel-activity .activity-item,
-    .panel-recommend .project-item,
-    .panel-notes .note-item,
-    .panel-trending .trending-card {
+    .overview-list-inner .activity-item,
+    .overview-list-inner .project-item,
+    .overview-list-inner .note-item,
+    .overview-list-inner .trending-card {
       background: transparent;
       border: none;
       box-shadow: none;
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
     }
-    .panel-activity .activity-item,
-    .panel-recommend .project-item,
-    .panel-notes .note-item {
+    .overview-list-inner .activity-item,
+    .overview-list-inner .project-item,
+    .overview-list-inner .note-item {
       border-radius: var(--radius-sm);
       transition: background 0.15s var(--ease);
     }
-    .panel-activity .activity-item:hover,
-    .panel-recommend .project-item:hover,
-    .panel-notes .note-item:hover,
-    .panel-trending .trending-card.is-visible:hover {
+    .overview-list-inner .activity-item:hover,
+    .overview-list-inner .project-item:hover,
+    .overview-list-inner .note-item:hover,
+    .overview-list-inner .trending-card.is-visible:hover {
       background: rgba(255, 255, 255, 0.18);
     }
     .panel-activity .activity-item {
@@ -1145,7 +1155,9 @@
       position: relative;
       z-index: 1;
     }
-    .panel-trending .trending-grid {
+    .panel-trending .trending-grid.overview-list-inner {
+      padding: 10px 12px;
+      overflow: visible;
       gap: 8px;
     }
     .trending-head {
