@@ -27,6 +27,9 @@ const PROGRESS_ROWS: Array<{ key: ProjectProgress; label: string; color: string 
   { key: 'mastered', label: '已掌握', color: 'fill-mastered' },
 ];
 
+const RECOMMEND_SLOT_COUNT = 5;
+const ACTIVITY_SLOT_COUNT = 5;
+
 export function OverviewPage() {
   const user = useAuthStore((s) => s.user);
   const { data: stats, isLoading: statsLoading } = useProjectStats();
@@ -162,6 +165,9 @@ export function OverviewPage() {
   const morseRound = Math.floor(morseTick / HERO_MORSE_BITS.length);
   const morseInvert = morseRound % 2 === 1;
 
+  const recommendSlots = Array.from({ length: RECOMMEND_SLOT_COUNT }, (_, i) => recommended[i] ?? null);
+  const activityItems = (activities ?? []).slice(0, ACTIVITY_SLOT_COUNT);
+
   return (
     <>
       <div className="overview-hero-wrap" data-testid="overview-hero">
@@ -230,7 +236,7 @@ export function OverviewPage() {
       <AgentCarousel externalLookTarget={chatBtnLookTarget} />
 
       <section className="row-2col row-2col--phi">
-        <div className="panel panel-progress glass-card glass-card--panel">
+        <div className="panel panel-progress glass-card glass-card--panel" data-testid="overview-progress">
           <h3>学习进度分布</h3>
           <div className="progress-panel-body">
             <section
@@ -273,7 +279,7 @@ export function OverviewPage() {
           </div>
         </div>
 
-        <div className="panel glass-card glass-card--panel">
+        <div className="panel panel-activity glass-card glass-card--panel" data-testid="overview-activities">
           <div className="section-head" style={{ marginTop: 0 }}>
             <h3>最近活动</h3>
             <Link
@@ -284,16 +290,15 @@ export function OverviewPage() {
             </Link>
           </div>
           <div className="activity-list">
-            {(activities ?? []).length === 0 ? (
-              <div style={{ padding: '20px 12px', color: 'var(--text-400)', fontSize: 12, textAlign: 'center' }}>
-                暂无活动
-              </div>
+            {activityItems.length === 0 ? (
+              <div className="panel-empty">暂无活动</div>
             ) : (
-              (activities ?? []).slice(0, 5).map((a) => (
+              activityItems.map((a) => (
                 <Link
                   key={a.id}
                   className="activity-item overview-control-surface glass-card glass-card--control liquid-glass--interactive"
                   to={activityItemHref(a)}
+                  data-testid="overview-activity-item"
                 >
                   <div className="activity-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14}>
@@ -313,24 +318,42 @@ export function OverviewPage() {
       </section>
 
       <section className="row-2col row-2col--phi">
-        <div className="panel panel-recommend glass-card glass-card--panel">
+        <div className="panel panel-recommend glass-card glass-card--panel" data-testid="overview-recommendations">
           <h3 className="panel-title-with-sub">
             为你推荐
             <span className="panel-title-sub">Agent 根据学习记录和喜好推荐</span>
           </h3>
           <div className="project-list">
-            {recommended.length === 0 ? (
-              <div className="panel-empty">暂无推荐</div>
-            ) : (
-              recommended.map((item, i) => {
-                const { owner, repo } = splitRepoName(item.name);
+            {recommendSlots.map((item, i) => {
+              if (!item) {
                 return (
-                  <Link
-                    key={item.id}
-                    className="project-item overview-control-surface glass-card glass-card--control liquid-glass--interactive"
-                    to={`/projects/${item.project_id}`}
-                    aria-describedby={`rec-reason-${item.id}`}
+                  <div
+                    key={`rec-empty-${i}`}
+                    className="project-item project-item--placeholder overview-control-surface glass-card glass-card--control"
+                    aria-hidden
                   >
+                    <div
+                      className="project-avatar"
+                      style={{ background: REPO_AVATAR_GRADIENTS[i % REPO_AVATAR_GRADIENTS.length] }}
+                    >
+                      ·
+                    </div>
+                    <div className="project-info">
+                      <div className="project-name">推荐加载中…</div>
+                      <p className="project-desc">Agent 正在根据学习记录生成推荐</p>
+                    </div>
+                  </div>
+                );
+              }
+              const { owner, repo } = splitRepoName(item.name);
+              return (
+                <Link
+                  key={item.id}
+                  className="project-item overview-control-surface glass-card glass-card--control liquid-glass--interactive"
+                  to={`/projects/${item.project_id}`}
+                  aria-describedby={`rec-reason-${item.id}`}
+                  data-testid="overview-recommend-item"
+                >
                     <div
                       className="project-avatar"
                       style={{ background: REPO_AVATAR_GRADIENTS[i % REPO_AVATAR_GRADIENTS.length] }}
@@ -353,12 +376,15 @@ export function OverviewPage() {
                     <span className="project-stars">⭐ {formatNumber(item.stars)}</span>
                   </Link>
                 );
-              })
-            )}
+              })}
           </div>
         </div>
 
-        <div className="panel panel-notes glass-card glass-card--panel" ref={recentNotesPanelRef}>
+        <div
+          className="panel panel-notes glass-card glass-card--panel"
+          ref={recentNotesPanelRef}
+          data-testid="overview-notes"
+        >
           <div className="section-head" style={{ marginTop: 0 }}>
             <h3>最近笔记</h3>
             <Link
@@ -377,6 +403,7 @@ export function OverviewPage() {
                   key={n.id}
                   className="note-item overview-control-surface glass-card glass-card--control liquid-glass--interactive"
                   to={`/projects/${n.project_id}`}
+                  data-testid="overview-note-item"
                 >
                   <div className="note-title">{n.title}</div>
                   <div className="note-meta">
@@ -391,7 +418,7 @@ export function OverviewPage() {
         </div>
       </section>
 
-      <section className="trending-section">
+      <section className="trending-section" data-testid="overview-trending">
         <div className="trending-head">
           <div className="trending-head-left">
             <h2>GitHub 近期热门</h2>
@@ -424,6 +451,7 @@ export function OverviewPage() {
                     key={`${period}-${r.owner}/${r.repo}`}
                     data-index={index}
                     className="trending-card glass-card glass-card--panel liquid-glass--interactive"
+                    data-testid="overview-trending-card"
                     style={{ ['--card-w' as string]: `${widthPct.toFixed(2)}%` }}
                     href={r.url}
                     target="_blank"

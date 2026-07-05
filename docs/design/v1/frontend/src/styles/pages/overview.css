@@ -403,6 +403,58 @@
       text-align: center;
     }
 
+    /* 总览区块固定高度 · 左列定高、右列跟随；第二行推荐定高、笔记跟随 */
+    :root {
+      --overview-progress-panel-h: 392px;
+      --overview-recommend-panel-h: 368px;
+    }
+    .row-2col--phi > .panel-progress,
+    .row-2col--phi > .panel-activity {
+      height: var(--overview-progress-panel-h);
+      min-height: var(--overview-progress-panel-h);
+      max-height: var(--overview-progress-panel-h);
+    }
+    .panel-activity {
+      display: flex;
+      flex-direction: column;
+    }
+    .panel-activity > .section-head {
+      flex-shrink: 0;
+    }
+    .panel-activity .activity-list,
+    .panel-notes .notes-list {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .panel-recommend {
+      display: flex;
+      flex-direction: column;
+      height: var(--overview-recommend-panel-h);
+      min-height: var(--overview-recommend-panel-h);
+      max-height: var(--overview-recommend-panel-h);
+    }
+    .panel-recommend .project-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+    }
+    .panel-notes {
+      display: flex;
+      flex-direction: column;
+      min-height: var(--overview-recommend-panel-h);
+    }
+    .panel-notes > .section-head {
+      flex-shrink: 0;
+    }
+    .panel-notes .notes-list {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+    }
+
     /* 学习进度分布 · 黄金比例分区（AI 总结 : 分类总览 = 1.618 : 1） */
     .panel-progress {
       display: flex;
@@ -640,6 +692,16 @@
       padding: 9px 12px 7px;
       text-decoration: none;
       color: inherit;
+    }
+    .project-item--placeholder {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+    .project-item--placeholder .project-desc {
+      position: static;
+      opacity: 1;
+      transform: none;
+      filter: none;
     }
     .project-desc-swap {
       position: relative;

@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar, type SidebarPageKey } from './Sidebar';
 import { Topbar } from './Topbar';
 import { ToastContainer } from '@/components/common/ToastContainer';
+import { useOverviewMockRoundSync } from '@/hooks/useOverviewMockRoundSync';
 
 function resolveActivePage(pathname: string): SidebarPageKey {
   if (pathname === '/') return 'overview';
@@ -18,6 +19,7 @@ function resolveActivePage(pathname: string): SidebarPageKey {
 export function AppShell() {
   const { pathname } = useLocation();
   const activePage = resolveActivePage(pathname);
+  useOverviewMockRoundSync();
 
   return (
     <div className="app">

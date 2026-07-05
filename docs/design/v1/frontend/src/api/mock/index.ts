@@ -37,6 +37,12 @@ import type {
 import type { IApiClient } from '@/api/client';
 import { MOCK_ACTIVITIES } from './data/activities';
 import { buildMockRecommendedProjects } from './data/recommendations';
+import {
+  getOverviewScenario,
+  persistOverviewMockRound,
+  readOverviewMockRound,
+  type OverviewMockRound,
+} from './data/overviewScenarios';
 import { MOCK_CATEGORIES } from './data/categories';
 import { MOCK_GRAPH } from './data/graph';
 import { MOCK_NOTES } from './data/notes';
@@ -116,6 +122,9 @@ export class MockApiClient implements IApiClient {
   ];
   private currentUser: User | null = null;
   private activities: ActivityItem[] = clone(MOCK_ACTIVITIES);
+  private scenarioRecommendations: RecommendedProject[] | null = null;
+  private scenarioTrendingWeekly: TrendingRepo[] | null = null;
+  private appliedOverviewRound: OverviewMockRound | null = null;
 
   constructor() {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -123,6 +132,27 @@ export class MockApiClient implements IApiClient {
       const main = MOCK_USERS[0];
       if (main) this.currentUser = { ...main.user };
     }
+    // 不在构造时应用 scenario：由 main.tsx / OverviewMockRoundSync 在 URL 同步后统一加载
+  }
+
+  getAppliedOverviewRound(): OverviewMockRound | null {
+    return this.appliedOverviewRound;
+  }
+
+  /** 模拟后端切换总览数据快照（开发 / E2E / ?mock_round=） */
+  applyOverviewScenario(round: OverviewMockRound) {
+    persistOverviewMockRound(round);
+    this.appliedOverviewRound = round;
+    const snapshot = getOverviewScenario(round);
+    this.projects = clone(snapshot.projects);
+    this.notes = clone(snapshot.notes);
+    this.activities = clone(snapshot.activities);
+    this.userProfile = {
+      ...clone(DEFAULT_USER_PROFILE),
+      history_summary: snapshot.historySummary,
+    };
+    this.scenarioRecommendations = clone(snapshot.recommendations);
+    this.scenarioTrendingWeekly = clone(snapshot.trendingWeekly);
   }
 
   /** 模拟后端 Activity Feed：新活动插入列表头部 */
@@ -175,6 +205,7 @@ export class MockApiClient implements IApiClient {
     localStorage.setItem(TOKEN_KEY, access);
     localStorage.setItem(REFRESH_KEY, refresh);
     this.currentUser = { ...user };
+    this.applyOverviewScenario(readOverviewMockRound());
     return wrapResponse({ access_token: access, refresh_token: refresh, user });
   }
 
@@ -744,6 +775,9 @@ export class MockApiClient implements IApiClient {
     await delay();
     requireAuth();
     const repos = getTrendingRepos(params?.period ?? 'daily', params?.language);
+    if (params?.period === 'weekly' && this.scenarioTrendingWeekly) {
+      return wrapResponse([...this.scenarioTrendingWeekly]);
+    }
     return wrapResponse(repos);
   }
 
@@ -775,7 +809,10 @@ export class MockApiClient implements IApiClient {
     await delay();
     requireAuth();
     const limit = params?.limit ?? 5;
-    return wrapResponse(buildMockRecommendedProjects(limit));
+    if (this.scenarioRecommendations) {
+      return wrapResponse(this.scenarioRecommendations.slice(0, limit));
+    }
+    return wrapResponse(buildMockRecommendedProjects(this.projects, limit));
   }
 
   async listOverviewRecentNotes(params?: {
