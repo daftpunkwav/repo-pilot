@@ -14,11 +14,7 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { formatRelativeTime, formatDateTime } from '@/utils/date';
 import { formatNumber, langCssClass, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
 import { activityItemHref } from '@/utils/overviewLinks';
-import {
-  OVERVIEW_INNER_GLASS,
-  OVERVIEW_LIST_INNER_GLASS,
-  OVERVIEW_OUTER_GLASS,
-} from '@/constants/overviewGlass';
+import { OVERVIEW_INNER_GLASS, OVERVIEW_OUTER_GLASS } from '@/constants/overviewGlass';
 import { getMorseHopPx, HERO_MORSE_BITS, HERO_MORSE_INTERVAL_MS } from '@/utils/morse';
 import { AgentCarousel } from '@/components/agent/AgentCarousel';
 import { TrendingScoutSpot } from '@/components/agent/TrendingScoutSpot';
@@ -294,14 +290,14 @@ export function OverviewPage() {
               查看全部 →
             </Link>
           </div>
-          <div className={`activity-list overview-list-inner ${OVERVIEW_LIST_INNER_GLASS}`}>
+          <div className="activity-list">
             {activityItems.length === 0 ? (
               <div className="panel-empty">暂无活动</div>
             ) : (
               activityItems.map((a) => (
                 <Link
                   key={a.id}
-                  className="activity-item"
+                  className={`activity-item ${OVERVIEW_INNER_GLASS}`}
                   to={activityItemHref(a)}
                   data-testid="overview-activity-item"
                 >
@@ -328,13 +324,13 @@ export function OverviewPage() {
             为你推荐
             <span className="panel-title-sub">Agent 根据学习记录和喜好推荐</span>
           </h3>
-          <div className={`project-list overview-list-inner ${OVERVIEW_LIST_INNER_GLASS}`}>
+          <div className="project-list">
             {recommendSlots.map((item, i) => {
               if (!item) {
                 return (
                   <div
                     key={`rec-empty-${i}`}
-                    className="project-item project-item--placeholder"
+                    className={`project-item project-item--placeholder ${OVERVIEW_INNER_GLASS}`}
                     aria-hidden
                   >
                     <div
@@ -354,7 +350,7 @@ export function OverviewPage() {
               return (
                 <Link
                   key={item.id}
-                  className="project-item"
+                  className={`project-item ${OVERVIEW_INNER_GLASS}`}
                   to={`/projects/${item.project_id}`}
                   aria-describedby={`rec-reason-${item.id}`}
                   data-testid="overview-recommend-item"
@@ -399,14 +395,14 @@ export function OverviewPage() {
               查看全部 →
             </Link>
           </div>
-          <div className={`notes-list overview-list-inner ${OVERVIEW_LIST_INNER_GLASS}`}>
+          <div className="notes-list">
             {recentNotes.length === 0 ? (
               <div className="panel-empty">暂无笔记</div>
             ) : (
               recentNotes.map((n) => (
                 <Link
                   key={n.id}
-                  className="note-item"
+                  className={`note-item ${OVERVIEW_INNER_GLASS}`}
                   to={`/projects/${n.project_id}`}
                   data-testid="overview-note-item"
                 >
@@ -445,7 +441,7 @@ export function OverviewPage() {
           </div>
         </div>
         <div className={`panel panel-trending ${OVERVIEW_OUTER_GLASS}`}>
-          <div className={`trending-grid overview-list-inner ${OVERVIEW_LIST_INNER_GLASS}`} ref={trendingGridRef}>
+          <div className="trending-grid" ref={trendingGridRef}>
             {trending.length === 0 ? (
               <div className="trending-empty">该周期暂无数据</div>
             ) : (
@@ -456,7 +452,7 @@ export function OverviewPage() {
                   <a
                     key={`${period}-${r.owner}/${r.repo}`}
                     data-index={index}
-                    className="trending-card"
+                    className={`trending-card ${OVERVIEW_INNER_GLASS}`}
                     data-testid="overview-trending-card"
                     style={{ ['--card-w' as string]: `${widthPct.toFixed(2)}%` }}
                     href={r.url}
