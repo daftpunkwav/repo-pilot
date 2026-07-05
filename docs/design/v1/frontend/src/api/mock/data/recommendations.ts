@@ -1,5 +1,4 @@
-import type { AgentId, RecommendedProject } from '@/api/types';
-import { MOCK_PROJECTS } from './projects';
+import type { AgentId, Project, RecommendedProject } from '@/api/types';
 
 /** 各项目的 Agent 推荐理由（Mock；后端可按用户画像动态生成） */
 const REASON_BY_PROJECT: Record<string, { reason: string; recommended_by: AgentId }> = {
@@ -42,23 +41,102 @@ const DEFAULT_REASON: { reason: string; recommended_by: AgentId } = {
   recommended_by: 'hub',
 };
 
-/** 构建 Mock 推荐列表（按 stars 降序，附带推荐理由） */
-export function buildMockRecommendedProjects(limit = 5): RecommendedProject[] {
-  return [...MOCK_PROJECTS]
-    .sort((a, b) => b.stars - a.stars)
-    .slice(0, limit)
-    .map((p) => {
-      const meta = REASON_BY_PROJECT[p.id] ?? DEFAULT_REASON;
-      return {
-        id: `rec_${p.id}`,
-        project_id: p.id,
-        name: p.name,
-        url: p.url,
-        description: p.description,
-        language: p.language,
-        stars: p.stars,
-        reason: meta.reason,
-        recommended_by: meta.recommended_by,
-      };
+/** 无用户项目时的兜底推荐（模拟后端 Agent 推 GitHub 热门） */
+const FALLBACK_TRENDING_REPOS: Array<
+  RecommendedProject & { recommended_by: AgentId }
+> = [
+  {
+    id: 'rec_fb_deno',
+    project_id: 'p_ext_deno',
+    name: 'denoland/deno',
+    url: 'https://github.com/denoland/deno',
+    description: 'A modern runtime for JavaScript and TypeScript.',
+    language: 'Rust',
+    stars: 95800,
+    reason: 'Scout：GitHub 本周 trending 榜首，适合快速了解现代 TS 运行时。',
+    recommended_by: 'scout',
+  },
+  {
+    id: 'rec_fb_whisper',
+    project_id: 'p_ext_whisper',
+    name: 'openai/whisper',
+    url: 'https://github.com/openai/whisper',
+    description: 'Robust Speech Recognition.',
+    language: 'Python',
+    stars: 68900,
+    reason: 'Mentor：语音转文本经典项目，Python 生态入门友好。',
+    recommended_by: 'mentor',
+  },
+  {
+    id: 'rec_fb_astro',
+    project_id: 'p_ext_astro',
+    name: 'withastro/astro',
+    url: 'https://github.com/withastro/astro',
+    description: 'The web framework for content-driven websites.',
+    language: 'TypeScript',
+    stars: 46000,
+    reason: 'Navigator：若计划内容站点，Astro 值得放入学习路线。',
+    recommended_by: 'navigator',
+  },
+  {
+    id: 'rec_fb_llama',
+    project_id: 'p_ext_llama',
+    name: 'ggerganov/llama.cpp',
+    url: 'https://github.com/ggerganov/llama.cpp',
+    description: 'LLM inference in C/C++',
+    language: 'C++',
+    stars: 66500,
+    reason: 'Hub：本地 LLM 推理热门仓库，可拓展 AI 工具链视野。',
+    recommended_by: 'hub',
+  },
+  {
+    id: 'rec_fb_pglite',
+    project_id: 'p_ext_pglite',
+    name: 'electric-sql/pglite',
+    url: 'https://github.com/electric-sql/pglite',
+    description: 'Lightweight Postgres as WASM.',
+    language: 'TypeScript',
+    stars: 7400,
+    reason: 'Curator：边缘 WASM 数据库新趋势，适合作为拓展阅读。',
+    recommended_by: 'curator',
+  },
+];
+
+/** 构建 Mock 推荐列表（按 stars 降序；不足 limit 时用热门仓库补齐） */
+export function buildMockRecommendedProjects(projects: Project[], limit = 5): RecommendedProject[] {
+  const sorted = [...projects].sort((a, b) => b.stars - a.stars);
+  const picked: RecommendedProject[] = sorted.slice(0, limit).map((p) => {
+    const meta = REASON_BY_PROJECT[p.id] ?? DEFAULT_REASON;
+    return {
+      id: `rec_${p.id}`,
+      project_id: p.id,
+      name: p.name,
+      url: p.url,
+      description: p.description,
+      language: p.language,
+      stars: p.stars,
+      reason: meta.reason,
+      recommended_by: meta.recommended_by,
+    };
+  });
+
+  let fallbackIndex = 0;
+  while (picked.length < limit && fallbackIndex < FALLBACK_TRENDING_REPOS.length) {
+    const fb = FALLBACK_TRENDING_REPOS[fallbackIndex]!;
+    fallbackIndex += 1;
+    if (picked.some((item) => item.name === fb.name)) continue;
+    picked.push({
+      id: `rec_fb_${fallbackIndex}`,
+      project_id: fb.project_id,
+      name: fb.name,
+      url: fb.url,
+      description: fb.description,
+      language: fb.language,
+      stars: fb.stars,
+      reason: fb.reason,
+      recommended_by: fb.recommended_by,
     });
+  }
+
+  return picked.slice(0, limit);
 }
