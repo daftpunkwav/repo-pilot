@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { ProjectListParams, ProjectProgress } from '@/api/types';
 
 interface ProjectFilterState {
+  /** 列表筛选 / 分页状态 */
   search: string;
   categoryId: string | null;
   language: string | null;
@@ -11,6 +12,10 @@ interface ProjectFilterState {
   sortOrder: NonNullable<ProjectListParams['sort_order']>;
   page: number;
   pageSize: number;
+
+  /** 当前页选中的项目 id 列表（仅用于批量操作；不参与列表查询） */
+  selectedIds: string[];
+
   setSearch: (search: string) => void;
   setCategoryId: (id: string | null) => void;
   setLanguage: (lang: string | null) => void;
@@ -22,6 +27,11 @@ interface ProjectFilterState {
   setPageSize: (size: number) => void;
   resetFilters: () => void;
   toApiParams: () => ProjectListParams;
+
+  /** 多选相关（仅作用于当前页） */
+  toggleSelected: (id: string) => void;
+  setSelected: (ids: string[]) => void;
+  clearSelected: () => void;
 }
 
 export const useProjectStore = create<ProjectFilterState>((set, get) => ({
@@ -35,15 +45,17 @@ export const useProjectStore = create<ProjectFilterState>((set, get) => ({
   page: 1,
   pageSize: 20,
 
-  setSearch: (search) => set({ search, page: 1 }),
-  setCategoryId: (categoryId) => set({ categoryId, page: 1 }),
-  setLanguage: (language) => set({ language, page: 1 }),
-  setProgress: (progress) => set({ progress, page: 1 }),
-  setTagId: (tagId) => set({ tagId, page: 1 }),
+  selectedIds: [],
+
+  setSearch: (search) => set({ search, page: 1, selectedIds: [] }),
+  setCategoryId: (categoryId) => set({ categoryId, page: 1, selectedIds: [] }),
+  setLanguage: (language) => set({ language, page: 1, selectedIds: [] }),
+  setProgress: (progress) => set({ progress, page: 1, selectedIds: [] }),
+  setTagId: (tagId) => set({ tagId, page: 1, selectedIds: [] }),
   setSortBy: (sortBy) => set({ sortBy }),
   setSortOrder: (sortOrder) => set({ sortOrder }),
-  setPage: (page) => set({ page }),
-  setPageSize: (pageSize) => set({ pageSize, page: 1 }),
+  setPage: (page) => set({ page, selectedIds: [] }),
+  setPageSize: (pageSize) => set({ pageSize, page: 1, selectedIds: [] }),
 
   resetFilters: () =>
     set({
@@ -55,6 +67,7 @@ export const useProjectStore = create<ProjectFilterState>((set, get) => ({
       sortBy: 'imported_at',
       sortOrder: 'desc',
       page: 1,
+      selectedIds: [],
     }),
 
   toApiParams: () => {
@@ -71,4 +84,18 @@ export const useProjectStore = create<ProjectFilterState>((set, get) => ({
       page_size: state.pageSize,
     };
   },
+
+  toggleSelected: (id) =>
+    set((state) => {
+      const has = state.selectedIds.includes(id);
+      return {
+        selectedIds: has
+          ? state.selectedIds.filter((x) => x !== id)
+          : [...state.selectedIds, id],
+      };
+    }),
+
+  setSelected: (ids) => set({ selectedIds: ids }),
+
+  clearSelected: () => set({ selectedIds: [] }),
 }));

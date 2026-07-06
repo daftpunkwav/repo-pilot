@@ -8,7 +8,7 @@ interface FilterBarProps {
   languages: string[];
 }
 
-export function FilterBar({ categories, languages }: FilterBarProps) {
+export function FilterBar({ categories, tags, languages }: FilterBarProps) {
   const search = useProjectStore((s) => s.search);
   const setSearch = useProjectStore((s) => s.setSearch);
   const categoryId = useProjectStore((s) => s.categoryId);
@@ -17,6 +17,8 @@ export function FilterBar({ categories, languages }: FilterBarProps) {
   const setLanguage = useProjectStore((s) => s.setLanguage);
   const progress = useProjectStore((s) => s.progress);
   const setProgress = useProjectStore((s) => s.setProgress);
+  const tagId = useProjectStore((s) => s.tagId);
+  const setTagId = useProjectStore((s) => s.setTagId);
   const sortBy = useProjectStore((s) => s.sortBy);
   const setSortBy = useProjectStore((s) => s.setSortBy);
   const resetFilters = useProjectStore((s) => s.resetFilters);
@@ -31,7 +33,10 @@ export function FilterBar({ categories, languages }: FilterBarProps) {
     ? `分类：${categories.find((c) => c.id === categoryId)?.name ?? categoryId}`
     : '分类：全部';
   const languageLabel = language ? `语言：${language}` : '语言：全部';
-  const progressLabelText = progress ? `进度：${progress}` : '进度：全部';
+  const progressLabelText = progress ? `进度：${progressLabel(progress)}` : '进度：全部';
+  const tagLabelText = tagId
+    ? `标签：${tags.find((t) => t.id === tagId)?.name ?? tagId}`
+    : '标签：全部';
   const sortLabel =
     sortBy === 'stars'
       ? '排序：Stars'
@@ -46,8 +51,12 @@ export function FilterBar({ categories, languages }: FilterBarProps) {
     return [];
   }, [languages]);
 
+  const hasActiveFilter = Boolean(
+    categoryId || language || progress || tagId || localSearch
+  );
+
   return (
-    <div className="filter-bar" role="toolbar" aria-label="项目筛选">
+    <div className="filter-bar glass-card glass-card--panel glass-card--panel-overview" role="toolbar" aria-label="项目筛选">
       <div className="filter-search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14}>
           <circle cx="11" cy="11" r="7" />
@@ -61,8 +70,9 @@ export function FilterBar({ categories, languages }: FilterBarProps) {
         />
       </div>
 
-      <label className="filter-btn">
+      <label className={`filter-btn${categoryId ? ' active' : ''}`}>
         <span>{categoryLabelText}</span>
+        <span className="chev">▾</span>
         <select
           className="filter-native-select"
           value={categoryId ?? ''}
@@ -78,8 +88,9 @@ export function FilterBar({ categories, languages }: FilterBarProps) {
         </select>
       </label>
 
-      <label className="filter-btn">
+      <label className={`filter-btn${language ? ' active' : ''}`}>
         <span>{languageLabel}</span>
+        <span className="chev">▾</span>
         <select
           className="filter-native-select"
           value={language ?? ''}
@@ -95,8 +106,9 @@ export function FilterBar({ categories, languages }: FilterBarProps) {
         </select>
       </label>
 
-      <label className="filter-btn">
+      <label className={`filter-btn${progress ? ' active' : ''}`}>
         <span>{progressLabelText}</span>
+        <span className="chev">▾</span>
         <select
           className="filter-native-select"
           value={progress ?? ''}
@@ -113,8 +125,27 @@ export function FilterBar({ categories, languages }: FilterBarProps) {
         </select>
       </label>
 
-      <label className="filter-btn" style={{ marginLeft: 'auto' }}>
+      <label className={`filter-btn${tagId ? ' active' : ''}`}>
+        <span>{tagLabelText}</span>
+        <span className="chev">▾</span>
+        <select
+          className="filter-native-select"
+          value={tagId ?? ''}
+          onChange={(e) => setTagId(e.target.value || null)}
+          aria-label="标签筛选"
+        >
+          <option value="">全部标签</option>
+          {tags.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className={`filter-btn${sortBy !== 'imported_at' ? ' active' : ''}`} style={{ marginLeft: 'auto' }}>
         <span>{sortLabel}</span>
+        <span className="chev">▾</span>
         <select
           className="filter-native-select"
           value={sortBy}
@@ -130,11 +161,28 @@ export function FilterBar({ categories, languages }: FilterBarProps) {
         </select>
       </label>
 
-      <button type="button" className="filter-clear" onClick={resetFilters}>
-        清除筛选
-      </button>
+      {hasActiveFilter && (
+        <button type="button" className="filter-clear" onClick={resetFilters}>
+          清除筛选
+        </button>
+      )}
     </div>
   );
+}
+
+function progressLabel(progress: Project['progress']): string {
+  switch (progress) {
+    case 'none':
+      return '待开始';
+    case 'learning':
+      return '学习中';
+    case 'learned':
+      return '已学习';
+    case 'mastered':
+      return '已掌握';
+    default:
+      return progress;
+  }
 }
 
 export function useProjectLanguages(projects: Project[]): string[] {
