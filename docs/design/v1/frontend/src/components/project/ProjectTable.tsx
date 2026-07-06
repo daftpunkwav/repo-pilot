@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import type { ChangeEvent } from 'react';
 import type { Project, Tag } from '@/api/types';
 import { ProgressBadge } from './ProgressBadge';
 import { categoryLabel } from '@/utils/labels';
@@ -8,6 +9,7 @@ import {
   REPO_AVATAR_GRADIENTS,
   splitRepoName,
 } from '@/utils/format';
+import { useProjectStore } from '@/stores/projectStore';
 
 interface ProjectTableProps {
   projects: Project[];
@@ -28,21 +30,66 @@ export function ProjectTable({ projects, tags, onImportClick }: ProjectTableProp
   const navigate = useNavigate();
   const tagMap = new Map(tags.map((t) => [t.id, t.name]));
 
+  const selectedIds = useProjectStore((s) => s.selectedIds);
+  const toggleSelected = useProjectStore((s) => s.toggleSelected);
+  const setSelected = useProjectStore((s) => s.setSelected);
+
+  const pageIds = projects.map((p) => p.id);
+  const selectedSet = new Set(selectedIds);
+  const allOnPageSelected =
+    pageIds.length > 0 && pageIds.every((id) => selectedSet.has(id));
+  const someOnPageSelected =
+    pageIds.some((id) => selectedSet.has(id)) && !allOnPageSelected;
+
+  const handleHeaderToggle = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.checked) {
+      // 全选当前页：合并并去重
+      const next = new Set(selectedIds);
+      pageIds.forEach((id) => next.add(id));
+      setSelected(Array.from(next));
+    } else {
+      // 取消选中当前页
+      const pageSet = new Set(pageIds);
+      setSelected(selectedIds.filter((id) => !pageSet.has(id)));
+    }
+  };
+
   if (projects.length === 0) {
     return (
       <div id="table-wrap" data-testid="project-table">
         <div className="empty-state">
-          <h3>没有匹配的项目</h3>
+          <div className="empty-illu" aria-hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={24} height={24}>
+              <path d="M3 7l9-4 9 4v10l-9 4-9-4V7z" />
+              <path d="M3 7l9 4 9-4" />
+              <path d="M12 11v10" />
+            </svg>
+          </div>
+          <h3>还没有项目入库</h3>
           <p>
-            尝试调整筛选条件，或{' '}
+            从 GitHub 同步 Stars，或者粘贴仓库地址开始你的第一个项目。
+          </p>
+          <div className="empty-actions">
             <button
               type="button"
-              style={{ color: 'var(--brand-500)', fontWeight: 600, border: 'none', background: 'none', cursor: 'pointer' }}
+              className="btn btn-primary"
+              data-testid="empty-import-stars-btn"
               onClick={onImportClick}
             >
-              导入新项目
+              同步 GitHub Stars
             </button>
-          </p>
+            <button
+              type="button"
+              className="btn"
+              style={{
+                background: 'rgba(255,255,255,0.7)',
+                border: '1px solid rgba(255,255,255,0.55)',
+              }}
+              onClick={onImportClick}
+            >
+              粘贴 URL 导入
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -53,28 +100,52 @@ export function ProjectTable({ projects, tags, onImportClick }: ProjectTableProp
       <table className="table">
         <thead>
           <tr>
-            <th style={{ width: 36 }} />
+            <th className="col-check">
+              <span className="th-checkbox">
+                <input
+                  type="checkbox"
+                  className="checkbox"
+                  aria-label="全选当前页"
+                  data-testid="projects-select-all"
+                  checked={allOnPageSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someOnPageSelected;
+                  }}
+                  onChange={handleHeaderToggle}
+                />
+              </span>
+            </th>
             <th>仓库</th>
             <th>分类</th>
             <th>语言</th>
             <th>Stars</th>
             <th>进度</th>
             <th>标签</th>
-            <th>操作</th>
+            <th className="col-actions">操作</th>
           </tr>
         </thead>
         <tbody>
           {projects.map((p, i) => {
             const { owner, repo } = splitRepoName(p.name);
             const catCls = p.category_id ? CAT_CLASS[p.category_id] : undefined;
+            const isSelected = selectedSet.has(p.id);
             return (
               <tr
                 key={p.id}
                 data-project-id={p.id}
+                data-testid={`project-row-${p.id}`}
+                className={isSelected ? 'is-selected' : undefined}
                 onClick={() => navigate(`/projects/${p.id}`)}
               >
-                <td onClick={(e) => e.stopPropagation()}>
-                  <input type="checkbox" aria-label={`选择 ${p.name}`} />
+                <td className="col-check" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    className="checkbox"
+                    aria-label={`选择 ${p.name}`}
+                    data-testid={`projects-row-check-${p.id}`}
+                    checked={isSelected}
+                    onChange={() => toggleSelected(p.id)}
+                  />
                 </td>
                 <td>
                   <div className="repo-cell">
@@ -123,7 +194,7 @@ export function ProjectTable({ projects, tags, onImportClick }: ProjectTableProp
                     ))}
                   </div>
                 </td>
-                <td onClick={(e) => e.stopPropagation()}>
+                <td className="col-actions" onClick={(e) => e.stopPropagation()}>
                   <div className="row-actions">
                     <button
                       type="button"
