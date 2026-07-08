@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { AgentLlmConfig, AgentSpeakingStyle, LlmApiFormat, Settings } from '@/api/types';
+import { GlassSelect } from '@/components/common/GlassSelect';
 import { AGENT_CATALOG } from '@/constants/agentCatalog';
 import {
   findProviderPreset,
@@ -102,18 +103,16 @@ export function LlmSettingsSection({
 
         <div className="form-row">
           <label htmlFor="llm-provider">供应商预设</label>
-          <select
+          <GlassSelect
             id="llm-provider"
-            className="field input"
             value={settings.llm_provider}
-            onChange={(e) => applyProviderPreset(e.target.value)}
-          >
-            {LLM_PROVIDER_PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.display_name}
-              </option>
-            ))}
-          </select>
+            options={LLM_PROVIDER_PRESETS.map((p) => ({
+              value: p.id,
+              label: p.display_name,
+            }))}
+            onChange={applyProviderPreset}
+            aria-label="供应商预设"
+          />
         </div>
 
         <div className="form-row">
@@ -141,20 +140,16 @@ export function LlmSettingsSection({
 
         <div className="form-row">
           <label htmlFor="llm-api-format">API 格式</label>
-          <select
+          <GlassSelect
             id="llm-api-format"
-            className="field input"
             value={settings.llm_api_format}
-            onChange={(e) =>
-              void updateSettings({ llm_api_format: e.target.value as LlmApiFormat })
-            }
-          >
-            {LLM_API_FORMAT_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label} — {opt.hint}
-              </option>
-            ))}
-          </select>
+            options={LLM_API_FORMAT_OPTIONS.map((opt) => ({
+              value: opt.value,
+              label: `${opt.label} — ${opt.hint}`,
+            }))}
+            onChange={(v) => void updateSettings({ llm_api_format: v as LlmApiFormat })}
+            aria-label="API 格式"
+          />
         </div>
 
         <div className="form-row">
@@ -213,23 +208,18 @@ export function LlmSettingsSection({
 
         <div className="form-row">
           <label htmlFor="llm-default-model">默认模型</label>
-          <select
+          <GlassSelect
             id="llm-default-model"
-            className="field input"
             value={settings.llm_default_model}
-            onChange={(e) =>
+            options={modelOptions.map((m) => ({ value: m, label: m }))}
+            onChange={(v) =>
               void updateSettings({
-                llm_default_model: e.target.value,
-                llm_model: e.target.value,
+                llm_default_model: v,
+                llm_model: v,
               })
             }
-          >
-            {modelOptions.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+            aria-label="默认模型"
+          />
           <p className="field-hint">未单独配置的 Agent 均使用此模型</p>
         </div>
 
@@ -304,39 +294,39 @@ export function LlmSettingsSection({
                       </div>
                     </td>
                     <td>
-                      <select
-                        className="field input input-sm"
+                      <GlassSelect
+                        size="sm"
                         value={cfg.model_override ?? ''}
-                        onChange={(e) =>
+                        options={[
+                          {
+                            value: '',
+                            label: `使用默认（${settings.llm_default_model}）`,
+                          },
+                          ...modelOptions.map((m) => ({ value: m, label: m })),
+                        ]}
+                        onChange={(v) =>
                           updateAgentConfig(agent.id, {
-                            model_override: e.target.value || null,
+                            model_override: v || null,
                           })
                         }
-                      >
-                        <option value="">使用默认（{settings.llm_default_model}）</option>
-                        {modelOptions.map((m) => (
-                          <option key={m} value={m}>
-                            {m}
-                          </option>
-                        ))}
-                      </select>
+                        aria-label={`${agent.name} 模型`}
+                      />
                     </td>
                     <td>
-                      <select
-                        className="field input input-sm"
+                      <GlassSelect
+                        size="sm"
                         value={cfg.speaking_style}
-                        onChange={(e) =>
+                        options={SPEAKING_STYLE_OPTIONS.map((opt) => ({
+                          value: opt.value,
+                          label: `${opt.label} — ${opt.desc}`,
+                        }))}
+                        onChange={(v) =>
                           updateAgentConfig(agent.id, {
-                            speaking_style: e.target.value as AgentSpeakingStyle,
+                            speaking_style: v as AgentSpeakingStyle,
                           })
                         }
-                      >
-                        {SPEAKING_STYLE_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label} — {opt.desc}
-                          </option>
-                        ))}
-                      </select>
+                        aria-label={`${agent.name} 说话风格`}
+                      />
                     </td>
                   </tr>
                 );

@@ -1,35 +1,35 @@
 import { useEffect, useId, useRef, useState } from 'react';
 
-export interface FilterDropdownOption {
+export interface GlassSelectOption {
   value: string;
   label: string;
 }
 
-interface FilterDropdownProps {
-  /** 按钮前缀，如「分类：」 */
-  prefix: string;
+interface GlassSelectProps {
+  id?: string;
   value: string;
-  options: FilterDropdownOption[];
+  options: GlassSelectOption[];
   onChange: (value: string) => void;
-  active?: boolean;
-  ariaLabel: string;
+  className?: string;
+  size?: 'md' | 'sm';
+  'aria-label'?: string;
 }
 
-/** 自定义筛选下拉，替代原生 select，避免深色模式下系统白底菜单 */
-export function FilterDropdown({
-  prefix,
+/** 表单用玻璃下拉，替代原生 select，避免深色模式下系统白底菜单 */
+export function GlassSelect({
+  id,
   value,
   options,
   onChange,
-  active = false,
-  ariaLabel,
-}: FilterDropdownProps) {
+  className = '',
+  size = 'md',
+  'aria-label': ariaLabel,
+}: GlassSelectProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listId = useId();
 
   const selected = options.find((o) => o.value === value) ?? options[0];
-  const displayLabel = selected ? `${prefix}${selected.label}` : prefix;
 
   useEffect(() => {
     if (!open) return;
@@ -48,30 +48,34 @@ export function FilterDropdown({
   }, [open]);
 
   return (
-    <div className={`filter-dropdown${open ? ' is-open' : ''}`} ref={rootRef}>
+    <div
+      className={`glass-select glass-select--${size}${open ? ' is-open' : ''} ${className}`.trim()}
+      ref={rootRef}
+    >
       <button
         type="button"
-        className={`filter-btn${active ? ' active' : ''}`}
+        id={id}
+        className="glass-select-trigger"
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listId}
         onClick={() => setOpen((v) => !v)}
       >
-        <span>{displayLabel}</span>
-        <span className="chev" aria-hidden>
+        <span className="glass-select-value">{selected?.label ?? '—'}</span>
+        <span className="glass-select-chev" aria-hidden>
           ▾
         </span>
       </button>
       {open && (
-        <ul className="filter-dropdown-menu" id={listId} role="listbox">
+        <ul className="glass-select-menu" id={listId} role="listbox">
           {options.map((opt) => (
-            <li key={opt.value || '__all__'} role="presentation">
+            <li key={opt.value || '__empty__'} role="presentation">
               <button
                 type="button"
                 role="option"
                 aria-selected={opt.value === value}
-                className={`filter-dropdown-item${opt.value === value ? ' is-selected' : ''}`}
+                className={`glass-select-item${opt.value === value ? ' is-selected' : ''}`}
                 onClick={() => {
                   onChange(opt.value);
                   setOpen(false);
