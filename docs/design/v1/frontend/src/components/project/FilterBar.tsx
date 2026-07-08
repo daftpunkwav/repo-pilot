@@ -56,7 +56,7 @@ export function FilterBar({ categories, tags, languages }: FilterBarProps) {
   );
 
   return (
-    <div className="filter-bar glass-card glass-card--panel glass-card--panel-overview" role="toolbar" aria-label="项目筛选">
+    <div className="filter-bar glass-card glass-card--overview-outer" role="toolbar" aria-label="项目筛选">
       <div className="filter-search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14}>
           <circle cx="11" cy="11" r="7" />

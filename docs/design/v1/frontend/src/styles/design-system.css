@@ -5,6 +5,9 @@
 
 /* ---------- Design Tokens ---------- */
 :root {
+  /* 让原生控件（select 下拉、滚动条、日期选择等）跟随浅色 */
+  color-scheme: light;
+
   /* Brand */
   --brand-900: #00275a;
   --brand-800: #003b82;
@@ -147,6 +150,9 @@
 
 /* ---------- Dark Theme ---------- */
 [data-theme="dark"] {
+  /* 让原生控件（select 下拉、滚动条等）渲染为深色，修复深色下白框 */
+  color-scheme: dark;
+
   --bg-50:  #1c1c1e;
   --bg-100: #1c1c1e;
   --bg-200: #000000;
