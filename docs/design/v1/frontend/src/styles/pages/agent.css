@@ -963,3 +963,47 @@
   color: var(--text-500);
   border-top: 1px solid var(--bg-300);
 }
+
+/* ==========================================================================
+   深色主题覆盖 · 修复以 --brand-50 作底导致的低对比/过亮高亮块
+   （Agent 4 栏为密集聊天布局，面板保持实心以保证可读性）
+   ========================================================================== */
+[data-theme='dark'] .session-item.active {
+  background: rgba(0, 122, 255, 0.16);
+}
+[data-theme='dark'] .session-tab.active {
+  background: rgba(255, 255, 255, 0.14);
+}
+[data-theme='dark'] .msg-routing,
+[data-theme='dark'] .streaming-indicator,
+[data-theme='dark'] .tool-log-row.running {
+  background: rgba(0, 122, 255, 0.16);
+  color: var(--brand-300);
+}
+[data-theme='dark'] .radio-option.selected,
+[data-theme='dark'] .chat-toolbar .ctx-chip.active,
+[data-theme='dark'] .embed-msg--user {
+  background: rgba(0, 122, 255, 0.14);
+}
+[data-theme='dark'] .question-text .q-tag,
+[data-theme='dark'] .ds-num {
+  background: rgba(0, 122, 255, 0.18);
+  color: var(--brand-300);
+}
+[data-theme='dark'] .msg-role {
+  background: rgba(255, 255, 255, 0.1);
+}
+[data-theme='dark'] .agent-avatar.active {
+  box-shadow: 0 0 0 2px var(--bg-100), 0 0 0 4px var(--brand-500);
+}
+[data-theme='dark'] .chat-input:focus-within {
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25);
+}
+[data-theme='dark'] .tool-log-row.success {
+  background: rgba(52, 199, 89, 0.16);
+  color: #4ce07a;
+}
+[data-theme='dark'] .degrade-tip {
+  background: rgba(255, 159, 10, 0.14);
+  color: #ffb84d;
+}
