@@ -26,6 +26,7 @@ import { useNoteStore } from '@/stores/noteStore';
 import { formatNumber, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
 import { formatDate } from '@/utils/date';
 import { AGENT_CARDS, categoryLabel } from '@/utils/labels';
+import { OVERVIEW_INNER_GLASS, OVERVIEW_OUTER_GLASS } from '@/constants/overviewGlass';
 
 const PD_PROGRESS: { id: ProjectProgress; label: string; className: string }[] = [
   { id: 'none', label: '未开始', className: 'progress-none' },
@@ -118,6 +119,10 @@ export function ProjectDetailPage() {
     addToast({ type: 'success', message: '笔记已保存' });
   };
 
+  const handleNewNote = () => {
+    startEditing('new', '新笔记', '');
+  };
+
   const copyReadme = async () => {
     if (!project?.readme) return;
     try {
@@ -133,7 +138,7 @@ export function ProjectDetailPage() {
   return (
     <div className="pd-shell">
       <section className="pd-main">
-        <div className="card pd-hero">
+        <div className={`pd-hero ${OVERVIEW_OUTER_GLASS}`}>
           <div className="pd-avatar">
             <svg viewBox="-11.5 -10.232 23 20.464" fill="none">
               <circle r="2.05" fill="#fff" />
@@ -173,7 +178,7 @@ export function ProjectDetailPage() {
               Scout 快速分析
             </button>
             <a
-              className="btn btn-github-outline"
+              className={`btn ${OVERVIEW_INNER_GLASS}`}
               href={project.url}
               target="_blank"
               rel="noreferrer"
@@ -183,7 +188,7 @@ export function ProjectDetailPage() {
           </div>
         </div>
 
-        <div className="card pd-progress">
+        <div className={`pd-progress ${OVERVIEW_OUTER_GLASS}`}>
           <div className="pd-progress-head">
             <span className="label">学习进度</span>
           </div>
@@ -259,7 +264,7 @@ export function ProjectDetailPage() {
                   +
                 </button>
               </div>
-              <button type="button" className="btn btn-sm" style={{ height: 28, marginLeft: 4 }} onClick={() => void copyReadme()}>
+              <button type="button" className={`btn btn-sm ${OVERVIEW_INNER_GLASS}`} style={{ height: 28, marginLeft: 4 }} onClick={() => void copyReadme()}>
                 复制全文
               </button>
             </div>
@@ -278,32 +283,53 @@ export function ProjectDetailPage() {
         )}
 
         {tab === 'notes' && (
-          <div className="card" style={{ padding: 20 }}>
-            {notes.length === 0 && !editingNoteId ? (
-              <EmptyState title="暂无笔记" description="写第一篇学习笔记" />
+          <div className={`pd-notes-panel ${OVERVIEW_OUTER_GLASS}`}>
+            <div className="pd-notes-toolbar">
+              <div>
+                <h3 className="pd-notes-title">项目笔记</h3>
+                <p className="muted small">共 {notes.length} 篇 · Markdown 编辑</p>
+              </div>
+              <button type="button" className="btn btn-primary btn-sm" onClick={handleNewNote}>
+                新建笔记
+              </button>
+            </div>
+
+            {!editingNoteId ? (
+              notes.length === 0 ? (
+                <EmptyState title="暂无笔记" description="为该项目写第一篇学习笔记" />
+              ) : (
+                <ul className="pd-notes-list">
+                  {notes.map((n) => (
+                    <li key={n.id}>
+                      <button
+                        type="button"
+                        className={`pd-notes-list-item ${OVERVIEW_INNER_GLASS}`}
+                        onClick={() => startEditing(n.id, n.title, n.content)}
+                      >
+                        <span className="pd-notes-list-item__title">{n.title}</span>
+                        <span className="pd-notes-list-item__meta">{formatDate(n.updated_at)}</span>
+                        <span className="pd-notes-list-item__snippet">
+                          {n.content.replace(/[#*`]/g, '').slice(0, 100)}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )
             ) : (
-              <>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  style={{ marginBottom: 12 }}
-                  onClick={() => startEditing('new', '新笔记', '')}
-                >
-                  新建笔记
-                </button>
-                {editingNoteId && (
-                  <NoteEditor
-                    onSave={() => void handleSaveNote()}
-                    saving={createNote.isPending || updateNote.isPending}
-                  />
-                )}
-              </>
+              <div className={`pd-notes-editor ${OVERVIEW_INNER_GLASS}`}>
+                <NoteEditor
+                  variant="notes"
+                  onSave={() => void handleSaveNote()}
+                  saving={createNote.isPending || updateNote.isPending}
+                />
+              </div>
             )}
           </div>
         )}
 
         {tab === 'ai' && (
-          <div className="card pd-readme" style={{ minHeight: 200 }}>
+          <div className={`pd-readme ${OVERVIEW_OUTER_GLASS}`} style={{ minHeight: 200 }}>
             <div className="pd-readme-toolbar">
               <div className="left">Scout AI 分析</div>
               {!scoutContent && (
@@ -323,7 +349,7 @@ export function ProjectDetailPage() {
         )}
 
         {tab === 'related' && (
-          <div className="card" style={{ padding: 16 }}>
+          <div className={`${OVERVIEW_OUTER_GLASS}`} style={{ padding: 16 }}>
             {related.length === 0 ? (
               <p className="muted" style={{ textAlign: 'center', padding: 24 }}>
                 暂无关联项目
@@ -354,7 +380,7 @@ export function ProjectDetailPage() {
       </section>
 
       <aside className="pd-side">
-        <div className="card">
+        <div className={OVERVIEW_OUTER_GLASS}>
           <div className="card-header" style={{ marginBottom: 12 }}>
             <div className="card-title">项目信息</div>
             <span className="card-subtitle">#{project.id}</span>
@@ -392,21 +418,21 @@ export function ProjectDetailPage() {
           <div className="pd-info-actions">
             <button
               type="button"
-              className="btn btn-secondary"
+              className={`btn btn-block ${OVERVIEW_INNER_GLASS}`}
               onClick={() => addToast({ type: 'info', message: '编辑项目（演示）' })}
             >
               编辑项目
             </button>
             <button
               type="button"
-              className="btn btn-secondary"
+              className={`btn btn-block ${OVERVIEW_INNER_GLASS}`}
               onClick={() => addToast({ type: 'info', message: '重新分类（演示）' })}
             >
               重新分类
             </button>
             <button
               type="button"
-              className="btn btn-secondary"
+              className={`btn btn-block ${OVERVIEW_INNER_GLASS}`}
               style={{ color: 'var(--error)' }}
               onClick={() => setDeleteOpen(true)}
             >
@@ -415,7 +441,7 @@ export function ProjectDetailPage() {
           </div>
         </div>
 
-        <div className="card">
+        <div className={OVERVIEW_OUTER_GLASS}>
           <div className="card-header">
             <div className="card-title">AI 学习助手</div>
             <span className="card-subtitle">6 agents</span>
@@ -433,13 +459,13 @@ export function ProjectDetailPage() {
                 </div>
                 <div className="pd-agent-name">{a.name}</div>
                 <div className="pd-agent-desc">{a.desc}</div>
-                <span className="btn btn-sm">调用</span>
+                <span className={`btn btn-sm ${OVERVIEW_INNER_GLASS}`}>调用</span>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="card">
+        <div className={OVERVIEW_OUTER_GLASS}>
           <div className="card-header">
             <div className="card-title">
               我的笔记{' '}
@@ -447,7 +473,7 @@ export function ProjectDetailPage() {
             </div>
             <button
               type="button"
-              className="btn btn-sm"
+              className={`btn btn-sm ${OVERVIEW_INNER_GLASS}`}
               onClick={() => {
                 startEditing('new', '新笔记', '');
                 setTab('notes');
@@ -488,7 +514,7 @@ export function ProjectDetailPage() {
           </div>
         </div>
 
-        <div className="card">
+        <div className={OVERVIEW_OUTER_GLASS}>
           <div className="card-header">
             <div className="card-title">相似的项目</div>
             <Link className="card-subtitle" to="/graph" style={{ color: 'var(--brand-500)' }}>
