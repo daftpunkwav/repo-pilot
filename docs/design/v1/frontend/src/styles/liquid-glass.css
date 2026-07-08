@@ -305,8 +305,135 @@
 }
 
 /* --------------------------------------------------------------------------
-   总览专用分层变体 · 外层更透/更柔，内层更实/更亮（不影响 Hero/Agent 标准 token）
+   总览页分层变体 · 外层 0.05/blur10 · 内层 0.1/blur50/内发光 2px 1px（项目页 panel-overview 不受影响）
    -------------------------------------------------------------------------- */
+.glass-card.glass-card--overview-outer {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: var(--lg-radius-card, 20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 0px 0px rgba(255, 255, 255, 0);
+}
+
+.glass-card.glass-card--overview-outer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+  pointer-events: none;
+}
+
+.glass-card.glass-card--overview-outer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.8),
+    transparent,
+    rgba(255, 255, 255, 0.3)
+  );
+  pointer-events: none;
+}
+
+.glass-card.glass-card--overview-inner {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(50px);
+  -webkit-backdrop-filter: blur(50px);
+  border-radius: var(--lg-radius-card, 20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 0 2px 1px rgba(255, 255, 255, 0.1);
+}
+
+.glass-card.glass-card--overview-inner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
+  pointer-events: none;
+}
+
+.glass-card.glass-card--overview-inner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.8),
+    transparent,
+    rgba(255, 255, 255, 0.3)
+  );
+  pointer-events: none;
+}
+
+[data-theme='dark'] .glass-card.glass-card--overview-outer {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0px 0px rgba(255, 255, 255, 0);
+}
+
+[data-theme='dark'] .glass-card.glass-card--overview-outer::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+}
+
+[data-theme='dark'] .glass-card.glass-card--overview-outer::after {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.45),
+    transparent,
+    rgba(255, 255, 255, 0.14)
+  );
+}
+
+[data-theme='dark'] .glass-card.glass-card--overview-inner {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 2px 1px rgba(255, 255, 255, 0.04);
+}
+
+[data-theme='dark'] .glass-card.glass-card--overview-inner::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+}
+
+[data-theme='dark'] .glass-card.glass-card--overview-inner::after {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.5),
+    transparent,
+    rgba(255, 255, 255, 0.14)
+  );
+}
+
+/* 项目页等仍沿用旧版柔亮变体 */
 .glass-card--panel.glass-card--panel-overview {
   --lg-panel-tint: rgba(255, 255, 255, 0.25);
   --lg-panel-blur: 11px;

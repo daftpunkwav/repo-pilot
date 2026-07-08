@@ -15,7 +15,9 @@ import { formatRelativeTime, formatDateTime } from '@/utils/date';
 import { formatNumber, langCssClass, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
 import { activityItemHref } from '@/utils/overviewLinks';
 import {
+  HERO_INNER_GLASS,
   HERO_OUTER_GLASS,
+  OVERVIEW_CHIP_GLASS,
   OVERVIEW_INNER_GLASS,
   OVERVIEW_OUTER_GLASS,
   OVERVIEW_SUMMARY_INNER_GLASS,
@@ -210,7 +212,7 @@ export function OverviewPage() {
           <div className="quick-actions">
             <Link
               to="/agent"
-              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive liquid-glass--pulse liquid-glass-btn quick-action-brand"
+              className={`btn ${HERO_INNER_GLASS} liquid-glass--pulse liquid-glass-btn quick-action-brand`}
               onMouseEnter={handleChatBtnLook}
               onMouseMove={handleChatBtnLook}
               onMouseLeave={handleChatBtnLookEnd}
@@ -219,19 +221,19 @@ export function OverviewPage() {
             </Link>
             <Link
               to="/projects"
-              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive liquid-glass-btn"
+              className={`btn ${HERO_INNER_GLASS} liquid-glass-btn`}
             >
               浏览项目库
             </Link>
             <Link
               to="/graph"
-              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive liquid-glass-btn"
+              className={`btn ${HERO_INNER_GLASS} liquid-glass-btn`}
             >
               查看图谱
             </Link>
             <Link
               to="/settings"
-              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive liquid-glass-btn"
+              className={`btn ${HERO_INNER_GLASS} liquid-glass-btn`}
             >
               设置
             </Link>
@@ -250,12 +252,12 @@ export function OverviewPage() {
               aria-label="Mentor 学习周报"
             >
               <div className="summary-head">
-                <div className="summary-avatar glass-card glass-card--control">M</div>
+                <div className={`summary-avatar ${OVERVIEW_CHIP_GLASS}`}>M</div>
                 <div className="summary-meta">
                   <div className="summary-agent">Mentor · 本周学习总结</div>
                   <div className="summary-time">由 AI 自动生成</div>
                 </div>
-                <span className="summary-badge glass-card glass-card--control">AI</span>
+                <span className={`summary-badge ${OVERVIEW_CHIP_GLASS}`}>AI</span>
               </div>
               <div className="summary-body">
                 <p>
@@ -290,7 +292,7 @@ export function OverviewPage() {
             <h3>最近活动</h3>
             <Link
               to="/agent"
-              className="more glass-card glass-card--control liquid-glass--pill liquid-glass--interactive"
+              className={`more ${HERO_INNER_GLASS}`}
             >
               查看全部 →
             </Link>
@@ -395,7 +397,7 @@ export function OverviewPage() {
             <h3>最近笔记</h3>
             <Link
               to="/notes"
-              className="more glass-card glass-card--control liquid-glass--pill liquid-glass--interactive"
+              className={`more ${HERO_INNER_GLASS}`}
             >
               查看全部 →
             </Link>
@@ -436,7 +438,7 @@ export function OverviewPage() {
                 key={p}
                 type="button"
                 className={`period-btn liquid-glass--pill${
-                  period === p ? ' glass-card glass-card--control active liquid-glass--interactive' : ''
+                  period === p ? ` ${HERO_INNER_GLASS} active` : ''
                 }`}
                 onClick={() => setPeriod(p)}
               >
@@ -466,7 +468,7 @@ export function OverviewPage() {
                     onMouseLeave={handleTrendingCardLeave}
                     onMouseMove={handleTrendingCardMove}
                   >
-                  <div className="trending-rank glass-card glass-card--control">{r.rank ?? index + 1}</div>
+                  <div className={`trending-rank ${OVERVIEW_CHIP_GLASS}`}>{r.rank ?? index + 1}</div>
                   <div className="trending-body">
                     <div className="trending-name">
                       <span className="owner">{owner}</span>

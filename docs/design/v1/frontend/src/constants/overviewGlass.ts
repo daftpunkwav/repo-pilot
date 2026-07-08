@@ -1,17 +1,18 @@
-/** Hero / Agent 行外层 · 标准 panel，不参与总览列表分层变体 */
-export const HERO_OUTER_GLASS = 'glass-card glass-card--panel';
+/** 总览外层 · 0.05 tint / blur 10px / 无内发光 */
+export const OVERVIEW_OUTER_GLASS = 'glass-card glass-card--overview-outer';
 
-/** Hero / Agent 行内层 · 标准 control pill */
-export const HERO_INNER_GLASS =
-  'overview-control-surface glass-card glass-card--control liquid-glass--pill liquid-glass--interactive';
+/** Hero / Agent 卡外层 · 与四宫格同参 */
+export const HERO_OUTER_GLASS = OVERVIEW_OUTER_GLASS;
 
-/** 总览四宫格 / 热门外层 · 更透更柔的 panel-overview */
-export const OVERVIEW_OUTER_GLASS =
-  'glass-card glass-card--panel glass-card--panel-overview';
-
-/** 总览列表条目内层 · 更实更亮的 control-overview pill */
+/** 总览内层 pill · 0.1 tint / blur 50px / 内发光 2px 1px */
 export const OVERVIEW_INNER_GLASS =
-  'overview-control-surface glass-card glass-card--control glass-card--control-overview liquid-glass--pill liquid-glass--interactive';
+  'overview-control-surface glass-card glass-card--overview-inner liquid-glass--pill liquid-glass--interactive';
 
-/** Mentor 周报内层 · 与列表条目同阶梯 */
+/** Hero 快捷按钮 / Agent meta / 轮播导航 · 与列表条目同参 */
+export const HERO_INNER_GLASS = OVERVIEW_INNER_GLASS;
+
+/** Mentor 周报内层 */
 export const OVERVIEW_SUMMARY_INNER_GLASS = OVERVIEW_INNER_GLASS;
+
+/** 头像 / 徽章 / 排名等小控件 · 内层玻璃（圆角由 overview.css 覆盖） */
+export const OVERVIEW_CHIP_GLASS = 'glass-card glass-card--overview-inner';

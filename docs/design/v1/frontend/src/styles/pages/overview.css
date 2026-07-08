@@ -310,35 +310,33 @@
     }
 
     /* 总览外层 panel · Hero / Agent 卡 / 进度 / 活动 / 推荐 / 笔记 */
-    .overview-hero-glass.glass-card--panel,
-    .agent-card-glass.glass-card--panel,
-    .panel.glass-card--panel,
-    .panel.glass-card--panel-overview,
-    .agent-carousel-card .agent-card-glass.glass-card--panel {
+    .overview-hero-glass.glass-card--overview-outer,
+    .agent-card-glass.glass-card--overview-outer,
+    .panel.glass-card--overview-outer,
+    .agent-carousel-card .agent-card-glass.glass-card--overview-outer {
       border-radius: var(--lg-radius-card, 20px);
     }
 
-    /* 总览内层 control · 与 Hero 快捷按钮同参数；overview 变体同圆角 */
-    .overview-control-surface.glass-card--control,
-    .agent-summary.glass-card--control,
-    .activity-item.glass-card--control,
-    .project-item.glass-card--control,
-    .note-item.glass-card--control,
-    .trending-card.glass-card--control,
-    .glass-card--control-overview,
-    .agent-card-meta.glass-card--control,
-    .agent-carousel-nav.glass-card--control {
+    /* 总览内层 · pill / chip；圆角由场景覆盖 */
+    .overview-control-surface.glass-card--overview-inner,
+    .agent-summary.glass-card--overview-inner,
+    .activity-item.glass-card--overview-inner,
+    .project-item.glass-card--overview-inner,
+    .note-item.glass-card--overview-inner,
+    .trending-card.glass-card--overview-inner,
+    .agent-card-meta.glass-card--overview-inner,
+    .agent-carousel-nav.glass-card--overview-inner {
       border-radius: var(--radius-btn);
     }
-    .summary-avatar.glass-card--control,
-    .summary-badge.glass-card--control {
+    .summary-avatar.glass-card--overview-inner,
+    .summary-badge.glass-card--overview-inner {
       border-radius: var(--radius-tile);
     }
-    .summary-badge.glass-card--control {
+    .summary-badge.glass-card--overview-inner {
       border-radius: var(--radius-pill);
     }
-    .activity-icon.glass-card--control,
-    .trending-rank.glass-card--control {
+    .activity-icon.glass-card--overview-inner,
+    .trending-rank.glass-card--overview-inner {
       border-radius: var(--radius-sm);
     }
 
@@ -720,14 +718,17 @@
     .fill-learned { background: var(--brand-300); }
     .fill-mastered { background: var(--success); }
 
-    /* 最近活动 · 每条为独立内层 control-overview pill */
+    /* 最近活动 · 每条为独立内层 overview-inner pill */
     .activity-list { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; }
-    /* 列表条目：禁止 8px 32px 外层 shadow 叠加（用透明 0，勿写 none） */
-    .panel-activity .activity-item.glass-card--control-overview,
-    .panel-recommend .project-item.glass-card--control-overview,
-    .panel-notes .note-item.glass-card--control-overview,
-    .trending-section .trending-card.glass-card--control-overview {
-      --lg-shadow-outer: 0 0 0 0 transparent;
+    /* 列表条目：禁止 8px 32px 外层 shadow 叠加 */
+    .panel-activity .activity-item.glass-card--overview-inner,
+    .panel-recommend .project-item.glass-card--overview-inner,
+    .panel-notes .note-item.glass-card--overview-inner,
+    .trending-section .trending-card.glass-card--overview-inner {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 0 2px 1px rgba(255, 255, 255, 0.1);
       position: relative;
       isolation: isolate;
     }
@@ -735,15 +736,38 @@
     .panel-recommend .project-item.liquid-glass--interactive:hover,
     .panel-notes .note-item.liquid-glass--interactive:hover,
     .trending-section .trending-card.liquid-glass--interactive.is-visible:hover {
-      --lg-shadow-outer: 0 4px 14px rgba(15, 23, 42, 0.07);
+      box-shadow:
+        0 4px 14px rgba(15, 23, 42, 0.07),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 0 2px 1px rgba(255, 255, 255, 0.1);
       transform: translateY(-1px);
     }
-    .panel-activity .activity-item.glass-card--control > *,
-    .panel-recommend .project-item.glass-card--control > *,
-    .panel-notes .note-item.glass-card--control > *,
-    .trending-section .trending-card.glass-card--control > * {
+    .panel-activity .activity-item.glass-card--overview-inner > *,
+    .panel-recommend .project-item.glass-card--overview-inner > *,
+    .panel-notes .note-item.glass-card--overview-inner > *,
+    .trending-section .trending-card.glass-card--overview-inner > * {
       position: relative;
       z-index: 1;
+    }
+    [data-theme='dark'] .panel-activity .activity-item.glass-card--overview-inner,
+    [data-theme='dark'] .panel-recommend .project-item.glass-card--overview-inner,
+    [data-theme='dark'] .panel-notes .note-item.glass-card--overview-inner,
+    [data-theme='dark'] .trending-section .trending-card.glass-card--overview-inner {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+        inset 0 0 2px 1px rgba(255, 255, 255, 0.04);
+    }
+    [data-theme='dark'] .panel-activity .activity-item.liquid-glass--interactive:hover,
+    [data-theme='dark'] .panel-recommend .project-item.liquid-glass--interactive:hover,
+    [data-theme='dark'] .panel-notes .note-item.liquid-glass--interactive:hover,
+    [data-theme='dark'] .trending-section .trending-card.liquid-glass--interactive.is-visible:hover {
+      box-shadow:
+        0 4px 14px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+        inset 0 0 2px 1px rgba(255, 255, 255, 0.04);
     }
     .panel-activity .activity-item {
       flex-shrink: 0;
@@ -1124,7 +1148,7 @@
     }
 
     /* 最近笔记 · 条目直接落在外层 panel */
-    /* 最近笔记 · 每条为独立内层 control-overview pill */
+    /* 最近笔记 · 每条为独立内层 overview-inner pill */
     .notes-list { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; }
     .note-item {
       padding: 10px 12px;
