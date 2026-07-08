@@ -172,3 +172,29 @@
 .graph-page-shell--collapsed .graph-content {
   flex: 1;
 }
+
+/* ==========================================================================
+   深色主题覆盖 · 将写死白色的浮层（工具栏/小地图/状态栏/提示）换成深色玻璃
+   ========================================================================== */
+[data-theme='dark'] .graph-toolbar {
+  background: rgba(28, 28, 30, 0.7);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme='dark'] .minimap {
+  background: rgba(28, 28, 30, 0.72);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme='dark'] .graph-statusbar {
+  background: rgba(28, 28, 30, 0.72);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme='dark'] .graph-hint {
+  background: rgba(28, 28, 30, 0.7);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+[data-theme='dark'] .minimap-frame {
+  fill: rgba(0, 122, 255, 0.14);
+}
+[data-theme='dark'] .node-circle {
+  stroke: rgba(255, 255, 255, 0.55);
+}
