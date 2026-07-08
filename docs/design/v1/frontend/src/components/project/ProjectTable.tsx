@@ -80,11 +80,7 @@ export function ProjectTable({ projects, tags, onImportClick }: ProjectTableProp
             </button>
             <button
               type="button"
-              className="btn"
-              style={{
-                background: 'rgba(255,255,255,0.7)',
-                border: '1px solid rgba(255,255,255,0.55)',
-              }}
+              className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive"
               onClick={onImportClick}
             >
               粘贴 URL 导入
