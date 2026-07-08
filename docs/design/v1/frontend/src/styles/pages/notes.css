@@ -103,12 +103,18 @@
 .notes-list-header h3 { font-size: 13px; font-weight: 700; margin: 0; }
 .notes-list-body { flex: 1; overflow-y: auto; padding: 4px 8px 12px; }
 .note-card {
+  display: block;
+  width: 100%;
+  text-align: left;
   padding: 12px;
   border-radius: var(--radius-icon);
   cursor: pointer;
   margin-bottom: 4px;
   transition: all 0.18s var(--ease);
   border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
 }
 .note-card:hover { background: rgba(0, 0, 0, 0.04); }
 .note-card.active {
@@ -142,17 +148,24 @@
 }
 .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 .note-grid-card {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  /* 玻璃外壳 · 对齐总览外层玻璃（overview-outer） */
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius);
   padding: 20px;
   cursor: pointer;
   transition: all 0.25s var(--ease-spring);
   min-height: 200px;
   display: flex; flex-direction: column;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
 }
 .note-grid-card:hover {
   transform: translateY(-3px);
@@ -337,3 +350,74 @@
 
 .notes-main { display: flex; flex-direction: column; min-width: 0; height: 100vh; }
 .notes-main .notes-shell { flex: 1; min-height: 0; }
+
+/* ==========================================================================
+   深色主题覆盖 · 将写死的浅色玻璃/边框换成深色自适应值
+   ========================================================================== */
+[data-theme='dark'] .notes-search {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+[data-theme='dark'] .notes-search kbd,
+[data-theme='dark'] .status-bar .right kbd {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+[data-theme='dark'] .view-toggle {
+  background: rgba(255, 255, 255, 0.06);
+}
+[data-theme='dark'] .view-btn.active {
+  background: rgba(255, 255, 255, 0.14);
+}
+[data-theme='dark'] .topbar-action:hover,
+[data-theme='dark'] .edit-toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 三栏面板 */
+[data-theme='dark'] .notes-list-pane {
+  background: rgba(255, 255, 255, 0.03);
+  border-right-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme='dark'] .edit-pane {
+  background: rgba(255, 255, 255, 0.02);
+}
+[data-theme='dark'] .preview-pane {
+  background: rgba(0, 0, 0, 0.12);
+  border-left-color: rgba(255, 255, 255, 0.08);
+}
+
+/* 列表卡片 */
+[data-theme='dark'] .note-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+[data-theme='dark'] .note-grid-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+[data-theme='dark'] .note-grid-card .meta {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+/* 编辑器工具栏 / 状态栏 */
+[data-theme='dark'] .edit-toolbar,
+[data-theme='dark'] .preview-toolbar {
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme='dark'] .edit-toolbar-divider {
+  background: rgba(255, 255, 255, 0.12);
+}
+[data-theme='dark'] .status-bar {
+  background: rgba(255, 255, 255, 0.04);
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+/* 空状态图标底 */
+[data-theme='dark'] .empty-notes .empty-icon {
+  background: linear-gradient(135deg, rgba(0, 122, 255, 0.22), rgba(0, 122, 255, 0.08));
+}
