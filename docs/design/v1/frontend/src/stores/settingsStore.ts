@@ -35,7 +35,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   updateSettings: async (data) => {
     const prev = get().settings;
     if (prev) {
-      set({ settings: { ...prev, ...data } });
+      const optimistic = { ...prev, ...data };
+      if (data.llm_default_model !== undefined) {
+        optimistic.llm_model = data.llm_default_model;
+      }
+      set({ settings: optimistic });
     }
     try {
       const api = getApi();
