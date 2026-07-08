@@ -60,7 +60,7 @@ export function ProfilePage() {
 
   return (
     <div className="page profile-page">
-      <GlassCard className="profile-header">
+      <GlassCard className="profile-header glass-card--overview-outer">
         {avatarUrl || user.avatar_url ? (
           <img
             src={avatarUrl || user.avatar_url}
@@ -76,7 +76,7 @@ export function ProfilePage() {
         <p className="profile-header__hint">v1.0 用户名注册后不可修改</p>
       </GlassCard>
 
-      <GlassCard>
+      <GlassCard className="glass-card--overview-outer">
         <h2>账号信息</h2>
         <dl className="profile-dl">
           <dt>用户 ID</dt>
@@ -103,7 +103,7 @@ export function ProfilePage() {
         </dl>
       </GlassCard>
 
-      <GlassCard>
+      <GlassCard className="glass-card--overview-outer">
         <h2>头像 URL</h2>
         <input
           className="input"
@@ -121,7 +121,7 @@ export function ProfilePage() {
         </button>
       </GlassCard>
 
-      <GlassCard>
+      <GlassCard className="glass-card--overview-outer">
         <h2>修改密码</h2>
         <label className="form-field">
           旧密码
