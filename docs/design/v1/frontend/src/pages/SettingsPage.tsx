@@ -5,6 +5,7 @@ import { getApi } from '@/api/client';
 import { useUIStore } from '@/stores/uiStore';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { LlmSettingsSection } from '@/components/settings/LlmSettingsSection';
 
 type Section = 'appearance' | 'github' | 'llm' | 'data' | 'about';
 
@@ -25,7 +26,6 @@ export function SettingsPage() {
   const [section, setSection] = useState<Section>('appearance');
   const [ghUser, setGhUser] = useState('');
   const [ghPat, setGhPat] = useState('');
-  const [llmKey, setLlmKey] = useState('');
   const [unbindId, setUnbindId] = useState<string | null>(null);
 
   if (isLoading || !settings) return <LoadingSpinner />;
@@ -191,73 +191,21 @@ export function SettingsPage() {
         {section === 'llm' && (
           <section className="settings-section glass-card glass-card--overview-outer">
             <h2>LLM 配置</h2>
-            <p className="section-desc">Agent 对话使用的模型与 API</p>
-            {!settings.llm_configured && (
-              <div className="alert alert-warning">
-                <strong>未配置</strong> — Agent 将使用规则降级模式。
-              </div>
-            )}
-            <div className="form-row">
-              <label>Provider</label>
-              <select
-                className="field input"
-                value={settings.llm_provider}
-                onChange={(e) => void updateSettings({ llm_provider: e.target.value })}
-              >
-                <option value="openai">OpenAI</option>
-                <option value="anthropic">Anthropic</option>
-                <option value="local">Local</option>
-              </select>
-            </div>
-            <div className="form-row">
-              <label>Model</label>
-              <input
-                className="field input"
-                value={settings.llm_model}
-                onChange={(e) => void updateSettings({ llm_model: e.target.value })}
-              />
-            </div>
-            <div className="form-row">
-              <label>API Key（当前 {settings.llm_api_key_masked}）</label>
-              <div className="field-with-action">
-                <input
-                  type="password"
-                  placeholder="sk-…"
-                  value={llmKey}
-                  onChange={(e) => setLlmKey(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="settings-actions" style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => {
-                  if (llmKey) {
-                    void updateSettings({
-                      llm_api_key_masked: `sk-****${llmKey.slice(-4)}`,
-                      llm_configured: true,
-                    });
-                    addToast({ type: 'success', message: '已保存' });
-                  }
-                }}
-              >
-                保存
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                disabled={isTestingLLM}
-                onClick={() => void testLLM()}
-              >
-                {isTestingLLM ? '测试中…' : '测试连通'}
-              </button>
-              {testResult && (
-                <span className={testResult.success ? 'text-success' : 'text-error'}>
-                  {testResult.success ? `成功 · ${testResult.latency_ms}ms` : '失败'}
-                </span>
-              )}
-            </div>
+            <p className="section-desc">供应商连接、模型列表与各 Agent 的模型与说话风格</p>
+            <LlmSettingsSection
+              settings={settings}
+              updateSettings={updateSettings}
+              testLLM={testLLM}
+              isTestingLLM={isTestingLLM}
+              testResult={testResult}
+              onSaveApiKey={(key) => {
+                void updateSettings({
+                  llm_api_key_masked: `sk-****${key.slice(-4)}`,
+                  llm_configured: true,
+                });
+                addToast({ type: 'success', message: 'API Key 已保存' });
+              }}
+            />
           </section>
         )}
 
