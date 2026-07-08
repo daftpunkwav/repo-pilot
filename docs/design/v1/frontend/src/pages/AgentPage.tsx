@@ -50,7 +50,7 @@ export function AgentPage() {
     return sessions.filter((s) => s.title.toLowerCase().includes(q));
   }, [sessions, sessionSearch]);
 
-  const contextProjects = (projectsData?.items ?? []).slice(0, 3);
+  const contextProjects = projectsData?.items ?? [];
 
   return (
     <>
