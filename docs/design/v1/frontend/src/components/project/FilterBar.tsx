@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Category, Project, Tag } from '@/api/types';
 import { useProjectStore } from '@/stores/projectStore';
+import { FilterDropdown } from './FilterDropdown';
 
 interface FilterBarProps {
   categories: Category[];
@@ -29,23 +30,6 @@ export function FilterBar({ categories, tags, languages }: FilterBarProps) {
     return () => clearTimeout(t);
   }, [localSearch, setSearch]);
 
-  const categoryLabelText = categoryId
-    ? `分类：${categories.find((c) => c.id === categoryId)?.name ?? categoryId}`
-    : '分类：全部';
-  const languageLabel = language ? `语言：${language}` : '语言：全部';
-  const progressLabelText = progress ? `进度：${progressLabel(progress)}` : '进度：全部';
-  const tagLabelText = tagId
-    ? `标签：${tags.find((t) => t.id === tagId)?.name ?? tagId}`
-    : '标签：全部';
-  const sortLabel =
-    sortBy === 'stars'
-      ? '排序：Stars'
-      : sortBy === 'name'
-        ? '排序：名称'
-        : sortBy === 'imported_at'
-          ? '排序：导入时间'
-          : '排序：最近更新';
-
   const langs = useMemo(() => {
     if (languages.length > 0) return languages;
     return [];
@@ -53,6 +37,51 @@ export function FilterBar({ categories, tags, languages }: FilterBarProps) {
 
   const hasActiveFilter = Boolean(
     categoryId || language || progress || tagId || localSearch
+  );
+
+  const categoryOptions = useMemo(
+    () => [
+      { value: '', label: '全部' },
+      ...categories.map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [categories]
+  );
+
+  const languageOptions = useMemo(
+    () => [
+      { value: '', label: '全部' },
+      ...langs.map((l) => ({ value: l, label: l })),
+    ],
+    [langs]
+  );
+
+  const progressOptions = useMemo(
+    () => [
+      { value: '', label: '全部' },
+      { value: 'none', label: '待开始' },
+      { value: 'learning', label: '学习中' },
+      { value: 'learned', label: '已学习' },
+      { value: 'mastered', label: '已掌握' },
+    ],
+    []
+  );
+
+  const tagOptions = useMemo(
+    () => [
+      { value: '', label: '全部' },
+      ...tags.map((t) => ({ value: t.id, label: t.name })),
+    ],
+    [tags]
+  );
+
+  const sortOptions = useMemo(
+    () => [
+      { value: 'updated_at', label: '最近更新' },
+      { value: 'imported_at', label: '导入时间' },
+      { value: 'stars', label: 'Stars' },
+      { value: 'name', label: '名称' },
+    ],
+    []
   );
 
   return (
@@ -70,96 +99,54 @@ export function FilterBar({ categories, tags, languages }: FilterBarProps) {
         />
       </div>
 
-      <label className={`filter-btn${categoryId ? ' active' : ''}`}>
-        <span>{categoryLabelText}</span>
-        <span className="chev">▾</span>
-        <select
-          className="filter-native-select"
-          value={categoryId ?? ''}
-          onChange={(e) => setCategoryId(e.target.value || null)}
-          aria-label="分类筛选"
-        >
-          <option value="">全部分类</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <FilterDropdown
+        prefix="分类："
+        value={categoryId ?? ''}
+        options={categoryOptions}
+        onChange={(v) => setCategoryId(v || null)}
+        active={Boolean(categoryId)}
+        ariaLabel="分类筛选"
+      />
 
-      <label className={`filter-btn${language ? ' active' : ''}`}>
-        <span>{languageLabel}</span>
-        <span className="chev">▾</span>
-        <select
-          className="filter-native-select"
-          value={language ?? ''}
-          onChange={(e) => setLanguage(e.target.value || null)}
-          aria-label="语言筛选"
-        >
-          <option value="">全部语言</option>
-          {langs.map((l) => (
-            <option key={l} value={l}>
-              {l}
-            </option>
-          ))}
-        </select>
-      </label>
+      <FilterDropdown
+        prefix="语言："
+        value={language ?? ''}
+        options={languageOptions}
+        onChange={(v) => setLanguage(v || null)}
+        active={Boolean(language)}
+        ariaLabel="语言筛选"
+      />
 
-      <label className={`filter-btn${progress ? ' active' : ''}`}>
-        <span>{progressLabelText}</span>
-        <span className="chev">▾</span>
-        <select
-          className="filter-native-select"
-          value={progress ?? ''}
-          onChange={(e) =>
-            setProgress((e.target.value || null) as Project['progress'] | null)
-          }
-          aria-label="进度筛选"
-        >
-          <option value="">全部进度</option>
-          <option value="none">待开始</option>
-          <option value="learning">学习中</option>
-          <option value="learned">已学习</option>
-          <option value="mastered">已掌握</option>
-        </select>
-      </label>
+      <FilterDropdown
+        prefix="进度："
+        value={progress ?? ''}
+        options={progressOptions}
+        onChange={(v) => setProgress((v || null) as Project['progress'] | null)}
+        active={Boolean(progress)}
+        ariaLabel="进度筛选"
+      />
 
-      <label className={`filter-btn${tagId ? ' active' : ''}`}>
-        <span>{tagLabelText}</span>
-        <span className="chev">▾</span>
-        <select
-          className="filter-native-select"
-          value={tagId ?? ''}
-          onChange={(e) => setTagId(e.target.value || null)}
-          aria-label="标签筛选"
-        >
-          <option value="">全部标签</option>
-          {tags.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <FilterDropdown
+        prefix="标签："
+        value={tagId ?? ''}
+        options={tagOptions}
+        onChange={(v) => setTagId(v || null)}
+        active={Boolean(tagId)}
+        ariaLabel="标签筛选"
+      />
 
-      <label className={`filter-btn${sortBy !== 'imported_at' ? ' active' : ''}`} style={{ marginLeft: 'auto' }}>
-        <span>{sortLabel}</span>
-        <span className="chev">▾</span>
-        <select
-          className="filter-native-select"
+      <div className="filter-dropdown filter-dropdown--sort">
+        <FilterDropdown
+          prefix="排序："
           value={sortBy}
-          onChange={(e) =>
-            setSortBy(e.target.value as 'name' | 'stars' | 'imported_at' | 'updated_at')
+          options={sortOptions}
+          onChange={(v) =>
+            setSortBy(v as 'name' | 'stars' | 'imported_at' | 'updated_at')
           }
-          aria-label="排序"
-        >
-          <option value="updated_at">最近更新</option>
-          <option value="imported_at">导入时间</option>
-          <option value="stars">Stars</option>
-          <option value="name">名称</option>
-        </select>
-      </label>
+          active={sortBy !== 'imported_at'}
+          ariaLabel="排序"
+        />
+      </div>
 
       {hasActiveFilter && (
         <button type="button" className="filter-clear" onClick={resetFilters}>
@@ -168,21 +155,6 @@ export function FilterBar({ categories, tags, languages }: FilterBarProps) {
       )}
     </div>
   );
-}
-
-function progressLabel(progress: Project['progress']): string {
-  switch (progress) {
-    case 'none':
-      return '待开始';
-    case 'learning':
-      return '学习中';
-    case 'learned':
-      return '已学习';
-    case 'mastered':
-      return '已掌握';
-    default:
-      return progress;
-  }
 }
 
 export function useProjectLanguages(projects: Project[]): string[] {
