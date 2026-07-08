@@ -843,3 +843,83 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   from { transform: translate(-50%, 20px); opacity: 0; }
   to { transform: translate(-50%, 0); opacity: 1; }
 }
+
+/* ==========================================================================
+   深色主题 · 基础组件覆盖（.card/.field/.stat/.table 等原本仅浅色）
+   高杠杆：一次性修复所有复用这些基础类的页面
+   ========================================================================== */
+[data-theme="dark"] .card {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14), 0 1px 2px rgba(0,0,0,0.4);
+}
+[data-theme="dark"] .card-hover:hover {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), var(--shadow-lg);
+}
+
+[data-theme="dark"] .field {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+[data-theme="dark"] .field:focus-within {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--brand-500);
+}
+
+[data-theme="dark"] .stat {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
+}
+
+[data-theme="dark"] .table {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.14);
+}
+[data-theme="dark"] .table th {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-400);
+}
+[data-theme="dark"] .table th,
+[data-theme="dark"] .table td {
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+}
+[data-theme="dark"] .table tbody tr:hover {
+  background: rgba(0, 122, 255, 0.12);
+}
+
+[data-theme="dark"] .filter-bar {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+[data-theme="dark"] .filter-chip {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: var(--text-700);
+}
+[data-theme="dark"] .filter-chip:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="dark"] .topbar-search {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+[data-theme="dark"] .topbar-search kbd {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+[data-theme="dark"] .topbar-action:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* 无分类徽章底（不影响 cat-* 彩色徽章） */
+[data-theme="dark"] .badge:not([class*="cat-"]) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-700);
+}
+[data-theme="dark"] .progress-none {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-700);
+}
