@@ -80,7 +80,9 @@ export function SettingsPage() {
             className={`subnav-item ${section === item.id ? 'active' : ''}`}
             onClick={() => setSection(item.id)}
           >
-            <span aria-hidden>{item.icon}</span>
+            <span className="subnav-icon" aria-hidden>
+              {item.icon}
+            </span>
             {item.label}
             {item.id === 'llm' && !settings.llm_configured && <span className="dot-unset" />}
           </button>
