@@ -4,9 +4,9 @@
        ============================================================ */
     .settings-shell {
       display: grid;
-      grid-template-columns: 200px 1fr;
+      grid-template-columns: 220px 1fr;
       gap: 32px;
-      max-width: 900px;          /* 表单密集型页面，主区比常规页窄 */
+      max-width: 1120px;         /* 加宽，避免宽屏左右过空 */
       margin: 0 auto;
       padding: 32px;
     }
@@ -32,20 +32,24 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      width: 100%;
       padding: 8px 12px;
+      border: 0;
+      background: transparent;
       border-radius: var(--radius-sm);
-      font-size: 13px;
-      font-weight: 500;
+      font: 500 13px/1 var(--font-sans);
       color: var(--text-800);
+      text-align: left;
       transition: background .15s var(--ease), color .15s var(--ease);
       cursor: pointer;
     }
     .subnav-item:hover { background: var(--bg-300); }
     .subnav-item.active {
-      background: var(--sidebar-active-bg);
-      color: var(--sidebar-active-text);
+      background: linear-gradient(135deg, rgba(0,122,255,0.15), rgba(0,122,255,0.08));
+      color: var(--brand-700);
       font-weight: 600;
     }
+    [data-theme="dark"] .subnav-item.active { color: var(--brand-400); }
     .subnav-item.disabled {
       opacity: .4;
       pointer-events: none;
@@ -64,7 +68,7 @@
 
     /* ---------- 内容右侧：section 间距 ---------- */
     .settings-main { min-width: 0; }
-    .settings-section { margin-bottom: 40px; }
+    .settings-section { margin-bottom: 24px; padding: 22px 26px; }
     .settings-section:last-child { margin-bottom: 0; }
     .settings-section h2 {
       font-size: 20px;
