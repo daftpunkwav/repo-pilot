@@ -442,17 +442,49 @@ export interface SSEError {
 // Settings & User Profile
 // ========================================
 
+export type LlmApiFormat = 'openai' | 'anthropic' | 'google' | 'ollama' | 'custom';
+
+/** Agent 回复语气 / 人格风格 */
+export type AgentSpeakingStyle =
+  | 'default'
+  | 'warm'
+  | 'sharp'
+  | 'professional'
+  | 'humorous'
+  | 'concise'
+  | 'mentor'
+  | 'socratic';
+
+/** 单个 Agent 的模型与风格覆盖 */
+export interface AgentLlmConfig {
+  agent_id: string;
+  /** null 表示使用全局 llm_default_model */
+  model_override: string | null;
+  speaking_style: AgentSpeakingStyle;
+}
+
 export interface Settings {
   theme: 'dark' | 'light';
   font_scale: number;
   code_font: string;
+  /** 供应商标识（预设 id 或 custom） */
   llm_provider: string;
+  /** 供应商展示名称（可自定义） */
+  llm_provider_display_name: string;
+  /** 全局默认模型 */
+  llm_default_model: string;
+  /** 兼容旧字段：当前生效模型，与 llm_default_model 同步 */
   llm_model: string;
   llm_api_base: string | null;
+  llm_api_format: LlmApiFormat;
+  /** 当前供应商下可选模型列表（用户可增删） */
+  llm_available_models: string[];
   llm_api_key_masked: string;
   llm_configured: boolean;
   llm_last_test?: string;
   llm_latency_ms?: number;
+  /** 各 Agent 独立模型与说话风格 */
+  agent_llm_configs: AgentLlmConfig[];
 }
 
 export type ProficiencyLevel = 'none' | 'basic' | 'intermediate' | 'advanced' | 'mastered';

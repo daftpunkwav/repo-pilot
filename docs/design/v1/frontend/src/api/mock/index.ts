@@ -746,7 +746,16 @@ export class MockApiClient implements IApiClient {
   async updateSettings(data: Partial<Settings>): Promise<ApiResponse<Settings>> {
     await delay();
     requireAuth();
-    this.settings = { ...this.settings, ...data };
+    const next = { ...this.settings, ...data };
+    if (data.llm_default_model !== undefined) {
+      next.llm_model = data.llm_default_model;
+    } else if (data.llm_model !== undefined && data.llm_default_model === undefined) {
+      next.llm_default_model = data.llm_model;
+    }
+    if (data.agent_llm_configs) {
+      next.agent_llm_configs = data.agent_llm_configs;
+    }
+    this.settings = next;
     return wrapResponse({ ...this.settings });
   }
 
