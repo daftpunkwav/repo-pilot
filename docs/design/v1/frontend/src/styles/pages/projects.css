@@ -337,16 +337,17 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  /* 玻璃外壳（panel-overview 变体） */
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.45);
+  /* 玻璃外壳 · 对齐总览外层玻璃（overview-outer） */
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow:
-    0 6px 24px rgba(15, 23, 42, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
 }
 .table th,
 .table td {
@@ -956,4 +957,110 @@
   .btn-scout:hover {
     transform: none;
   }
+}
+
+/* ==========================================================================
+   深色主题覆盖 · 将写死的浅色玻璃/边框换成深色自适应值
+   ========================================================================== */
+[data-theme='dark'] .table {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+[data-theme='dark'] .table th {
+  background: rgba(255, 255, 255, 0.08);
+}
+[data-theme='dark'] .table th,
+[data-theme='dark'] .table td {
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+}
+[data-theme='dark'] .table tbody tr:hover {
+  background: rgba(0, 122, 255, 0.12);
+}
+[data-theme='dark'] .table tbody tr.is-selected {
+  background: rgba(0, 122, 255, 0.18);
+}
+
+/* 筛选栏内层控件 · 内层磨砂玻璃 */
+[data-theme='dark'] .filter-search {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+[data-theme='dark'] .filter-search:focus-within {
+  background: rgba(255, 255, 255, 0.14);
+}
+[data-theme='dark'] .filter-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+[data-theme='dark'] .filter-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* 统计卡图标底 · 深色下降低亮度 */
+[data-theme='dark'] .stat-card .stat-icon {
+  background: rgba(0, 122, 255, 0.18);
+}
+[data-theme='dark'] .stat-card.stat-green .stat-icon {
+  background: rgba(52, 199, 89, 0.18);
+}
+[data-theme='dark'] .stat-card.stat-orange .stat-icon {
+  background: rgba(255, 159, 10, 0.18);
+}
+[data-theme='dark'] .stat-card.stat-purple .stat-icon {
+  background: rgba(94, 92, 230, 0.22);
+}
+
+/* 复选框 */
+[data-theme='dark'] .checkbox {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 批量操作按钮 */
+[data-theme='dark'] .bulk-bar__btn {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: var(--text-700);
+}
+[data-theme='dark'] .bulk-bar__btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* 分页玻璃 */
+[data-theme='dark'] .pagination .pages {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+[data-theme='dark'] .page-btn:hover:not(:disabled):not(.active) {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* 空状态玻璃 */
+[data-theme='dark'] .empty-state {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* 导入弹窗玻璃 */
+[data-theme='dark'] .import-agent-modal {
+  background: rgba(28, 28, 30, 0.82);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+[data-theme='dark'] .import-agent-modal__header,
+[data-theme='dark'] .import-agent-modal__biz {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme='dark'] .import-tabs {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+[data-theme='dark'] .import-tab.active {
+  background: rgba(255, 255, 255, 0.16);
 }
