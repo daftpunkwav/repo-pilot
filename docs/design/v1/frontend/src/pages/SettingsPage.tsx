@@ -89,7 +89,7 @@ export function SettingsPage() {
 
       <div className="settings-main">
         {section === 'appearance' && (
-          <section className="settings-section card">
+          <section className="settings-section glass-card glass-card--overview-outer">
             <h2>外观</h2>
             <p className="section-desc">主题与阅读舒适度</p>
             <div className="theme-cards">
@@ -152,7 +152,7 @@ export function SettingsPage() {
         )}
 
         {section === 'github' && (
-          <section className="settings-section card">
+          <section className="settings-section glass-card glass-card--overview-outer">
             <h2>GitHub</h2>
             <p className="section-desc">绑定账号以同步 Stars</p>
             {accounts.map((a) => (
@@ -189,7 +189,7 @@ export function SettingsPage() {
         )}
 
         {section === 'llm' && (
-          <section className="settings-section card">
+          <section className="settings-section glass-card glass-card--overview-outer">
             <h2>LLM 配置</h2>
             <p className="section-desc">Agent 对话使用的模型与 API</p>
             {!settings.llm_configured && (
@@ -262,7 +262,7 @@ export function SettingsPage() {
         )}
 
         {section === 'data' && (
-          <section className="settings-section card">
+          <section className="settings-section glass-card glass-card--overview-outer">
             <h2>数据</h2>
             <p className="section-desc">导出本地项目与笔记</p>
             <button type="button" className="btn btn-primary" style={{ marginRight: 8 }} onClick={() => void exportProjects()}>
@@ -275,7 +275,7 @@ export function SettingsPage() {
         )}
 
         {section === 'about' && (
-          <section className="settings-section about-card">
+          <section className="settings-section glass-card glass-card--overview-outer">
             <h2>关于 RepoPilot</h2>
             <div className="about-row">
               <span className="k">版本</span>
