@@ -17,10 +17,47 @@ interface QuestionPanelProps {
   onSkip?: () => void;
 }
 
+/** 检查某题是否已有效回答 */
+function isAnswered(answer: QuestionAnswer | undefined): boolean {
+  if (!answer) return false;
+  switch (answer.type) {
+    case 'radio':
+      return Boolean(answer.value);
+    case 'checkbox':
+      return Array.isArray(answer.values) && answer.values.length > 0;
+    case 'knowledge_map':
+      return Array.isArray(answer.checked) && answer.checked.length > 0;
+    case 'slider':
+      return typeof answer.value === 'number';
+    case 'drag_sort':
+      return Array.isArray(answer.order) && answer.order.length > 0;
+    default:
+      return false;
+  }
+}
+
 export function QuestionPanel({ question, onSubmit, onSkip }: QuestionPanelProps) {
   const [answers, setAnswers] = useState<Record<string, QuestionAnswer>>({});
+  const [invalidIds, setInvalidIds] = useState<Set<string>>(new Set());
+
+  const handleChange = (id: string, answer: QuestionAnswer) => {
+    setAnswers((prev) => ({ ...prev, [id]: answer }));
+    if (isAnswered(answer)) {
+      setInvalidIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
 
   const handleSubmit = () => {
+    const missing = question.questions.filter((q) => !isAnswered(answers[q.id])).map((q) => q.id);
+    if (missing.length > 0) {
+      setInvalidIds(new Set(missing));
+      return;
+    }
+    setInvalidIds(new Set());
     onSubmit(Object.values(answers));
   };
 
@@ -31,9 +68,13 @@ export function QuestionPanel({ question, onSubmit, onSkip }: QuestionPanelProps
         <QuestionItemRenderer
           key={q.id}
           item={q}
-          onChange={(a) => setAnswers((prev) => ({ ...prev, [q.id]: a }))}
+          invalid={invalidIds.has(q.id)}
+          onChange={(a) => handleChange(q.id, a)}
         />
       ))}
+      {invalidIds.size > 0 && (
+        <p className="question-panel__error">请回答所有必填问题后再提交</p>
+      )}
       <div className="question-panel__actions">
         <button type="button" className="btn btn-primary" onClick={handleSubmit}>
           {question.actions.submit.text}
@@ -50,22 +91,25 @@ export function QuestionPanel({ question, onSubmit, onSkip }: QuestionPanelProps
 
 function QuestionItemRenderer({
   item,
+  invalid,
   onChange,
 }: {
   item: QuestionItem;
+  invalid: boolean;
   onChange: (a: QuestionAnswer) => void;
 }) {
+  const className = invalid ? 'question-item question-item--invalid' : 'question-item';
   switch (item.type) {
     case 'radio':
-      return <RadioItem item={item} onChange={onChange} />;
+      return <RadioItem item={item} className={className} onChange={onChange} />;
     case 'checkbox':
-      return <CheckboxItem item={item} onChange={onChange} />;
+      return <CheckboxItem item={item} className={className} onChange={onChange} />;
     case 'slider':
-      return <SliderItem item={item} onChange={onChange} />;
+      return <SliderItem item={item} className={className} onChange={onChange} />;
     case 'drag_sort':
-      return <DragSortItem item={item} onChange={onChange} />;
+      return <DragSortItem item={item} className={className} onChange={onChange} />;
     case 'knowledge_map':
-      return <KnowledgeMapItem item={item} onChange={onChange} />;
+      return <KnowledgeMapItem item={item} className={className} onChange={onChange} />;
     default:
       return null;
   }
@@ -73,14 +117,16 @@ function QuestionItemRenderer({
 
 function RadioItem({
   item,
+  className,
   onChange,
 }: {
   item: RadioQuestion;
+  className: string;
   onChange: (a: QuestionAnswer) => void;
 }) {
   const [other, setOther] = useState('');
   return (
-    <fieldset className="question-item">
+    <fieldset className={className}>
       <legend>{item.text}</legend>
       {item.options.map((o) => (
         <label key={o.value} className="question-item__option">
@@ -112,9 +158,11 @@ function RadioItem({
 
 function CheckboxItem({
   item,
+  className,
   onChange,
 }: {
   item: CheckboxQuestion;
+  className: string;
   onChange: (a: QuestionAnswer) => void;
 }) {
   const [values, setValues] = useState<string[]>([]);
@@ -124,7 +172,7 @@ function CheckboxItem({
     onChange({ type: 'checkbox', values: next });
   };
   return (
-    <fieldset className="question-item">
+    <fieldset className={className}>
       <legend>{item.text}</legend>
       {item.options.map((o) => (
         <label key={o.value} className="question-item__option">
@@ -142,15 +190,17 @@ function CheckboxItem({
 
 function SliderItem({
   item,
+  className,
   onChange,
 }: {
   item: SliderQuestion;
+  className: string;
   onChange: (a: QuestionAnswer) => void;
 }) {
   const mid = Math.floor((item.min + item.max) / 2);
   const [value, setValue] = useState(mid);
   return (
-    <div className="question-item">
+    <div className={className}>
       <label>{item.text}</label>
       <input
         type="range"
@@ -170,9 +220,11 @@ function SliderItem({
 
 function DragSortItem({
   item,
+  className,
   onChange,
 }: {
   item: DragSortQuestion;
+  className: string;
   onChange: (a: QuestionAnswer) => void;
 }) {
   const [order, setOrder] = useState([...item.items]);
@@ -188,7 +240,7 @@ function DragSortItem({
   };
 
   return (
-    <div className="question-item">
+    <div className={className}>
       <p>{item.text}</p>
       <ul className="drag-sort-list">
         {order.map((label, i) => (
@@ -213,9 +265,11 @@ function DragSortItem({
 
 function KnowledgeMapItem({
   item,
+  className,
   onChange,
 }: {
   item: KnowledgeMapQuestion;
+  className: string;
   onChange: (a: QuestionAnswer) => void;
 }) {
   const [checked, setChecked] = useState<string[]>([]);
@@ -227,7 +281,7 @@ function KnowledgeMapItem({
   };
 
   return (
-    <div className="question-item">
+    <div className={className}>
       <p>{item.text}</p>
       <TreeNodes nodes={item.tree} checked={checked} onToggle={toggle} depth={0} />
     </div>
