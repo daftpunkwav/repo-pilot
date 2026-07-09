@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useProjectStats } from '@/hooks/useProjects';
 import { useAllNotes } from '@/hooks/useNotes';
 import { NavIcons } from '@/components/icons/NavIcons';
+import { userInitials } from '@/utils/user';
 
 /** 与 archive/sidebar.js NAV_ITEMS 顺序一致 */
 const NAV_ITEMS = [
@@ -26,7 +27,7 @@ export function Sidebar({ activePage }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
   const { data: stats } = useProjectStats();
   const { data: notes } = useAllNotes();
-  const initials = (user?.username ?? 'G').slice(0, 2).toUpperCase();
+  const initials = userInitials(user?.username);
 
   return (
     <aside className="sidebar">
