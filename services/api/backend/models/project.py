@@ -7,24 +7,21 @@ from typing import Optional
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
 
 
-class Category(Base):
-    __tablename__ = "categories"
+class Tag(Base):
+    __tablename__ = "tags"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(64), nullable=False)
-    icon: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
-    color: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
-    is_preset: Mapped[bool] = mapped_column(default=False)
 
 
 class Project(Base):

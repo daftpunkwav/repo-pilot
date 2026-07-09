@@ -7,7 +7,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_current_user, get_db
-from backend.models.project import Project, Category
+from backend.models.project import Project
 from backend.models.user import User
 from backend.schemas.common import DataResponse, ListResponse, OkResponse
 from backend.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate

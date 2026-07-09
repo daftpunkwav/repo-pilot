@@ -1,6 +1,6 @@
 """
-Agent 配置目录占位
+Agent 包入口 —— 子 Agent 模块随 Phase 6 逐步补齐。
 """
-from backend.agents import scout, mentor, navigator, curator, scribe, hub
+from backend.agents import hub
 
-__all__ = ["scout", "mentor", "navigator", "curator", "scribe", "hub"]
+__all__ = ["hub"]

@@ -12,15 +12,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from backend.database import Base
 
 
-class Tag(Base):
-    __tablename__ = "tags"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    name: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-
-
 class Note(Base):
     __tablename__ = "notes"
 
