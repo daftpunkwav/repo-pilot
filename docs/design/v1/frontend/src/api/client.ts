@@ -149,6 +149,37 @@ export interface IApiClient {
     message: string,
     context?: { selected_node_id?: string | null }
   ): AsyncGenerator<SSEEvent>;
+
+  /**
+   * Mock-only dev hook. Default implementation returns null; MockApiClient
+   * overrides to return the applied overview scenario round (1/2/3).
+   * Application code MUST treat this as opaque and use
+   * `getAppliedOverviewRoundIfMock(client)` instead of calling directly.
+   */
+  getAppliedOverviewRound?(): number | null;
+
+  /**
+   * Mock-only dev hook. Default implementation is a no-op; MockApiClient
+   * overrides to swap the in-memory overview dataset for E2E / dev URL
+   * (`?mock_round=`). Application code MUST go through
+   * `applyOverviewScenarioIfMock()`.
+   */
+  applyOverviewScenario?(round: number): void;
+}
+
+/**
+ * Mock-only: apply an overview scenario if the active client supports it.
+ * Safe to call on any IApiClient; returns true when the action was applied.
+ */
+export function applyOverviewScenarioIfMock(
+  client: IApiClient,
+  round: number
+): boolean {
+  const fn = (client as { applyOverviewScenario?: (r: number) => void })
+    .applyOverviewScenario;
+  if (typeof fn !== 'function') return false;
+  fn.call(client, round);
+  return true;
 }
 
 async function createApiClient(): Promise<IApiClient> {
@@ -180,4 +211,16 @@ export function getApi(): IApiClient {
     throw new Error('ApiClient not initialized. Call initApiClient() in main.tsx first.');
   }
   return apiClient;
+}
+
+/**
+ * Mock-only: read the currently applied overview round.
+ * Returns null when the active client is not a mock implementation.
+ * Use this instead of `instanceof MockApiClient` checks in app code so the
+ * boundary stays clean and tree-shakable when VITE_USE_MOCK=false.
+ */
+export function getAppliedOverviewRoundIfMock(client: IApiClient): number | null {
+  const maybe = (client as { getAppliedOverviewRound?: () => number | null })
+    .getAppliedOverviewRound;
+  return typeof maybe === 'function' ? maybe.call(client) : null;
 }
