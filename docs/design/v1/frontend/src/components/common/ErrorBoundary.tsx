@@ -25,7 +25,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
     // 生产环境可对接 Sentry / DataDog；本地仅 console.error
-    // eslint-disable-next-line no-console
     console.error('[ErrorBoundary]', error, info.componentStack);
   }
 

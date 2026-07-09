@@ -463,7 +463,7 @@ export function OverviewPage() {
                     style={{ ['--card-w' as string]: `${widthPct.toFixed(2)}%` }}
                     href={r.url}
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     onMouseEnter={(event) => handleTrendingCardEnter(r, event)}
                     onMouseLeave={handleTrendingCardLeave}
                     onMouseMove={handleTrendingCardMove}
