@@ -21,3 +21,23 @@ async def test_create_custom_category(client: AsyncClient, auth_headers: dict):
     )
     assert res.status_code == 200
     assert res.json()["data"]["name"] == "自定义"
+
+
+@pytest.mark.asyncio
+async def test_create_category_empty_name_returns_422(client: AsyncClient, auth_headers: dict):
+    res = await client.post(
+        "/api/v1/categories/",
+        headers=auth_headers,
+        json={"name": ""},
+    )
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_category_name_too_long_returns_422(client: AsyncClient, auth_headers: dict):
+    res = await client.post(
+        "/api/v1/categories/",
+        headers=auth_headers,
+        json={"name": "x" * 65},
+    )
+    assert res.status_code == 422

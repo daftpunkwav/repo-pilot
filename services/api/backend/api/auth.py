@@ -51,7 +51,7 @@ async def register(request: Request, data: UserCreate, db: AsyncSession = Depend
     if result.scalar_one_or_none():
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            detail={"code": "USERNAME_EXISTS", "message": "用户名或密码错误"},
+            detail={"code": "USERNAME_EXISTS", "message": "用户名已存在"},
         )
     user = User(
         username=data.username,

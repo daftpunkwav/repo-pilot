@@ -1,7 +1,9 @@
 """Pydantic schemas —— 用户设置（对齐前端 Settings 子集）"""
+import ipaddress
 from typing import Literal, Optional
+from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class AgentLlmConfigOut(BaseModel):
@@ -39,8 +41,35 @@ class SettingsUpdate(BaseModel):
     llm_api_base: Optional[str] = None
     llm_api_format: Optional[str] = None
     llm_available_models: Optional[list[str]] = None
-    llm_api_key: Optional[str] = None
+    llm_api_key: Optional[str] = Field(None, max_length=1024)
     agent_llm_configs: Optional[list[AgentLlmConfigOut]] = None
+
+    @field_validator("llm_api_base")
+    @classmethod
+    def _validate_llm_api_base(cls, v: Optional[str]) -> Optional[str]:
+        """校验为公开 HTTPS URL，禁止私有 IP、localhost 及内网域名。"""
+        if v is None:
+            return v
+        parsed = urlparse(v)
+        if parsed.scheme != "https":
+            raise ValueError("API 基础地址必须是 https 协议")
+        host = (parsed.hostname or "").lower()
+        if not host:
+            raise ValueError("API 基础地址必须包含有效域名")
+        if host in ("localhost", "127.0.0.1", "::1"):
+            raise ValueError("禁止指向 localhost")
+        # 禁止私有 IP
+        try:
+            addr = ipaddress.ip_address(host)
+        except ValueError:
+            addr = None  # 不是 IP，继续检查域名
+        if addr is not None and (addr.is_private or addr.is_loopback or addr.is_reserved):
+            raise ValueError("禁止指向私有 IP")
+        # 禁止常见内网域名后缀
+        internal_suffixes = (".local", ".internal", ".lan", ".corp", ".home")
+        if any(host.endswith(suffix) for suffix in internal_suffixes):
+            raise ValueError("禁止指向内网域名")
+        return v
 
 
 class LlmTestOut(BaseModel):

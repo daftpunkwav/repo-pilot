@@ -61,3 +61,47 @@ async def test_project_stats(client: AsyncClient, auth_headers: dict):
     res = await client.get("/api/v1/projects/stats", headers=auth_headers)
     assert res.status_code == 200
     assert "total" in res.json()["data"]
+
+
+@pytest.mark.asyncio
+async def test_create_project_name_too_long_returns_422(client: AsyncClient, auth_headers: dict):
+    res = await client.post(
+        "/api/v1/projects/",
+        headers=auth_headers,
+        json={"name": "x" * 129, "url": "https://github.com/x/y"},
+    )
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_project_description_too_long_returns_422(client: AsyncClient, auth_headers: dict):
+    res = await client.post(
+        "/api/v1/projects/",
+        headers=auth_headers,
+        json={
+            "name": "x/y",
+            "url": "https://github.com/x/y",
+            "description": "x" * 2049,
+        },
+    )
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_import_projects_rejects_non_github_url(client: AsyncClient, auth_headers: dict):
+    res = await client.post(
+        "/api/v1/projects/import",
+        headers=auth_headers,
+        json={"repos": [{"owner": "a", "repo": "b", "url": "https://example.com/a/b"}]},
+    )
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_import_projects_rejects_http_url(client: AsyncClient, auth_headers: dict):
+    res = await client.post(
+        "/api/v1/projects/import",
+        headers=auth_headers,
+        json={"repos": [{"owner": "a", "repo": "b", "url": "http://github.com/a/b"}]},
+    )
+    assert res.status_code == 422

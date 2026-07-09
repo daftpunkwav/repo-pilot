@@ -3,14 +3,21 @@ import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
-async def test_notes_flow(client: AsyncClient, auth_headers: dict):
+@pytest.fixture
+async def note_project_id(client: AsyncClient, auth_headers: dict) -> str:
+    """创建一个用于笔记测试的项目并返回其 ID。"""
     project = await client.post(
         "/api/v1/projects/",
         headers=auth_headers,
         json={"name": "n/p", "url": "https://github.com/n/p"},
     )
-    pid = project.json()["data"]["id"]
+    assert project.status_code == 200
+    return project.json()["data"]["id"]
+
+
+@pytest.mark.asyncio
+async def test_notes_flow(client: AsyncClient, auth_headers: dict, note_project_id: str):
+    pid = note_project_id
 
     create = await client.post(
         f"/api/v1/notes/projects/{pid}/notes",
@@ -37,3 +44,27 @@ async def test_notes_flow(client: AsyncClient, auth_headers: dict):
     )
     assert updated.status_code == 200
     assert updated.json()["data"]["title"] == "更新"
+
+
+@pytest.mark.asyncio
+async def test_create_note_empty_title_returns_422(
+    client: AsyncClient, auth_headers: dict, note_project_id: str
+):
+    res = await client.post(
+        f"/api/v1/notes/projects/{note_project_id}/notes",
+        headers=auth_headers,
+        json={"title": "", "content": "hello"},
+    )
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_create_note_content_too_long_returns_422(
+    client: AsyncClient, auth_headers: dict, note_project_id: str
+):
+    res = await client.post(
+        f"/api/v1/notes/projects/{note_project_id}/notes",
+        headers=auth_headers,
+        json={"title": "t", "content": "x" * 100_001},
+    )
+    assert res.status_code == 422

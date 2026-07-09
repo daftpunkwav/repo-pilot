@@ -16,7 +16,7 @@ class UserCreate(BaseModel):
 
 class UserLogin(BaseModel):
     username: str
-    password: str
+    password: str = Field(..., min_length=8, max_length=128)
     remember_me: bool = False
 
 
