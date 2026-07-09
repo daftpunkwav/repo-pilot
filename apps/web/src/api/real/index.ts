@@ -327,6 +327,13 @@ export class RealApiClient implements IApiClient {
     });
   }
 
+  async saveLlmApiKey(apiKey: string): Promise<ApiResponse<{ masked: string }>> {
+    return apiRequest<{ masked: string }>('/settings/api-key', {
+      method: 'POST',
+      body: JSON.stringify({ api_key: apiKey }),
+    });
+  }
+
   async testLLM(): Promise<
     ApiResponse<{ success: boolean; latency_ms: number; model: string }>
   > {

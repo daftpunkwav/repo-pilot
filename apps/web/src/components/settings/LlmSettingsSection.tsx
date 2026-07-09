@@ -15,7 +15,7 @@ interface LlmSettingsSectionProps {
   testLLM: () => Promise<unknown>;
   isTestingLLM: boolean;
   testResult: { success: boolean; latency_ms?: number } | null;
-  onSaveApiKey: (key: string) => void;
+  onSaveApiKey: (key: string) => Promise<unknown>;
 }
 
 export function LlmSettingsSection({
@@ -175,7 +175,12 @@ export function LlmSettingsSection({
             type="button"
             className="btn btn-primary"
             onClick={() => {
-              if (apiKeyDraft.trim()) onSaveApiKey(apiKeyDraft.trim());
+              const key = apiKeyDraft.trim();
+              if (!key) return;
+              void (async () => {
+                await onSaveApiKey(key);
+                setApiKeyDraft('');
+              })();
             }}
           >
             保存密钥

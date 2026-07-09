@@ -6,8 +6,8 @@ from backend.api.deps import get_current_user, get_db
 from backend.core.responses import wrap_data
 from backend.models.user import User
 from backend.schemas.common import DataResponse
-from backend.schemas.settings import LlmTestOut, SettingsOut, SettingsUpdate
-from backend.services.settings_service import get_settings, update_settings
+from backend.schemas.settings import ApiKeyIn, ApiKeyOut, LlmTestOut, SettingsOut, SettingsUpdate
+from backend.services.settings_service import get_settings, save_llm_api_key, update_settings
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -40,3 +40,14 @@ async def test_llm(
     return wrap_data(
         LlmTestOut(success=True, latency_ms=settings.llm_latency_ms or 0, model=settings.llm_model)
     )
+
+
+@router.post("/api-key", response_model=DataResponse[ApiKeyOut])
+async def save_api_key(
+    data: ApiKeyIn,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """接收真实 LLM API Key，持久化后返回掩码。"""
+    masked = await save_llm_api_key(db, current_user.id, data.api_key)
+    return wrap_data(ApiKeyOut(masked=masked))

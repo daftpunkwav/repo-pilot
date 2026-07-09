@@ -62,6 +62,18 @@ async def get_settings(db: AsyncSession, user_id: UUID) -> SettingsOut:
     return settings_to_out(user)
 
 
+async def save_llm_api_key(db: AsyncSession, user_id: UUID, api_key: str) -> str:
+    """保存真实 LLM API Key 到用户 settings_json，返回掩码。"""
+    user = await db.get(User, user_id)
+    assert user is not None
+    raw = _load_raw(user)
+    raw["llm_api_key"] = api_key
+    user.settings_json = json.dumps(raw, ensure_ascii=False)
+    await db.commit()
+    await db.refresh(user)
+    return _mask_api_key(api_key) or ""
+
+
 async def update_settings(
     db: AsyncSession, user_id: UUID, data: SettingsUpdate
 ) -> SettingsOut:

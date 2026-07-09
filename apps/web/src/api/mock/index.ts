@@ -108,6 +108,7 @@ export class MockApiClient implements IApiClient {
   private sessions: AgentSession[] = deepClone(MOCK_AGENT_SESSIONS);
   private messages: Record<string, AgentMessage[]> = deepClone(MOCK_AGENT_MESSAGES);
   private settings: Settings = deepClone(DEFAULT_SETTINGS);
+  private _llmApiKey = '';
   private userProfile: UserProfile = deepClone(DEFAULT_USER_PROFILE);
   private githubAccounts: GitHubAccount[] = [
     {
@@ -734,9 +735,19 @@ export class MockApiClient implements IApiClient {
 
   // ─── Settings ─────────────────────────────────────────
 
+  private maskApiKey(key: string): string {
+    if (!key) return '';
+    if (key.length <= 8) return 'sk-****';
+    return `${key.slice(0, 3)}****${key.slice(-4)}`;
+  }
+
   async getSettings(): Promise<ApiResponse<Settings>> {
     await delay();
     requireAuth();
+    if (this._llmApiKey) {
+      this.settings.llm_api_key_masked = this.maskApiKey(this._llmApiKey);
+      this.settings.llm_configured = true;
+    }
     return wrapResponse({ ...this.settings });
   }
 
@@ -754,6 +765,15 @@ export class MockApiClient implements IApiClient {
     }
     this.settings = next;
     return wrapResponse({ ...this.settings });
+  }
+
+  async saveLlmApiKey(apiKey: string): Promise<ApiResponse<{ masked: string }>> {
+    await delay();
+    requireAuth();
+    this._llmApiKey = apiKey;
+    this.settings.llm_api_key_masked = this.maskApiKey(apiKey);
+    this.settings.llm_configured = true;
+    return wrapResponse({ masked: this.settings.llm_api_key_masked });
   }
 
   async testLLM(): Promise<
