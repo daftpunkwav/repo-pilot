@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
@@ -72,16 +72,45 @@ async def revoke_refresh_token(db: AsyncSession, refresh_plain: str | None) -> N
         await db.commit()
 
 
+async def _revoke_all_user_refresh_tokens(db: AsyncSession, user_id: UUID) -> None:
+    """撤销指定用户的所有 refresh token（token family 级防御）。"""
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == user_id)
+        .values(revoked=True)
+    )
+    await db.commit()
+
+
 async def rotate_refresh_token(
     db: AsyncSession, refresh_plain: str
-) -> tuple[str, UUID] | None:
-    """校验 refresh 并返回新 access_token 与 user_id。"""
+) -> tuple[str, str, UUID] | None:
+    """校验 refresh，轮换并返回新 access_token、新 refresh_token 与 user_id。"""
     token_hash = hash_refresh_token(refresh_plain)
     result = await db.execute(
         select(RefreshToken).where(RefreshToken.token_hash == token_hash)
     )
     row = result.scalar_one_or_none()
-    if not row or row.revoked or row.expires_at < datetime.utcnow():
+    if not row:
         return None
+    # 重放检测：已撤销的 token 被再次使用，触发 token family 级防御
+    if row.revoked:
+        await _revoke_all_user_refresh_tokens(db, row.user_id)
+        return None
+    if row.expires_at < datetime.utcnow():
+        return None
+    # 旧 token 标记撤销，实现 rotation
+    row.revoked = True
+    # 签发新 token 对
     access = create_access_token({"sub": str(row.user_id)})
-    return access, row.user_id
+    new_refresh_plain = create_refresh_token_value()
+    new_expires = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
+    db.add(
+        RefreshToken(
+            user_id=row.user_id,
+            token_hash=hash_refresh_token(new_refresh_plain),
+            expires_at=new_expires,
+        )
+    )
+    await db.commit()
+    return access, new_refresh_plain, row.user_id

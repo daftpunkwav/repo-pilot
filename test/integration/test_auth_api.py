@@ -41,4 +41,18 @@ async def test_refresh_token(client: AsyncClient):
     refresh = reg.json()["data"]["refresh_token"]
     res = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
     assert res.status_code == 200
-    assert res.json()["data"]["access_token"]
+    data = res.json()["data"]
+    assert data["access_token"]
+    assert data["refresh_token"]
+    assert data["token_type"] == "bearer"
+
+    # 新 access token 可正常访问受保护端点
+    me = await client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {data['access_token']}"},
+    )
+    assert me.status_code == 200
+
+    # 旧 refresh token 再次使用应失败（重放检测）
+    replay = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
+    assert replay.status_code == 401

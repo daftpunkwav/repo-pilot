@@ -71,8 +71,8 @@ async def refresh(data: RefreshBody, db: AsyncSession = Depends(get_db)):
             status.HTTP_401_UNAUTHORIZED,
             detail={"code": "AUTH_FAILED", "message": "Refresh token 无效"},
         )
-    access, _ = rotated
-    return wrap_data(AccessTokenOut(access_token=access))
+    access, refresh, _ = rotated
+    return wrap_data(AccessTokenOut(access_token=access, refresh_token=refresh))
 
 
 @router.post("/logout", response_model=DataResponse[OkData])
