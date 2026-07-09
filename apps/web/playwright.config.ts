@@ -19,5 +19,9 @@ export default defineConfig({
     command: `npm run dev -- --port ${E2E_PORT} --strictPort`,
     url: `http://localhost:${E2E_PORT}`,
     reuseExistingServer: false,
+    env: {
+      ...process.env,
+      VITE_USE_MOCK: 'true',
+    },
   },
 });

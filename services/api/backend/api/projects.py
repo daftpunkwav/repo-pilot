@@ -24,6 +24,7 @@ from backend.services.project_service import (
     build_project_from_create,
     import_repos,
     list_user_projects,
+    load_tags_map,
     project_stats,
     project_to_out,
 )
@@ -34,25 +35,35 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 @router.get("/", response_model=PaginatedResponse[ProjectOut])
 async def list_projects(
     keyword: str = Query(""),
+    search: str = Query(""),
     lang: str = Query(""),
+    language: str = Query(""),
+    category_id: UUID | None = Query(None),
+    tag_id: UUID | None = Query(None),
     star_min: int = Query(0),
     star_max: int | None = Query(None),
     sort: str = Query(""),
+    sort_by: str = Query(""),
     progress: str = Query(""),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    kw = keyword or search
+    lg = lang or language
+    sort_key = sort or sort_by
     items, total = await list_user_projects(
         db,
         current_user.id,
-        keyword=keyword,
-        lang=lang,
+        keyword=kw,
+        lang=lg,
         star_min=star_min,
         star_max=star_max,
-        sort=sort,
+        sort=sort_key,
         progress=progress,
+        category_id=category_id,
+        tag_id=tag_id,
         page=page,
         page_size=page_size,
     )
@@ -78,7 +89,7 @@ async def create_project(
     db.add(project)
     await db.commit()
     await db.refresh(project)
-    return wrap_data(project_to_out(project))
+    return wrap_data(project_to_out(project, (await load_tags_map(db, [project.id])).get(project.id, [])))
 
 
 @router.get("/{project_id}", response_model=DataResponse[ProjectOut])
@@ -93,7 +104,7 @@ async def get_project(
             status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Project not found"},
         )
-    return wrap_data(project_to_out(project))
+    return wrap_data(project_to_out(project, (await load_tags_map(db, [project.id])).get(project.id, [])))
 
 
 @router.put("/{project_id}", response_model=DataResponse[ProjectOut])
@@ -113,7 +124,7 @@ async def update_project(
         setattr(project, key, value)
     await db.commit()
     await db.refresh(project)
-    return wrap_data(project_to_out(project))
+    return wrap_data(project_to_out(project, (await load_tags_map(db, [project.id])).get(project.id, [])))
 
 
 @router.delete("/{project_id}", response_model=DataResponse[dict])

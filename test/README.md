@@ -20,6 +20,11 @@ npm run test:web
 | `module/` | 模块测试：schema / 模型元数据 |
 | `business/` | 业务逻辑测试：service 层 |
 | `integration/` | 集成测试：HTTP API 端到端 |
+| `integration/test_tags_api.py` | 标签 CRUD |
+| `integration/test_settings_api.py` | 设置持久化 |
+| `integration/test_profile_api.py` | 用户画像 |
+| `integration/test_overview_api.py` | 总览聚合 |
+| `integration/test_agent_api.py` | Agent 会话 |
 
 ## 环境
 

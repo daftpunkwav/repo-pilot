@@ -188,7 +188,8 @@ async function createApiClient(): Promise<IApiClient> {
     const { MockApiClient } = await import('./mock');
     return new MockApiClient();
   }
-  throw new Error('Real API client not implemented. Set VITE_USE_MOCK=true.');
+  const { RealApiClient } = await import('./real');
+  return new RealApiClient();
 }
 
 let apiClientPromise: Promise<IApiClient> | null = null;

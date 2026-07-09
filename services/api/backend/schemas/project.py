@@ -73,6 +73,7 @@ class ProjectStats(BaseModel):
     total: int
     by_progress: dict[str, int]
     by_language: dict[str, int]
+    by_category: dict[str, int] = Field(default_factory=dict)
 
 
 class ProgressUpdateOut(BaseModel):

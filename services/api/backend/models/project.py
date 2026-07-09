@@ -5,11 +5,19 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
+
+# 项目与标签多对多关联
+project_tags = Table(
+    "project_tags",
+    Base.metadata,
+    Column("project_id", UUID(as_uuid=True), ForeignKey("projects.id"), primary_key=True),
+    Column("tag_id", UUID(as_uuid=True), ForeignKey("tags.id"), primary_key=True),
+)
 
 
 class Tag(Base):

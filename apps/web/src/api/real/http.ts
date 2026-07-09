@@ -1,0 +1,89 @@
+/** HTTP 客户端 —— 真实后端请求与 JWT 刷新 */
+import type { ApiError, ApiResponse } from '@/api/types';
+
+const API_PREFIX = '/api/v1';
+export const TOKEN_KEY = 'rp_token';
+export const REFRESH_KEY = 'rp_refresh';
+
+function baseUrl(): string {
+  return import.meta.env.VITE_API_BASE_URL ?? '';
+}
+
+function buildUrl(path: string, params?: Record<string, string | number | undefined>): string {
+  const url = new URL(`${baseUrl()}${API_PREFIX}${path}`, window.location.origin);
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      if (v !== undefined && v !== '') url.searchParams.set(k, String(v));
+    }
+  }
+  return url.toString();
+}
+
+async function parseJson<T>(res: Response): Promise<ApiResponse<T>> {
+  const json = (await res.json()) as ApiResponse<T> | ApiError;
+  if (!res.ok) {
+    throw json;
+  }
+  return json as ApiResponse<T>;
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  const refresh = localStorage.getItem(REFRESH_KEY);
+  if (!refresh) return false;
+  const res = await fetch(buildUrl('/auth/refresh'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refresh }),
+  });
+  if (!res.ok) return false;
+  const json = (await res.json()) as ApiResponse<{ access_token: string }>;
+  localStorage.setItem(TOKEN_KEY, json.data.access_token);
+  return true;
+}
+
+export async function apiRequest<T>(
+  path: string,
+  options: RequestInit = {},
+  params?: Record<string, string | number | undefined>
+): Promise<ApiResponse<T>> {
+  const headers = new Headers(options.headers);
+  if (options.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  let res = await fetch(buildUrl(path, params), { ...options, headers });
+  if (res.status === 401 && (await refreshAccessToken())) {
+    const retryHeaders = new Headers(options.headers);
+    if (options.body && !retryHeaders.has('Content-Type')) {
+      retryHeaders.set('Content-Type', 'application/json');
+    }
+    const newToken = localStorage.getItem(TOKEN_KEY);
+    if (newToken) retryHeaders.set('Authorization', `Bearer ${newToken}`);
+    res = await fetch(buildUrl(path, params), { ...options, headers: retryHeaders });
+  }
+  return parseJson<T>(res);
+}
+
+export async function apiSSE(
+  path: string,
+  body: unknown
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'text/event-stream',
+  };
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(buildUrl(path), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const json = await res.json();
+    throw json;
+  }
+  return res;
+}

@@ -2,7 +2,7 @@
 from backend.models.agent import AgentMessage, AgentSession, ProjectAnalysis, UserProfile
 from backend.models.category import Category
 from backend.models.note import Note
-from backend.models.project import Project, Tag
+from backend.models.project import Project, Tag, project_tags
 from backend.models.user import RefreshToken, User
 
 __all__ = [
@@ -11,6 +11,7 @@ __all__ = [
     "UserProfile",
     "Project",
     "Tag",
+    "project_tags",
     "Category",
     "Note",
     "AgentSession",

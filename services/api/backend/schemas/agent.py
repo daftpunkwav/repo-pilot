@@ -1,10 +1,11 @@
 """
 Pydantic schemas —— Agent 相关请求/响应
 """
-from pydantic import BaseModel
-from uuid import UUID
 from datetime import datetime
-from typing import Optional, Any
+from typing import Any, Literal, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class AgentChatRequest(BaseModel):
@@ -12,6 +13,10 @@ class AgentChatRequest(BaseModel):
     message: str
     project_id: Optional[UUID] = None
     preferred_agent: Optional[str] = None
+
+
+class AgentChatBody(BaseModel):
+    message: str = Field(..., min_length=1)
 
 
 class AgentQuestionAnswer(BaseModel):
@@ -27,23 +32,52 @@ class AgentAnalyzeRequest(BaseModel):
 
 class AgentMessageOut(BaseModel):
     id: UUID
+    session_id: UUID
+    agent: str
     role: str
-    agent_id: Optional[str] = None
-    content: str
-    content_type: str = "text"
-    metadata: dict = {}
-    created_at: Optional[datetime] = None
-
-    model_config = {"from_attributes": True}
+    content: Optional[str] = None
+    created_at: str
 
 
 class AgentSessionOut(BaseModel):
     id: UUID
     title: str
-    project_id: Optional[UUID] = None
-    active_agent: str
-    status: str
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    agent: str
+    updated_at: str
+    unread: bool = False
 
-    model_config = {"from_attributes": True}
+
+class AgentSessionDetailOut(AgentSessionOut):
+    messages: list[AgentMessageOut] = Field(default_factory=list)
+
+
+class AgentProfileOut(BaseModel):
+    id: str
+    name: str
+    description: str
+    avatar_emoji: str
+    capabilities: list[str]
+
+
+class AgentPermissionsOut(BaseModel):
+    allow_web_search: bool = True
+    allow_github_api: bool = True
+    allow_file_write: bool = False
+    max_iterations: int = 10
+    max_tokens_per_turn: int = 4096
+
+
+class ContextWindowSegmentOut(BaseModel):
+    label: str
+    tokens: int
+    kind: Literal["system", "skill", "memory", "tools", "messages", "other"]
+
+
+class ContextWindowStatsOut(BaseModel):
+    session_id: Optional[str] = None
+    model: str
+    context_limit: int
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    segments: list[ContextWindowSegmentOut] = Field(default_factory=list)

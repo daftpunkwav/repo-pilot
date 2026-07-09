@@ -13,8 +13,11 @@ from backend.api import (
     github,
     graph,
     notes,
+    overview,
     projects,
     settings as settings_api,
+    tags,
+    user,
 )
 from backend.config import get_settings
 from backend.database import get_session_factory, init_db
@@ -52,6 +55,9 @@ app.include_router(projects.router, prefix=api)
 app.include_router(categories.router, prefix=api)
 app.include_router(notes.router, prefix=api)
 app.include_router(graph.router, prefix=api)
+app.include_router(tags.router, prefix=api)
+app.include_router(overview.router, prefix=api)
+app.include_router(user.router, prefix=api)
 app.include_router(agent.router, prefix=api)
 app.include_router(github.router, prefix=api)
 app.include_router(settings_api.router, prefix=api)
