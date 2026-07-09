@@ -6,7 +6,11 @@ from datetime import datetime
 from backend.database import get_session_factory, init_db, reset_database
 from backend.models.user import User
 from backend.core.security import hash_password
-from backend.services.auth_service import issue_tokens, user_to_out
+from backend.services.auth_service import (
+    issue_tokens,
+    rotate_refresh_token,
+    user_to_out,
+)
 from backend.config import get_settings
 import os
 
@@ -45,3 +49,33 @@ def test_user_to_out_github_bound_false():
     )
     out = user_to_out(user)
     assert out.github_bound is False
+
+
+@pytest.mark.asyncio
+async def test_rotate_refresh_token_rotation(db_session):
+    session, user = db_session
+    tokens = await issue_tokens(session, user)
+    old_refresh = tokens.refresh_token
+
+    rotated = await rotate_refresh_token(session, old_refresh)
+    assert rotated is not None
+    access, new_refresh, user_id = rotated
+    assert access
+    assert new_refresh
+    assert new_refresh != old_refresh
+    assert user_id == user.id
+
+
+@pytest.mark.asyncio
+async def test_rotate_refresh_token_replay_detection(db_session):
+    session, user = db_session
+    tokens = await issue_tokens(session, user)
+    old_refresh = tokens.refresh_token
+
+    # 第一次刷新成功
+    first = await rotate_refresh_token(session, old_refresh)
+    assert first is not None
+
+    # 使用已被撤销的旧 token 再次刷新应失败
+    replay = await rotate_refresh_token(session, old_refresh)
+    assert replay is None
