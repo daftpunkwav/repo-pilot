@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -23,6 +23,13 @@ function resolveCrumbLabel(pathname: string): string {
   return PAGE_LABEL[pathname] ?? '总览';
 }
 
+function readSystemPrefersDark(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return false;
+  }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
 export function Topbar() {
   const user = useAuthStore((s) => s.user);
   const theme = useUIStore((s) => s.theme);
@@ -31,7 +38,18 @@ export function Topbar() {
   const location = useLocation();
   const searchRef = useRef<HTMLInputElement>(null);
   const initials = (user?.username ?? 'U').slice(0, 2).toUpperCase();
-  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  // matchMedia 在 jsdom 不存在；放到 effect 里 + 状态化避免每次渲染调用
+  const [systemDark, setSystemDark] = useState<boolean>(readSystemPrefersDark);
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const update = () => setSystemDark(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  const isDark = theme === 'dark' || (theme === 'system' && systemDark);
 
   const onSearchKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
