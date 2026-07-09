@@ -9,6 +9,10 @@
   "scripts": {
     "dev:web": "npm run dev -w @repopilot/web",
     "build:web": "npm run build -w @repopilot/web",
-    "preview:web": "npm run preview -w @repopilot/web"
+    "preview:web": "npm run preview -w @repopilot/web",
+    "test:web": "npm run test -w @repopilot/web",
+    "test:web:e2e": "npm run test:e2e -w @repopilot/web",
+    "lint:web": "npm run lint -w @repopilot/web",
+    "typecheck:web": "npm run typecheck -w @repopilot/web"
   }
 }
