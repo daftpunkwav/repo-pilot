@@ -67,16 +67,21 @@ export function NotesPage() {
       addToast({ type: 'warning', message: '请输入标题' });
       return;
     }
-    if (editingNoteId && editingNoteId.startsWith('n_')) {
-      await updateNote.mutateAsync({ id: editingNoteId, title, content });
-    } else if (newProjectId) {
-      await createNote.mutateAsync({ projectId: newProjectId, title, content });
-    } else {
-      addToast({ type: 'warning', message: '请选择关联项目' });
-      return;
+    try {
+      if (editingNoteId && editingNoteId.startsWith('n_')) {
+        await updateNote.mutateAsync({ id: editingNoteId, title, content });
+      } else if (newProjectId) {
+        await createNote.mutateAsync({ projectId: newProjectId, title, content });
+      } else {
+        addToast({ type: 'warning', message: '请选择关联项目' });
+        return;
+      }
+      setSaved(true);
+      addToast({ type: 'success', message: '笔记已保存' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '保存失败';
+      addToast({ type: 'error', message });
     }
-    setSaved(true);
-    addToast({ type: 'success', message: '笔记已保存' });
   };
 
   if (isLoading) return <LoadingSpinner fullScreen />;
