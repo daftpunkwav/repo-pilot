@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useSettings, useTheme } from '@/hooks/useSettings';
+import { useSettings } from '@/hooks/useSettings';
+import { useTheme } from '@/hooks/useTheme';
 import { useGithubAccounts } from '@/hooks/useProjects';
 import { getApi } from '@/api/client';
 import { useUIStore } from '@/stores/uiStore';
