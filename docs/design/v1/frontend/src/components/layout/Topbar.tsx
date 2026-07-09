@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
+import { userInitials } from '@/utils/user';
 
 const PAGE_LABEL: Record<string, string> = {
   '/': '总览',
@@ -37,7 +38,7 @@ export function Topbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const searchRef = useRef<HTMLInputElement>(null);
-  const initials = (user?.username ?? 'U').slice(0, 2).toUpperCase();
+  const initials = userInitials(user?.username);
 
   // matchMedia 在 jsdom 不存在；放到 effect 里 + 状态化避免每次渲染调用
   const [systemDark, setSystemDark] = useState<boolean>(readSystemPrefersDark);
