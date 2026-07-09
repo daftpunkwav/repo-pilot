@@ -34,6 +34,7 @@ interface AgentState {
   pendingQuestion: AgentQuestion | null;
   toolCalls: Map<string, ToolCallEntry>;
   error: string | null;
+  streamAbortController: AbortController | null;
   loadSessions: () => Promise<void>;
   switchSession: (sessionId: string) => Promise<void>;
   createSession: () => Promise<void>;
@@ -45,6 +46,7 @@ interface AgentState {
   clearError: () => void;
   processSSEStream: (stream: AsyncGenerator<SSEEvent>) => Promise<void>;
   resetStreamState: () => void;
+  cancelStream: () => void;
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -58,6 +60,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   pendingQuestion: null,
   toolCalls: new Map(),
   error: null,
+  streamAbortController: null,
 
   loadSessions: async () => {
     const api = getApi();
@@ -112,6 +115,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     const { currentSessionId } = get();
     if (!currentSessionId) return;
 
+    // 取消仍在进行的旧流
+    get().cancelStream();
+
     const userMsg: AgentMessage = {
       id: `temp_${Date.now()}`,
       session_id: currentSessionId,
@@ -130,8 +136,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       toolCalls: new Map(),
     }));
 
+    const controller = new AbortController();
+    set({ streamAbortController: controller });
+
     const api = getApi();
-    const stream = api.chatAgent(currentSessionId, message);
+    const stream = api.chatAgent(currentSessionId, message, controller.signal);
     await get().processSSEStream(stream);
   },
 
@@ -139,17 +148,23 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     const { currentSessionId, pendingQuestion } = get();
     if (!currentSessionId || !pendingQuestion) return;
 
+    get().cancelStream();
+
     set({
       pendingQuestion: null,
       streaming: true,
       streamingContent: '',
     });
 
+    const controller = new AbortController();
+    set({ streamAbortController: controller });
+
     const api = getApi();
     const stream = api.answerQuestion(
       currentSessionId,
       pendingQuestion.question_id,
-      answers
+      answers,
+      controller.signal
     );
     await get().processSSEStream(stream);
   },
@@ -168,6 +183,14 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       pendingQuestion: null,
       toolCalls: new Map(),
     }),
+
+  cancelStream: () => {
+    const { streamAbortController } = get();
+    if (streamAbortController) {
+      streamAbortController.abort();
+      set({ streamAbortController: null, streaming: false });
+    }
+  },
 
   processSSEStream: async (stream) => {
     try {
@@ -253,7 +276,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             break;
         }
       }
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        set({ streaming: false });
+        return;
+      }
       set({ error: '连接中断，请重试', streaming: false });
     }
   },

@@ -813,6 +813,7 @@ export class MockApiClient implements IApiClient {
 
   async *streamTrendingScoutIntro(
     params: TrendingScoutIntroParams,
+    _signal?: AbortSignal,
   ): AsyncGenerator<SSEEvent> {
     requireAuth();
     const period = params.period ?? 'weekly';
@@ -946,7 +947,11 @@ export class MockApiClient implements IApiClient {
     });
   }
 
-  async *chatAgent(sessionId: string, message: string): AsyncGenerator<SSEEvent> {
+  async *chatAgent(
+    sessionId: string,
+    message: string,
+    _signal?: AbortSignal
+  ): AsyncGenerator<SSEEvent> {
     requireAuth();
     const session = this.sessions.find((s) => s.id === sessionId);
     if (!session) {
@@ -977,7 +982,8 @@ export class MockApiClient implements IApiClient {
   async *answerQuestion(
     _sessionId: string,
     _questionId: string,
-    _answers: QuestionAnswer[]
+    _answers: QuestionAnswer[],
+    _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
     requireAuth();
     yield* mockAfterQuestionAnswer();
@@ -985,7 +991,8 @@ export class MockApiClient implements IApiClient {
 
   async *analyzeProject(
     projectId: string,
-    agent?: AgentId
+    agent?: AgentId,
+    _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
     requireAuth();
     const project = this.projects.find((p) => p.id === projectId);
@@ -1048,7 +1055,8 @@ export class MockApiClient implements IApiClient {
 
   async *importAssistChat(
     message: string,
-    context: ImportAssistContext
+    context: ImportAssistContext,
+    _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
     requireAuth();
     const lower = message.toLowerCase();
@@ -1081,7 +1089,8 @@ export class MockApiClient implements IApiClient {
 
   async *graphGuideChat(
     message: string,
-    context?: { selected_node_id?: string | null }
+    context?: { selected_node_id?: string | null },
+    _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
     requireAuth();
     const nodeId = context?.selected_node_id;
