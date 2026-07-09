@@ -29,7 +29,25 @@ export function AgentPage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [sessionSearch, setSessionSearch] = useState('');
   const [toolLogOpen, setToolLogOpen] = useState(true);
+  const [contextPanelCollapsed, setContextPanelCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('rp_agent_context_collapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
   const { data: projectsData } = useProjects();
+
+  useEffect(() => {
+    const shell = document.querySelector('.agent-shell');
+    shell?.classList.toggle('agent-shell--context-collapsed', contextPanelCollapsed);
+    try {
+      localStorage.setItem('rp_agent_context_collapsed', contextPanelCollapsed ? '1' : '0');
+    } catch {
+      /* 隐私模式等场景下忽略 */
+    }
+    return () => shell?.classList.remove('agent-shell--context-collapsed');
+  }, [contextPanelCollapsed]);
 
   useEffect(() => {
     void loadSessions();
@@ -133,6 +151,8 @@ export function AgentPage() {
         toolLogOpen={toolLogOpen}
         onToggleToolLog={() => setToolLogOpen((v) => !v)}
         toolCalls={toolCalls}
+        collapsed={contextPanelCollapsed}
+        onToggleCollapse={() => setContextPanelCollapsed((v) => !v)}
       />
 
       <ConfirmDialog
