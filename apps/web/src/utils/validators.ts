@@ -6,7 +6,10 @@ export interface ValidationResult {
 const USERNAME_MIN = 3;
 const USERNAME_MAX = 32;
 const PASSWORD_MIN = 8;
+const AVATAR_MAX_LENGTH = 512;
 const GITHUB_URL_RE = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/;
+// 头像 URL 白名单：仅允许已知安全域名，防止 javascript:/data: 等 XSS 向量
+const AVATAR_HOST_RE = /^https:\/\/avatars\.githubusercontent\.com\//i;
 
 export function validateUsername(username: string): ValidationResult {
   const trimmed = username.trim();
@@ -56,10 +59,51 @@ export function validateRegisterForm(
   return { valid: true };
 }
 
+export function validatePasswordChange(
+  oldPassword: string,
+  newPassword: string,
+  confirmPassword: string
+): ValidationResult {
+  if (!oldPassword) {
+    return { valid: false, message: '请输入旧密码' };
+  }
+  const p = validatePassword(newPassword);
+  if (!p.valid) return p;
+  if (newPassword !== confirmPassword) {
+    return { valid: false, message: '两次输入的新密码不一致' };
+  }
+  if (oldPassword === newPassword) {
+    return { valid: false, message: '新密码不能与旧密码相同' };
+  }
+  return { valid: true };
+}
+
 export function validateGithubUrl(url: string): ValidationResult {
   const trimmed = url.trim();
   if (!GITHUB_URL_RE.test(trimmed)) {
     return { valid: false, message: '请输入有效的 GitHub 仓库 URL' };
+  }
+  return { valid: true };
+}
+
+export function validateAvatarUrl(url: string): ValidationResult {
+  const trimmed = url.trim();
+  if (!trimmed) {
+    return { valid: false, message: '头像 URL 不能为空' };
+  }
+  if (trimmed.length > AVATAR_MAX_LENGTH) {
+    return { valid: false, message: `头像 URL 不能超过 ${AVATAR_MAX_LENGTH} 个字符` };
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== 'https:') {
+      return { valid: false, message: '头像 URL 必须使用 HTTPS 协议' };
+    }
+  } catch {
+    return { valid: false, message: '头像 URL 格式不正确' };
+  }
+  if (!AVATAR_HOST_RE.test(trimmed)) {
+    return { valid: false, message: '头像 URL 域名不在白名单内' };
   }
   return { valid: true };
 }

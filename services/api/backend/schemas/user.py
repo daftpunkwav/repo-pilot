@@ -5,7 +5,9 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+import re
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserCreate(BaseModel):
@@ -23,6 +25,18 @@ class UserLogin(BaseModel):
 class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     avatar_url: Optional[str] = None
+
+    @field_validator("avatar_url")
+    @classmethod
+    def _validate_avatar_url(cls, value: Optional[str]) -> Optional[str]:
+        """头像 URL 仅允许 GitHub 头像域名，防止 XSS/SSRF 向量。"""
+        if value is None or value == "":
+            return value
+        if len(value) > 512:
+            raise ValueError("头像 URL 过长")
+        if not re.match(r"^https://avatars\.githubusercontent\.com/", value, re.IGNORECASE):
+            raise ValueError("头像 URL 必须是 GitHub 头像地址")
+        return value
 
 
 class UserOut(BaseModel):
