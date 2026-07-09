@@ -4,6 +4,50 @@ from httpx import AsyncClient
 
 
 @pytest.mark.asyncio
+async def test_agent_question_requires_auth(client: AsyncClient):
+    res = await client.post("/api/v1/agent/question")
+    assert res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_agent_analyze_requires_auth(client: AsyncClient):
+    res = await client.post("/api/v1/agent/analyze/00000000-0000-0000-0000-000000000000")
+    assert res.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_agent_analyze_forbidden_for_other_user(client: AsyncClient):
+    # 注册用户 A 并创建一个项目
+    a = await client.post(
+        "/api/v1/auth/register",
+        json={"username": "agent_user_a", "password": "demo1234"},
+    )
+    assert a.status_code == 200
+    token_a = a.json()["data"]["access_token"]
+    headers_a = {"Authorization": f"Bearer {token_a}"}
+
+    create = await client.post(
+        "/api/v1/projects/",
+        headers=headers_a,
+        json={"name": "foo/bar", "url": "https://github.com/foo/bar"},
+    )
+    assert create.status_code == 200
+    project_id = create.json()["data"]["id"]
+
+    # 注册用户 B 并尝试分析 A 的项目
+    b = await client.post(
+        "/api/v1/auth/register",
+        json={"username": "agent_user_b", "password": "demo1234"},
+    )
+    assert b.status_code == 200
+    token_b = b.json()["data"]["access_token"]
+    headers_b = {"Authorization": f"Bearer {token_b}"}
+
+    res = await client.post(f"/api/v1/agent/analyze/{project_id}", headers=headers_b)
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_agent_sessions_and_profiles(client: AsyncClient, auth_headers: dict):
     create = await client.post("/api/v1/agent/sessions", headers=auth_headers)
     assert create.status_code == 200

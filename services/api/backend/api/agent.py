@@ -30,6 +30,7 @@ from backend.services.agent_service import (
     list_sessions,
     stream_chat,
 )
+from backend.services.project_service import get_project_owned_by_user
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -116,7 +117,9 @@ async def chat_legacy(
 
 
 @router.post("/question")
-async def answer_question():
+async def answer_question(
+    current_user: User = Depends(get_current_user),
+):
     raise HTTPException(
         status.HTTP_501_NOT_IMPLEMENTED,
         detail={"code": "NOT_IMPLEMENTED", "message": "Agent question flow pending LLM integration"},
@@ -124,7 +127,17 @@ async def answer_question():
 
 
 @router.post("/analyze/{project_id}")
-async def analyze_project(project_id: str):
+async def analyze_project(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    project = await get_project_owned_by_user(db, project_id, current_user.id)
+    if not project:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail={"code": "FORBIDDEN", "message": "Project does not belong to current user"},
+        )
     raise HTTPException(
         status.HTTP_501_NOT_IMPLEMENTED,
         detail={"code": "NOT_IMPLEMENTED", "message": "Project analyze pending LLM integration"},
