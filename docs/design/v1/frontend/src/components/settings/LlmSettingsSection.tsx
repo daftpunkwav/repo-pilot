@@ -29,18 +29,10 @@ export function LlmSettingsSection({
   const [apiKeyDraft, setApiKeyDraft] = useState('');
   const [newModelInput, setNewModelInput] = useState('');
 
-  const agentConfigs = useMemo(() => {
-    const map = new Map(settings.agent_llm_configs.map((c) => [c.agent_id, c]));
-    return AGENT_CATALOG.map((agent) => {
-      const existing = map.get(agent.id);
-      return (
-        existing ?? {
-          agent_id: agent.id,
-          model_override: null,
-          speaking_style: 'default' as AgentSpeakingStyle,
-        }
-      );
-    });
+  const agentConfigsMap = useMemo(() => {
+    const m = new Map<string, AgentLlmConfig>();
+    for (const c of settings.agent_llm_configs) m.set(c.agent_id, c);
+    return m;
   }, [settings.agent_llm_configs]);
 
   const applyProviderPreset = (providerId: string) => {
@@ -58,9 +50,14 @@ export function LlmSettingsSection({
   };
 
   const updateAgentConfig = (agentId: string, patch: Partial<AgentLlmConfig>) => {
-    const next = agentConfigs.map((c) =>
-      c.agent_id === agentId ? { ...c, ...patch } : c,
-    );
+    const next = AGENT_CATALOG.map((a) => {
+      const existing = agentConfigsMap.get(a.id) ?? {
+        agent_id: a.id,
+        model_override: null,
+        speaking_style: 'default' as AgentSpeakingStyle,
+      };
+      return a.id === agentId ? { ...existing, ...patch } : existing;
+    });
     void updateSettings({ agent_llm_configs: next });
   };
 
@@ -275,7 +272,11 @@ export function LlmSettingsSection({
             </thead>
             <tbody>
               {AGENT_CATALOG.map((agent) => {
-                const cfg = agentConfigs.find((c) => c.agent_id === agent.id)!;
+                const cfg = agentConfigsMap.get(agent.id) ?? {
+                  agent_id: agent.id,
+                  model_override: null,
+                  speaking_style: 'default' as AgentSpeakingStyle,
+                };
                 return (
                   <tr key={agent.id}>
                     <td>

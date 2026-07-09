@@ -6,7 +6,9 @@ export function useContextWindow(sessionId: string | null) {
   return useQuery({
     queryKey: ['contextWindow', sessionId],
     queryFn: async () => (await getApi().getContextWindow(sessionId)).data,
-    refetchInterval: 15000,
+    // 15s 基础间隔 + 0~2s jitter，避免多面板同时打后端
+    refetchInterval: 15000 + Math.floor(Math.random() * 2000),
+    refetchIntervalInBackground: false,
   });
 }
 
