@@ -11,6 +11,7 @@ import { MOCK_PROJECTS } from './projects';
 import { buildMockRecommendedProjects } from './recommendations';
 import { DEFAULT_USER_PROFILE } from './profile';
 import { getTrendingRepos } from './trending';
+import { deepClone } from '@/utils/clone';
 
 export type OverviewMockRound = 1 | 2 | 3;
 
@@ -27,17 +28,13 @@ export interface OverviewScenarioSnapshot {
   trendingWeekly: TrendingRepo[];
 }
 
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
 /** Mock 相对时间：始终生成「X 前」的 ISO 时间（避免固定日期落在未来） */
 function mockPastIso(hoursAgo: number): string {
   return new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString();
 }
 
 function buildRound1Projects(): Project[] {
-  const projects = clone(MOCK_PROJECTS);
+  const projects = deepClone(MOCK_PROJECTS);
   // 明确进度分布，便于总览进度条展示
   const progressPlan: Array<[string, Project['progress']]> = [
     ['p_react', 'mastered'],
@@ -60,18 +57,18 @@ function buildRound1(): OverviewScenarioSnapshot {
     round: 1,
     label: '基线：完整总览数据',
     projects,
-    notes: clone(MOCK_NOTES).sort(
+    notes: deepClone(MOCK_NOTES).sort(
       (a, b) => Date.parse(b.updated_at) - Date.parse(a.updated_at),
     ).slice(0, 4),
-    activities: clone(MOCK_ACTIVITIES).slice(0, 10),
+    activities: deepClone(MOCK_ACTIVITIES).slice(0, 10),
     historySummary: DEFAULT_USER_PROFILE.history_summary ?? '本周学习了 React Hooks 与 FastAPI 异步编程。',
     recommendations: buildMockRecommendedProjects(projects, 5),
-    trendingWeekly: clone(getTrendingRepos('weekly')),
+    trendingWeekly: deepClone(getTrendingRepos('weekly')),
   };
 }
 
 function buildRound2(base: OverviewScenarioSnapshot): OverviewScenarioSnapshot {
-  const notes = clone(base.notes);
+  const notes = deepClone(base.notes);
   const extraNotes: Note[] = [
     {
       id: 'n_round2_1',
@@ -111,7 +108,7 @@ function buildRound2(base: OverviewScenarioSnapshot): OverviewScenarioSnapshot {
       created_at: mockPastIso(3),
       project_id: 'p_supabase',
     },
-    ...clone(base.activities),
+    ...deepClone(base.activities),
   ].slice(0, 10);
 
   return {
@@ -127,7 +124,7 @@ function buildRound2(base: OverviewScenarioSnapshot): OverviewScenarioSnapshot {
 }
 
 function buildRound3(base: OverviewScenarioSnapshot): OverviewScenarioSnapshot {
-  const projects = clone(base.projects);
+  const projects = deepClone(base.projects);
   const progressUpdates: Array<[string, Project['progress']]> = [
     ['p_flask', 'learning'],
     ['p_tailwind', 'learned'],
@@ -308,5 +305,5 @@ export function syncOverviewMockRoundFromUrl(url: string = window.location.href)
 }
 
 export function getOverviewScenario(round: OverviewMockRound = readOverviewMockRound()) {
-  return clone(OVERVIEW_SCENARIOS[round]);
+  return deepClone(OVERVIEW_SCENARIOS[round]);
 }

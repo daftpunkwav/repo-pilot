@@ -60,6 +60,7 @@ import { DEFAULT_USER_PROFILE } from './data/profile';
 import { MOCK_TAGS } from './data/tags';
 import { getTrendingRepos } from './data/trending';
 import { findMockUser, MOCK_USERS } from './data/users';
+import { deepClone } from '@/utils/clone';
 import {
   mockAfterQuestionAnswer,
   mockProjectAnalysis,
@@ -99,19 +100,15 @@ function newId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
 export class MockApiClient implements IApiClient {
-  private projects: Project[] = clone(MOCK_PROJECTS);
-  private notes: Note[] = clone(MOCK_NOTES);
-  private categories: Category[] = clone(MOCK_CATEGORIES);
-  private tags: Tag[] = clone(MOCK_TAGS);
-  private sessions: AgentSession[] = clone(MOCK_AGENT_SESSIONS);
-  private messages: Record<string, AgentMessage[]> = clone(MOCK_AGENT_MESSAGES);
-  private settings: Settings = clone(DEFAULT_SETTINGS);
-  private userProfile: UserProfile = clone(DEFAULT_USER_PROFILE);
+  private projects: Project[] = deepClone(MOCK_PROJECTS);
+  private notes: Note[] = deepClone(MOCK_NOTES);
+  private categories: Category[] = deepClone(MOCK_CATEGORIES);
+  private tags: Tag[] = deepClone(MOCK_TAGS);
+  private sessions: AgentSession[] = deepClone(MOCK_AGENT_SESSIONS);
+  private messages: Record<string, AgentMessage[]> = deepClone(MOCK_AGENT_MESSAGES);
+  private settings: Settings = deepClone(DEFAULT_SETTINGS);
+  private userProfile: UserProfile = deepClone(DEFAULT_USER_PROFILE);
   private githubAccounts: GitHubAccount[] = [
     {
       id: 'gh_001',
@@ -121,7 +118,7 @@ export class MockApiClient implements IApiClient {
     },
   ];
   private currentUser: User | null = null;
-  private activities: ActivityItem[] = clone(MOCK_ACTIVITIES);
+  private activities: ActivityItem[] = deepClone(MOCK_ACTIVITIES);
   private scenarioRecommendations: RecommendedProject[] | null = null;
   private scenarioTrendingWeekly: TrendingRepo[] | null = null;
   private appliedOverviewRound: OverviewMockRound | null = null;
@@ -144,15 +141,15 @@ export class MockApiClient implements IApiClient {
     persistOverviewMockRound(round);
     this.appliedOverviewRound = round;
     const snapshot = getOverviewScenario(round);
-    this.projects = clone(snapshot.projects);
-    this.notes = clone(snapshot.notes);
-    this.activities = clone(snapshot.activities);
+    this.projects = deepClone(snapshot.projects);
+    this.notes = deepClone(snapshot.notes);
+    this.activities = deepClone(snapshot.activities);
     this.userProfile = {
-      ...clone(DEFAULT_USER_PROFILE),
+      ...deepClone(DEFAULT_USER_PROFILE),
       history_summary: snapshot.historySummary,
     };
-    this.scenarioRecommendations = clone(snapshot.recommendations);
-    this.scenarioTrendingWeekly = clone(snapshot.trendingWeekly);
+    this.scenarioRecommendations = deepClone(snapshot.recommendations);
+    this.scenarioTrendingWeekly = deepClone(snapshot.trendingWeekly);
   }
 
   /** 模拟后端 Activity Feed：新活动插入列表头部 */
@@ -895,7 +892,7 @@ export class MockApiClient implements IApiClient {
   async getUserProfile(): Promise<ApiResponse<UserProfile>> {
     await delay();
     requireAuth();
-    return wrapResponse(clone(this.userProfile));
+    return wrapResponse(deepClone(this.userProfile));
   }
 
   async updateUserProfile(
@@ -910,7 +907,7 @@ export class MockApiClient implements IApiClient {
     if (data.goals) {
       this.userProfile.goals = data.goals;
     }
-    return wrapResponse(clone(this.userProfile));
+    return wrapResponse(deepClone(this.userProfile));
   }
 
   async getPermissions(): Promise<ApiResponse<AgentPermissions>> {
