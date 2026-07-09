@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { AppShell, AgentShell, NotesShell } from '@/components/layout/AppShell';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useAuthStore } from '@/stores/authStore';
 
 const LoginPage = lazy(() =>
@@ -188,10 +189,12 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
 
 export function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthBootstrap>
-        <RouterProvider router={router} />
-      </AuthBootstrap>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthBootstrap>
+          <RouterProvider router={router} />
+        </AuthBootstrap>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
