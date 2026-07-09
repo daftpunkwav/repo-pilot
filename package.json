@@ -18,6 +18,8 @@
     "test:web:e2e": "npm run test:e2e -w @repopilot/web",
     "lint:web": "npm run lint -w @repopilot/web",
     "typecheck:web": "npm run typecheck -w @repopilot/web",
+    "test:api": "pytest test -q",
+    "test": "npm run test:api && npm run test:web",
     "dev:api": "uvicorn backend.main:app --reload --port 19876 --app-dir services/api",
     "dev:agent": "uvicorn agent_runtime.main:app --reload --port 19877 --app-dir services/agent"
   }

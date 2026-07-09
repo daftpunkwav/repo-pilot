@@ -39,6 +39,7 @@ class Project(Base):
     stars: Mapped[int] = mapped_column(Integer, default=0)
     language: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     progress: Mapped[str] = mapped_column(String(16), default="none")
+    source: Mapped[str] = mapped_column(String(16), default="manual")
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     category_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True

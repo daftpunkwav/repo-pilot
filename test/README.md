@@ -1,0 +1,27 @@
+# RepoPilot 测试目录
+
+按测试类型分层组织，运行方式：
+
+```bash
+# 全部后端测试
+pytest test -q
+
+# 仓库根目录（含前端）
+npm run test:api
+npm run test:web
+```
+
+## 目录说明
+
+| 目录 | 说明 |
+|------|------|
+| `unit/` | 单元测试：纯函数、无 I/O |
+| `function/` | 函数测试：单函数多场景 |
+| `module/` | 模块测试：schema / 模型元数据 |
+| `business/` | 业务逻辑测试：service 层 |
+| `integration/` | 集成测试：HTTP API 端到端 |
+
+## 环境
+
+- 测试数据库：临时 SQLite 文件（每个用例隔离）
+- `SECRET_KEY`：测试专用固定值

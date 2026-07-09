@@ -1,0 +1,147 @@
+"""
+项目业务逻辑 —— 筛选、序列化、导入
+"""
+from uuid import UUID
+
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.models.project import Project
+from backend.schemas.project import (
+    ImportRepoItem,
+    ImportResult,
+    ProjectCreate,
+    ProjectOut,
+    ProjectStats,
+)
+
+
+def project_to_out(project: Project) -> ProjectOut:
+    return ProjectOut(
+        id=project.id,
+        name=project.name,
+        url=project.url,
+        description=project.description,
+        language=project.language,
+        stars=project.stars,
+        category_id=project.category_id,
+        progress=project.progress,  # type: ignore[arg-type]
+        tags=[],
+        source=project.source,  # type: ignore[arg-type]
+        imported_at=project.imported_at,
+        updated_at=project.updated_at,
+    )
+
+
+def apply_project_filters(
+    query,
+    *,
+    keyword: str = "",
+    lang: str = "",
+    star_min: int = 0,
+    star_max: int | None = None,
+    progress: str = "",
+):
+    if keyword:
+        like = f"%{keyword}%"
+        query = query.where(
+            or_(Project.name.ilike(like), Project.description.ilike(like))
+        )
+    if lang:
+        query = query.where(Project.language == lang)
+    if star_min:
+        query = query.where(Project.stars >= star_min)
+    if star_max is not None:
+        query = query.where(Project.stars <= star_max)
+    if progress:
+        query = query.where(Project.progress == progress)
+    return query
+
+
+def apply_sort(query, sort: str):
+    if sort == "stars":
+        return query.order_by(Project.stars.desc())
+    if sort == "name":
+        return query.order_by(Project.name.asc())
+    if sort == "updated_at":
+        return query.order_by(Project.updated_at.desc().nullslast())
+    return query.order_by(Project.imported_at.desc())
+
+
+async def list_user_projects(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    keyword: str = "",
+    lang: str = "",
+    star_min: int = 0,
+    star_max: int | None = None,
+    sort: str = "",
+    progress: str = "",
+    page: int = 1,
+    page_size: int = 20,
+) -> tuple[list[ProjectOut], int]:
+    base = select(Project).where(Project.user_id == user_id)
+    base = apply_project_filters(
+        base,
+        keyword=keyword,
+        lang=lang,
+        star_min=star_min,
+        star_max=star_max,
+        progress=progress,
+    )
+    count_q = select(func.count()).select_from(base.subquery())
+    total = (await db.execute(count_q)).scalar_one()
+    base = apply_sort(base, sort)
+    offset = (page - 1) * page_size
+    result = await db.execute(base.offset(offset).limit(page_size))
+    items = [project_to_out(p) for p in result.scalars().all()]
+    return items, total
+
+
+async def import_repos(
+    db: AsyncSession,
+    user_id: UUID,
+    repos: list[ImportRepoItem],
+) -> ImportResult:
+    succeeded = 0
+    failed = 0
+    errors: list[dict] = []
+    existing = await db.execute(select(Project.url).where(Project.user_id == user_id))
+    known_urls = {row[0] for row in existing.all()}
+
+    for repo in repos:
+        if repo.url in known_urls:
+            failed += 1
+            errors.append({"repo": f"{repo.owner}/{repo.repo}", "reason": "ALREADY_EXISTS"})
+            continue
+        project = Project(
+            user_id=user_id,
+            name=f"{repo.owner}/{repo.repo}",
+            url=repo.url,
+            source="github",
+        )
+        db.add(project)
+        known_urls.add(repo.url)
+        succeeded += 1
+
+    await db.commit()
+    summary = f"成功导入 {succeeded} 个，失败 {failed} 个"
+    return ImportResult(succeeded=succeeded, failed=failed, summary=summary, errors=errors)
+
+
+async def project_stats(db: AsyncSession, user_id: UUID) -> ProjectStats:
+    result = await db.execute(select(Project).where(Project.user_id == user_id))
+    projects = result.scalars().all()
+    by_progress: dict[str, int] = {}
+    by_language: dict[str, int] = {}
+    for p in projects:
+        by_progress[p.progress] = by_progress.get(p.progress, 0) + 1
+        lang = p.language or "unknown"
+        by_language[lang] = by_language.get(lang, 0) + 1
+    return ProjectStats(total=len(projects), by_progress=by_progress, by_language=by_language)
+
+
+def build_project_from_create(user_id: UUID, data: ProjectCreate) -> Project:
+    payload = data.model_dump(exclude={"tags"})
+    return Project(user_id=user_id, **payload)
