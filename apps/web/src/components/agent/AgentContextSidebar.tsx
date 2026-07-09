@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getApi } from '@/api/client';
 import type { Goal, MemoryItem, Project, UserProfile } from '@/api/types';
@@ -40,6 +41,9 @@ const MEMORY_SECTION_META: Record<
   },
 };
 
+const MAX_MEMORY_LENGTH = 500;
+const MAX_GOAL_LENGTH = 200;
+
 interface AgentContextSidebarProps {
   contextProjects: Project[];
   sessionId?: string | null;
@@ -71,19 +75,64 @@ export function AgentContextSidebar({
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['userProfile'] }),
   });
 
+  const [editingCategory, setEditingCategory] = useState<MemoryItem['category'] | 'goal' | null>(
+    null
+  );
+  const [editValue, setEditValue] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
+
   const memoryItems = profile?.memory_items ?? [];
   const goals = profile?.goals ?? [];
 
-  const addMemory = (category: MemoryItem['category']) => {
-    const content = window.prompt(`添加${MEMORY_LABELS[category]}：`);
-    if (!content?.trim()) return;
+  const startEditing = (category: MemoryItem['category'] | 'goal') => {
+    setEditingCategory(category);
+    setEditValue('');
+    setEditError(null);
+  };
+
+  const cancelEditing = () => {
+    setEditingCategory(null);
+    setEditValue('');
+    setEditError(null);
+  };
+
+  const validateAndAddMemory = (category: MemoryItem['category']) => {
+    const content = editValue.trim();
+    if (!content) {
+      setEditError('内容不能为空');
+      return;
+    }
+    if (content.length > MAX_MEMORY_LENGTH) {
+      setEditError(`内容不能超过 ${MAX_MEMORY_LENGTH} 个字符`);
+      return;
+    }
     const item: MemoryItem = {
       id: `mem_${Date.now()}`,
       category,
-      content: content.trim(),
+      content,
       created_at: new Date().toISOString(),
     };
     void updateProfile.mutate({ memory_items: [...memoryItems, item] });
+    cancelEditing();
+  };
+
+  const validateAndAddGoal = () => {
+    const title = editValue.trim();
+    if (!title) {
+      setEditError('目标不能为空');
+      return;
+    }
+    if (title.length > MAX_GOAL_LENGTH) {
+      setEditError(`目标不能超过 ${MAX_GOAL_LENGTH} 个字符`);
+      return;
+    }
+    const goal: Goal = {
+      title,
+      priority: goals.length + 1,
+      status: 'active',
+    };
+    void updateProfile.mutate({ goals: [...goals, goal] });
+    cancelEditing();
   };
 
   const removeMemory = (id: string) => {
@@ -96,17 +145,6 @@ export function AgentContextSidebar({
     void updateProfile.mutate({
       goals: goals.filter((_, i) => i !== index),
     });
-  };
-
-  const addGoal = () => {
-    const title = window.prompt('新学习目标：');
-    if (!title?.trim()) return;
-    const goal: Goal = {
-      title: title.trim(),
-      priority: goals.length + 1,
-      status: 'active',
-    };
-    void updateProfile.mutate({ goals: [...goals, goal] });
   };
 
   const itemsByCategory = (cat: MemoryItem['category']) =>
@@ -177,17 +215,18 @@ export function AgentContextSidebar({
           const meta = MEMORY_SECTION_META[cat];
           const items = cat === 'goal' ? goals : itemsByCategory(cat);
           const isEmpty = items.length === 0;
+          const isEditing = editingCategory === cat;
 
           return (
             <div key={cat} className="context-section context-section--memory">
               <div className="context-title">
                 <span>{MEMORY_LABELS[cat]}</span>
-                {meta.userCanAdd && (
+                {meta.userCanAdd && !isEditing && (
                   <button
                     type="button"
                     className="ctx-add-btn"
                     title={`添加${MEMORY_LABELS[cat]}`}
-                    onClick={() => addMemory(cat)}
+                    onClick={() => startEditing(cat)}
                   >
                     +
                   </button>
@@ -215,12 +254,44 @@ export function AgentContextSidebar({
                         )}
                       </div>
                     ))}
-                {isEmpty && (
+                {isEditing && (
+                  <div className="memory-chip memory-chip--editing">
+                    <input
+                      className="input input--compact"
+                      value={editValue}
+                      onChange={(e) => {
+                        setEditValue(e.target.value);
+                        setEditError(null);
+                      }}
+                      placeholder={cat === 'goal' ? '输入新目标…' : `输入${MEMORY_LABELS[cat]}…`}
+                      maxLength={cat === 'goal' ? MAX_GOAL_LENGTH : MAX_MEMORY_LENGTH}
+                      autoFocus
+                    />
+                    {editError && <span className="ctx-edit-error">{editError}</span>}
+                    <div className="ctx-edit-actions">
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => (cat === 'goal' ? validateAndAddGoal() : validateAndAddMemory(cat))}
+                      >
+                        保存
+                      </button>
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={cancelEditing}>
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {isEmpty && !isEditing && (
                   <p className="context-memory-empty muted">{meta.hint}</p>
                 )}
               </div>
-              {cat === 'goal' && (
-                <button type="button" className="btn btn-ghost btn-sm ctx-add-goal-btn" onClick={addGoal}>
+              {cat === 'goal' && !isEditing && (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm ctx-add-goal-btn"
+                  onClick={() => startEditing('goal')}
+                >
                   添加目标
                 </button>
               )}
