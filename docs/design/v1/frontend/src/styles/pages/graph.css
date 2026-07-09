@@ -21,6 +21,11 @@
     .zoom-btn:hover { background: var(--bg-200); color: var(--text-800); }
     .zoom-label { width: 56px; height: 30px; display: grid; place-items: center; font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text-700); border-left: 1px solid var(--bg-300); border-right: 1px solid var(--bg-300); }
 
+    .graph-threshold { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius-sm); font-size: 11px; color: var(--text-600); cursor: default; }
+    .graph-threshold__label { font-weight: 600; white-space: nowrap; }
+    .graph-threshold input[type="range"] { width: 72px; height: 4px; accent-color: var(--brand-500); cursor: pointer; }
+    .graph-threshold__value { min-width: 2.5em; font-family: var(--font-mono); font-weight: 600; color: var(--text-700); text-align: right; }
+
     .layout-switch { display: inline-flex; align-items: center; height: 32px; background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius-pill); padding: 3px; gap: 0; }
     .layout-switch button { height: 24px; padding: 0 12px; border: 0; background: transparent; border-radius: var(--radius-pill); font-size: 12px; font-weight: 600; color: var(--text-500); cursor: pointer; transition: all 0.15s var(--ease); }
     .layout-switch button.active { background: var(--brand-500); color: #fff; box-shadow: var(--shadow-sm); }
