@@ -29,4 +29,4 @@ npm run test:web
 ## 环境
 
 - 测试数据库：临时 SQLite 文件（每个用例隔离）
-- `SECRET_KEY`：测试专用固定值
+- `SECRET_KEY`：测试专用固定值，长度必须不少于 32 字节（`test/conftest.py` 在导入 backend 前注入）
