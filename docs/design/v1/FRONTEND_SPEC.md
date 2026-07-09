@@ -13,40 +13,40 @@
 
 | 技术 | 版本 | 用途 | 约束 |
 |------|------|------|------|
-| React | 18.x | UI 框架 | Function Components + Hooks only，禁止 Class Components |
-| Vite | 5.x | 构建工具 | dev server 端口 5173，HMR 启用 |
-| TypeScript | 5.x | 类型安全 | `strict: true`, `noUncheckedIndexedAccess: true`, 禁止 `any` |
-| Zustand | 4.x | 客户端状态管理 | 仅管理纯客户端状态（UI、Auth、Agent 流状态） |
-| @tanstack/react-query | 5.x | 服务端状态管理 | 所有 API 数据获取/缓存/同步 |
-| react-router-dom | 6.x | 路由 | `createBrowserRouter`，data router 模式 |
+| React | 19.x | UI 框架 | Function Components + Hooks only；推荐 `useTransition` / `useDeferredValue` 处理大列表与流式更新 |
+| Vite | 7.x | 构建工具 | dev server 端口 5173，HMR 启用 |
+| TypeScript | 5.x | 类型安全 | `strict: true`, `noUncheckedIndexedAccess: true`, `noImplicitOverride: true`，禁止 `any` |
+| Zustand | 5.x | 客户端状态管理 | 仅管理纯客户端状态（UI、Auth、Agent 流状态）；多字段读取必须用 `useShallow` |
+| @tanstack/react-query | 5.x | 服务端状态管理 | 所有 API 数据获取/缓存/同步；queryKey 集中常量管理 |
+| react-router-dom | 7.x | 路由 | `createBrowserRouter`，data router 模式 + `lazy` 分包 |
 | D3.js | 7.x | 知识图谱可视化 | 仅用于 `ForceGraph` 组件，不全局引入 |
-| react-markdown + remark-gfm | latest | Markdown 渲染 | README + 笔记内容，禁止 raw HTML |
-| Vitest | latest | 单元测试 | Store + Utils 覆盖率 >= 60% |
-| Playwright | latest | E2E 测试 | 5 条核心 happy path |
+| react-markdown + remark-gfm | latest | Markdown 渲染 | README + 笔记内容，默认不渲染 HTML |
+| Vitest | 4.x | 单元测试 | Store + Utils 覆盖率 >= 60%；`environment: jsdom` |
+| Playwright | 1.x | E2E 测试 | 核心 happy path + 总览 Mock 三轮场景 |
 | ESLint + Prettier | latest | 代码规范 | 配置见 §13 |
-| pywebview | — | 桌面端壳 | 加载本地 SPA，`window.chrome.webview` 通信 |
 
 ### 1.2 CSS 方案
 
 **纯 CSS 变量主题系统**，不引入 CSS-in-JS 框架（禁止 styled-components / emotion）。
 
 - 设计系统文件 `design-system.css` 提供完整的组件样式（已从原型迁移）
-- 主题通过 `data-theme="dark|light"` 属性切换 CSS 变量
+- 主题通过 `data-theme="dark|light"` 属性切换 CSS 变量；尊重 `prefers-color-scheme` + `prefers-reduced-motion`
 - 组件级样式使用 CSS Modules（`*.module.css`）或 BEM 命名
 - 全局样式补充在 `global.css`
+- 玻璃拟态（liquid-glass）样式集中在 `liquid-glass.css`，通过 `OVERVIEW_OUTER_GLASS` 等常量引用
 
 ### 1.3 TypeScript 严格约束
 
 ```json
-// tsconfig.json
+// tsconfig.json (frontend 当前生效配置)
 {
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "noImplicitAny": true,
+    "noImplicitOverride": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "exactOptionalPropertyTypes": true,
+    "useUnknownInCatchVariables": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "bundler",
     "target": "ES2022",
@@ -59,11 +59,13 @@
 }
 ```
 
+> `exactOptionalPropertyTypes` 当前未开启（与现有 mock 数据宽松交互更友好）；切到真实后端 + OpenAPI 生成类型时建议开启。
+
 **禁止项：**
 - 禁止使用 `any` 类型（违反 ESLint `@typescript-eslint/no-explicit-any`）
 - 禁止使用 `as any` 类型断言
 - 禁止 `@ts-ignore`（仅允许 `@ts-expect-error` 并附注释）
-- 禁止非空断言 `!`（使用可选链或显式判断替代）
+- 禁止非空断言 `!`（使用可选链或显式判断替代）—— 所有 `!` 必须先在 review 中确认无法消除
 
 ---
 
