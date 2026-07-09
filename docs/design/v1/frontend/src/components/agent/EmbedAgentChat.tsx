@@ -125,6 +125,11 @@ export function EmbedAgentChat({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       void send();
+      return;
+    }
+    if (e.key === 'Escape' && streaming) {
+      // 流式进行中 Esc 暂时不停止 mock；真实后端可绑 abort
+      e.preventDefault();
     }
   };
 
@@ -164,8 +169,15 @@ export function EmbedAgentChat({
           onKeyDown={onKeyDown}
           placeholder={placeholder}
           disabled={streaming}
+          aria-label={`${title} 对话输入`}
         />
-        <button type="button" className="send-btn" onClick={() => void send()} disabled={streaming}>
+        <button
+          type="button"
+          className="send-btn"
+          onClick={() => void send()}
+          disabled={streaming}
+          aria-label="发送"
+        >
           发送
         </button>
       </div>
