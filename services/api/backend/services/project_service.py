@@ -181,3 +181,13 @@ async def project_stats(db: AsyncSession, user_id: UUID) -> ProjectStats:
 def build_project_from_create(user_id: UUID, data: ProjectCreate) -> Project:
     payload = data.model_dump(exclude={"tags"})
     return Project(user_id=user_id, **payload)
+
+
+async def get_project_owned_by_user(
+    db: AsyncSession, project_id: UUID, user_id: UUID
+) -> Project | None:
+    """查询指定用户拥有的项目，不存在或不属于该用户时返回 None。"""
+    project = await db.get(Project, project_id)
+    if not project or project.user_id != user_id:
+        return None
+    return project
