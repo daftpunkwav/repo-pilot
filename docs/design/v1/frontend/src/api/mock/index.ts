@@ -780,11 +780,15 @@ export class MockApiClient implements IApiClient {
   }): Promise<ApiResponse<TrendingRepo[]>> {
     await delay();
     requireAuth();
-    const repos = getTrendingRepos(params?.period ?? 'daily', params?.language);
-    if (params?.period === 'weekly' && this.scenarioTrendingWeekly) {
-      return wrapResponse([...this.scenarioTrendingWeekly]);
+    const period = params?.period ?? 'daily';
+    const language = params?.language;
+    if (this.scenarioTrendingWeekly && period === 'weekly') {
+      const filtered = language
+        ? this.scenarioTrendingWeekly.filter((r) => r.language === language)
+        : this.scenarioTrendingWeekly;
+      return wrapResponse([...filtered]);
     }
-    return wrapResponse(repos);
+    return wrapResponse(getTrendingRepos(period, language));
   }
 
   async *streamTrendingScoutIntro(
