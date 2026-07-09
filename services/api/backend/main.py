@@ -1,10 +1,15 @@
 """
 FastAPI 应用入口 —— v2.0
 """
+import json
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from backend.api import (
     agent,
@@ -20,6 +25,7 @@ from backend.api import (
     user,
 )
 from backend.config import get_settings
+from backend.core.limiter import limiter
 from backend.database import get_session_factory, init_db
 from backend.services.seed_service import seed_preset_categories
 
@@ -38,7 +44,60 @@ async def lifespan(_app: FastAPI):
     yield
 
 
+class _LoginBodyCacheMiddleware:
+    """
+    缓存 /auth/login 请求体，提取用户名写入 scope state 供限流 key 使用。
+    通过 wrapped_receive 把完整 body 重新交给下游，避免 FastAPI 解析失败。
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope.get("type") != "http" or scope.get("path") != f"{settings.api_v1_prefix}/auth/login":
+            return await self.app(scope, receive, send)
+
+        body_parts: list[bytes] = []
+        more_body = True
+        while more_body:
+            message = await receive()
+            if message["type"] == "http.request":
+                body_parts.append(message.get("body", b""))
+                more_body = message.get("more_body", False)
+            else:
+                body_parts.append(b"")
+                more_body = False
+        body = b"".join(body_parts)
+
+        username = ""
+        if body:
+            try:
+                payload = json.loads(body)
+                if isinstance(payload, dict):
+                    username = payload.get("username", "") or ""
+            except Exception:
+                pass
+        scope.setdefault("state", {})["rate_limit_username"] = username
+
+        sent = False
+
+        async def wrapped_receive() -> Message:
+            nonlocal sent
+            if not sent:
+                sent = True
+                return {"type": "http.request", "body": body, "more_body": False}
+            return await receive()
+
+        await self.app(scope, wrapped_receive, send)
+
+
 app = FastAPI(title=settings.app_name, version="2.0.0", lifespan=lifespan)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(_LoginBodyCacheMiddleware)
 
 app.add_middleware(
     CORSMiddleware,

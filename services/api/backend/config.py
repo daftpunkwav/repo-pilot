@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60 * 24  # 1 天
     refresh_token_expire_days: int = 30
 
+    # 速率限制
+    rate_limit_enabled: bool = True
+    rate_limit_login: str = "5/minute"
+    rate_limit_register: str = "3/hour"
+    rate_limit_refresh: str = "20/minute"
+
     # LLM (BYOK)
     llm_provider: str = "openai"
     llm_api_key: str = ""
