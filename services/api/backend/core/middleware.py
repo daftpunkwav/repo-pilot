@@ -1,7 +1,7 @@
 """
 中间件 —— CORS、速率限制、日志
 """
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
 

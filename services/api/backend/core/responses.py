@@ -2,7 +2,7 @@
 统一 API 响应辅助
 """
 import time
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from backend.schemas.common import DataResponse, PaginatedData, PaginatedResponse
 
