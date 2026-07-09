@@ -12,6 +12,7 @@ from backend.api.deps import get_current_user, get_db
 from backend.core.responses import wrap_data
 from backend.models.category import Category
 from backend.models.user import User
+from backend.schemas.category import CategoryCreate, CategoryUpdate
 from backend.schemas.common import DataResponse
 
 router = APIRouter(prefix="/categories", tags=["categories"])
@@ -23,10 +24,6 @@ class CategoryOut(BaseModel):
     icon: str | None = None
     color: str | None = None
     is_preset: bool
-
-
-class CategoryCreate(BaseModel):
-    name: str
 
 
 @router.get("/", response_model=DataResponse[list[CategoryOut]])
@@ -76,7 +73,7 @@ async def create_category(
 @router.put("/{category_id}", response_model=DataResponse[CategoryOut])
 async def update_category(
     category_id: UUID,
-    data: CategoryCreate,
+    data: CategoryUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

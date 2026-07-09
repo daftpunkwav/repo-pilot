@@ -46,6 +46,38 @@ async def test_login_invalid_credentials(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_register_short_password_returns_422(client: AsyncClient):
+    res = await client.post(
+        "/api/v1/auth/register",
+        json={"username": "shortpwd", "password": "1234567"},
+    )
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_login_short_password_returns_422(client: AsyncClient):
+    res = await client.post(
+        "/api/v1/auth/login",
+        json={"username": "nobody", "password": "1234567"},
+    )
+    assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_register_duplicate_username_message(client: AsyncClient):
+    await client.post(
+        "/api/v1/auth/register",
+        json={"username": "dupuser", "password": "demo1234"},
+    )
+    res = await client.post(
+        "/api/v1/auth/register",
+        json={"username": "dupuser", "password": "demo1234"},
+    )
+    assert res.status_code == 409
+    assert res.json()["detail"]["message"] == "用户名已存在"
+
+
+@pytest.mark.asyncio
 async def test_refresh_token(client: AsyncClient):
     reg = await client.post(
         "/api/v1/auth/register",
