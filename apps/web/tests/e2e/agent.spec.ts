@@ -15,4 +15,18 @@ test.describe('agent', () => {
     await page.getByRole('button', { name: '发送' }).click();
     await expect(page.getByTestId('stream-renderer')).toBeVisible({ timeout: 15000 });
   });
+
+  test('context panel collapses and expands', async ({ page }) => {
+    await loginAsMockUser(page);
+    await page.goto('/agent');
+    await expect(page.getByText(/当前上下文/)).toBeVisible({ timeout: 15000 });
+
+    await page.getByTestId('context-panel-collapse').click();
+    await expect(page.getByTestId('context-panel-expand')).toBeVisible();
+    await expect(page.getByText(/当前上下文/)).not.toBeVisible();
+
+    await page.getByTestId('context-panel-expand').click();
+    await expect(page.getByTestId('context-panel-collapse')).toBeVisible();
+    await expect(page.getByText(/当前上下文/)).toBeVisible();
+  });
 });
