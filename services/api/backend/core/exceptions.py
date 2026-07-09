@@ -1,6 +1,8 @@
 """
 自定义异常
 """
+from typing import Optional
+
 from fastapi import HTTPException, status
 
 

@@ -17,7 +17,8 @@ from backend.api import (
     settings as settings_api,
 )
 from backend.config import get_settings
-from backend.database import init_db
+from backend.database import get_session_factory, init_db
+from backend.services.seed_service import seed_preset_categories
 
 settings = get_settings()
 
@@ -25,6 +26,9 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     await init_db()
+    factory = get_session_factory()
+    async with factory() as session:
+        await seed_preset_categories(session)
     yield
 
 
