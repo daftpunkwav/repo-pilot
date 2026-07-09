@@ -25,7 +25,7 @@ RepoPilot/
 ## 技术栈
 
 - API：`services/api` — FastAPI + SQLAlchemy 2.0 + SQLite + LiteLLM
-- Web：`apps/web` — React 18 + TypeScript + Vite + Tailwind CSS + Zustand
+- Web：`apps/web` — React 19 + TypeScript + Vite 7 + Zustand + React Query（Mock 默认开启）
 - 桌面：`apps/desktop` — pywebview（规划）
 
 ## 快速开始

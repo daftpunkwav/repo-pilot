@@ -46,7 +46,7 @@ RepoPilot/
 
 | 模块 | 状态 | 代码位置 |
 |------|------|----------|
-| Web | ✅ 开发中 | `apps/web/`（脚手架；**主 UI 开发在** `docs/design/v1/frontend/`） |
+| Web | ✅ 开发中 | `apps/web/`（v1 Mock 已迁入；设计归档在 `docs/design/v1/frontend/`） |
 | API | ✅ 开发中 | `services/api/backend/` |
 | Agent | 🟡 占位 | 逻辑在 `services/api/backend/agents/`，待迁 |
 | MCP | ⬜ 占位 | `services/mcp/` |
