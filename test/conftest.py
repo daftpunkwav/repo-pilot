@@ -12,6 +12,8 @@ from httpx import ASGITransport, AsyncClient
 # 必须在导入 backend 之前设置；长度不少于 32 字节，满足启动校验
 os.environ.setdefault("SECRET_KEY", "pytest-secret-key-do-not-use-in-prod")
 os.environ.setdefault("DEBUG", "false")
+# 测试环境默认关闭限流，避免并发/顺序执行时因共享内存存储导致 flaky
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 
 @pytest.fixture

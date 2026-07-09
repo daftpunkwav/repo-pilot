@@ -2,10 +2,14 @@
 认证 API —— 注册/登录/刷新/登出/当前用户/修改密码
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from starlette.requests import Request
 
 from backend.api.deps import get_current_user, get_db
+from backend.config import get_settings
+from backend.core.limiter import limiter
 from backend.core.responses import wrap_data
 from backend.core.security import hash_password, verify_password
 from backend.models.user import User
@@ -30,10 +34,19 @@ from backend.services.auth_service import (
 )
 
 router = APIRouter()
+settings = get_settings()
+
+
+def _login_key(request: Request) -> str:
+    """login 限流 key：IP + 用户名（用户名由中间件写入 request.state）。"""
+    ip = get_remote_address(request)
+    username = getattr(request.state, "rate_limit_username", "") or ""
+    return f"{ip}:{username}"
 
 
 @router.post("/register", response_model=DataResponse[TokenOut])
-async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
+@limiter.limit(settings.rate_limit_register)
+async def register(request: Request, data: UserCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == data.username))
     if result.scalar_one_or_none():
         raise HTTPException(
@@ -52,7 +65,8 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/login", response_model=DataResponse[TokenOut])
-async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
+@limiter.limit(settings.rate_limit_login, key_func=_login_key)
+async def login(request: Request, data: UserLogin, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == data.username))
     user = result.scalar_one_or_none()
     if not user or not verify_password(data.password, user.password_hash):
@@ -65,7 +79,8 @@ async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=DataResponse[AccessTokenOut])
-async def refresh(data: RefreshBody, db: AsyncSession = Depends(get_db)):
+@limiter.limit(settings.rate_limit_refresh)
+async def refresh(request: Request, data: RefreshBody, db: AsyncSession = Depends(get_db)):
     rotated = await rotate_refresh_token(db, data.refresh_token)
     if not rotated:
         raise HTTPException(
