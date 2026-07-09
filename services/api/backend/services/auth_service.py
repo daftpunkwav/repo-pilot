@@ -72,7 +72,7 @@ async def revoke_refresh_token(db: AsyncSession, refresh_plain: str | None) -> N
         await db.commit()
 
 
-async def _revoke_all_user_refresh_tokens(db: AsyncSession, user_id: UUID) -> None:
+async def revoke_all_user_refresh_tokens(db: AsyncSession, user_id: UUID) -> None:
     """撤销指定用户的所有 refresh token（token family 级防御）。"""
     await db.execute(
         update(RefreshToken)
@@ -95,7 +95,7 @@ async def rotate_refresh_token(
         return None
     # 重放检测：已撤销的 token 被再次使用，触发 token family 级防御
     if row.revoked:
-        await _revoke_all_user_refresh_tokens(db, row.user_id)
+        await revoke_all_user_refresh_tokens(db, row.user_id)
         return None
     if row.expires_at < datetime.utcnow():
         return None

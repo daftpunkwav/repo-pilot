@@ -23,6 +23,7 @@ from backend.schemas.user import (
 )
 from backend.services.auth_service import (
     issue_tokens,
+    revoke_all_user_refresh_tokens,
     revoke_refresh_token,
     rotate_refresh_token,
     user_to_out,
@@ -114,4 +115,6 @@ async def update_password(
         )
     current_user.password_hash = hash_password(data.new_password)
     await db.commit()
+    # 密码变更后撤销该用户所有未过期 refresh token，防止旧凭证继续被使用
+    await revoke_all_user_refresh_tokens(db, current_user.id)
     return wrap_data(OkData())
