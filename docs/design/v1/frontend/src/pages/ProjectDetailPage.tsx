@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useProjectNotes } from '@/hooks/useNotes';
 import {
@@ -57,6 +57,7 @@ export function ProjectDetailPage() {
   const [scoutContent, setScoutContent] = useState('');
   const [scoutStreaming, setScoutStreaming] = useState(false);
   const [fontSize, setFontSize] = useState(14);
+  const scoutAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (isError) {
@@ -64,6 +65,22 @@ export function ProjectDetailPage() {
       navigate('/projects', { replace: true });
     }
   }, [isError, navigate, addToast]);
+
+  // 离开 ai 标签 / 卸载页面时中断流，避免陈旧结果与资源浪费
+  useEffect(() => {
+    if (tab !== 'ai' && scoutAbortRef.current) {
+      scoutAbortRef.current.abort();
+      scoutAbortRef.current = null;
+      setScoutStreaming(false);
+    }
+  }, [tab]);
+
+  useEffect(
+    () => () => {
+      scoutAbortRef.current?.abort();
+    },
+    [],
+  );
 
   const related = useMemo(() => {
     if (!graphData || !id) return [];
@@ -92,18 +109,39 @@ export function ProjectDetailPage() {
   const runScout = async () => {
     if (!id) return;
     setTab('ai');
-    setScoutStreaming(true);
     setScoutContent('');
+    setScoutStreaming(true);
+    scoutAbortRef.current?.abort();
+    const ac = new AbortController();
+    scoutAbortRef.current = ac;
     const stream = getApi().analyzeProject(id, 'scout');
     try {
       for await (const event of stream) {
-        if (event.event === 'text_delta') {
-          const d = asSSETextDelta(event.data);
-          setScoutContent((c) => c + d.content);
+        if (ac.signal.aborted) break;
+        switch (event.event) {
+          case 'text_delta': {
+            const d = asSSETextDelta(event.data);
+            setScoutContent((c) => c + d.content);
+            break;
+          }
+          case 'error': {
+            const msg = (event.data as { message?: string })?.message ?? '分析失败';
+            addToast({ type: 'error', message: msg });
+            break;
+          }
+          default:
+            break;
         }
       }
+    } catch (err) {
+      if (!ac.signal.aborted) {
+        const message = err instanceof Error ? err.message : '分析失败';
+        addToast({ type: 'error', message });
+      }
     } finally {
-      setScoutStreaming(false);
+      if (scoutAbortRef.current === ac) {
+        setScoutStreaming(false);
+      }
     }
   };
 
