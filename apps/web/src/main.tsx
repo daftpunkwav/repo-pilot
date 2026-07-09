@@ -1,11 +1,35 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { RouterProvider } from "react-router-dom";
-import router from "./router";
-import "./styles/globals.css";
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import {
+  applyOverviewScenarioIfMock,
+  initApiClient,
+} from '@/api/client';
+import {
+  readOverviewMockRound,
+  syncOverviewMockRoundFromUrl,
+} from '@/api/mock/data/overviewScenarios';
+import { App } from '@/App';
+import '@/styles/design-system.css';
+import '@/styles/liquid-glass.css';
+import '@/styles/shell.css';
+import '@/styles/pages/index.css';
+import '@/styles/global.css';
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <RouterProvider router={router} />
-  </React.StrictMode>
-);
+async function bootstrap() {
+  syncOverviewMockRoundFromUrl();
+  const client = await initApiClient();
+  applyOverviewScenarioIfMock(client, readOverviewMockRound());
+
+  const rootEl = document.getElementById('root');
+  if (!rootEl) {
+    throw new Error('Root element #root not found');
+  }
+
+  createRoot(rootEl).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  );
+}
+
+void bootstrap();

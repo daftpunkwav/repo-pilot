@@ -1,51 +1,151 @@
-import { useState } from "react";
-import { useAgentStore } from "../store/agentStore";
-import { sendChatMessage } from "../api/agent";
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { useAgentStore } from '@/stores/agentStore';
+import { ChatPanel } from '@/components/agent/ChatPanel';
+import { AgentContextSidebar } from '@/components/agent/AgentContextSidebar';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { formatRelativeTime } from '@/utils/date';
+import { useProjects } from '@/hooks/useProjects';
+import { AGENT_TAG_CLASS } from '@/utils/labels';
 
-export default function AgentPage() {
-  const [input, setInput] = useState("");
-  const { messages, appendMessage, setLoading } = useAgentStore();
+const AGENT_DISPLAY: Record<string, string> = {
+  hub: 'Hub',
+  scout: 'Scout',
+  mentor: 'Mentor',
+  navigator: 'Navigator',
+  curator: 'Curator',
+  scribe: 'Scribe',
+};
 
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    appendMessage({ id: Date.now().toString(), role: "user", content: input });
-    setLoading(true);
-    try {
-      const res = await sendChatMessage(input);
-      const data = res as { data?: { content?: string } };
-      appendMessage({ id: (Date.now() + 1).toString(), role: "assistant", content: data?.data?.content || "暂无回复" });
-    } catch {
-      appendMessage({ id: (Date.now() + 1).toString(), role: "assistant", content: "请求失败，请稍后重试" });
-    } finally {
-      setLoading(false);
-      setInput("");
+export function AgentPage() {
+  const { sessionId } = useParams<{ sessionId?: string }>();
+  const sessions = useAgentStore((s) => s.sessions);
+  const currentSessionId = useAgentStore((s) => s.currentSessionId);
+  const toolCalls = useAgentStore((s) => s.toolCalls);
+  const loadSessions = useAgentStore((s) => s.loadSessions);
+  const switchSession = useAgentStore((s) => s.switchSession);
+  const createSession = useAgentStore((s) => s.createSession);
+  const deleteSession = useAgentStore((s) => s.deleteSession);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [sessionSearch, setSessionSearch] = useState('');
+  const [toolLogOpen, setToolLogOpen] = useState(true);
+  const { data: projectsData } = useProjects();
+
+  useEffect(() => {
+    void loadSessions();
+  }, [loadSessions]);
+
+  useEffect(() => {
+    if (sessionId) {
+      void switchSession(sessionId);
+    } else if (!currentSessionId && sessions.length > 0) {
+      const first = sessions[0];
+      if (first) void switchSession(first.id);
     }
-  };
+  }, [sessionId, sessions, currentSessionId, switchSession]);
+
+  const filteredSessions = useMemo(() => {
+    const q = sessionSearch.toLowerCase();
+    if (!q) return sessions;
+    return sessions.filter((s) => s.title.toLowerCase().includes(q));
+  }, [sessions, sessionSearch]);
+
+  const contextProjects = projectsData?.items ?? [];
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="px-6 py-4 border-b border-border">
-        <h1 className="text-lg font-semibold">Agent 对话</h1>
-      </header>
-      <main className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.map((m) => (
-          <div key={m.id} className={`max-w-xl ${m.role === "user" ? "ml-auto text-right" : "mr-auto text-left"}`}>
-            <span className="inline-block px-4 py-2 rounded-lg border border-border bg-surface whitespace-pre-wrap">{m.content}</span>
+    <>
+      <aside className="session-list">
+        <div className="session-list-header">
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            data-testid="new-session-btn"
+            onClick={() => void createSession()}
+          >
+            新建对话
+          </button>
+          <div className="field mt-sm" style={{ height: 32 }}>
+            <input
+              placeholder="搜索会话..."
+              value={sessionSearch}
+              onChange={(e) => setSessionSearch(e.target.value)}
+            />
           </div>
-        ))}
+        </div>
+        <div className="session-list-tabs">
+          <span className="session-tab active">全部 {sessions.length}</span>
+        </div>
+        <div className="session-list-body">
+          {filteredSessions.map((s) => (
+            <div
+              key={s.id}
+              className={`session-item ${currentSessionId === s.id ? 'active' : ''}`}
+              role="button"
+              tabIndex={0}
+              onClick={() => void switchSession(s.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void switchSession(s.id);
+              }}
+            >
+              <div className="session-title">
+                {s.title}
+                {s.unread && <span className="session-unread" title="未读" />}
+              </div>
+              <div className="session-summary">{s.title}</div>
+              <div className="session-meta">
+                <span className={`agent-tag ${AGENT_TAG_CLASS[s.agent] ?? 'agent-tag-hub'}`}>
+                  {AGENT_DISPLAY[s.agent] ?? s.agent}
+                </span>
+                <span>{formatRelativeTime(s.updated_at)}</span>
+                <button
+                  type="button"
+                  className="icon-btn"
+                  style={{ marginLeft: 'auto' }}
+                  aria-label="删除会话"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteTarget(s.id);
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div
+          className="session-list-header"
+          style={{ borderTop: '1px solid var(--bg-300)', borderBottom: 0, padding: '10px 14px' }}
+        >
+          <Link to="/settings" className="btn btn-sm btn-ghost" style={{ justifyContent: 'flex-start', width: '100%', gap: 8 }}>
+            Agent 配置
+          </Link>
+        </div>
+      </aside>
+
+      <main className="chat-area">
+        {currentSessionId ? <ChatPanel /> : <p className="muted" style={{ padding: 24 }}>创建或选择一个会话开始对话</p>}
       </main>
-      <footer className="p-4 border-t border-border">
-        <form onSubmit={onSubmit} className="flex gap-2 max-w-3xl mx-auto">
-          <input
-            className="flex-1 px-3 py-2 bg-bg border border-border rounded"
-            placeholder="输入消息..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-          />
-          <button type="submit" className="px-4 py-2 bg-primary text-white rounded">发送</button>
-        </form>
-      </footer>
-    </div>
+
+      <AgentContextSidebar
+        contextProjects={contextProjects}
+        sessionId={currentSessionId}
+        toolLogOpen={toolLogOpen}
+        onToggleToolLog={() => setToolLogOpen((v) => !v)}
+        toolCalls={toolCalls}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="删除会话"
+        message="确定删除此会话？"
+        danger
+        onConfirm={() => {
+          if (deleteTarget) void deleteSession(deleteTarget);
+          setDeleteTarget(null);
+        }}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </>
   );
 }

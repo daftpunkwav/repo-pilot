@@ -1,44 +1,226 @@
-import axios from "axios";
-import type { AxiosInstance, AxiosError } from "axios";
+import type {
+  ActivityItem,
+  AgentId,
+  AgentMessage,
+  AgentPermissions,
+  AgentProfile,
+  AgentSession,
+  ApiResponse,
+  Category,
+  ContextWindowStats,
+  CreateProjectInput,
+  GitHubAccount,
+  GraphData,
+  ImportAssistContext,
+  ImportResult,
+  LoginResponse,
+  Note,
+  OverviewRecentNote,
+  PaginatedList,
+  Project,
+  ProjectListParams,
+  ProjectStats,
+  QuestionAnswer,
+  RecommendedProject,
+  Settings,
+  SSEEvent,
+  StarRepo,
+  Tag,
+  TrendingPeriod,
+  TrendingRepo,
+  TrendingScoutIntroParams,
+  User,
+  UserProfile,
+} from './types';
 
-const API_BASE = "/api/v1";
+/**
+ * IApiClient — Mock 和 Real 实现的统一接口契约
+ */
+export interface IApiClient {
+  register(params: { username: string; password: string }): Promise<ApiResponse<LoginResponse>>;
+  login(params: { username: string; password: string }): Promise<ApiResponse<LoginResponse>>;
+  logout(): Promise<ApiResponse<{ success: boolean }>>;
+  refresh(): Promise<ApiResponse<{ access_token: string }>>;
+  me(): Promise<ApiResponse<User>>;
+  updateProfile(data: Partial<User>): Promise<ApiResponse<User>>;
+  changePassword(params: {
+    old_password: string;
+    new_password: string;
+  }): Promise<ApiResponse<{ success: boolean }>>;
 
-class ApiClient {
-  client: AxiosInstance;
+  listGithubAccounts(): Promise<ApiResponse<GitHubAccount[]>>;
+  bindGithub(params: { username: string; pat: string }): Promise<ApiResponse<GitHubAccount>>;
+  unbindGithub(id: string): Promise<ApiResponse<{ success: boolean }>>;
+  listStars(username?: string): Promise<ApiResponse<StarRepo[]>>;
+  importProjects(
+    repos: Array<{ owner: string; repo: string; url: string }>
+  ): Promise<ApiResponse<ImportResult>>;
 
-  constructor() {
-    this.client = axios.create({ baseURL: API_BASE });
-    this.client.interceptors.request.use((config) => {
-      const token = localStorage.getItem("repopilot_token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    });
-    this.client.interceptors.response.use(
-      (res) => res.data,
-      (error: AxiosError) => {
-        const data = error.response?.data as { error?: { code?: string; message?: string } } | undefined;
-        throw new Error(data?.error?.message || error.message);
-      }
-    );
-  }
+  listProjects(params?: ProjectListParams): Promise<ApiResponse<PaginatedList<Project>>>;
+  getProject(id: string): Promise<ApiResponse<Project>>;
+  createProject(data: CreateProjectInput): Promise<ApiResponse<Project>>;
+  updateProject(id: string, data: Partial<Project>): Promise<ApiResponse<Project>>;
+  deleteProject(id: string): Promise<ApiResponse<{ success: boolean }>>;
+  updateProgress(
+    id: string,
+    progress: Project['progress']
+  ): Promise<ApiResponse<{ id: string; progress: string }>>;
+  getProjectStats(): Promise<ApiResponse<ProjectStats>>;
+  exportProjects(): Promise<ApiResponse<Project[]>>;
 
-  async get(url: string) {
-    return this.client.get(url);
-  }
+  listCategories(): Promise<ApiResponse<Category[]>>;
+  createCategory(data: { name: string }): Promise<ApiResponse<Category>>;
+  updateCategory(id: string, data: { name: string }): Promise<ApiResponse<Category>>;
+  deleteCategory(id: string): Promise<ApiResponse<{ success: boolean }>>;
+  listTags(): Promise<ApiResponse<Tag[]>>;
+  createTag(data: { name: string }): Promise<ApiResponse<Tag>>;
+  deleteTag(id: string): Promise<ApiResponse<{ success: boolean }>>;
+  setProjectTags(
+    projectId: string,
+    tagIds: string[]
+  ): Promise<ApiResponse<{ project_id: string; tag_ids: string[] }>>;
 
-  async post(url: string, body?: unknown) {
-    return this.client.post(url, body);
-  }
+  listNotes(projectId: string): Promise<ApiResponse<Note[]>>;
+  listAllNotes(): Promise<ApiResponse<Note[]>>;
+  getNote(id: string): Promise<ApiResponse<Note>>;
+  createNote(
+    projectId: string,
+    data: { title: string; content: string }
+  ): Promise<ApiResponse<Note>>;
+  updateNote(id: string, data: Partial<Note>): Promise<ApiResponse<Note>>;
+  deleteNote(id: string): Promise<ApiResponse<{ success: boolean }>>;
 
-  async put(url: string, body?: unknown) {
-    return this.client.put(url, body);
-  }
+  getGraph(params?: {
+    min_similarity?: number;
+    max_edges?: number;
+  }): Promise<ApiResponse<GraphData>>;
 
-  async delete(url: string) {
-    return this.client.delete(url);
-  }
+  getSettings(): Promise<ApiResponse<Settings>>;
+  updateSettings(data: Partial<Settings>): Promise<ApiResponse<Settings>>;
+  testLLM(): Promise<ApiResponse<{ success: boolean; latency_ms: number; model: string }>>;
+
+  listTrending(params?: {
+    period?: TrendingPeriod;
+    language?: string;
+  }): Promise<ApiResponse<TrendingRepo[]>>;
+  /** Scout 总览 trending 悬停介绍（SSE · 未来对接 LLM） */
+  streamTrendingScoutIntro(params: TrendingScoutIntroParams): AsyncGenerator<SSEEvent>;
+  listActivities(): Promise<ApiResponse<ActivityItem[]>>;
+  listRecommendedProjects(params?: {
+    limit?: number;
+  }): Promise<ApiResponse<RecommendedProject[]>>;
+  listOverviewRecentNotes(params?: {
+    limit?: number;
+  }): Promise<ApiResponse<OverviewRecentNote[]>>;
+
+  listAgentSessions(): Promise<ApiResponse<AgentSession[]>>;
+  getAgentSession(
+    id: string
+  ): Promise<ApiResponse<AgentSession & { messages: AgentMessage[] }>>;
+  createAgentSession(): Promise<ApiResponse<AgentSession>>;
+  deleteAgentSession(id: string): Promise<ApiResponse<{ success: boolean }>>;
+  getAgentProfiles(): Promise<ApiResponse<AgentProfile[]>>;
+  getUserProfile(): Promise<ApiResponse<UserProfile>>;
+  updateUserProfile(data: Partial<UserProfile>): Promise<ApiResponse<UserProfile>>;
+  getPermissions(): Promise<ApiResponse<AgentPermissions>>;
+
+  chatAgent(sessionId: string, message: string): AsyncGenerator<SSEEvent>;
+  answerQuestion(
+    sessionId: string,
+    questionId: string,
+    answers: QuestionAnswer[]
+  ): AsyncGenerator<SSEEvent>;
+  analyzeProject(projectId: string, agent?: AgentId): AsyncGenerator<SSEEvent>;
+
+  /** 当前会话的上下文窗口用量 */
+  getContextWindow(sessionId?: string | null): Promise<ApiResponse<ContextWindowStats>>;
+
+  /** GitHub 仓库搜索（导入弹窗） */
+  searchGithubRepos(query: string): Promise<ApiResponse<StarRepo[]>>;
+
+  /** 导入助手对话（SSE） */
+  importAssistChat(
+    message: string,
+    context: ImportAssistContext
+  ): AsyncGenerator<SSEEvent>;
+
+  /** 图谱向导对话（SSE，专用 Atlas Agent） */
+  graphGuideChat(
+    message: string,
+    context?: { selected_node_id?: string | null }
+  ): AsyncGenerator<SSEEvent>;
+
+  /**
+   * Mock-only dev hook. Default implementation returns null; MockApiClient
+   * overrides to return the applied overview scenario round (1/2/3).
+   * Application code MUST treat this as opaque and use
+   * `getAppliedOverviewRoundIfMock(client)` instead of calling directly.
+   */
+  getAppliedOverviewRound?(): number | null;
+
+  /**
+   * Mock-only dev hook. Default implementation is a no-op; MockApiClient
+   * overrides to swap the in-memory overview dataset for E2E / dev URL
+   * (`?mock_round=`). Application code MUST go through
+   * `applyOverviewScenarioIfMock()`.
+   */
+  applyOverviewScenario?(round: number): void;
 }
 
-export const api = new ApiClient();
+/**
+ * Mock-only: apply an overview scenario if the active client supports it.
+ * Safe to call on any IApiClient; returns true when the action was applied.
+ */
+export function applyOverviewScenarioIfMock(
+  client: IApiClient,
+  round: number
+): boolean {
+  const fn = (client as { applyOverviewScenario?: (r: number) => void })
+    .applyOverviewScenario;
+  if (typeof fn !== 'function') return false;
+  fn.call(client, round);
+  return true;
+}
+
+async function createApiClient(): Promise<IApiClient> {
+  const useMock = import.meta.env.VITE_USE_MOCK !== 'false';
+  if (useMock) {
+    const { MockApiClient } = await import('./mock');
+    return new MockApiClient();
+  }
+  throw new Error('Real API client not implemented. Set VITE_USE_MOCK=true.');
+}
+
+let apiClientPromise: Promise<IApiClient> | null = null;
+let apiClient: IApiClient | null = null;
+
+export function getApiClient(): Promise<IApiClient> {
+  if (!apiClientPromise) {
+    apiClientPromise = createApiClient();
+  }
+  return apiClientPromise;
+}
+
+export async function initApiClient(): Promise<IApiClient> {
+  apiClient = await getApiClient();
+  return apiClient;
+}
+
+export function getApi(): IApiClient {
+  if (!apiClient) {
+    throw new Error('ApiClient not initialized. Call initApiClient() in main.tsx first.');
+  }
+  return apiClient;
+}
+
+/**
+ * Mock-only: read the currently applied overview round.
+ * Returns null when the active client is not a mock implementation.
+ * Use this instead of `instanceof MockApiClient` checks in app code so the
+ * boundary stays clean and tree-shakable when VITE_USE_MOCK=false.
+ */
+export function getAppliedOverviewRoundIfMock(client: IApiClient): number | null {
+  const maybe = (client as { getAppliedOverviewRound?: () => number | null })
+    .getAppliedOverviewRound;
+  return typeof maybe === 'function' ? maybe.call(client) : null;
+}
