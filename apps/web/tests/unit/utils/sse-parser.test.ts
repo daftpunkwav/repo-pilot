@@ -52,17 +52,20 @@ describe('parseSSEStream', () => {
   it('stops yielding after AbortSignal is triggered', async () => {
     const encoder = new TextEncoder();
     let pushCount = 0;
+    const ac = new AbortController();
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         const tick = () => {
-          if (pushCount++ >= 5) return;
+          if (ac.signal.aborted || pushCount++ >= 5) {
+            controller.close();
+            return;
+          }
           controller.enqueue(encoder.encode('event: text_delta\ndata: {"content":"x"}\n\n'));
           setTimeout(tick, 5);
         };
         tick();
       },
     });
-    const ac = new AbortController();
     const collected: unknown[] = [];
     for await (const e of parseSSEStream(stream.getReader(), ac.signal)) {
       collected.push(e);
