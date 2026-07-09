@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+
 import * as d3 from 'd3';
 import type { D3DragEvent, SimulationLinkDatum, SimulationNodeDatum } from 'd3';
 import type { GraphData, GraphNode } from '@/api/types';
@@ -22,6 +23,16 @@ type SimNode = SimulationNodeDatum & GraphNode;
 
 type SimLink = SimulationLinkDatum<SimNode> & { similarity: number };
 
+/** 为节点 id 生成稳定的颜色索引（1-8） */
+function colorIndexForId(id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) {
+    hash = (hash << 5) - hash + id.charCodeAt(i);
+    hash |= 0;
+  }
+  return (Math.abs(hash) % 8) + 1;
+}
+
 export function ForceGraph({
   data,
   width,
@@ -30,13 +41,17 @@ export function ForceGraph({
   onNodeDoubleClick,
 }: ForceGraphProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId);
   const highlightNodeId = useGraphStore((s) => s.highlightNodeId);
+  const zoomDirection = useGraphStore((s) => s.zoomDirection);
+  const zoomTick = useGraphStore((s) => s.zoomTick);
   const setZoomLevel = useGraphStore((s) => s.setZoomLevel);
 
+  // 初始化 D3 simulation、节点、连线、zoom 行为
   useEffect(() => {
     const svgEl = svgRef.current;
-    if (!svgEl || width <= 0 || height <= 0) return;
+    if (!svgEl || width <= 0 || height <= 0) return undefined;
 
     const svg = d3.select(svgEl);
     svg.selectAll('*').remove();
@@ -54,7 +69,6 @@ export function ForceGraph({
     }
 
     const g = svg.append('g');
-
     const labelsLayer = g.append('g');
 
     const zoom = d3
@@ -67,6 +81,7 @@ export function ForceGraph({
       });
 
     svg.call(zoom);
+    zoomRef.current = zoom;
 
     const simulation = d3
       .forceSimulation(nodes)
@@ -112,15 +127,9 @@ export function ForceGraph({
       .data(nodes)
       .join('circle')
       .attr('data-testid', 'graph-node')
-      .attr('r', (d: SimNode) =>
-        Math.min(20, Math.max(4, Math.log2(d.stars + 1) * 2 + 4))
-      )
-      .attr('fill', (d: SimNode) => `var(--chart-${(d.id.charCodeAt(2) % 8) + 1})`)
-      .attr('stroke', (d: SimNode) =>
-        d.id === selectedNodeId || d.id === highlightNodeId
-          ? 'var(--brand-500)'
-          : 'transparent'
-      )
+      .attr('r', (d: SimNode) => Math.min(20, Math.max(4, Math.log2(d.stars + 1) * 2 + 4)))
+      .attr('fill', (d: SimNode) => `var(--chart-${colorIndexForId(d.id)})`)
+      .attr('stroke', 'transparent')
       .attr('stroke-width', 2)
       .style('cursor', 'pointer')
       .on('click', (_e: MouseEvent, d: SimNode) => onNodeClick(d))
@@ -151,17 +160,32 @@ export function ForceGraph({
 
     return () => {
       simulation.stop();
+      svg.on('.zoom', null);
+      svg.selectAll('*').remove();
     };
-  }, [
-    data,
-    width,
-    height,
-    onNodeClick,
-    onNodeDoubleClick,
-    selectedNodeId,
-    highlightNodeId,
-    setZoomLevel,
-  ]);
+  }, [data, width, height, onNodeClick, onNodeDoubleClick, setZoomLevel]);
+
+  // 响应 GraphControls 的缩放请求
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    const zoom = zoomRef.current;
+    if (!svgEl || !zoom || !zoomDirection) return;
+    const svg = d3.select(svgEl);
+    const current = d3.zoomTransform(svgEl);
+    const factor = zoomDirection === 'in' ? 1.2 : 1 / 1.2;
+    svg.transition().duration(200).call(zoom.transform, current.scale(factor));
+  }, [zoomDirection, zoomTick]);
+
+  // 仅更新选中/高亮状态，不重建 simulation
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+    d3.select(svgEl)
+      .selectAll<SVGCircleElement, SimNode>('circle[data-testid="graph-node"]')
+      .attr('stroke', (d: SimNode) =>
+        d.id === selectedNodeId || d.id === highlightNodeId ? 'var(--brand-500)' : 'transparent'
+      );
+  }, [selectedNodeId, highlightNodeId]);
 
   return (
     <svg
