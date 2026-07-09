@@ -105,7 +105,10 @@ export interface IApiClient {
     language?: string;
   }): Promise<ApiResponse<TrendingRepo[]>>;
   /** Scout 总览 trending 悬停介绍（SSE · 未来对接 LLM） */
-  streamTrendingScoutIntro(params: TrendingScoutIntroParams): AsyncGenerator<SSEEvent>;
+  streamTrendingScoutIntro(
+    params: TrendingScoutIntroParams,
+    signal?: AbortSignal
+  ): AsyncGenerator<SSEEvent>;
   listActivities(): Promise<ApiResponse<ActivityItem[]>>;
   listRecommendedProjects(params?: {
     limit?: number;
@@ -125,13 +128,14 @@ export interface IApiClient {
   updateUserProfile(data: Partial<UserProfile>): Promise<ApiResponse<UserProfile>>;
   getPermissions(): Promise<ApiResponse<AgentPermissions>>;
 
-  chatAgent(sessionId: string, message: string): AsyncGenerator<SSEEvent>;
+  chatAgent(sessionId: string, message: string, signal?: AbortSignal): AsyncGenerator<SSEEvent>;
   answerQuestion(
     sessionId: string,
     questionId: string,
-    answers: QuestionAnswer[]
+    answers: QuestionAnswer[],
+    signal?: AbortSignal
   ): AsyncGenerator<SSEEvent>;
-  analyzeProject(projectId: string, agent?: AgentId): AsyncGenerator<SSEEvent>;
+  analyzeProject(projectId: string, agent?: AgentId, signal?: AbortSignal): AsyncGenerator<SSEEvent>;
 
   /** 当前会话的上下文窗口用量 */
   getContextWindow(sessionId?: string | null): Promise<ApiResponse<ContextWindowStats>>;
@@ -142,13 +146,15 @@ export interface IApiClient {
   /** 导入助手对话（SSE） */
   importAssistChat(
     message: string,
-    context: ImportAssistContext
+    context: ImportAssistContext,
+    signal?: AbortSignal
   ): AsyncGenerator<SSEEvent>;
 
   /** 图谱向导对话（SSE，专用 Atlas Agent） */
   graphGuideChat(
     message: string,
-    context?: { selected_node_id?: string | null }
+    context?: { selected_node_id?: string | null },
+    signal?: AbortSignal
   ): AsyncGenerator<SSEEvent>;
 
   /**

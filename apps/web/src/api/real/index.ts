@@ -351,7 +351,8 @@ export class RealApiClient implements IApiClient {
   }
 
   async *streamTrendingScoutIntro(
-    _params: TrendingScoutIntroParams
+    _params: TrendingScoutIntroParams,
+    _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
     yield { event: 'done', data: { usage: { tokens: 0 }, iterations: 0 } };
   }
@@ -448,22 +449,31 @@ export class RealApiClient implements IApiClient {
     return apiRequest<AgentPermissions>('/agent/permissions');
   }
 
-  async *chatAgent(sessionId: string, message: string): AsyncGenerator<SSEEvent> {
-    const res = await apiSSE(`/agent/sessions/${sessionId}/chat`, { message });
+  async *chatAgent(
+    sessionId: string,
+    message: string,
+    signal?: AbortSignal
+  ): AsyncGenerator<SSEEvent> {
+    const res = await apiSSE(`/agent/sessions/${sessionId}/chat`, { message }, signal);
     if (!res.body) return;
     const reader = res.body.getReader();
-    yield* parseSSEStream(reader);
+    yield* parseSSEStream(reader, signal);
   }
 
   async *answerQuestion(
     _sessionId: string,
     _questionId: string,
-    _answers: QuestionAnswer[]
+    _answers: QuestionAnswer[],
+    _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
     yield* emitNotImplemented('Agent 反问');
   }
 
-  async *analyzeProject(_projectId: string, _agent?: AgentId): AsyncGenerator<SSEEvent> {
+  async *analyzeProject(
+    _projectId: string,
+    _agent?: AgentId,
+    _signal?: AbortSignal
+  ): AsyncGenerator<SSEEvent> {
     yield* emitNotImplemented('项目分析');
   }
 
@@ -481,14 +491,16 @@ export class RealApiClient implements IApiClient {
 
   async *importAssistChat(
     _message: string,
-    _context: ImportAssistContext
+    _context: ImportAssistContext,
+    _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
     yield* emitNotImplemented('导入助手');
   }
 
   async *graphGuideChat(
     _message: string,
-    _context?: { selected_node_id?: string | null }
+    _context?: { selected_node_id?: string | null },
+    _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
     yield* emitNotImplemented('图谱向导');
   }

@@ -83,8 +83,8 @@ export function EmbedAgentChat({
     const api = getApi();
     const stream =
       mode === 'import'
-        ? api.importAssistChat(text, importContext ?? { mode: 'stars' })
-        : api.graphGuideChat(text, { selected_node_id: graphNodeId });
+        ? api.importAssistChat(text, importContext ?? { mode: 'stars' }, ac.signal)
+        : api.graphGuideChat(text, { selected_node_id: graphNodeId }, ac.signal);
 
     let sawError = false;
     try {

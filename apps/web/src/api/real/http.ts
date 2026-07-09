@@ -5,6 +5,17 @@ const API_PREFIX = '/api/v1';
 export const TOKEN_KEY = 'rp_token';
 export const REFRESH_KEY = 'rp_refresh';
 
+/** 统一的 API 错误类，便于 ErrorBoundary / Sentry 捕获 */
+export class ApiRequestError extends Error {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = 'ApiRequestError';
+    this.code = code;
+  }
+}
+
 function baseUrl(): string {
   return import.meta.env.VITE_API_BASE_URL ?? '';
 }
@@ -42,23 +53,41 @@ function extractApiErrorMessage(json: unknown): string {
 async function parseJson<T>(res: Response): Promise<ApiResponse<T>> {
   const json: unknown = await res.json();
   if (!res.ok) {
-    throw { error: { code: 'API_ERROR', message: extractApiErrorMessage(json) } };
+    throw new ApiRequestError('API_ERROR', extractApiErrorMessage(json));
   }
   return json as ApiResponse<T>;
 }
 
-async function refreshAccessToken(): Promise<boolean> {
+/** 全局 refresh 锁，防止并发 401 触发多次 refresh */
+let refreshPromise: Promise<boolean> | null = null;
+
+async function doRefreshAccessToken(): Promise<boolean> {
   const refresh = localStorage.getItem(REFRESH_KEY);
   if (!refresh) return false;
-  const res = await fetch(buildUrl('/auth/refresh'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token: refresh }),
+  try {
+    const res = await fetch(buildUrl('/auth/refresh'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refresh }),
+    });
+    if (!res.ok) return false;
+    const json = (await res.json()) as ApiResponse<{ access_token: string; refresh_token?: string }>;
+    localStorage.setItem(TOKEN_KEY, json.data.access_token);
+    if (json.data.refresh_token) {
+      localStorage.setItem(REFRESH_KEY, json.data.refresh_token);
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = doRefreshAccessToken().finally(() => {
+    refreshPromise = null;
   });
-  if (!res.ok) return false;
-  const json = (await res.json()) as ApiResponse<{ access_token: string }>;
-  localStorage.setItem(TOKEN_KEY, json.data.access_token);
-  return true;
+  return refreshPromise;
 }
 
 export async function apiRequest<T>(
@@ -88,7 +117,8 @@ export async function apiRequest<T>(
 
 export async function apiSSE(
   path: string,
-  body: unknown
+  body: unknown,
+  signal?: AbortSignal
 ): Promise<Response> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -100,10 +130,11 @@ export async function apiSSE(
     method: 'POST',
     headers,
     body: JSON.stringify(body),
+    signal,
   });
   if (!res.ok) {
     const json = await res.json();
-    throw json;
+    throw new ApiRequestError('API_ERROR', extractApiErrorMessage(json));
   }
   return res;
 }

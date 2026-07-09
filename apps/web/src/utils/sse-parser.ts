@@ -37,17 +37,18 @@ export async function* parseSSEStream(
       if (event) yield event;
     }
   } finally {
-    try {
-      reader.releaseLock();
-    } catch {
-      // reader 已被外部释放；忽略
-    }
+    // 若被外部取消，先取消底层 reader 再释放 lock，避免资源泄漏
     if (signal?.aborted) {
       try {
         await reader.cancel();
       } catch {
         // 取消失败也忽略 — 浏览器会在流空闲时回收
       }
+    }
+    try {
+      reader.releaseLock();
+    } catch {
+      // reader 已被外部释放；忽略
     }
   }
 }

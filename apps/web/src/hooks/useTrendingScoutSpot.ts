@@ -25,6 +25,7 @@ export function useTrendingScoutSpot(period: TrendingPeriod) {
   const leaveTimerRef = useRef<number | null>(null);
   const hideAnimTimerRef = useRef<number | null>(null);
   const streamGenRef = useRef(0);
+  const streamAbortRef = useRef<AbortController | null>(null);
   const activeRepoKeyRef = useRef<string | null>(null);
   /** 当前悬停中的 trending 卡片数（卡片间切换时短暂为 0，由 enter 取消 hide） */
   const cardHoverCountRef = useRef(0);
@@ -45,6 +46,8 @@ export function useTrendingScoutSpot(period: TrendingPeriod) {
 
   const abortStream = useCallback(() => {
     streamGenRef.current += 1;
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
     setIsStreaming(false);
   }, []);
 
@@ -84,11 +87,17 @@ export function useTrendingScoutSpot(period: TrendingPeriod) {
       setIsStreaming(true);
 
       try {
-        const stream = getApi().streamTrendingScoutIntro({
-          owner: target.owner,
-          repo: target.repo,
-          period,
-        });
+        streamAbortRef.current?.abort();
+        const ac = new AbortController();
+        streamAbortRef.current = ac;
+        const stream = getApi().streamTrendingScoutIntro(
+          {
+            owner: target.owner,
+            repo: target.repo,
+            period,
+          },
+          ac.signal
+        );
 
         for await (const event of stream) {
           if (streamGenRef.current !== gen || activeRepoKeyRef.current !== key) return;

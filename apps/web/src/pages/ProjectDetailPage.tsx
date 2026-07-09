@@ -114,7 +114,7 @@ export function ProjectDetailPage() {
     scoutAbortRef.current?.abort();
     const ac = new AbortController();
     scoutAbortRef.current = ac;
-    const stream = getApi().analyzeProject(id, 'scout');
+    const stream = getApi().analyzeProject(id, 'scout', ac.signal);
     try {
       for await (const event of stream) {
         if (ac.signal.aborted) break;
