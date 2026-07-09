@@ -21,6 +21,7 @@ export function GraphControls({ nodeCount, edgeCount }: GraphControlsProps) {
   const zoomLevel = useGraphStore((s) => s.zoomLevel);
   const minSimilarity = useGraphStore((s) => s.minSimilarity);
   const setMinSimilarity = useGraphStore((s) => s.setMinSimilarity);
+  const requestZoom = useGraphStore((s) => s.requestZoom);
 
   return (
     <div className="graph-toolbar">
@@ -41,11 +42,21 @@ export function GraphControls({ nodeCount, edgeCount }: GraphControlsProps) {
           />
         </label>
         <div className="zoom-group" role="group" aria-label="缩放控件">
-          <button type="button" className="zoom-btn" title="缩小">
+          <button
+            type="button"
+            className="zoom-btn"
+            title="缩小"
+            onClick={() => requestZoom('out')}
+          >
             −
           </button>
           <span className="zoom-label">{Math.round(zoomLevel * 100)}%</span>
-          <button type="button" className="zoom-btn" title="放大">
+          <button
+            type="button"
+            className="zoom-btn"
+            title="放大"
+            onClick={() => requestZoom('in')}
+          >
             +
           </button>
         </div>
@@ -69,8 +80,12 @@ export function GraphControls({ nodeCount, edgeCount }: GraphControlsProps) {
           <button type="button" className="active">
             力导向
           </button>
-          <button type="button">树状</button>
-          <button type="button">径向</button>
+          <button type="button" disabled title="树状布局尚未实现">
+            树状
+          </button>
+          <button type="button" disabled title="径向布局尚未实现">
+            径向
+          </button>
         </div>
       </div>
       <div className="graph-legend">

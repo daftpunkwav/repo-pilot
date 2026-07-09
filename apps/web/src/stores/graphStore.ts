@@ -8,6 +8,8 @@ interface GraphState {
   maxEdges: number;
   categoryFilter: string | null;
   zoomLevel: number;
+  zoomTick: number;
+  zoomDirection: 'in' | 'out' | null;
   selectNode: (nodeId: string | null) => void;
   highlightNode: (nodeId: string | null) => void;
   setSearchQuery: (query: string) => void;
@@ -15,6 +17,7 @@ interface GraphState {
   setMaxEdges: (value: number) => void;
   setCategoryFilter: (categoryId: string | null) => void;
   setZoomLevel: (level: number) => void;
+  requestZoom: (direction: 'in' | 'out') => void;
   resetView: () => void;
 }
 
@@ -26,6 +29,8 @@ export const useGraphStore = create<GraphState>((set) => ({
   maxEdges: 500,
   categoryFilter: null,
   zoomLevel: 1.0,
+  zoomTick: 0,
+  zoomDirection: null,
 
   selectNode: (nodeId) => set({ selectedNodeId: nodeId }),
   highlightNode: (nodeId) => set({ highlightNodeId: nodeId }),
@@ -35,6 +40,8 @@ export const useGraphStore = create<GraphState>((set) => ({
   setMaxEdges: (value) => set({ maxEdges: Math.max(10, Math.min(2000, value)) }),
   setCategoryFilter: (categoryId) => set({ categoryFilter: categoryId }),
   setZoomLevel: (level) => set({ zoomLevel: level }),
+  requestZoom: (direction) =>
+    set((state) => ({ zoomDirection: direction, zoomTick: state.zoomTick + 1 })),
 
   resetView: () =>
     set({
