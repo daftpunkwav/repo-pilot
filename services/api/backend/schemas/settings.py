@@ -72,6 +72,14 @@ class SettingsUpdate(BaseModel):
         return v
 
 
+class ApiKeyIn(BaseModel):
+    api_key: str = Field(..., min_length=1, max_length=1024)
+
+
+class ApiKeyOut(BaseModel):
+    masked: str
+
+
 class LlmTestOut(BaseModel):
     success: bool
     latency_ms: int

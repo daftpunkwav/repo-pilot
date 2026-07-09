@@ -59,3 +59,23 @@ async def test_settings_api_key_too_long_returns_422(client: AsyncClient, auth_h
         json={"llm_api_key": "x" * 1025},
     )
     assert res.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_save_llm_api_key(client: AsyncClient, auth_headers: dict):
+    real_key = "sk-realtest1234"
+    res = await client.post(
+        "/api/v1/settings/api-key",
+        headers=auth_headers,
+        json={"api_key": real_key},
+    )
+    assert res.status_code == 200
+    masked = res.json()["data"]["masked"]
+    assert masked.endswith(real_key[-4:])
+    assert "****" in masked
+
+    get_res = await client.get("/api/v1/settings/", headers=auth_headers)
+    assert get_res.status_code == 200
+    data = get_res.json()["data"]
+    assert data["llm_api_key_masked"] == masked
+    assert data["llm_configured"] is True

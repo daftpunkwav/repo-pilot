@@ -479,7 +479,7 @@ export interface Settings {
   llm_api_format: LlmApiFormat;
   /** 当前供应商下可选模型列表（用户可增删） */
   llm_available_models: string[];
-  llm_api_key_masked: string;
+  llm_api_key_masked?: string;
   llm_configured: boolean;
   llm_last_test?: string;
   llm_latency_ms?: number;
