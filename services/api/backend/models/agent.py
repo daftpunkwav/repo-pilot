@@ -58,7 +58,7 @@ class AgentMessage(Base):
     agent_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     content_type: Mapped[Optional[str]] = mapped_column(String(16), default="text")
-    metadata: Mapped[Optional[str]] = mapped_column(Text, default="{}")  # JSON
+    message_meta: Mapped[Optional[str]] = mapped_column("metadata", Text, default="{}")  # JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 

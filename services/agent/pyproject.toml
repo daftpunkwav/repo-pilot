@@ -3,7 +3,17 @@ name = "repopilot-agent"
 version = "0.1.0"
 description = "RepoPilot Agent 运行时 — Hub / Scout / Mentor 等（规划中）"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.25.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+]
 
 [build-system]
 requires = ["hatchling"]

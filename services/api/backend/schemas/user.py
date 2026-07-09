@@ -1,6 +1,7 @@
 """
 Pydantic schemas —— 用户相关请求/响应
 """
+from typing import Optional
 from pydantic import BaseModel, EmailStr
 from uuid import UUID
 from datetime import datetime
