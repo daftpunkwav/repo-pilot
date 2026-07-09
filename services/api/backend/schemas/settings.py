@@ -4,6 +4,12 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
+class AgentLlmConfigOut(BaseModel):
+    agent_id: str
+    model_override: str | None = None
+    speaking_style: str = "default"
+
+
 class SettingsOut(BaseModel):
     theme: Literal["dark", "light"] = "dark"
     font_scale: float = 1.0
@@ -19,7 +25,7 @@ class SettingsOut(BaseModel):
     llm_configured: bool = False
     llm_last_test: Optional[str] = None
     llm_latency_ms: Optional[int] = None
-    agent_llm_configs: dict = Field(default_factory=dict)
+    agent_llm_configs: list[AgentLlmConfigOut] = Field(default_factory=list)
 
 
 class SettingsUpdate(BaseModel):
@@ -34,7 +40,7 @@ class SettingsUpdate(BaseModel):
     llm_api_format: Optional[str] = None
     llm_available_models: Optional[list[str]] = None
     llm_api_key: Optional[str] = None
-    agent_llm_configs: Optional[dict] = None
+    agent_llm_configs: Optional[list[AgentLlmConfigOut]] = None
 
 
 class LlmTestOut(BaseModel):

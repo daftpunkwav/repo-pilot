@@ -43,8 +43,12 @@ npm-debug.log*
 apps/web/tsconfig.tsbuildinfo
 
 # Playwright / 浏览器自动化产物
+.playwright-cli/
 docs/design/v1/frontend/output/
 docs/design/v1/.playwright-mcp/
 *.png
 *.jpg
 *.jpeg
+
+# Local AI / agent state
+.reasonix/

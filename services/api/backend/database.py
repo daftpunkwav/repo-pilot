@@ -73,6 +73,8 @@ async def get_session() -> AsyncSession:
 async def init_db() -> None:
     """开发/测试环境建表（Alembic 落地前使用 create_all）。"""
     import backend.models  # noqa: F401 — 注册全部 ORM metadata
+    from backend.migrations.schema_sync import sync_sqlite_schema
 
     async with get_engine().begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(sync_sqlite_schema)

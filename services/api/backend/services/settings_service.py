@@ -6,9 +6,18 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.user import User
-from backend.schemas.settings import SettingsOut, SettingsUpdate
+from backend.schemas.settings import AgentLlmConfigOut, SettingsOut, SettingsUpdate
 
-DEFAULT_SETTINGS: dict[str, Any] = SettingsOut().model_dump()
+AGENT_IDS = ("hub", "scout", "mentor", "navigator", "curator", "scribe")
+
+DEFAULT_AGENT_LLM_CONFIGS: list[dict[str, str | None]] = [
+    {"agent_id": aid, "model_override": None, "speaking_style": "default"}
+    for aid in AGENT_IDS
+]
+
+DEFAULT_SETTINGS: dict[str, Any] = {
+    **SettingsOut(agent_llm_configs=[AgentLlmConfigOut(**c) for c in DEFAULT_AGENT_LLM_CONFIGS]).model_dump(),
+}
 MASK = "sk-****"
 
 
@@ -30,6 +39,12 @@ def _load_raw(user: User) -> dict[str, Any]:
     return dict(DEFAULT_SETTINGS)
 
 
+def _normalize_agent_llm_configs(value: Any) -> list[dict[str, Any]]:
+    if isinstance(value, list) and value:
+        return value
+    return list(DEFAULT_AGENT_LLM_CONFIGS)
+
+
 def settings_to_out(user: User) -> SettingsOut:
     raw = _load_raw(user)
     api_key = raw.pop("llm_api_key", None)
@@ -37,6 +52,7 @@ def settings_to_out(user: User) -> SettingsOut:
     raw["llm_configured"] = bool(api_key)
     if not raw.get("llm_model"):
         raw["llm_model"] = raw.get("llm_default_model", "gpt-4o")
+    raw["agent_llm_configs"] = _normalize_agent_llm_configs(raw.get("agent_llm_configs"))
     return SettingsOut.model_validate(raw)
 
 

@@ -1,5 +1,5 @@
 /** HTTP 客户端 —— 真实后端请求与 JWT 刷新 */
-import type { ApiError, ApiResponse } from '@/api/types';
+import type { ApiResponse } from '@/api/types';
 
 const API_PREFIX = '/api/v1';
 export const TOKEN_KEY = 'rp_token';
@@ -19,10 +19,30 @@ function buildUrl(path: string, params?: Record<string, string | number | undefi
   return url.toString();
 }
 
+/** 解析 FastAPI / 统一错误体 */
+function extractApiErrorMessage(json: unknown): string {
+  if (typeof json !== 'object' || json === null) return '请求失败';
+  const obj = json as Record<string, unknown>;
+  const err = obj.error;
+  if (typeof err === 'object' && err !== null && 'message' in err) {
+    return String((err as { message: unknown }).message);
+  }
+  const detail = obj.detail;
+  if (typeof detail === 'object' && detail !== null && 'message' in detail) {
+    return String((detail as { message: unknown }).message);
+  }
+  if (Array.isArray(detail) && detail[0] && typeof detail[0] === 'object') {
+    const first = detail[0] as { msg?: string };
+    if (first.msg) return first.msg;
+  }
+  if (typeof detail === 'string') return detail;
+  return '请求失败';
+}
+
 async function parseJson<T>(res: Response): Promise<ApiResponse<T>> {
-  const json = (await res.json()) as ApiResponse<T> | ApiError;
+  const json: unknown = await res.json();
   if (!res.ok) {
-    throw json;
+    throw { error: { code: 'API_ERROR', message: extractApiErrorMessage(json) } };
   }
   return json as ApiResponse<T>;
 }
