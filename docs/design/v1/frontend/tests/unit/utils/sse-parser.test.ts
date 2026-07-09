@@ -1,0 +1,74 @@
+import { describe, expect, it } from 'vitest';
+import { parseSSEStream } from '@/utils/sse-parser';
+
+function sseStream(chunks: string[]): ReadableStreamDefaultReader<Uint8Array> {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const c of chunks) controller.enqueue(encoder.encode(c));
+      controller.close();
+    },
+  });
+  return stream.getReader();
+}
+
+async function collect<T>(gen: AsyncGenerator<T>): Promise<T[]> {
+  const out: T[] = [];
+  for await (const item of gen) out.push(item);
+  return out;
+}
+
+describe('parseSSEStream', () => {
+  it('parses a single complete event', async () => {
+    const reader = sseStream(['event: text_delta\ndata: {"content":"hi"}\n\n']);
+    const events = await collect(parseSSEStream(reader));
+    expect(events).toEqual([{ event: 'text_delta', data: { content: 'hi' } }]);
+  });
+
+  it('handles chunked event split across two reads', async () => {
+    const reader = sseStream(['event: text_delta\ndata: {"c', 'ontent":"hi"}\n\n']);
+    const events = await collect(parseSSEStream(reader));
+    expect(events).toEqual([{ event: 'text_delta', data: { content: 'hi' } }]);
+  });
+
+  it('parses multiple events in one chunk', async () => {
+    const reader = sseStream([
+      'event: text_delta\ndata: {"content":"a"}\n\nevent: done\ndata: {"usage":{}}\n\n',
+    ]);
+    const events = await collect(parseSSEStream(reader));
+    expect(events).toHaveLength(2);
+    expect(events[0]?.event).toBe('text_delta');
+    expect(events[1]?.event).toBe('done');
+  });
+
+  it('skips malformed JSON without throwing', async () => {
+    const reader = sseStream([
+      'event: text_delta\ndata: not-json\n\nevent: done\ndata: {}\n\n',
+    ]);
+    const events = await collect(parseSSEStream(reader));
+    expect(events).toEqual([{ event: 'done', data: {} }]);
+  });
+
+  it('stops yielding after AbortSignal is triggered', async () => {
+    const encoder = new TextEncoder();
+    let pushCount = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const tick = () => {
+          if (pushCount++ >= 5) return;
+          controller.enqueue(encoder.encode('event: text_delta\ndata: {"content":"x"}\n\n'));
+          setTimeout(tick, 5);
+        };
+        tick();
+      },
+    });
+    const ac = new AbortController();
+    const collected: unknown[] = [];
+    for await (const e of parseSSEStream(stream.getReader(), ac.signal)) {
+      collected.push(e);
+      if (collected.length >= 1) ac.abort();
+    }
+    // 至少收到 1 个，且最终会停止
+    expect(collected.length).toBeGreaterThanOrEqual(1);
+  });
+});
