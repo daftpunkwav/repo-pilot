@@ -20,6 +20,7 @@ export function GraphControls({ nodeCount, edgeCount }: GraphControlsProps) {
   const setSearchQuery = useGraphStore((s) => s.setSearchQuery);
   const zoomLevel = useGraphStore((s) => s.zoomLevel);
   const minSimilarity = useGraphStore((s) => s.minSimilarity);
+  const setMinSimilarity = useGraphStore((s) => s.setMinSimilarity);
 
   return (
     <div className="graph-toolbar">
@@ -48,6 +49,22 @@ export function GraphControls({ nodeCount, edgeCount }: GraphControlsProps) {
             +
           </button>
         </div>
+        <label
+          className="graph-threshold"
+          title="仅显示相似度 ≥ 此值的边"
+        >
+          <span className="graph-threshold__label">阈值</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={minSimilarity}
+            onChange={(e) => setMinSimilarity(Number(e.target.value))}
+            aria-label="最小相似度阈值"
+          />
+          <span className="graph-threshold__value">{minSimilarity.toFixed(2)}</span>
+        </label>
         <div className="layout-switch" role="group" aria-label="布局切换">
           <button type="button" className="active">
             力导向
@@ -65,9 +82,6 @@ export function GraphControls({ nodeCount, edgeCount }: GraphControlsProps) {
         ))}
         <span className="legend-badge">
           <strong>{nodeCount}</strong>&nbsp;节点&nbsp;/&nbsp;<strong>{edgeCount}</strong>&nbsp;连线
-        </span>
-        <span className="legend-badge" style={{ marginLeft: 4 }}>
-          阈值 ≥ {minSimilarity.toFixed(2)}
         </span>
       </div>
     </div>
