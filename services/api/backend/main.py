@@ -28,6 +28,9 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # 启动前校验 JWT 密钥长度，防止使用弱密钥
+    if len(settings.secret_key.encode("utf-8")) < 32:
+        raise ValueError("SECRET_KEY 长度必须至少为 32 字节，请设置足够强度的随机密钥")
     await init_db()
     factory = get_session_factory()
     async with factory() as session:

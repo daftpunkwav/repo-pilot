@@ -5,6 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
+from pydantic import Field, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -40,7 +41,10 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{DATA_DIR / 'repopilot.db'}"
 
     # 认证
-    secret_key: str = "change-me-in-production"
+    secret_key: str = Field(
+        ...,
+        description="JWT 签名密钥，必须通过 SECRET_KEY 环境变量设置，长度不少于 32 字节",
+    )
     access_token_expire_minutes: int = 60 * 24  # 1 天
     refresh_token_expire_days: int = 30
 
@@ -53,4 +57,13 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    return Settings()
+    try:
+        return Settings()
+    except ValidationError as exc:
+        # 将缺失 SECRET_KEY 的提示转换得更直观
+        for err in exc.errors():
+            if err.get("loc") == ("secret_key",) and err.get("type") == "missing":
+                raise ValueError(
+                    "必须设置 SECRET_KEY 环境变量（长度不少于 32 字节）"
+                ) from exc
+        raise

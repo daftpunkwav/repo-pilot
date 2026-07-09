@@ -9,7 +9,7 @@ from collections.abc import AsyncIterator
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-# 必须在导入 backend 之前设置
+# 必须在导入 backend 之前设置；长度不少于 32 字节，满足启动校验
 os.environ.setdefault("SECRET_KEY", "pytest-secret-key-do-not-use-in-prod")
 os.environ.setdefault("DEBUG", "false")
 
