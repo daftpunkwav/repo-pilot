@@ -6,6 +6,10 @@
     "apps/*",
     "packages/*"
   ],
+  "overrides": {
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
   "scripts": {
     "dev:web": "npm run dev -w @repopilot/web",
     "build:web": "npm run build -w @repopilot/web",
