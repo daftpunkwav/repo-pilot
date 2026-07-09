@@ -122,8 +122,9 @@ export function buildMockRecommendedProjects(projects: Project[], limit = 5): Re
 
   let fallbackIndex = 0;
   while (picked.length < limit && fallbackIndex < FALLBACK_TRENDING_REPOS.length) {
-    const fb = FALLBACK_TRENDING_REPOS[fallbackIndex]!;
+    const fb = FALLBACK_TRENDING_REPOS[fallbackIndex];
     fallbackIndex += 1;
+    if (!fb) continue;
     if (picked.some((item) => item.name === fb.name)) continue;
     picked.push({
       id: `rec_fb_${fallbackIndex}`,

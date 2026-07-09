@@ -118,8 +118,6 @@ Body: { repos: [{ owner, repo, url }] }
 
 前端粘贴多行 URL 时，**后端负责解析行数、去重、校验**；响应 `ImportResult.summary` 人类可读摘要。
 
-前端粘贴多行 URL 时，**后端负责解析行数、去重、校验**；响应 `ImportResult.summary` 人类可读摘要。
-
 ### 7. 总览页（Overview）
 
 | 方法 | 建议 REST | 说明 |

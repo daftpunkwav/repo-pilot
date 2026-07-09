@@ -49,11 +49,25 @@ export function EmbedAgentChat({
   const [tokenHint, setTokenHint] = useState({ in: 0, out: 0 });
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
   const addToast = useUIStore((s) => s.addToast);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [lines, streaming, error]);
+
+  useEffect(
+    () => () => {
+      streamAbortRef.current?.abort();
+    },
+    [],
+  );
+
+  const abortStream = () => {
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    setStreaming(false);
+  };
 
   const send = async () => {
     const text = input.trim();
@@ -62,6 +76,9 @@ export function EmbedAgentChat({
     setError(null);
     setLines((prev) => [...prev, { id: `u_${Date.now()}`, role: 'user', content: text }]);
     setStreaming(true);
+    streamAbortRef.current?.abort();
+    const ac = new AbortController();
+    streamAbortRef.current = ac;
     let assistant = '';
     const api = getApi();
     const stream =
@@ -87,6 +104,7 @@ export function EmbedAgentChat({
       };
 
       for await (const event of stream) {
+        if (ac.signal.aborted) break;
         if (event.event === 'text_delta') {
           assistant += asSSETextDelta(event.data).content;
           scheduleFlush();
@@ -107,13 +125,18 @@ export function EmbedAgentChat({
       }
       setLines((prev) => {
         const rest = prev.filter((l) => l.id !== 'streaming');
+        if (!assistant.trim()) return rest;
         return [...rest, { id: `a_${Date.now()}`, role: 'assistant', content: assistant }];
       });
     } catch (err) {
+      if (ac.signal.aborted) return;
       const message = err instanceof Error ? err.message : '连接中断，请重试';
       setError(message);
       addToast({ type: 'error', message });
     } finally {
+      if (streamAbortRef.current === ac) {
+        streamAbortRef.current = null;
+      }
       if (sawError) {
         addToast({ type: 'error', message: error ?? '助手返回错误' });
       }
@@ -128,8 +151,8 @@ export function EmbedAgentChat({
       return;
     }
     if (e.key === 'Escape' && streaming) {
-      // 流式进行中 Esc 暂时不停止 mock；真实后端可绑 abort
       e.preventDefault();
+      abortStream();
     }
   };
 

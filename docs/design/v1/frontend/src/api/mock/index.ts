@@ -403,7 +403,7 @@ export class MockApiClient implements IApiClient {
     const sortBy = params?.sort_by ?? 'imported_at';
     const sortOrder = params?.sort_order ?? 'desc';
     items.sort((a, b) => {
-      let cmp = 0;
+      let cmp: number;
       if (sortBy === 'name') cmp = a.name.localeCompare(b.name);
       else if (sortBy === 'stars') cmp = a.stars - b.stars;
       else if (sortBy === 'updated_at') {

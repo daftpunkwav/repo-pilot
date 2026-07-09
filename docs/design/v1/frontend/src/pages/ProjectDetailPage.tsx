@@ -229,7 +229,7 @@ export function ProjectDetailPage() {
               className={`btn ${OVERVIEW_INNER_GLASS}`}
               href={project.url}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
             >
               在 GitHub 打开
             </a>
@@ -437,7 +437,7 @@ export function ProjectDetailPage() {
             <div className="pd-info-row">
               <span className="k">URL</span>
               <span className="v">
-                <a href={project.url} target="_blank" rel="noreferrer">
+                <a href={project.url} target="_blank" rel="noopener noreferrer">
                   {project.url.replace('https://github.com/', '')} ↗
                 </a>
               </span>
