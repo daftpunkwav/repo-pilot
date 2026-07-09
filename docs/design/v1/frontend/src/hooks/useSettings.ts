@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { useUIStore } from '@/stores/uiStore';
 
+/** LLM 配置（供应商 / 模型 / 风格 / 探测） */
 export function useSettings() {
   const settings = useSettingsStore((s) => s.settings);
   const isLoading = useSettingsStore((s) => s.isLoading);
@@ -24,13 +24,4 @@ export function useSettings() {
     isTestingLLM,
     testResult,
   };
-}
-
-export function useTheme() {
-  const theme = useUIStore((s) => s.theme);
-  const setTheme = useUIStore((s) => s.setTheme);
-  const fontScale = useUIStore((s) => s.fontScale);
-  const setFontScale = useUIStore((s) => s.setFontScale);
-
-  return { theme, setTheme, fontScale, setFontScale };
 }
