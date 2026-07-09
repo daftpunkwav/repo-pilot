@@ -1,30 +1,89 @@
-import { useAuthStore } from "../../store/authStore";
-import { Link, useLocation } from "react-router-dom";
+import { NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { useAuthStore } from '@/stores/authStore';
+import { useProjectStats } from '@/hooks/useProjects';
+import { useAllNotes } from '@/hooks/useNotes';
+import { NavIcons } from '@/components/icons/NavIcons';
+import { userInitials } from '@/utils/user';
 
-const NAV = [
-  { to: "/", label: "项目" },
-  { to: "/graph", label: "图谱" },
-  { to: "/agent", label: "Agent" },
-  { to: "/settings", label: "设置" },
-];
+/** 与 archive/sidebar.js NAV_ITEMS 顺序一致 */
+const NAV_ITEMS = [
+  { key: 'overview', label: '总览', path: '/', badge: null as string | null },
+  { key: 'projects', label: '项目库', path: '/projects', badge: 'count' as const },
+  { key: 'agent', label: 'Agent Chat', path: '/agent', badge: 'AI' as const },
+  { key: 'graph', label: '图谱', path: '/graph', badge: null },
+  { key: 'notes', label: '笔记', path: '/notes', badge: 'notes' as const },
+  { key: 'settings', label: '设置', path: '/settings', badge: null },
+] as const;
 
-export function Sidebar() {
-  const pathname = useLocation().pathname;
+export type SidebarPageKey = (typeof NAV_ITEMS)[number]['key'] | 'project-detail';
+
+interface SidebarProps {
+  /** 当前高亮页（项目详情页高亮「项目库」） */
+  activePage?: SidebarPageKey;
+}
+
+export function Sidebar({ activePage }: SidebarProps) {
   const user = useAuthStore((s) => s.user);
+  const { data: stats } = useProjectStats();
+  const { data: notes } = useAllNotes();
+  const initials = userInitials(user?.username);
 
   return (
-    <aside className="w-60 border-r border-border bg-surface flex flex-col">
-      <div className="px-4 py-4 border-b border-border">
-        <div className="text-sm font-semibold">RepoPilot</div>
-        <div className="text-xs text-muted mt-1">{user?.username}</div>
+    <aside className="sidebar">
+      <div className="sidebar-brand">
+        <div className="sidebar-logo">RP</div>
+        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+          <span className="sidebar-name">RepoPilot</span>
+          <span style={{ fontSize: 10, color: 'var(--text-400)', letterSpacing: '0.06em' }}>
+            v1.0.0
+          </span>
+        </div>
       </div>
-      <nav className="flex-1 p-2 space-y-1">
-        {NAV.map((item) => (
-          <Link key={item.to} to={item.to} className={`block px-3 py-2 rounded text-sm ${pathname === item.to ? "bg-primary/10 text-primary" : "text-muted hover:text-text"}`}>
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+
+      {NAV_ITEMS.map((item) => {
+        const Icon = NavIcons[item.key];
+        const isProjectDetail = activePage === 'project-detail' && item.key === 'projects';
+        return (
+          <NavLink
+            key={item.key}
+            to={item.path}
+            end={item.path === '/'}
+            className={({ isActive }) => {
+              const active = isActive || isProjectDetail;
+              const classes = ['nav-item'];
+              if (active) classes.push('active');
+              if (item.badge === 'AI') classes.push('ai-badge');
+              return classes.join(' ');
+            }}
+            data-nav-key={item.key}
+          >
+            <Icon />
+            <span>{item.label}</span>
+            {item.badge === 'AI' && <span className="nav-badge">AI</span>}
+            {item.badge === 'count' && stats && (
+              <span className="nav-badge">{stats.total}</span>
+            )}
+            {item.badge === 'notes' && notes && (
+              <span className="nav-badge">{notes.length}</span>
+            )}
+          </NavLink>
+        );
+      })}
+
+      <div className="sidebar-footer">
+        <Link className="nav-item" to="/settings" style={{ padding: '8px 10px' }}>
+          <div className="avatar" style={{ width: 28, height: 28, fontSize: 11 }}>
+            {initials}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2, flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 12, fontWeight: 600 }}>{user?.username ?? '访客'}</span>
+            <span style={{ fontSize: 10, color: 'var(--text-400)' }}>
+              Pro · {stats?.total ?? 0} / ∞
+            </span>
+          </div>
+        </Link>
+      </div>
     </aside>
   );
 }
