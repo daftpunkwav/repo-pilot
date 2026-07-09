@@ -71,13 +71,25 @@ export function EmbedAgentChat({
 
     let sawError = false;
     try {
+      // 16ms 节流：合并连续 text_delta，避免每个字符触发整树重渲染
+      let flushScheduled = false;
+      const scheduleFlush = () => {
+        if (flushScheduled) return;
+        flushScheduled = true;
+        setTimeout(() => {
+          flushScheduled = false;
+          const snapshot = assistant;
+          setLines((prev) => {
+            const rest = prev.filter((l) => l.id !== 'streaming');
+            return [...rest, { id: 'streaming', role: 'assistant', content: snapshot }];
+          });
+        }, 16);
+      };
+
       for await (const event of stream) {
         if (event.event === 'text_delta') {
           assistant += asSSETextDelta(event.data).content;
-          setLines((prev) => {
-            const rest = prev.filter((l) => l.id !== 'streaming');
-            return [...rest, { id: 'streaming', role: 'assistant', content: assistant }];
-          });
+          scheduleFlush();
         }
         if (event.event === 'done') {
           const usage = event.data as { usage?: { tokens?: number } };
