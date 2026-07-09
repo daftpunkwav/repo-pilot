@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { getApi } from '@/api/client';
 import { formatDateTime } from '@/utils/date';
-import { validatePassword, validateRegisterForm } from '@/utils/validators';
+import {
+  validatePassword,
+  validateAvatarUrl,
+  validatePasswordChange,
+} from '@/utils/validators';
 import { GlassCard } from '@/components/common/GlassCard';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { useUIStore } from '@/stores/uiStore';
@@ -23,6 +27,11 @@ export function ProfilePage() {
   if (!user) return <LoadingSpinner />;
 
   const saveAvatar = async () => {
+    const v = validateAvatarUrl(avatarUrl);
+    if (!v.valid) {
+      addToast({ type: 'error', message: v.message ?? '头像 URL 不合法' });
+      return;
+    }
     setSaving(true);
     try {
       const res = await getApi().updateProfile({ avatar_url: avatarUrl || undefined });
@@ -36,7 +45,7 @@ export function ProfilePage() {
   };
 
   const changePassword = async () => {
-    const v = validateRegisterForm(user.username, newPassword, confirmPassword);
+    const v = validatePasswordChange(oldPassword, newPassword, confirmPassword);
     if (!v.valid) {
       addToast({ type: 'error', message: v.message ?? '密码不符合要求' });
       return;
