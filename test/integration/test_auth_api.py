@@ -56,3 +56,30 @@ async def test_refresh_token(client: AsyncClient):
     # 旧 refresh token 再次使用应失败（重放检测）
     replay = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
     assert replay.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_update_password_revokes_refresh_tokens(client: AsyncClient):
+    # 用户注册并获取 refresh token
+    reg = await client.post(
+        "/api/v1/auth/register",
+        json={"username": "pwdchangeuser", "password": "demo1234"},
+    )
+    assert reg.status_code == 200
+    tokens = reg.json()["data"]
+    access_token = tokens["access_token"]
+    old_refresh = tokens["refresh_token"]
+
+    # 修改密码
+    res = await client.put(
+        "/api/v1/auth/password",
+        json={"old_password": "demo1234", "new_password": "newpass5678"},
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert res.status_code == 200
+
+    # 旧 refresh token 应失效，无法刷新
+    refresh_res = await client.post(
+        "/api/v1/auth/refresh", json={"refresh_token": old_refresh}
+    )
+    assert refresh_res.status_code == 401

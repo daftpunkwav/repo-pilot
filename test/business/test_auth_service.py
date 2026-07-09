@@ -8,6 +8,7 @@ from backend.models.user import User
 from backend.core.security import hash_password
 from backend.services.auth_service import (
     issue_tokens,
+    revoke_all_user_refresh_tokens,
     rotate_refresh_token,
     user_to_out,
 )
@@ -79,3 +80,16 @@ async def test_rotate_refresh_token_replay_detection(db_session):
     # 使用已被撤销的旧 token 再次刷新应失败
     replay = await rotate_refresh_token(session, old_refresh)
     assert replay is None
+
+
+@pytest.mark.asyncio
+async def test_revoke_all_user_refresh_tokens(db_session):
+    session, user = db_session
+    tokens = await issue_tokens(session, user)
+    old_refresh = tokens.refresh_token
+
+    await revoke_all_user_refresh_tokens(session, user.id)
+
+    # 撤销后旧 token 刷新应失败
+    result = await rotate_refresh_token(session, old_refresh)
+    assert result is None
