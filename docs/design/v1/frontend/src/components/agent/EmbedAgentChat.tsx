@@ -3,6 +3,7 @@ import { getApi } from '@/api/client';
 import type { ImportAssistContext } from '@/api/types';
 import { asSSETextDelta } from '@/utils/sse-helpers';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
+import { useUIStore } from '@/stores/uiStore';
 
 export type EmbedChatMode = 'import' | 'graph';
 
@@ -46,16 +47,19 @@ export function EmbedAgentChat({
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [tokenHint, setTokenHint] = useState({ in: 0, out: 0 });
+  const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const addToast = useUIStore((s) => s.addToast);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [lines, streaming]);
+  }, [lines, streaming, error]);
 
   const send = async () => {
     const text = input.trim();
     if (!text || streaming) return;
     setInput('');
+    setError(null);
     setLines((prev) => [...prev, { id: `u_${Date.now()}`, role: 'user', content: text }]);
     setStreaming(true);
     let assistant = '';
@@ -65,6 +69,7 @@ export function EmbedAgentChat({
         ? api.importAssistChat(text, importContext ?? { mode: 'stars' })
         : api.graphGuideChat(text, { selected_node_id: graphNodeId });
 
+    let sawError = false;
     try {
       for await (const event of stream) {
         if (event.event === 'text_delta') {
@@ -81,12 +86,25 @@ export function EmbedAgentChat({
             out: t.out + (usage.usage?.tokens ?? assistant.length / 4),
           }));
         }
+        if (event.event === 'error') {
+          sawError = true;
+          const message =
+            (event.data as { message?: string })?.message ?? '助手返回错误，请稍后再试。';
+          setError(message);
+        }
       }
       setLines((prev) => {
         const rest = prev.filter((l) => l.id !== 'streaming');
         return [...rest, { id: `a_${Date.now()}`, role: 'assistant', content: assistant }];
       });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '连接中断，请重试';
+      setError(message);
+      addToast({ type: 'error', message });
     } finally {
+      if (sawError) {
+        addToast({ type: 'error', message: error ?? '助手返回错误' });
+      }
       setStreaming(false);
     }
   };
@@ -110,6 +128,11 @@ export function EmbedAgentChat({
         </div>
       </header>
       <div className="embed-agent-chat__messages">
+        {error && (
+          <div className="embed-msg embed-msg--error" role="alert" data-testid="embed-chat-error">
+            {error}
+          </div>
+        )}
         {lines.map((l) => (
           <div key={l.id} className={`embed-msg embed-msg--${l.role}`}>
             {l.role === 'assistant' ? (
