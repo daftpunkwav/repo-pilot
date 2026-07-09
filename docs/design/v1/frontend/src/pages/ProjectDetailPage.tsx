@@ -149,12 +149,21 @@ export function ProjectDetailPage() {
     const title = useNoteStore.getState().editorTitle;
     const content = useNoteStore.getState().editorContent;
     if (!id) return;
-    if (editingNoteId && editingNoteId.startsWith('n_')) {
-      await updateNote.mutateAsync({ id: editingNoteId, title, content });
-    } else {
-      await createNote.mutateAsync({ projectId: id, title, content });
+    if (!title.trim()) {
+      addToast({ type: 'warning', message: '请输入标题' });
+      return;
     }
-    addToast({ type: 'success', message: '笔记已保存' });
+    try {
+      if (editingNoteId && editingNoteId.startsWith('n_')) {
+        await updateNote.mutateAsync({ id: editingNoteId, title, content });
+      } else {
+        await createNote.mutateAsync({ projectId: id, title, content });
+      }
+      addToast({ type: 'success', message: '笔记已保存' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '保存失败';
+      addToast({ type: 'error', message });
+    }
   };
 
   const handleNewNote = () => {
@@ -171,6 +180,7 @@ export function ProjectDetailPage() {
     }
   };
 
+  if (isError) return null;
   if (isLoading || !project) return <LoadingSpinner />;
 
   return (

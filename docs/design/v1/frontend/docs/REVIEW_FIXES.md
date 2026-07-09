@@ -5,6 +5,7 @@
 ## 文档索引
 
 - [REVIEW_REPORT.md](./REVIEW_REPORT.md) — 2026-07-09 全面审查报告（严重 / 中等 / 轻度问题分级、修复优先级）
+- [REVIEW_REPORT_V2.md](./REVIEW_REPORT_V2.md) — 2026-07-09 第二轮审查（页面/组件/CSS/mock/e2e/规范文档）
 
 ## 关键设计决策
 
@@ -42,6 +43,24 @@
 | L-5 | 单测覆盖率 | `test(frontend): add unit tests for utils + projectStore + graphStore` |
 | M-6 | 流式 setState | `perf(agent): throttle EmbedAgentChat text_delta flushes to 16ms` |
 | S-5 | SSE 取消 | `feat(frontend): add AbortSignal support to SSE parser` |
+
+## 已修复问题（2026-07-09 第二轮）
+
+| 严重度 | 问题 | 提交 |
+|--------|------|------|
+| S-6 | ProjectDetailPage Scout 流无 abort + 状态泄漏 | `fix(project-detail): abort Scout SSE on tab change + handle error event` |
+| S-7 | runScout 误用 asSSETextDelta 强转 | 同上（switch event 分支） |
+| S-8 | Topbar matchMedia SSR/test 崩溃 | `fix(topbar): move matchMedia into useEffect for SSR/jsdom safety` |
+| M-11 | ImportStarsDrawer checkbox 与 already_imported 混用 | `fix(ui): wire graph threshold slider, fix import checkbox, replace emoji icon` |
+| M-12 | GraphControls 阈值无控件 | 同上 + `style(graph): add graph-threshold slider styles` |
+| M-13 | EmbedAgentChat 缺 aria-label | `feat(agent): a11y improvements for EmbedAgentChat` |
+| M-14 | ContextWindow refetch 无 jitter | `fix(frontend): remove non-null assertion + surface note save errors + jitter` |
+| M-15 | EmptyState emoji → SVG | `fix(ui): wire graph threshold slider, fix import checkbox, replace emoji icon` |
+| L-7 | 抽 userInitials 工具函数 | `refactor(frontend): extract userInitials helper` |
+| L-10 | FRONTEND_SPEC.md 版本落后 | `docs(frontend): sync FRONTEND_SPEC.md §1 with actual stack versions` |
+| L-11 | LlmSettingsSection 非空断言 | `fix(frontend): remove non-null assertion + surface note save errors + jitter` |
+| L-12 | NotesPage handleSave 缺 catch | 同上 |
+| M-10 | ProjectDetailPage isError 闪烁 | `fix(project-detail): skip render on isError + note save error handling` |
 
 ## 后续 TODO
 
