@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models.project import Project
+from backend.models.project import Project, project_tags
 from backend.schemas.project import (
     ImportRepoItem,
     ImportResult,
@@ -16,7 +16,7 @@ from backend.schemas.project import (
 )
 
 
-def project_to_out(project: Project) -> ProjectOut:
+def project_to_out(project: Project, tag_ids: list[str] | None = None) -> ProjectOut:
     return ProjectOut(
         id=project.id,
         name=project.name,
@@ -26,11 +26,25 @@ def project_to_out(project: Project) -> ProjectOut:
         stars=project.stars,
         category_id=project.category_id,
         progress=project.progress,  # type: ignore[arg-type]
-        tags=[],
+        tags=tag_ids or [],
         source=project.source,  # type: ignore[arg-type]
         imported_at=project.imported_at,
         updated_at=project.updated_at,
     )
+
+
+async def load_tags_map(db: AsyncSession, project_ids: list[UUID]) -> dict[UUID, list[str]]:
+    if not project_ids:
+        return {}
+    result = await db.execute(
+        select(project_tags.c.project_id, project_tags.c.tag_id).where(
+            project_tags.c.project_id.in_(project_ids)
+        )
+    )
+    mapping: dict[UUID, list[str]] = {}
+    for pid, tid in result.all():
+        mapping.setdefault(pid, []).append(str(tid))
+    return mapping
 
 
 def apply_project_filters(
@@ -41,6 +55,8 @@ def apply_project_filters(
     star_min: int = 0,
     star_max: int | None = None,
     progress: str = "",
+    category_id: UUID | None = None,
+    tag_id: UUID | None = None,
 ):
     if keyword:
         like = f"%{keyword}%"
@@ -55,6 +71,12 @@ def apply_project_filters(
         query = query.where(Project.stars <= star_max)
     if progress:
         query = query.where(Project.progress == progress)
+    if category_id:
+        query = query.where(Project.category_id == category_id)
+    if tag_id:
+        query = query.join(
+            project_tags, Project.id == project_tags.c.project_id
+        ).where(project_tags.c.tag_id == tag_id)
     return query
 
 
@@ -78,6 +100,8 @@ async def list_user_projects(
     star_max: int | None = None,
     sort: str = "",
     progress: str = "",
+    category_id: UUID | None = None,
+    tag_id: UUID | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[ProjectOut], int]:
@@ -89,13 +113,17 @@ async def list_user_projects(
         star_min=star_min,
         star_max=star_max,
         progress=progress,
+        category_id=category_id,
+        tag_id=tag_id,
     )
     count_q = select(func.count()).select_from(base.subquery())
     total = (await db.execute(count_q)).scalar_one()
     base = apply_sort(base, sort)
     offset = (page - 1) * page_size
     result = await db.execute(base.offset(offset).limit(page_size))
-    items = [project_to_out(p) for p in result.scalars().all()]
+    projects = result.scalars().all()
+    tag_map = await load_tags_map(db, [p.id for p in projects])
+    items = [project_to_out(p, tag_map.get(p.id, [])) for p in projects]
     return items, total
 
 
@@ -135,11 +163,19 @@ async def project_stats(db: AsyncSession, user_id: UUID) -> ProjectStats:
     projects = result.scalars().all()
     by_progress: dict[str, int] = {}
     by_language: dict[str, int] = {}
+    by_category: dict[str, int] = {}
     for p in projects:
         by_progress[p.progress] = by_progress.get(p.progress, 0) + 1
         lang = p.language or "unknown"
         by_language[lang] = by_language.get(lang, 0) + 1
-    return ProjectStats(total=len(projects), by_progress=by_progress, by_language=by_language)
+        cat = str(p.category_id) if p.category_id else "uncategorized"
+        by_category[cat] = by_category.get(cat, 0) + 1
+    return ProjectStats(
+        total=len(projects),
+        by_progress=by_progress,
+        by_language=by_language,
+        by_category=by_category,
+    )
 
 
 def build_project_from_create(user_id: UUID, data: ProjectCreate) -> Project:

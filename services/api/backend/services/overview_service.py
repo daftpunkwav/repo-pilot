@@ -1,0 +1,141 @@
+"""总览页数据聚合 —— 从真实数据库派生"""
+from datetime import datetime
+from uuid import UUID
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.models.agent import AgentSession
+from backend.models.note import Note
+from backend.models.project import Project
+from backend.schemas.overview import (
+    ActivityItemOut,
+    OverviewRecentNoteOut,
+    RecommendedProjectOut,
+    TrendingRepoOut,
+)
+
+
+def _iso(dt: datetime | None) -> str:
+    if not dt:
+        return datetime.utcnow().isoformat() + "Z"
+    return dt.isoformat() + ("Z" if not dt.tzinfo else "")
+
+
+async def list_activities(db: AsyncSession, user_id: UUID, limit: int = 20) -> list[ActivityItemOut]:
+    items: list[ActivityItemOut] = []
+
+    projects = (
+        await db.execute(
+            select(Project)
+            .where(Project.user_id == user_id)
+            .order_by(Project.imported_at.desc())
+            .limit(limit)
+        )
+    ).scalars().all()
+    for p in projects:
+        items.append(
+            ActivityItemOut(
+                id=f"act_import_{p.id}",
+                type="import",
+                title=f"导入项目 {p.name}",
+                description=p.description or "新项目已加入库",
+                created_at=_iso(p.imported_at),
+                project_id=str(p.id),
+            )
+        )
+
+    notes = (
+        await db.execute(
+            select(Note).where(Note.user_id == user_id).order_by(Note.updated_at.desc()).limit(limit)
+        )
+    ).scalars().all()
+    for n in notes:
+        items.append(
+            ActivityItemOut(
+                id=f"act_note_{n.id}",
+                type="note",
+                title=f"笔记：{n.title}",
+                description=(n.content or "")[:80],
+                created_at=_iso(n.updated_at or n.created_at),
+                project_id=str(n.project_id),
+            )
+        )
+
+    sessions = (
+        await db.execute(
+            select(AgentSession)
+            .where(AgentSession.user_id == user_id)
+            .order_by(AgentSession.updated_at.desc())
+            .limit(limit)
+        )
+    ).scalars().all()
+    for s in sessions:
+        items.append(
+            ActivityItemOut(
+                id=f"act_agent_{s.id}",
+                type="agent",
+                title=f"Agent 对话：{s.title or '新对话'}",
+                description=f"由 {s.active_agent or 'hub'} 处理",
+                created_at=_iso(s.updated_at or s.created_at),
+            )
+        )
+
+    items.sort(key=lambda x: x.created_at, reverse=True)
+    return items[:limit]
+
+
+async def list_recent_notes(
+    db: AsyncSession, user_id: UUID, limit: int = 5
+) -> list[OverviewRecentNoteOut]:
+    result = await db.execute(
+        select(Note, Project.name)
+        .join(Project, Note.project_id == Project.id)
+        .where(Note.user_id == user_id)
+        .order_by(Note.updated_at.desc())
+        .limit(limit)
+    )
+    out: list[OverviewRecentNoteOut] = []
+    for note, project_name in result.all():
+        out.append(
+            OverviewRecentNoteOut(
+                id=str(note.id),
+                project_id=str(note.project_id),
+                project_name=project_name,
+                title=note.title,
+                updated_at=_iso(note.updated_at or note.created_at),
+            )
+        )
+    return out
+
+
+async def list_recommended(
+    db: AsyncSession, user_id: UUID, limit: int = 6
+) -> list[RecommendedProjectOut]:
+    result = await db.execute(
+        select(Project)
+        .where(Project.user_id == user_id, Project.progress.in_(["none", "learning"]))
+        .order_by(Project.stars.desc())
+        .limit(limit)
+    )
+    items: list[RecommendedProjectOut] = []
+    for i, p in enumerate(result.scalars().all()):
+        items.append(
+            RecommendedProjectOut(
+                id=f"rec_{p.id}",
+                project_id=str(p.id),
+                name=p.name,
+                url=p.url,
+                description=p.description,
+                language=p.language,
+                stars=p.stars,
+                reason="根据 Stars 与当前学习进度推荐",
+                recommended_by="navigator",
+            )
+        )
+    return items
+
+
+async def list_trending() -> list[TrendingRepoOut]:
+    """外部 Trending 需 GitHub API；首期返回空列表。"""
+    return []

@@ -73,6 +73,33 @@ async def create_category(
     )
 
 
+@router.put("/{category_id}", response_model=DataResponse[CategoryOut])
+async def update_category(
+    category_id: UUID,
+    data: CategoryCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    category = await db.get(Category, category_id)
+    if not category or category.is_preset or category.user_id != current_user.id:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Category not found"},
+        )
+    category.name = data.name
+    await db.commit()
+    await db.refresh(category)
+    return wrap_data(
+        CategoryOut(
+            id=category.id,
+            name=category.name,
+            icon=category.icon,
+            color=category.color,
+            is_preset=category.is_preset,
+        )
+    )
+
+
 @router.delete("/{category_id}", response_model=DataResponse[dict])
 async def delete_category(
     category_id: UUID,

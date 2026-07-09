@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,6 +24,7 @@ class User(Base):
     avatar_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     github_accounts: Mapped[str] = mapped_column(String(1024), default="[]")  # JSON
     agent_permissions: Mapped[str] = mapped_column(String(1024), default="{}")  # JSON
+    settings_json: Mapped[str] = mapped_column(Text, default="{}")  # 用户设置 JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, onupdate=datetime.utcnow, nullable=True
