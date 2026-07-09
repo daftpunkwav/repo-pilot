@@ -10,3 +10,5 @@ def test_settings_to_out_defaults():
     out = settings_to_out(user)
     assert out.theme in ("dark", "light")
     assert out.llm_configured is False
+    assert isinstance(out.agent_llm_configs, list)
+    assert len(out.agent_llm_configs) == 6

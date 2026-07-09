@@ -31,7 +31,10 @@ export function LlmSettingsSection({
 
   const agentConfigsMap = useMemo(() => {
     const m = new Map<string, AgentLlmConfig>();
-    for (const c of settings.agent_llm_configs) m.set(c.agent_id, c);
+    const configs = Array.isArray(settings.agent_llm_configs)
+      ? settings.agent_llm_configs
+      : [];
+    for (const c of configs) m.set(c.agent_id, c);
     return m;
   }, [settings.agent_llm_configs]);
 

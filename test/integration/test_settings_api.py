@@ -7,8 +7,9 @@ from httpx import AsyncClient
 async def test_settings_roundtrip(client: AsyncClient, auth_headers: dict):
     get_res = await client.get("/api/v1/settings/", headers=auth_headers)
     assert get_res.status_code == 200
-    assert "data" in get_res.json()
-    assert get_res.json()["data"]["theme"] in ("dark", "light")
+    data = get_res.json()["data"]
+    assert isinstance(data["agent_llm_configs"], list)
+    assert len(data["agent_llm_configs"]) >= 6
 
     put_res = await client.put(
         "/api/v1/settings/",
