@@ -110,7 +110,7 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
                     <input
                       type="checkbox"
                       disabled={s.already_imported}
-                      checked={selected.has(key) || s.already_imported}
+                      checked={selected.has(key)}
                       onChange={() => toggle(key)}
                     />
                     <span className="font-mono">{key}</span>
