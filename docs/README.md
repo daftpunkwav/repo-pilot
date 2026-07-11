@@ -316,55 +316,50 @@ development/{logs, changes, issues, ...} (随时记录)
 
 ### 5.1 目录状态
 
+> 截至 2026-07-12 实际仓库结构。
+
 | 目录 | 状态 | 备注 |
 |------|------|------|
-| `product/` | ✅ 完整 | 详见 `product/README.md` |
-| `architecture/` | ✅ 已创建（待填充） | 空目录 |
-| `api/` | ✅ 已创建（待填充） | 空目录 |
-| `debug/` | ✅ 已创建（待填充） | 空目录 |
-| `development/guides/` | ✅ 有内容 | `DEVELOPMENT_PROCESS.md` |
-| `development/process/` | ✅ 已创建（待填充） | 空目录 |
-| `development/logs/` | ✅ 已创建（待填充） | 空目录 |
-| `development/changes/` | ✅ 已创建（待填充） | 9 个 commit 类型子目录（fix/feat/refactor/docs/chore/style/test/perf/build/ci），均空 |
-| `development/issues/` | ✅ 已创建（待填充） | 5 个问题类型子目录（bug/performance/ux/improvement/investigation），均空 |
-| `development/experiments/` | ✅ 已创建（待填充） | 空目录 |
-| `development/changelog/` | ✅ 已创建（待填充） | 空目录 |
+| `product/` | ✅ 完整 | `v1/`、`v2/` 两套 PRD/SPEC/MVP；详见 `product/README.md` |
+| `architecture/` | ✅ 有内容 | `OVERVIEW.md`、`REPO_LAYOUT.md`、`PATH_MAPPING.md` |
+| `development/` | ✅ 有内容 | `DEVELOPMENT_ROADMAP.md`（路线图） + `guides/DEVELOPMENT_PROCESS.md`（流程） |
+| `superpowers/plans/` | ✅ 有内容 | 当前分支活跃工作计划（如 `2026-07-09-front-backend-review-fixes.md`），随计划完成持续更新 |
+| `api/`、`debug/`、`development/{process,logs,changes,issues,experiments,changelog}/` | ⛔ **未创建** | §3.3 描述的子目录结构尚未落地，仅为愿景 |
 
 ### 5.2 现有文件清单
 
-```
-docs/
-├── README.md                                    ← 本文件
-├── api/                                         (空)
-├── architecture/                                (空)
-├── debug/                                       (空)
-├── product/
-│   ├── README.md                                ← 产品层 README
-│   └── v1/
-│       ├── PRD/
-│       │   ├── PRD.md
-│       │   └── AGENT_PRD.md
-│       ├── SPEC/
-│       │   ├── TECHNICAL_SPEC.md
-│       │   └── AGENT_SPEC.md
-│       ├── MVP/
-│       │   └── MVP_SCOPE.md
-│       ├── RepoPilot-v1-文档审查报告.md
-│       └── RepoPilot-v1-文档审查报告-2026-07-03-v2.md
-└── development/
-    ├── guides/
-    │   └── DEVELOPMENT_PROCESS.md
-    ├── process/                                 (空)
-    ├── logs/                                    (空)
-    ├── changes/
-    │   ├── fix/  feat/  refactor/  docs/  chore/  style/  test/  perf/  build/  ci/    (均空)
-    ├── issues/
-    │   ├── bug/  performance/  ux/  improvement/  investigation/                       (均空)
-    ├── experiments/                             (空)
-    └── changelog/                               (空)
-```
+> 截至 2026-07-12；仅列出有内容的文件与目录，空目录省略。
 
----
+````
+docs/
+├── README.md                                ← 本文件
+├── architecture/
+│   ├── OVERVIEW.md                          # 运行时架构
+│   ├── PATH_MAPPING.md                      # 历史路径对照
+│   └── REPO_LAYOUT.md                       # Monorepo 布局
+├── development/
+│   ├── DEVELOPMENT_ROADMAP.md               # v1.0 路线图
+│   └── guides/
+│       └── DEVELOPMENT_PROCESS.md           # 开发流程与质量门禁
+├── product/
+│   ├── README.md                            ← 产品层 README
+│   ├── v1/
+│   │   ├── PRD/                  (PRD.md, AGENT_PRD.md)
+│   │   ├── SPEC/                 (TECHNICAL_SPEC.md, AGENT_SPEC.md)
+│   │   ├── MVP/                  (MVP_SCOPE.md)
+│   │   ├── RepoPilot-v1-修复报告-第1~7次.md
+│   │   └── RepoPilot-v1-审查报告-第1~13轮.md
+│   └── v2/
+│       ├── IDEA.md
+│       ├── MVP/                  (MVP_SCOPE.md)
+│       ├── PRD/                  (PRD.md, AGENT_PRD.md)
+│       └── SPEC/                 (TECHNICAL_SPEC.md, AGENT_SPEC.md)
+└── superpowers/
+    └── plans/                              # 当前分支活跃工作计划
+        └── 2026-07-09-front-backend-review-fixes.md
+````
+
+> `docs/product/v1/MVP/MVP_SCOPE.md` 与 `docs/development/DEVELOPMENT_ROADMAP.md` 是 v1.0 的实施范围与路线图，权威源仍是 `docs/product/v1/PRD/PRD.md` 与 `docs/product/v1/SPEC/TECHNICAL_SPEC.md`（见 §1）。
 
 ## 6. 未来扩展
 

@@ -204,11 +204,11 @@ APP_PORT=19876
 cd services/api
 uvicorn backend.main:app --reload --host 127.0.0.1 --port 19876
 
-# Web — Mock 开发（当前主流程）
-cd docs/design/v1/frontend && npm run dev
-
-# Web — Monorepo 正式应用（审查通过后）
+# Web — Monorepo 正式应用（当前主流程）
 npm run dev:web   # 仓库根目录
+
+# Web — Mock 开发（设计归档，保留用于回溯；v1 UI 已迁入 apps/web）
+cd docs/design/v1/frontend && npm run dev
 
 # 桌面端 (打包后，规划中)
 # 见 apps/desktop/README.md
