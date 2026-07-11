@@ -39,3 +39,5 @@ npm run dev
 - 设计规格：`docs/design/v1/FRONTEND_SPEC.md`
 - API 契约：`docs/design/v1/process/frontend-api-contract.md`
 - 路径对照：`docs/architecture/PATH_MAPPING.md`
+
+> **副本说明：** `apps/web/docs/` 下 4 个文件（`liquid-glass.md`、`REVIEW_FIXES.md`、`REVIEW_REPORT.md`、`REVIEW_REPORT_V2.md`）为 `docs/design/v1/frontend/docs/` 同名文件的**字节级副本**（SHA256 完全一致），保留为向后兼容。**权威源在 `docs/design/v1/frontend/docs/`**。
