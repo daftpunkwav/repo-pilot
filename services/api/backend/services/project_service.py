@@ -127,11 +127,55 @@ async def list_user_projects(
     return items, total
 
 
+# 语言 → 预设分类名（降级 Curator 规则）
+_LANG_CATEGORY = {
+    "TypeScript": "Web 前端",
+    "JavaScript": "Web 前端",
+    "Vue": "Web 前端",
+    "CSS": "Web 前端",
+    "HTML": "Web 前端",
+    "Python": "Web 后端",
+    "Go": "Web 后端",
+    "Rust": "工具 / 库",
+    "Java": "Web 后端",
+    "Kotlin": "移动开发",
+    "Swift": "移动开发",
+    "Dart": "移动开发",
+    "C++": "工具 / 库",
+    "C": "工具 / 库",
+    "Shell": "DevOps / 运维",
+    "Dockerfile": "DevOps / 运维",
+    "Jupyter Notebook": "数据科学",
+    "R": "数据科学",
+}
+
+
+async def _resolve_category_id(db: AsyncSession, user_id: UUID, language: str | None):
+    """按语言匹配预设/用户分类，找不到则返回 None。"""
+    if not language:
+        return None
+    cat_name = _LANG_CATEGORY.get(language)
+    if not cat_name:
+        return None
+    from backend.models.category import Category
+
+    result = await db.execute(
+        select(Category).where(
+            (Category.name == cat_name)
+            & ((Category.user_id == user_id) | (Category.is_preset == True))  # noqa: E712
+        )
+    )
+    cat = result.scalars().first()
+    return cat.id if cat else None
+
+
 async def import_repos(
     db: AsyncSession,
     user_id: UUID,
     repos: list[ImportRepoItem],
 ) -> ImportResult:
+    from backend.services.github_client import fetch_repo_info
+
     succeeded = 0
     failed = 0
     errors: list[dict] = []
@@ -143,18 +187,37 @@ async def import_repos(
             failed += 1
             errors.append({"repo": f"{repo.owner}/{repo.repo}", "reason": "ALREADY_EXISTS"})
             continue
+
+        meta: dict = {}
+        try:
+            meta = await fetch_repo_info(repo.owner, repo.repo)
+        except Exception:
+            meta = {}
+
+        language = None if meta.get("error") else meta.get("language")
+        description = None if meta.get("error") else meta.get("description")
+        stars = 0 if meta.get("error") else int(meta.get("stars") or 0)
+        category_id = await _resolve_category_id(db, user_id, language)
+
         project = Project(
             user_id=user_id,
             name=f"{repo.owner}/{repo.repo}",
             url=repo.url,
             source="github",
+            description=description,
+            language=language,
+            stars=stars,
+            category_id=category_id,
         )
         db.add(project)
         known_urls.add(repo.url)
         succeeded += 1
 
     await db.commit()
-    summary = f"成功导入 {succeeded} 个，失败 {failed} 个"
+    summary = (
+        f"成功导入 {succeeded} 个，失败 {failed} 个。"
+        "已拉取 GitHub 元数据并按语言做降级分类；配置 LLM 后可在导入助手中由 Curator 精细分类。"
+    )
     return ImportResult(succeeded=succeeded, failed=failed, summary=summary, errors=errors)
 
 
