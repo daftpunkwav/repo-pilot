@@ -136,6 +136,29 @@ async def list_recommended(
     return items
 
 
-async def list_trending() -> list[TrendingRepoOut]:
-    """外部 Trending 需 GitHub API；首期返回空列表。"""
-    return []
+async def list_trending(language: str = "", period: str = "weekly") -> list[TrendingRepoOut]:
+    """通过 GitHub Search API 近似 trending。"""
+    from backend.services.github_client import list_trending_approx
+
+    _ = period
+    raw = await list_trending_approx(language=language, limit=12)
+    out: list[TrendingRepoOut] = []
+    for i, r in enumerate(raw):
+        full = r.get("name") or ""
+        if "/" in full:
+            owner, repo = full.split("/", 1)
+        else:
+            owner, repo = "unknown", full or "repo"
+        out.append(
+            TrendingRepoOut(
+                owner=owner,
+                repo=repo,
+                url=r.get("url") or "",
+                description=r.get("description"),
+                language=r.get("language"),
+                stars=int(r.get("stars") or 0),
+                stars_today=None,
+                rank=i + 1,
+            )
+        )
+    return out

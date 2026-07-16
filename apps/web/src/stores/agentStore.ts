@@ -169,8 +169,34 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     await get().processSSEStream(stream);
   },
 
-  skipQuestion: () => set({ pendingQuestion: null }),
+  skipQuestion: () => {
+    const { currentSessionId, pendingQuestion } = get();
+    if (!currentSessionId || !pendingQuestion) {
+      set({ pendingQuestion: null });
+      return;
+    }
+    void (async () => {
+      get().cancelStream();
+      set({
+        pendingQuestion: null,
+        streaming: true,
+        streamingContent: '',
+      });
+      const controller = new AbortController();
+      set({ streamAbortController: controller });
+      const api = getApi();
+      const stream = api.answerQuestion(
+        currentSessionId,
+        pendingQuestion.question_id,
+        [],
+        controller.signal,
+        true
+      );
+      await get().processSSEStream(stream);
+    })();
+  },
 
+  /** 仅用于 SSE 调度同步；UI 不再提供手动切换。 */
   setActiveAgent: (agent) => set({ activeAgent: agent }),
 
   clearError: () => set({ error: null }),
@@ -212,11 +238,18 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           }
           case 'tool_call': {
             const toolCall = asSSEToolCall(event.data);
+            const raw = event.data as Record<string, unknown>;
+            const callId =
+              toolCall.call_id ||
+              (typeof raw.id === 'string' ? raw.id : `tc_${Date.now()}`);
             set((state) => {
               const newMap = new Map(state.toolCalls);
-              newMap.set(toolCall.call_id, {
-                name: toolCall.name,
-                args: toolCall.args,
+              newMap.set(callId, {
+                name: toolCall.name || String(raw.name ?? 'tool'),
+                args: (toolCall.args || (raw.args as Record<string, unknown>) || {}) as Record<
+                  string,
+                  unknown
+                >,
               });
               return { toolCalls: newMap };
             });
@@ -224,13 +257,23 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           }
           case 'tool_result': {
             const toolResult = asSSEToolResult(event.data);
+            const raw = event.data as Record<string, unknown>;
+            const callId =
+              toolResult.call_id ||
+              (typeof raw.id === 'string' ? raw.id : '');
             set((state) => {
               const newMap = new Map(state.toolCalls);
-              const existing = newMap.get(toolResult.call_id);
-              if (existing) {
-                newMap.set(toolResult.call_id, {
+              const existing = callId ? newMap.get(callId) : undefined;
+              if (existing && callId) {
+                newMap.set(callId, {
                   ...existing,
-                  result: toolResult.result,
+                  result: toolResult.result ?? raw.result ?? raw.preview,
+                });
+              } else if (callId) {
+                newMap.set(callId, {
+                  name: String(raw.name ?? 'tool'),
+                  args: {},
+                  result: toolResult.result ?? raw.result ?? raw.preview,
                 });
               }
               return { toolCalls: newMap };
@@ -244,7 +287,12 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           }
           case 'agent_switch': {
             const switchData = asSSEAgentSwitch(event.data);
-            set({ activeAgent: switchData.to });
+            const raw = event.data as Record<string, unknown>;
+            const next =
+              switchData.to ||
+              (typeof raw.agent_id === 'string' ? raw.agent_id : null) ||
+              get().activeAgent;
+            set({ activeAgent: next as AgentId });
             break;
           }
           case 'done': {

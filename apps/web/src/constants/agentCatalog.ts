@@ -63,4 +63,11 @@ export const AGENT_CATALOG: AgentDefinition[] = [
     intro: '生成结构化笔记，自动关联到项目与技术栈。',
     color: 'linear-gradient(135deg,#ff375f,#ff6b8a)',
   },
+  {
+    id: 'atlas',
+    name: 'Atlas',
+    tagline: '图谱向导',
+    intro: '解读知识图谱中的项目关联，建议探索与迁移学习路径。',
+    color: 'linear-gradient(135deg,#5ac8fa,#007aff)',
+  },
 ];

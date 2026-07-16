@@ -15,6 +15,7 @@ const AGENT_DISPLAY: Record<string, string> = {
   navigator: 'Navigator',
   curator: 'Curator',
   scribe: 'Scribe',
+  atlas: 'Atlas',
 };
 
 export function AgentPage() {

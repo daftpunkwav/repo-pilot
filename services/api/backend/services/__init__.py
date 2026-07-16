@@ -1,15 +1,3 @@
-"""
-服务层占位 —— 后续逐步实现业务逻辑
-"""
-from backend.api import auth, categories, agent, github, graph, notes, projects, settings
+"""服务层 —— 业务逻辑模块（按需从子模块导入，避免循环依赖）"""
 
-__all__ = [
-    "auth",
-    "categories",
-    "agent",
-    "github",
-    "graph",
-    "notes",
-    "projects",
-    "settings",
-]
+__all__: list[str] = []

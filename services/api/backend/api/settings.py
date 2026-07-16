@@ -34,12 +34,20 @@ async def test_llm(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    from backend.llm.config import build_llm_config_from_user
+    from backend.llm.provider import LLMProvider
+    from backend.services.settings_service import record_llm_test
+
     settings = await get_settings(db, current_user.id)
-    if not settings.llm_configured:
-        return wrap_data(LlmTestOut(success=False, latency_ms=0, model=settings.llm_model))
-    return wrap_data(
-        LlmTestOut(success=True, latency_ms=settings.llm_latency_ms or 0, model=settings.llm_model)
-    )
+    cfg = await build_llm_config_from_user(db, current_user.id)
+    if not cfg:
+        return wrap_data(
+            LlmTestOut(success=False, latency_ms=0, model=settings.llm_model)
+        )
+    provider = LLMProvider(cfg)
+    ok, ms, model = await provider.test_connection()
+    await record_llm_test(db, current_user.id, success=ok, latency_ms=ms, model=model)
+    return wrap_data(LlmTestOut(success=ok, latency_ms=ms, model=model or settings.llm_model))
 
 
 @router.post("/api-key", response_model=DataResponse[ApiKeyOut])

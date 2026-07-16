@@ -20,8 +20,9 @@ class AgentChatBody(BaseModel):
 
 class AgentQuestionAnswer(BaseModel):
     question_id: str
-    answers: dict[str, Any]
+    answers: Any = Field(default_factory=dict)  # dict 或 QuestionAnswer[]
     skipped: bool = False
+    session_id: Optional[UUID] = None
 
 
 class AgentAnalyzeRequest(BaseModel):

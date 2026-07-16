@@ -125,19 +125,25 @@ export class RealApiClient implements IApiClient {
   }
 
   async listGithubAccounts(): Promise<ApiResponse<GitHubAccount[]>> {
-    return { data: [], meta: { ts: Date.now() } };
+    return apiRequest<GitHubAccount[]>('/github/accounts');
   }
 
-  async bindGithub(): Promise<ApiResponse<GitHubAccount>> {
-    throwApiError('NOT_IMPLEMENTED', 'GitHub 绑定尚未在后端实现');
+  async bindGithub(params: {
+    username: string;
+    pat: string;
+  }): Promise<ApiResponse<GitHubAccount>> {
+    return apiRequest<GitHubAccount>('/github/bindaccount', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
   }
 
-  async unbindGithub(): Promise<ApiResponse<{ success: boolean }>> {
-    throwApiError('NOT_IMPLEMENTED', 'GitHub 解绑尚未在后端实现');
+  async unbindGithub(id: string): Promise<ApiResponse<{ success: boolean }>> {
+    return apiRequest(`/github/accounts/${id}`, { method: 'DELETE' });
   }
 
-  async listStars(): Promise<ApiResponse<StarRepo[]>> {
-    throwApiError('NOT_IMPLEMENTED', 'GitHub Stars 尚未在后端实现');
+  async listStars(username?: string): Promise<ApiResponse<StarRepo[]>> {
+    return apiRequest<StarRepo[]>('/github/stars', {}, { username });
   }
 
   async importProjects(
@@ -351,10 +357,13 @@ export class RealApiClient implements IApiClient {
   }
 
   async *streamTrendingScoutIntro(
-    _params: TrendingScoutIntroParams,
-    _signal?: AbortSignal
+    params: TrendingScoutIntroParams,
+    signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
-    yield { event: 'done', data: { usage: { tokens: 0 }, iterations: 0 } };
+    const res = await apiSSE('/agent/trending-scout', params as unknown as Record<string, unknown>, signal);
+    if (!res.body) return;
+    const reader = res.body.getReader();
+    yield* parseSSEStream(reader, signal);
   }
 
   async listActivities(): Promise<ApiResponse<ActivityItem[]>> {
@@ -461,20 +470,41 @@ export class RealApiClient implements IApiClient {
   }
 
   async *answerQuestion(
-    _sessionId: string,
-    _questionId: string,
-    _answers: QuestionAnswer[],
-    _signal?: AbortSignal
+    sessionId: string,
+    questionId: string,
+    answers: QuestionAnswer[],
+    signal?: AbortSignal,
+    skipped = false
   ): AsyncGenerator<SSEEvent> {
-    yield* emitNotImplemented('Agent 反问');
+    const res = await apiSSE(
+      '/agent/question',
+      {
+        session_id: sessionId,
+        question_id: questionId,
+        answers,
+        skipped,
+      },
+      signal
+    );
+    if (!res.body) return;
+    const reader = res.body.getReader();
+    yield* parseSSEStream(reader, signal);
   }
 
   async *analyzeProject(
-    _projectId: string,
-    _agent?: AgentId,
-    _signal?: AbortSignal
+    projectId: string,
+    agent?: AgentId,
+    signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
-    yield* emitNotImplemented('项目分析');
+    const depth = agent === 'mentor' ? 'deep' : 'quick';
+    const res = await apiSSE(
+      `/agent/analyze/${projectId}`,
+      { depth, force_refresh: false },
+      signal
+    );
+    if (!res.body) return;
+    const reader = res.body.getReader();
+    yield* parseSSEStream(reader, signal);
   }
 
   async getContextWindow(
@@ -485,23 +515,40 @@ export class RealApiClient implements IApiClient {
     });
   }
 
-  async searchGithubRepos(_query: string): Promise<ApiResponse<StarRepo[]>> {
-    throwApiError('NOT_IMPLEMENTED', 'GitHub 搜索尚未在后端实现');
+  async searchGithubRepos(query: string): Promise<ApiResponse<StarRepo[]>> {
+    return apiRequest<StarRepo[]>('/github/search', {}, { q: query });
   }
 
   async *importAssistChat(
-    _message: string,
-    _context: ImportAssistContext,
-    _signal?: AbortSignal
+    message: string,
+    context: ImportAssistContext,
+    signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
-    yield* emitNotImplemented('导入助手');
+    const res = await apiSSE(
+      '/agent/import-assist',
+      { message, context },
+      signal
+    );
+    if (!res.body) return;
+    const reader = res.body.getReader();
+    yield* parseSSEStream(reader, signal);
   }
 
   async *graphGuideChat(
-    _message: string,
-    _context?: { selected_node_id?: string | null },
-    _signal?: AbortSignal
+    message: string,
+    context?: { selected_node_id?: string | null },
+    signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
-    yield* emitNotImplemented('图谱向导');
+    const res = await apiSSE(
+      '/agent/graph-guide',
+      {
+        message,
+        selected_node_id: context?.selected_node_id ?? null,
+      },
+      signal
+    );
+    if (!res.body) return;
+    const reader = res.body.getReader();
+    yield* parseSSEStream(reader, signal);
   }
 }
