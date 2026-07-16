@@ -425,6 +425,25 @@ export class RealApiClient implements IApiClient {
     return apiRequest(`/agent/sessions/${id}`, { method: 'DELETE' });
   }
 
+  async updateAgentSession(
+    id: string,
+    data: { title?: string; project_id?: string | null }
+  ): Promise<ApiResponse<AgentSession>> {
+    const res = await apiRequest<AgentSession>(`/agent/sessions/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+    return {
+      data: {
+        ...res.data,
+        id: String(res.data.id),
+        agent: res.data.agent as AgentId,
+        project_id: res.data.project_id ? String(res.data.project_id) : null,
+      },
+      meta: res.meta,
+    };
+  }
+
   async getAgentProfiles(): Promise<ApiResponse<AgentProfile[]>> {
     const res = await apiRequest<AgentProfile[]>('/agent/profiles');
     return {

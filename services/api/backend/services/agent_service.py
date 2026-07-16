@@ -34,6 +34,7 @@ def session_to_out(session: AgentSession) -> AgentSessionOut:
         agent=session.active_agent or "hub",
         updated_at=(session.updated_at or session.created_at).isoformat() + "Z",
         unread=False,
+        project_id=session.project_id,
     )
 
 
@@ -96,6 +97,30 @@ async def create_session(
     return session_to_out(session)
 
 
+async def update_session(
+    db: AsyncSession,
+    user_id: UUID,
+    session_id: UUID,
+    *,
+    title: str | None = None,
+    project_id: UUID | None = None,
+    clear_project: bool = False,
+) -> AgentSessionOut | None:
+    session = await db.get(AgentSession, session_id)
+    if not session or session.user_id != user_id:
+        return None
+    if title is not None:
+        session.title = title
+    if clear_project:
+        session.project_id = None
+    elif project_id is not None:
+        session.project_id = project_id
+    session.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(session)
+    return session_to_out(session)
+
+
 async def delete_session(db: AsyncSession, user_id: UUID, session_id: UUID) -> bool:
     session = await db.get(AgentSession, session_id)
     if not session or session.user_id != user_id:
@@ -150,6 +175,11 @@ async def stream_chat(
         yield format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"})
         return
 
+    # 消息级 project_id 优先，并回写到会话
+    if project_id is not None:
+        session.project_id = project_id
+        await db.commit()
+
     await append_message(db, session, role="user", content=message, agent_id="hub")
 
     hub = HubService(db)
@@ -161,7 +191,7 @@ async def stream_chat(
         user=user,
         session_id=session_id,
         message=message,
-        project_id=project_id or session.project_id,
+        project_id=session.project_id,
     ):
         # 解析部分事件以收集回复
         if chunk.startswith("event: text_delta"):

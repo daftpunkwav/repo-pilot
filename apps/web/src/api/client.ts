@@ -123,6 +123,10 @@ export interface IApiClient {
   ): Promise<ApiResponse<AgentSession & { messages: AgentMessage[] }>>;
   createAgentSession(): Promise<ApiResponse<AgentSession>>;
   deleteAgentSession(id: string): Promise<ApiResponse<{ success: boolean }>>;
+  updateAgentSession(
+    id: string,
+    data: { title?: string; project_id?: string | null }
+  ): Promise<ApiResponse<AgentSession>>;
   getAgentProfiles(): Promise<ApiResponse<AgentProfile[]>>;
   getUserProfile(): Promise<ApiResponse<UserProfile>>;
   updateUserProfile(data: Partial<UserProfile>): Promise<ApiResponse<UserProfile>>;

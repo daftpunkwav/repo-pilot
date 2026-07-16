@@ -16,6 +16,13 @@ class AgentChatRequest(BaseModel):
 
 class AgentChatBody(BaseModel):
     message: str = Field(..., min_length=1)
+    project_id: Optional[UUID] = None
+
+
+class SessionUpdateBody(BaseModel):
+    title: Optional[str] = Field(None, max_length=255)
+    project_id: Optional[UUID] = None
+    active_agent: Optional[str] = None
 
 
 class AgentQuestionAnswer(BaseModel):
@@ -45,6 +52,7 @@ class AgentSessionOut(BaseModel):
     agent: str
     updated_at: str
     unread: bool = False
+    project_id: Optional[UUID] = None
 
 
 class AgentSessionDetailOut(AgentSessionOut):

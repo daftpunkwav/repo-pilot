@@ -908,6 +908,20 @@ export class MockApiClient implements IApiClient {
     return wrapResponse({ success: true });
   }
 
+  async updateAgentSession(
+    id: string,
+    data: { title?: string; project_id?: string | null }
+  ): Promise<ApiResponse<AgentSession>> {
+    await delay();
+    requireAuth();
+    const session = this.sessions.find((s) => s.id === id);
+    if (!session) throw { error: { code: 'NOT_FOUND', message: '会话不存在' } };
+    if (data.title !== undefined) session.title = data.title;
+    if (data.project_id !== undefined) session.project_id = data.project_id;
+    session.updated_at = new Date().toISOString();
+    return wrapResponse(session);
+  }
+
   async getAgentProfiles(): Promise<ApiResponse<AgentProfile[]>> {
     await delay();
     requireAuth();
