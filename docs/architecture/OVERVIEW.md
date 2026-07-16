@@ -45,7 +45,18 @@ flowchart TB
     MCP --> AGENT
 ```
 
-**v1.0 现状：** Agent 逻辑仍在 `services/api/backend/agents/` 内，与 API 同进程；`services/agent`、`services/mcp` 为占位目录。
+**当前现状：** Multi-Agent 运行时已落地在 `services/api/backend/`（与 API 同进程）：
+
+| 模块 | 路径 | 职责 |
+|------|------|------|
+| Hub | `agents/hub.py` | 意图路由、Plan-and-Execute、多 Agent 编排 |
+| ReAct | `agents/react.py` | 推理循环、工具调用、反问拦截 |
+| Registry | `agents/registry.py` | Hub/Scout/Mentor/Navigator/Curator/Scribe/Atlas |
+| LLM | `llm/provider.py` | LiteLLM BYOK 流式/非流式 |
+| Memory | `memory/` | 短期/长期记忆、画像提案合并、上下文压缩 |
+| Tools | `tools/builtin.py` | 项目/图谱/GitHub/笔记/反问/调度等工具 |
+
+`services/agent`、`services/mcp` 仍为未来独立进程预留。对话入口统一走 Hub，前端不再手动选择 Agent。
 
 ---
 

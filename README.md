@@ -12,9 +12,9 @@ RepoPilot/
 │   ├── web/          # React Web 前端
 │   └── desktop/      # 桌面壳（规划中）
 ├── services/
-│   ├── api/          # 传统后端 API
-│   ├── agent/        # Agent 运行时（占位）
-│   └── mcp/          # MCP Server（占位）
+│   ├── api/          # FastAPI 后端（含 Multi-Agent 运行时）
+│   ├── agent/        # 独立 Agent 服务（预留扩展）
+│   └── mcp/          # MCP Server（规划中）
 ├── packages/         # 共享库（types / ui / prompts / …）
 ├── docs/
 └── archive/
@@ -24,9 +24,20 @@ RepoPilot/
 
 ## 技术栈
 
-- API：`services/api` — FastAPI + SQLAlchemy 2.0 + SQLite + LiteLLM
-- Web：`apps/web` — React 19 + TypeScript + Vite 7 + Zustand + React Query（Mock 默认开启）
+- API：`services/api` — FastAPI + SQLAlchemy 2.0 + SQLite + LiteLLM Multi-Agent
+- Web：`apps/web` — React 19 + TypeScript + Vite 7 + Zustand + React Query
+- Agent：Hub 智能调度 Scout/Mentor/Navigator/Curator/Scribe/Atlas（BYOK）
 - 桌面：`apps/desktop` — pywebview（规划）
+
+### 启用真实后端（关闭 Mock）
+
+```bash
+# apps/web/.env.local
+VITE_USE_MOCK=false
+VITE_API_BASE_URL=http://localhost:19876
+```
+
+配置 `SECRET_KEY`（≥32 字节）后启动 API；在设置页填入 LLM API Key（BYOK）即可使用完整 Agent 能力。无 Key 时自动降级为规则/图谱模式。
 
 ## 快速开始
 
