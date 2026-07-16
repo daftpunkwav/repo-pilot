@@ -213,6 +213,45 @@ class ReActEngine:
                     )
                     continue
 
+                # 导入助手：勾选仓库（前端同步左侧 checkbox）
+                if isinstance(tool_result, dict) and tool_result.get("__select_repos__"):
+                    if emit_sse:
+                        yield format_sse(
+                            "tool_result",
+                            {
+                                "call_id": tc_id,
+                                "id": tc_id,
+                                "name": name,
+                                "status": "success",
+                                "preview": f"勾选 {tool_result.get('count', 0)} 个仓库",
+                                "result": tool_result,
+                            },
+                        )
+                        yield format_sse(
+                            "select_repos",
+                            {
+                                "repo_keys": tool_result.get("repo_keys") or [],
+                                "action": tool_result.get("action") or "set",
+                                "reason": tool_result.get("reason") or "",
+                                "count": tool_result.get("count") or 0,
+                            },
+                        )
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tc_id,
+                            "content": json.dumps(
+                                {
+                                    "ok": True,
+                                    "selected": tool_result.get("repo_keys") or [],
+                                    "message": "已在界面勾选，请用文字向用户说明清单",
+                                },
+                                ensure_ascii=False,
+                            ),
+                        }
+                    )
+                    continue
+
                 preview = _preview(tool_result)
                 if emit_sse:
                     yield format_sse(

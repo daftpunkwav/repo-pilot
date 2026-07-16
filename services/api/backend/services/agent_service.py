@@ -370,6 +370,9 @@ async def stream_import_assist(
     message: str,
     context: dict[str, Any],
 ) -> AsyncIterator[str]:
+    from backend.llm.config import build_llm_config_from_user
+    from backend.services.sse_stream import format_sse
+
     session = AgentSession(
         user_id=user.id,
         title="导入助手",
@@ -379,22 +382,106 @@ async def stream_import_assist(
     await db.commit()
     await db.refresh(session)
 
-    ctx_text = json.dumps(context, ensure_ascii=False)[:3000]
-    prompt = (
-        f"你是导入场景的 Curator/Scout 协作助手。\n"
-        f"导入上下文: {ctx_text}\n"
-        f"用户消息: {message}\n"
-        "帮助用户理解待导入仓库、建议分类与是否值得加入学习库。"
+    available = list(context.get("available_repo_keys") or [])
+    selected = list(context.get("selected_repo_keys") or [])
+    mode = context.get("mode") or "stars"
+    # 列表过长时只注入前 80 + 总数，避免爆上下文
+    preview_keys = available[:80]
+    ctx_text = json.dumps(
+        {
+            "mode": mode,
+            "available_count": len(available),
+            "available_repo_keys_preview": preview_keys,
+            "selected_repo_keys": selected,
+        },
+        ensure_ascii=False,
     )
-    hub = HubService(db)
-    # 先 curator 分类视角
-    async for chunk in hub.handle_direct_agent(
-        user=user,
+
+    llm_cfg = await build_llm_config_from_user(db, user.id)
+    if not llm_cfg:
+        # 无 Key：规则降级 — 关键词匹配并勾选
+        q = (message or "").lower()
+        hits = [
+            k
+            for k in available
+            if any(part in k.lower() for part in q.replace("，", " ").split() if len(part) > 1)
+        ][:12]
+        if not hits and available:
+            hits = available[:5]
+        if hits:
+            yield format_sse(
+                "select_repos",
+                {
+                    "repo_keys": hits,
+                    "action": "set",
+                    "reason": "降级模式：按关键词匹配勾选",
+                    "count": len(hits),
+                },
+            )
+        text = (
+            "【降级模式】未配置 LLM Key。\n\n"
+            + (
+                f"已在左侧勾选 **{len(hits)}** 个仓库：\n"
+                + "\n".join(f"- `{k}`" for k in hits)
+                + "\n\n请确认后点击「导入选中」。可在设置中配置 API Key 以获得智能推荐。"
+                if hits
+                else "左侧暂无候选仓库。请先加载 Stars 或完成搜索。"
+            )
+        )
+        for i in range(0, len(text), 40):
+            yield format_sse("text_delta", {"content": text[i : i + 40]})
+        yield format_sse("done", {"usage": {"tokens": len(text)}, "iterations": 0, "degraded": True})
+        return
+
+    prompt = (
+        "你是 RepoPilot **导入助手**（Curator + Scout）。\n"
+        "你的职责：根据用户意图，从左侧候选列表中挑选仓库，并**调用工具 select_import_repos** "
+        "在界面上勾选它们，然后用中文说明推荐理由与清单。\n"
+        "规则：\n"
+        "1. repo_keys 必须来自 available_repo_keys_preview（或用户已提到的完整 owner/repo）。\n"
+        "2. 勾选后请列出清单，请用户确认；不要声称已经完成导入。\n"
+        "3. 用户说「导入 / 确认」时，再次确认勾选并提示点击「导入选中」按钮。\n"
+        f"场景 mode={mode}\n"
+        f"上下文: {ctx_text}\n"
+        f"用户消息: {message}"
+    )
+    from backend.agents.react import EngineResult, ReActEngine
+    from backend.agents.registry import get_registry
+    from backend.llm.provider import LLMProvider
+    from backend.memory.context import ContextBuilder
+    from backend.memory.service import MemoryService
+
+    memory = MemoryService(db)
+    builder = ContextBuilder(db, memory)
+    llm = LLMProvider(llm_cfg)
+    agent_def = get_registry().get("curator")
+    ctx = await builder.build_run_context(
+        user_id=user.id,
         session_id=session.id,
         agent_id="curator",
-        message=prompt,
+        llm=llm,
+        llm_config=llm_cfg,
+        speaking_style="default",
+    )
+    ctx.extra["available_repo_keys"] = available
+    ctx.extra["selected_repo_keys"] = selected
+    messages = await builder.build_messages(
+        agent_def=agent_def,
+        ctx=ctx,
+        user_message=prompt,
+        history=[],
+    )
+    yield format_sse(
+        "agent_switch",
+        {"agent_id": "curator", "from": "hub", "to": "curator", "reason": "导入助手"},
+    )
+    engine = ReActEngine()
+    async for item in engine.run(
+        agent_def=agent_def, ctx=ctx, messages=messages, emit_sse=True
     ):
-        yield chunk
+        if isinstance(item, EngineResult):
+            continue
+        yield item
 
 
 async def stream_graph_guide(

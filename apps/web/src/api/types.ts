@@ -402,6 +402,7 @@ export type SSEEventType =
   | 'tool_result'
   | 'question'
   | 'agent_switch'
+  | 'select_repos'
   | 'done'
   | 'error';
 
@@ -566,4 +567,20 @@ export interface ImportAssistContext {
   mode: 'stars' | 'urls' | 'search';
   available_repo_keys?: string[];
   selected_repo_keys?: string[];
+}
+
+/** Agent 操控勾选事件 */
+export interface SelectReposEvent {
+  repo_keys: string[];
+  action: 'set' | 'add' | 'remove';
+  reason?: string;
+  count?: number;
+}
+
+export interface StarsListResult {
+  items: StarRepo[];
+  total: number;
+  cached: boolean;
+  fetched_at?: string | null;
+  cache_ttl_hours?: number;
 }

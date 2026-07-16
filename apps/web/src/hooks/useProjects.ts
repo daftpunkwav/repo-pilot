@@ -161,14 +161,17 @@ export function useDeleteProject() {
   });
 }
 
-export function useGithubStars() {
+export function useGithubStars(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['githubStars'],
     queryFn: async () => {
       const api = getApi();
+      // 默认走服务端缓存；强制刷新由 mutate/invalidate + listStars({refresh:true}) 触发
       const res = await api.listStars();
       return res.data;
     },
+    enabled: options?.enabled !== false,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

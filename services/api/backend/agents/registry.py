@@ -176,6 +176,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "fetch_github_repo",
             "fetch_readme",
             "query_knowledge_graph",
+            "select_import_repos",
             "propose_memory",
         ],
         system_prompt=(
@@ -234,6 +235,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "fetch_github_repo",
             "list_categories",
             "suggest_category",
+            "select_import_repos",
             "ask_user",
             "propose_memory",
         ],

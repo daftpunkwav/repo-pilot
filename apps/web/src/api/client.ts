@@ -25,6 +25,7 @@ import type {
   Settings,
   SSEEvent,
   StarRepo,
+  StarsListResult,
   Tag,
   TrendingPeriod,
   TrendingRepo,
@@ -51,7 +52,10 @@ export interface IApiClient {
   listGithubAccounts(): Promise<ApiResponse<GitHubAccount[]>>;
   bindGithub(params: { username: string; pat: string }): Promise<ApiResponse<GitHubAccount>>;
   unbindGithub(id: string): Promise<ApiResponse<{ success: boolean }>>;
-  listStars(username?: string): Promise<ApiResponse<StarRepo[]>>;
+  listStars(params?: {
+    username?: string;
+    refresh?: boolean;
+  }): Promise<ApiResponse<StarsListResult>>;
   importProjects(
     repos: Array<{ owner: string; repo: string; url: string }>
   ): Promise<ApiResponse<ImportResult>>;

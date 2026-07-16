@@ -26,6 +26,7 @@ import type {
   Settings,
   SSEEvent,
   StarRepo,
+  StarsListResult,
   Tag,
   TrendingPeriod,
   TrendingRepo,
@@ -134,8 +135,14 @@ export class RealApiClient implements IApiClient {
     return apiRequest(`/github/accounts/${id}`, { method: 'DELETE' });
   }
 
-  async listStars(username?: string): Promise<ApiResponse<StarRepo[]>> {
-    return apiRequest<StarRepo[]>('/github/stars', {}, { username });
+  async listStars(params?: {
+    username?: string;
+    refresh?: boolean;
+  }): Promise<ApiResponse<StarsListResult>> {
+    return apiRequest<StarsListResult>('/github/stars', {}, {
+      username: params?.username,
+      refresh: params?.refresh ? 'true' : undefined,
+    });
   }
 
   async importProjects(

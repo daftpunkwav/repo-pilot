@@ -526,6 +526,57 @@ async def dispatch_agent(
     }
 
 
+@tool(
+    name="select_import_repos",
+    description=(
+        "导入场景专用：在左侧列表中勾选/取消勾选仓库。"
+        "repo_keys 形如 owner/repo，必须来自 available_repo_keys。"
+        "action=set 替换当前勾选；add 追加；remove 取消。"
+        "勾选后向用户说明为何推荐这些项目，请用户确认后再点「导入选中」。"
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "repo_keys": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "owner/repo 列表",
+            },
+            "action": {
+                "type": "string",
+                "enum": ["set", "add", "remove"],
+                "default": "set",
+            },
+            "reason": {"type": "string", "description": "勾选理由，会展示给用户"},
+        },
+        "required": ["repo_keys"],
+    },
+    allowed_agents=["curator", "scout", "hub", "navigator"],
+)
+async def select_import_repos(
+    context=None,
+    repo_keys: list | None = None,
+    action: str = "set",
+    reason: str = "",
+    **kw,
+):
+    keys = [str(k).strip() for k in (repo_keys or []) if str(k).strip()]
+    # 与上下文 available 求交
+    available = []
+    if context and isinstance(getattr(context, "extra", None), dict):
+        available = list(context.extra.get("available_repo_keys") or [])
+    if available:
+        avail_set = set(available)
+        keys = [k for k in keys if k in avail_set]
+    return {
+        "__select_repos__": True,
+        "repo_keys": keys,
+        "action": action if action in ("set", "add", "remove") else "set",
+        "reason": reason or "根据你的需求已在左侧勾选推荐仓库",
+        "count": len(keys),
+    }
+
+
 def ensure_tools_loaded() -> None:
     """导入本模块以注册全部工具。"""
     return None

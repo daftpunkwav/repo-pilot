@@ -298,8 +298,19 @@ export class MockApiClient implements IApiClient {
     return wrapResponse({ success: true });
   }
 
-  async listStars(): Promise<ApiResponse<StarRepo[]>> {
-    await delay();
+  async listStars(params?: {
+    username?: string;
+    refresh?: boolean;
+  }): Promise<
+    ApiResponse<{
+      items: StarRepo[];
+      total: number;
+      cached: boolean;
+      fetched_at?: string | null;
+      cache_ttl_hours?: number;
+    }>
+  > {
+    await delay(params?.refresh ? 600 : 200);
     requireAuth();
     const importedNames = new Set(this.projects.map((p) => p.name));
     const fromProjects: StarRepo[] = this.projects.slice(0, 5).map((p) => {
@@ -318,7 +329,14 @@ export class MockApiClient implements IApiClient {
       ...s,
       already_imported: importedNames.has(`${s.owner}/${s.repo}`),
     }));
-    return wrapResponse([...fromProjects, ...unimported]);
+    const items = [...fromProjects, ...unimported];
+    return wrapResponse({
+      items,
+      total: items.length,
+      cached: !params?.refresh,
+      fetched_at: new Date().toISOString(),
+      cache_ttl_hours: 6,
+    });
   }
 
   async importProjects(
@@ -1103,7 +1121,7 @@ export class MockApiClient implements IApiClient {
     requireAuth();
     const lower = message.toLowerCase();
     const keys = context.available_repo_keys ?? [];
-    const picks = keys.filter((k) => {
+    let picks = keys.filter((k) => {
       if (lower.includes('python') || lower.includes('后端')) {
         return /flask|fastapi|django|python/i.test(k);
       }
@@ -1115,10 +1133,22 @@ export class MockApiClient implements IApiClient {
       }
       return false;
     });
+    if (picks.length === 0) picks = keys.slice(0, 3);
+    if (picks.length > 0) {
+      yield {
+        event: 'select_repos',
+        data: {
+          repo_keys: picks,
+          action: 'set',
+          reason: 'Mock：按关键词自动勾选',
+          count: picks.length,
+        },
+      };
+    }
     const reply =
       picks.length > 0
-        ? `根据你的描述，我建议导入：\n\n${picks.map((p) => `- **${p}**`).join('\n')}\n\n你可以在左侧勾选后确认导入。`
-        : `我理解你想导入与「${message}」相关的项目。请尝试描述技术栈或场景（如「Python Web」「React 生态」），我会从列表中推荐匹配项。`;
+        ? `已在左侧勾选 **${picks.length}** 个仓库：\n\n${picks.map((p) => `- **${p}**`).join('\n')}\n\n请确认后点击「导入选中」。`
+        : `左侧暂无候选。请先同步 Stars 或搜索仓库，再让我推荐。`;
     for (const ch of reply) {
       yield { event: 'text_delta', data: { content: ch } };
       await delay(8);

@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import base64
 import logging
-from typing import Any, Optional
+import re
+from typing import Any
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +17,13 @@ async def _request(
     *,
     token: str | None = None,
     accept: str = "application/vnd.github+json",
-) -> tuple[int, Any]:
+) -> tuple[int, Any, dict[str, str]]:
+    """返回 (status, body, headers)。"""
     try:
         import httpx
     except ImportError:
         logger.error("httpx not installed")
-        return 0, {"error": "httpx 未安装"}
+        return 0, {"error": "httpx 未安装"}, {}
 
     headers = {
         "Accept": accept,
@@ -30,17 +33,39 @@ async def _request(
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
+    async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.get(f"{GITHUB_API}{path}", headers=headers)
         try:
             data = resp.json()
         except Exception:
             data = {"raw": resp.text[:500]}
-        return resp.status_code, data
+        # 小写 header key 方便读 Link
+        hdrs = {k.lower(): v for k, v in resp.headers.items()}
+        return resp.status_code, data, hdrs
+
+
+def _parse_next_link(link_header: str | None) -> str | None:
+    """从 GitHub Link 头解析 rel=next 的 path（含 query）。"""
+    if not link_header:
+        return None
+    # <https://api.github.com/user/starred?page=2>; rel="next"
+    for part in link_header.split(","):
+        if 'rel="next"' not in part and "rel=next" not in part:
+            continue
+        m = re.search(r"<([^>]+)>", part)
+        if not m:
+            continue
+        url = m.group(1)
+        if url.startswith(GITHUB_API):
+            return url[len(GITHUB_API) :]
+        # 已是 path
+        if url.startswith("/"):
+            return url
+    return None
 
 
 async def fetch_repo_info(owner: str, repo: str, token: str | None = None) -> dict:
-    status, data = await _request(f"/repos/{owner}/{repo}", token=token)
+    status, data, _ = await _request(f"/repos/{owner}/{repo}", token=token)
     if status != 200:
         return {
             "error": f"GitHub API {status}",
@@ -65,15 +90,14 @@ async def fetch_repo_info(owner: str, repo: str, token: str | None = None) -> di
 async def fetch_readme_text(
     owner: str, repo: str, token: str | None = None
 ) -> str | None:
-    status, data = await _request(f"/repos/{owner}/{repo}/readme", token=token)
+    status, data, _ = await _request(f"/repos/{owner}/{repo}/readme", token=token)
     if status != 200 or not isinstance(data, dict):
         return None
     content = data.get("content")
     if not content:
         return None
     try:
-        raw = base64.b64decode(content).decode("utf-8", errors="replace")
-        return raw
+        return base64.b64decode(content).decode("utf-8", errors="replace")
     except Exception:
         return None
 
@@ -83,9 +107,7 @@ async def search_repositories(
 ) -> list[dict]:
     if not query.strip():
         return []
-    from urllib.parse import quote
-
-    status, data = await _request(
+    status, data, _ = await _request(
         f"/search/repositories?q={quote(query)}&per_page={per_page}&sort=stars",
         token=token,
     )
@@ -108,49 +130,90 @@ async def search_repositories(
     return items
 
 
+def _map_star_item(r: dict) -> dict:
+    return {
+        "id": str(r.get("id")),
+        "name": r.get("name"),
+        "full_name": r.get("full_name"),
+        "url": r.get("html_url"),
+        "description": r.get("description"),
+        "language": r.get("language"),
+        "stars": r.get("stargazers_count", 0),
+        "owner": (r.get("owner") or {}).get("login"),
+    }
+
+
 async def list_user_stars(
-    username: str, token: str | None = None, per_page: int = 30
+    username: str,
+    token: str | None = None,
+    *,
+    per_page: int = 100,
+    max_pages: int = 30,
 ) -> list[dict]:
-    status, data = await _request(
-        f"/users/{username}/starred?per_page={per_page}",
-        token=token,
-    )
-    if status != 200 or not isinstance(data, list):
-        return []
-    items = []
-    for r in data:
-        items.append(
-            {
-                "id": str(r.get("id")),
-                "name": r.get("name"),
-                "full_name": r.get("full_name"),
-                "url": r.get("html_url"),
-                "description": r.get("description"),
-                "language": r.get("language"),
-                "stars": r.get("stargazers_count", 0),
-                "owner": (r.get("owner") or {}).get("login"),
-            }
-        )
-    return items
+    """
+    分页拉取用户全部公开 Stars。
+    - 有 PAT 时优先 /user/starred（含私有 star，且限流更高）
+    - 否则 /users/{username}/starred
+    per_page 最大 100；max_pages 默认 30 → 最多约 3000 个。
+    """
+    per_page = max(1, min(per_page, 100))
+    # 有 token 时用认证端点更稳
+    if token:
+        path = f"/user/starred?per_page={per_page}"
+    else:
+        path = f"/users/{quote(username)}/starred?per_page={per_page}"
+
+    items: list[dict] = []
+    page = 0
+    while path and page < max_pages:
+        page += 1
+        status, data, headers = await _request(path, token=token)
+        if status != 200 or not isinstance(data, list):
+            if page == 1:
+                logger.warning(
+                    "list_user_stars failed status=%s body=%s",
+                    status,
+                    str(data)[:200],
+                )
+            break
+        for r in data:
+            items.append(_map_star_item(r))
+        if len(data) < per_page:
+            break
+        path = _parse_next_link(headers.get("link"))
+        if not path:
+            # 无 Link 时按 page 递增兜底
+            if token:
+                path = f"/user/starred?per_page={per_page}&page={page + 1}"
+            else:
+                path = f"/users/{quote(username)}/starred?per_page={per_page}&page={page + 1}"
+            # 若本页已空则上面已 break；若 GitHub 不给 Link 但还有数据，继续
+            # 若下一页重复，由调用方去重
+    # 按 full_name 去重保序
+    seen: set[str] = set()
+    unique: list[dict] = []
+    for it in items:
+        key = it.get("full_name") or f"{it.get('owner')}/{it.get('name')}"
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(it)
+    return unique
 
 
 async def list_trending_approx(language: str = "", limit: int = 10) -> list[dict]:
-    """
-    用 search 近似 trending：按 stars 与最近 push 排序的高星仓库。
-    """
+    """用 search 近似 trending。"""
     from datetime import datetime, timedelta
-    from urllib.parse import quote
 
     since = (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%d")
     q = f"created:>{since}"
     if language:
         q += f" language:{language}"
-    status, data = await _request(
+    status, data, _ = await _request(
         f"/search/repositories?q={quote(q)}&sort=stars&order=desc&per_page={limit}"
     )
     if status != 200 or not isinstance(data, dict):
-        # 降级：热门仓库
-        status, data = await _request(
+        status, data, _ = await _request(
             f"/search/repositories?q={quote('stars:>10000')}&sort=stars&order=desc&per_page={limit}"
         )
     if status != 200 or not isinstance(data, dict):
