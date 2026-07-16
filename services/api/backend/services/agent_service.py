@@ -370,42 +370,64 @@ async def stream_import_assist(
     message: str,
     context: dict[str, Any],
 ) -> AsyncIterator[str]:
-    from backend.llm.config import build_llm_config_from_user
-    from backend.services.sse_stream import format_sse
+    """导入助手：精简工具 + 寒暄快路径 + 空正文兜底。"""
+    import re
+    from dataclasses import replace
 
-    session = AgentSession(
-        user_id=user.id,
-        title="导入助手",
-        active_agent="curator",
-    )
-    db.add(session)
-    await db.commit()
-    await db.refresh(session)
+    from backend.agents.react import EngineResult, ReActEngine
+    from backend.agents.registry import get_registry
+    from backend.llm.config import build_llm_config_from_user
+    from backend.llm.provider import LLMProvider
+    from backend.memory.context import ContextBuilder
+    from backend.memory.service import MemoryService
+    from backend.services.sse_stream import format_sse
+    from backend.tools.registry import ToolRegistry, global_registry
 
     available = list(context.get("available_repo_keys") or [])
     selected = list(context.get("selected_repo_keys") or [])
     mode = context.get("mode") or "stars"
-    # 列表过长时只注入前 80 + 总数，避免爆上下文
-    preview_keys = available[:80]
-    ctx_text = json.dumps(
-        {
-            "mode": mode,
-            "available_count": len(available),
-            "available_repo_keys_preview": preview_keys,
-            "selected_repo_keys": selected,
-        },
-        ensure_ascii=False,
-    )
+    msg = (message or "").strip()
 
-    llm_cfg = await build_llm_config_from_user(db, user.id)
-    if not llm_cfg:
-        # 无 Key：规则降级 — 关键词匹配并勾选
-        q = (message or "").lower()
+    def _emit_text(text: str):
+        for i in range(0, len(text), 40):
+            yield format_sse("text_delta", {"content": text[i : i + 40]})
+
+    def _keyword_hits(limit: int = 12) -> list[str]:
+        q = msg.lower()
+        parts = [p for p in re.split(r"[\s,，、/]+", q) if len(p) > 1]
         hits = [
             k
             for k in available
-            if any(part in k.lower() for part in q.replace("，", " ").split() if len(part) > 1)
-        ][:12]
+            if any(p in k.lower() for p in parts)
+        ][:limit]
+        return hits
+
+    # —— 寒暄快路径：不调 LLM、不调外网工具 ——
+    if re.fullmatch(
+        r"(你好|您好|嗨|哈喽|hi|hello|hey|在吗|早上好|下午好|晚上好)[！!。.~～]*",
+        msg,
+        flags=re.I,
+    ):
+        n = len(available)
+        text = (
+            f"你好！我是导入助手。\n\n"
+            f"左侧当前有 **{n}** 个候选仓库"
+            + ("（GitHub Stars / 搜索结果）。" if n else "。")
+            + "\n你可以直接说：\n"
+            "- 「推荐几个 Python Web 项目」\n"
+            "- 「勾选前端相关」\n"
+            "- 「选 5 个高 star 的」\n\n"
+            "我会在左侧**自动勾选**，并说明理由；你确认后点 **导入选中** 即可。"
+        )
+        for chunk in _emit_text(text):
+            yield chunk
+        yield format_sse("done", {"usage": {"tokens": len(text)}, "iterations": 0})
+        return
+
+    # —— 无 LLM：规则降级 ——
+    llm_cfg = await build_llm_config_from_user(db, user.id)
+    if not llm_cfg:
+        hits = _keyword_hits()
         if not hits and available:
             hits = available[:5]
         if hits:
@@ -419,42 +441,68 @@ async def stream_import_assist(
                 },
             )
         text = (
-            "【降级模式】未配置 LLM Key。\n\n"
+            "【降级模式】未检测到可用 LLM Key（设置页测试通过后若仍出现，请重新保存 Key 再试）。\n\n"
             + (
                 f"已在左侧勾选 **{len(hits)}** 个仓库：\n"
                 + "\n".join(f"- `{k}`" for k in hits)
-                + "\n\n请确认后点击「导入选中」。可在设置中配置 API Key 以获得智能推荐。"
+                + "\n\n请确认后点击「导入选中」。"
                 if hits
-                else "左侧暂无候选仓库。请先加载 Stars 或完成搜索。"
+                else "左侧暂无候选仓库。请先同步 Stars 或完成搜索。"
             )
         )
-        for i in range(0, len(text), 40):
-            yield format_sse("text_delta", {"content": text[i : i + 40]})
-        yield format_sse("done", {"usage": {"tokens": len(text)}, "iterations": 0, "degraded": True})
+        for chunk in _emit_text(text):
+            yield chunk
+        yield format_sse(
+            "done", {"usage": {"tokens": len(text)}, "iterations": 0, "degraded": True}
+        )
         return
 
-    prompt = (
-        "你是 RepoPilot **导入助手**（Curator + Scout）。\n"
-        "你的职责：根据用户意图，从左侧候选列表中挑选仓库，并**调用工具 select_import_repos** "
-        "在界面上勾选它们，然后用中文说明推荐理由与清单。\n"
-        "规则：\n"
-        "1. repo_keys 必须来自 available_repo_keys_preview（或用户已提到的完整 owner/repo）。\n"
-        "2. 勾选后请列出清单，请用户确认；不要声称已经完成导入。\n"
-        "3. 用户说「导入 / 确认」时，再次确认勾选并提示点击「导入选中」按钮。\n"
-        f"场景 mode={mode}\n"
-        f"上下文: {ctx_text}\n"
-        f"用户消息: {message}"
+    # —— LLM 路径：仅允许 select_import_repos，避免 fetch_github 超时导致空响应 ——
+    session = AgentSession(
+        user_id=user.id,
+        title="导入助手",
+        active_agent="curator",
     )
-    from backend.agents.react import EngineResult, ReActEngine
-    from backend.agents.registry import get_registry
-    from backend.llm.provider import LLMProvider
-    from backend.memory.context import ContextBuilder
-    from backend.memory.service import MemoryService
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+
+    preview_keys = available[:80]
+    ctx_text = json.dumps(
+        {
+            "mode": mode,
+            "available_count": len(available),
+            "available_repo_keys_preview": preview_keys,
+            "selected_repo_keys": selected,
+        },
+        ensure_ascii=False,
+    )
+    prompt = (
+        "你是 RepoPilot **导入助手**。用中文简洁回复。\n"
+        "若用户要筛选/推荐项目：必须调用工具 select_import_repos 勾选，再说明清单与理由。\n"
+        "若只是闲聊：直接文字回复，不要空回复。\n"
+        "repo_keys 只能来自 available_repo_keys_preview。\n"
+        "勾选后请用户点「导入选中」；不要声称已完成导入。\n"
+        f"上下文: {ctx_text}\n"
+        f"用户: {msg}"
+    )
 
     memory = MemoryService(db)
     builder = ContextBuilder(db, memory)
     llm = LLMProvider(llm_cfg)
-    agent_def = get_registry().get("curator")
+    agent_def = replace(
+        get_registry().get("curator"),
+        max_tokens=1024,
+        temperature=0.4,
+        tools=["select_import_repos"],
+    )
+    # 精简工具表：禁止会打 GitHub 外网、易超时的工具
+    slim_reg = ToolRegistry()
+    for tname in ("select_import_repos",):
+        t = global_registry.get(tname)
+        if t:
+            slim_reg.register(t)
+
     ctx = await builder.build_run_context(
         user_id=user.id,
         session_id=session.id,
@@ -463,25 +511,77 @@ async def stream_import_assist(
         llm_config=llm_cfg,
         speaking_style="default",
     )
+    ctx.tool_registry = slim_reg
     ctx.extra["available_repo_keys"] = available
     ctx.extra["selected_repo_keys"] = selected
+    ctx.extra["disable_questions"] = True  # 嵌入式 UI 无反问面板
     messages = await builder.build_messages(
         agent_def=agent_def,
         ctx=ctx,
         user_message=prompt,
         history=[],
     )
+
     yield format_sse(
         "agent_switch",
-        {"agent_id": "curator", "from": "hub", "to": "curator", "reason": "导入助手"},
+        {
+            "agent_id": "curator",
+            "from": "hub",
+            "to": "curator",
+            "reason": "导入助手",
+        },
     )
-    engine = ReActEngine()
-    async for item in engine.run(
-        agent_def=agent_def, ctx=ctx, messages=messages, emit_sse=True
-    ):
-        if isinstance(item, EngineResult):
-            continue
-        yield item
+    yield format_sse("thinking", {"content": "导入助手处理中…"})
+
+    engine = ReActEngine(max_iterations=4)
+    had_text = False
+    try:
+        async for item in engine.run(
+            agent_def=agent_def, ctx=ctx, messages=messages, emit_sse=True
+        ):
+            if isinstance(item, EngineResult):
+                if item.text and item.text.strip():
+                    had_text = True
+                continue
+            if isinstance(item, str) and "event: text_delta" in item:
+                had_text = True
+            yield item
+    except Exception as e:
+        logger = __import__("logging").getLogger(__name__)
+        logger.exception("import assist failed")
+        err = f"导入助手出错：{e}"
+        for chunk in _emit_text(err):
+            yield chunk
+        yield format_sse("done", {"usage": {"tokens": 0}, "iterations": 0})
+        return
+
+    if not had_text:
+        # 最后兜底：规则勾选 + 说明
+        hits = _keyword_hits() or available[:5]
+        if hits:
+            yield format_sse(
+                "select_repos",
+                {
+                    "repo_keys": hits,
+                    "action": "set",
+                    "reason": "自动兜底勾选",
+                    "count": len(hits),
+                },
+            )
+        text = (
+            "我在这边了。左侧候选 "
+            f"**{len(available)}** 个"
+            + (
+                f"，已为你勾选 {len(hits)} 个示例：\n"
+                + "\n".join(f"- `{k}`" for k in hits)
+                + "\n\n可以说「只要 Python」或「前端框架」让我重新勾选。"
+                if hits
+                else "。请先加载 Stars/搜索结果，或直接描述想导入的技术栈。"
+            )
+        )
+        for chunk in _emit_text(text):
+            yield chunk
+        yield format_sse("done", {"usage": {"tokens": len(text)}, "iterations": 0})
 
 
 async def stream_graph_guide(
@@ -491,6 +591,8 @@ async def stream_graph_guide(
     *,
     selected_node_id: str | None = None,
 ) -> AsyncIterator[str]:
+    from backend.services.sse_stream import format_sse
+
     session = AgentSession(
         user_id=user.id,
         title="图谱向导",
@@ -512,14 +614,33 @@ async def stream_graph_guide(
         except ValueError:
             project_uuid = None
 
-    async for chunk in hub.handle_direct_agent(
-        user=user,
-        session_id=session.id,
-        agent_id="atlas",
-        message=prompt,
-        project_id=project_uuid,
-    ):
-        yield chunk
+    had_text = False
+    try:
+        async for chunk in hub.handle_direct_agent(
+            user=user,
+            session_id=session.id,
+            agent_id="atlas",
+            message=prompt,
+            project_id=project_uuid,
+        ):
+            if isinstance(chunk, str) and "event: text_delta" in chunk:
+                had_text = True
+            yield chunk
+    except Exception as e:
+        err = f"图谱向导出错：{e}"
+        for i in range(0, len(err), 40):
+            yield format_sse("text_delta", {"content": err[i : i + 40]})
+        yield format_sse("done", {"usage": {"tokens": 0}, "iterations": 0})
+        return
+
+    if not had_text:
+        text = (
+            "我是 Atlas 图谱向导。请在左侧点选节点，或问我「这些项目怎么关联」。"
+            "若持续无回复，请到设置确认 LLM 测试通过。"
+        )
+        for i in range(0, len(text), 40):
+            yield format_sse("text_delta", {"content": text[i : i + 40]})
+        yield format_sse("done", {"usage": {"tokens": len(text)}, "iterations": 0})
 
 
 async def stream_trending_scout(
