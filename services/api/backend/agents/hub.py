@@ -155,6 +155,7 @@ class HubService:
                     return
                 result_text_parts.append(item.text)
             else:
+                # 单 Agent 正常结束仍需要 done；dispatch 前的 done 会在子流程里再发
                 yield item
 
         # 更新短期记忆
@@ -337,6 +338,8 @@ class HubService:
                     if item.question:
                         return
                 else:
+                    if isinstance(item, str) and item.startswith("event: done"):
+                        continue
                     yield item
             summaries.append(f"[{sub.agent_id}] {agent_text[:500]}")
 
@@ -372,6 +375,11 @@ class HubService:
             ):
                 if not isinstance(item, EngineResult):
                     yield item
+        # 多 Agent 流程结束信号（子 Agent 的中间 done 已被过滤）
+        yield format_sse(
+            "done",
+            {"usage": {"tokens": 0}, "iterations": len(summaries), "agent_id": "hub"},
+        )
 
     async def _handle_dispatches(
         self,
@@ -430,6 +438,9 @@ class HubService:
                     if item.question:
                         return
                 else:
+                    # 子 Agent 的中间 done 会让前端误追加多条；过滤掉
+                    if isinstance(item, str) and item.startswith("event: done"):
+                        continue
                     yield item
             summaries.append(f"[{target}] {text[:800]}")
 
