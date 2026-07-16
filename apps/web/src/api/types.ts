@@ -270,6 +270,7 @@ export interface AgentSession {
   agent: AgentId;
   updated_at: string;
   unread: boolean;
+  project_id?: string | null;
 }
 
 export interface AgentMessage {

@@ -64,9 +64,22 @@ export function AgentContextSidebar({
   onToggleCollapse,
 }: AgentContextSidebarProps) {
   const qc = useQueryClient();
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const { data: profile } = useQuery({
     queryKey: ['userProfile'],
     queryFn: async () => (await getApi().getUserProfile()).data,
+  });
+
+  // 从会话列表同步已绑定项目
+  useQuery({
+    queryKey: ['agentSession', sessionId],
+    enabled: Boolean(sessionId),
+    queryFn: async () => {
+      if (!sessionId) return null;
+      const res = await getApi().getAgentSession(sessionId);
+      setActiveProjectId(res.data.project_id ?? null);
+      return res.data;
+    },
   });
 
   const updateProfile = useMutation({
@@ -186,8 +199,27 @@ export function AgentContextSidebar({
         <div className="ctx-proj-list">
           {contextProjects.map((p, i) => {
             const { repo } = splitRepoName(p.name);
+            const pinned = Boolean(sessionId && activeProjectId === p.id);
             return (
-              <div key={p.id} className="ctx-proj">
+              <button
+                key={p.id}
+                type="button"
+                className={`ctx-proj ${pinned ? 'ctx-proj--active' : ''}`}
+                title={pinned ? '当前会话已绑定此项目' : '点击绑定到当前会话'}
+                onClick={() => {
+                  if (!sessionId) return;
+                  void (async () => {
+                    try {
+                      await getApi().updateAgentSession(sessionId, {
+                        project_id: pinned ? null : p.id,
+                      });
+                      setActiveProjectId(pinned ? null : p.id);
+                    } catch {
+                      /* ignore */
+                    }
+                  })();
+                }}
+              >
                 <div
                   className="ctx-proj-icon"
                   style={{ background: REPO_AVATAR_GRADIENTS[i % REPO_AVATAR_GRADIENTS.length] }}
@@ -195,7 +227,10 @@ export function AgentContextSidebar({
                   {(repo[0] ?? 'P').toUpperCase()}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="ctx-proj-name">{p.name}</div>
+                  <div className="ctx-proj-name">
+                    {p.name}
+                    {pinned ? ' · 已绑定' : ''}
+                  </div>
                   <div className="ctx-proj-meta">
                     {categoryLabel(p.category_id)} · {p.language ?? '-'} · ★{formatNumber(p.stars)}
                   </div>
@@ -203,11 +238,13 @@ export function AgentContextSidebar({
                     <ProgressBadge progress={p.progress} />
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
-        <p className="ctx-proj-hint muted">掌握程度由 Agent 根据对话与笔记自动维护</p>
+        <p className="ctx-proj-hint muted">
+          点击项目可绑定到当前会话；Hub 与专家 Agent 将获得该项目上下文
+        </p>
       </div>
 
       <div className="context-panel-scroll">

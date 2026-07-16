@@ -21,6 +21,7 @@ from backend.schemas.agent import (
     AgentSessionDetailOut,
     AgentSessionOut,
     ContextWindowStatsOut,
+    SessionUpdateBody,
 )
 from backend.schemas.common import DataResponse
 from backend.services.agent_catalog import AGENT_PROFILES
@@ -36,6 +37,7 @@ from backend.services.agent_service import (
     stream_import_assist,
     stream_question_answer,
     stream_trending_scout,
+    update_session,
 )
 from backend.services.project_service import get_project_owned_by_user
 
@@ -123,6 +125,33 @@ async def delete_agent_session(
     return wrap_data({"success": True})
 
 
+@router.patch("/sessions/{session_id}", response_model=DataResponse[AgentSessionOut])
+async def patch_agent_session(
+    session_id: UUID,
+    body: SessionUpdateBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # project_id 显式 null 时清除
+    clear_project = (
+        "project_id" in body.model_fields_set and body.project_id is None
+    )
+    updated = await update_session(
+        db,
+        current_user.id,
+        session_id,
+        title=body.title,
+        project_id=body.project_id,
+        clear_project=clear_project,
+    )
+    if not updated:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            detail={"code": "NOT_FOUND", "message": "Session not found"},
+        )
+    return wrap_data(updated)
+
+
 @router.post("/sessions/{session_id}/chat")
 async def chat_in_session(
     session_id: UUID,
@@ -132,7 +161,11 @@ async def chat_in_session(
 ):
     async def event_gen():
         async for chunk in stream_chat(
-            db, current_user, session_id, body.message
+            db,
+            current_user,
+            session_id,
+            body.message,
+            project_id=body.project_id,
         ):
             yield chunk
 
