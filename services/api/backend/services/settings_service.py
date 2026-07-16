@@ -50,8 +50,14 @@ def settings_to_out(user: User) -> SettingsOut:
     api_key = raw.pop("llm_api_key", None)
     raw["llm_api_key_masked"] = _mask_api_key(api_key) if api_key else None
     raw["llm_configured"] = bool(api_key)
-    if not raw.get("llm_model"):
-        raw["llm_model"] = raw.get("llm_default_model", "gpt-4o")
+    # 默认模型与生效模型保持一致（优先 default）
+    default_model = raw.get("llm_default_model") or raw.get("llm_model") or "gpt-4o"
+    raw["llm_default_model"] = default_model
+    raw["llm_model"] = default_model
+    # 保证可选列表包含默认模型
+    models = raw.get("llm_available_models") or []
+    if isinstance(models, list) and default_model and default_model not in models:
+        raw["llm_available_models"] = [*models, default_model]
     raw["agent_llm_configs"] = _normalize_agent_llm_configs(raw.get("agent_llm_configs"))
     return SettingsOut.model_validate(raw)
 
@@ -84,8 +90,13 @@ async def update_settings(
     if "llm_api_key" in payload and payload["llm_api_key"] is None:
         payload.pop("llm_api_key")
     raw.update(payload)
-    if data.llm_default_model and not data.llm_model:
+    # 任一模型字段变更时双向同步，避免 default/model 漂移
+    if data.llm_default_model is not None:
+        raw["llm_default_model"] = data.llm_default_model
         raw["llm_model"] = data.llm_default_model
+    elif data.llm_model is not None:
+        raw["llm_model"] = data.llm_model
+        raw["llm_default_model"] = data.llm_model
     user.settings_json = json.dumps(raw, ensure_ascii=False)
     await db.commit()
     await db.refresh(user)
