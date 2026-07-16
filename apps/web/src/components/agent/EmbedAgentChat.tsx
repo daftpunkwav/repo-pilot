@@ -183,7 +183,7 @@ export function EmbedAgentChat({
                 id: `a_${Date.now()}`,
                 role: 'assistant',
                 content:
-                  '（助手未返回正文。若未配置 LLM Key，请到设置页配置；或换个说法再试。）',
+                  '我这边暂时没生成正文（可能是网络抖动或模型只返回了思考过程）。请再说一次你的需求，例如「推荐 Python Web 项目」；若设置页 LLM 测试已通过，通常重试即可。',
               },
             ];
           }

@@ -124,7 +124,19 @@ class ReActEngine:
                 break
 
             if not result.tool_calls:
-                final_text = result.text or ""
+                # 无工具调用时：即便正文为空也尽量输出（避免前端「无正文」）
+                final_text = (result.text or "").strip()
+                if not final_text:
+                    final_text = (
+                        f"我是 {agent_def.name}，已收到你的消息。"
+                        "请补充更具体的需求（例如技术栈、学习目标），我会继续帮你。"
+                    )
+                if emit_sse:
+                    step = 32
+                    for i in range(0, len(final_text), step):
+                        yield format_sse(
+                            "text_delta", {"content": final_text[i : i + step]}
+                        )
                 break
 
             # 处理工具调用
@@ -155,6 +167,61 @@ class ReActEngine:
 
                 # 反问拦截
                 if isinstance(tool_result, dict) and tool_result.get("__question__"):
+                    # 嵌入式导入助手等场景禁用反问面板 → 转成文字追问
+                    if ctx.extra.get("disable_questions"):
+                        q = _normalize_question(tool_result, agent_id=agent_def.id)
+                        title = ""
+                        intro = q.get("intro") or {}
+                        if isinstance(intro, dict):
+                            title = intro.get("content") or ""
+                        qs = q.get("questions") or []
+                        lines = [title or "想再确认几点："]
+                        for item in qs[:5]:
+                            if isinstance(item, dict):
+                                lines.append(f"- {item.get('text') or item.get('prompt') or ''}")
+                        text_q = "\n".join([ln for ln in lines if ln]).strip()
+                        if emit_sse:
+                            yield format_sse(
+                                "tool_result",
+                                {
+                                    "call_id": tc_id,
+                                    "id": tc_id,
+                                    "name": name,
+                                    "status": "success",
+                                    "preview": "转为文字追问",
+                                    "result": {"converted": True},
+                                },
+                            )
+                            if text_q:
+                                step = 32
+                                for i in range(0, len(text_q), step):
+                                    yield format_sse(
+                                        "text_delta",
+                                        {"content": text_q[i : i + step]},
+                                    )
+                        messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tc_id,
+                                "content": json.dumps(
+                                    {
+                                        "ok": True,
+                                        "message": "反问已转为文字，请直接用自然语言继续回答用户",
+                                    },
+                                    ensure_ascii=False,
+                                ),
+                            }
+                        )
+                        final_text = text_q
+                        # 结束循环，避免挂起等待
+                        yield EngineResult(
+                            text=final_text,
+                            agent_id=agent_def.id,
+                            usage=total_usage,
+                            iterations=iteration,
+                        )
+                        return
+
                     question_payload = _normalize_question(
                         tool_result, agent_id=agent_def.id
                     )
@@ -295,9 +362,16 @@ class ReActEngine:
             if emit_sse:
                 yield format_sse("text_delta", {"content": final_text})
 
-        if emit_sse and final_text == "" and not dispatches:
-            final_text = "（无输出）"
-            yield format_sse("text_delta", {"content": final_text})
+        # 工具轮结束后模型可能只返回 thinking 无 content（MiniMax 常见）
+        if emit_sse and not (final_text or "").strip() and not dispatches:
+            final_text = (
+                f"【{agent_def.name}】本轮未生成可见正文。"
+                "若你在导入场景，可再说一次想导入的技术栈（如 Python / React）；"
+                "或点击左侧手动勾选后导入。"
+            )
+            step = 40
+            for i in range(0, len(final_text), step):
+                yield format_sse("text_delta", {"content": final_text[i : i + step]})
 
         if emit_sse:
             yield format_sse(
