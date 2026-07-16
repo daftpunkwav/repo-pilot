@@ -49,18 +49,30 @@ class LLMProvider:
         return self.config is not None and self.config.has_llm
 
     def _kwargs(self, model_override: str | None = None) -> dict[str, Any]:
+        """始终经 litellm_model() 解析，禁止把裸模型名直接交给 LiteLLM。"""
         assert self.config is not None
-        model = model_override or self.config.litellm_model()
-        # model_override 可能是裸模型名
-        if model_override and "/" not in model_override:
-            tmp = LLMConfig(
+        if model_override and model_override.strip():
+            resolved = LLMConfig(
                 provider=self.config.provider,
-                model=model_override,
+                model=model_override.strip(),
                 api_key=self.config.api_key,
                 api_base=self.config.api_base,
                 api_format=self.config.api_format,
             )
-            model = tmp.litellm_model()
+        else:
+            resolved = self.config
+        model = resolved.litellm_model()
+        # 兜底：仍无 provider 前缀时，按 api_format 强制加
+        if "/" not in model:
+            fmt = (resolved.api_format or "openai").lower()
+            if fmt == "anthropic" or "anthropic" in (resolved.normalized_api_base() or ""):
+                model = f"anthropic/{model}"
+            elif fmt == "google":
+                model = f"gemini/{model}"
+            elif fmt == "ollama":
+                model = f"ollama/{model}"
+            else:
+                model = f"openai/{model}"
 
         kw: dict[str, Any] = {
             "model": model,
@@ -69,11 +81,21 @@ class LLMProvider:
         api_base = self.config.normalized_api_base()
         if api_base:
             kw["api_base"] = api_base
-            # Anthropic 兼容自定义端点（MiniMax 等）需要 custom_llm_provider
-            if model.startswith("anthropic/") and "anthropic.com" not in api_base:
-                kw["custom_llm_provider"] = "anthropic"
-            elif model.startswith("openai/") and "openai.com" not in api_base:
-                kw["custom_llm_provider"] = "openai"
+        # 按前缀显式指定 provider，避免 LiteLLM 无法识别自定义端点
+        if model.startswith("anthropic/"):
+            kw["custom_llm_provider"] = "anthropic"
+        elif model.startswith("openai/"):
+            kw["custom_llm_provider"] = "openai"
+        elif model.startswith("gemini/"):
+            kw["custom_llm_provider"] = "gemini"
+        elif model.startswith("ollama/"):
+            kw["custom_llm_provider"] = "ollama"
+        logger.info(
+            "LLM call route model=%s api_base=%s format=%s",
+            model,
+            api_base,
+            self.config.api_format,
+        )
         return kw
 
     async def complete(
