@@ -63,29 +63,42 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   testLLM: async (model) => {
     set({ isTestingLLM: true, testResult: null, error: null });
+    const started = performance.now();
     try {
       const api = getApi();
       const target =
-        model || get().settings?.llm_model || get().settings?.llm_default_model;
+        model ||
+        get().settings?.llm_default_model ||
+        get().settings?.llm_model;
       const response = await api.testLLM({ model: target });
+      const clientMs = Math.round(performance.now() - started);
+      // 优先用服务端耗时；若异常偏小则回退客户端墙钟时间
+      const serverMs = response.data.latency_ms;
+      const latency_ms =
+        typeof serverMs === 'number' && serverMs >= 50 ? serverMs : clientMs;
       set({
         isTestingLLM: false,
         testResult: {
           success: response.data.success,
-          latency_ms: response.data.latency_ms,
-          model: response.data.model,
+          latency_ms,
+          model: response.data.model || target,
           reply: response.data.reply,
           error: response.data.error,
           litellm_model: response.data.litellm_model,
         },
       });
+      // 刷新设置，但保留本次 testResult
+      const prevResult = get().testResult;
       await get().loadSettings();
+      if (prevResult) set({ testResult: prevResult });
     } catch (err) {
+      const clientMs = Math.round(performance.now() - started);
       set({
         isTestingLLM: false,
         testResult: {
           success: false,
-          latency_ms: 0,
+          latency_ms: clientMs,
+          model,
           error: extractErrorMessage(err),
         },
         error: extractErrorMessage(err),

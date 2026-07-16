@@ -19,6 +19,14 @@ interface LlmSettingsSectionProps {
   onSaveApiKey: (key: string) => Promise<unknown>;
 }
 
+/** 将毫秒格式化为可读耗时（避免把 9967ms 误看成 10ms） */
+function formatLatency(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return '-';
+  if (ms < 1000) return `${Math.round(ms)} ms`;
+  const sec = ms / 1000;
+  return `${sec.toFixed(sec >= 10 ? 1 : 2)} s（${Math.round(ms)} ms）`;
+}
+
 export function LlmSettingsSection({
   settings,
   updateSettings,
@@ -90,7 +98,9 @@ export function LlmSettingsSection({
       ? settings.llm_available_models
       : [settings.llm_default_model].filter(Boolean);
 
-  const activeModel = settings.llm_default_model || settings.llm_model;
+  // 以默认模型为准，避免 llm_model / llm_default_model 不一致
+  const activeModel =
+    settings.llm_default_model || settings.llm_model || modelOptions[0] || '';
 
   return (
     <div className="llm-settings">
@@ -259,7 +269,9 @@ export function LlmSettingsSection({
               onClick={() => void testLLM(activeModel)}
               data-testid="test-llm-btn"
             >
-              {isTestingLLM ? '测试中…' : `测试模型 · ${activeModel || '未选择'}`}
+              {isTestingLLM
+                ? `正在请求 ${activeModel}…（推理模型可能需 5–20 秒）`
+                : `测试模型 · ${activeModel || '未选择'}`}
             </button>
             {!settings.llm_configured && (
               <span className="muted">请先保存 API Key</span>
@@ -272,22 +284,31 @@ export function LlmSettingsSection({
               role="status"
             >
               <div className="llm-test-result__head">
-                <strong>{testResult.success ? '测试通过' : '测试失败'}</strong>
+                <strong>{testResult.success ? '✓ 测试通过' : '✗ 测试失败'}</strong>
                 <span className="muted">
-                  {testResult.model ?? activeModel}
+                  模型 {testResult.model ?? activeModel}
                   {typeof testResult.latency_ms === 'number'
-                    ? ` · ${testResult.latency_ms}ms`
+                    ? ` · 耗时 ${formatLatency(testResult.latency_ms)}`
                     : ''}
                 </span>
               </div>
-              {testResult.success && testResult.reply && (
-                <pre className="llm-test-result__reply">{testResult.reply}</pre>
-              )}
-              {!testResult.success && testResult.error && (
-                <pre className="llm-test-result__error">{testResult.error}</pre>
+              {testResult.success ? (
+                <div className="llm-test-result__body">
+                  <div className="field-hint">模型回复：</div>
+                  <pre className="llm-test-result__reply">
+                    {testResult.reply?.trim() || '（无正文，但请求已成功）'}
+                  </pre>
+                </div>
+              ) : (
+                <div className="llm-test-result__body">
+                  <div className="field-hint">错误信息：</div>
+                  <pre className="llm-test-result__error">
+                    {testResult.error?.trim() || '未知错误，请查看后端日志'}
+                  </pre>
+                </div>
               )}
               {testResult.litellm_model && (
-                <p className="field-hint">路由模型：{testResult.litellm_model}</p>
+                <p className="field-hint">路由：{testResult.litellm_model}</p>
               )}
             </div>
           )}
@@ -295,7 +316,9 @@ export function LlmSettingsSection({
           {settings.llm_last_test && !testResult && (
             <p className="llm-last-test muted">
               上次测试 {new Date(settings.llm_last_test).toLocaleString('zh-CN')}
-              {settings.llm_latency_ms ? ` · ${settings.llm_latency_ms}ms` : ''}
+              {typeof settings.llm_latency_ms === 'number'
+                ? ` · ${formatLatency(settings.llm_latency_ms)}`
+                : ''}
             </p>
           )}
         </div>
