@@ -332,10 +332,22 @@ export class RealApiClient implements IApiClient {
     });
   }
 
-  async testLLM(): Promise<
-    ApiResponse<{ success: boolean; latency_ms: number; model: string }>
+  async testLLM(params?: {
+    model?: string;
+  }): Promise<
+    ApiResponse<{
+      success: boolean;
+      latency_ms: number;
+      model: string;
+      reply?: string;
+      error?: string;
+      litellm_model?: string;
+    }>
   > {
-    return apiRequest('/settings/test-llm', { method: 'POST', body: '{}' });
+    return apiRequest('/settings/test-llm', {
+      method: 'POST',
+      body: JSON.stringify({ model: params?.model }),
+    });
   }
 
   async listTrending(params?: {

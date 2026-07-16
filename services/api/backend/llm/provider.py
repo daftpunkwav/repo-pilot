@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Literal, Optional
+from typing import Any, AsyncIterator, Literal
 
 from backend.llm.config import LLMConfig
 
@@ -28,6 +28,16 @@ class LLMCompleteResult:
     raw_message: dict[str, Any] | None = None
 
 
+@dataclass
+class LLMTestResult:
+    success: bool
+    latency_ms: int
+    model: str
+    reply: str = ""
+    error: str = ""
+    litellm_model: str = ""
+
+
 class LLMProvider:
     """统一 LLM 调用层。"""
 
@@ -41,12 +51,29 @@ class LLMProvider:
     def _kwargs(self, model_override: str | None = None) -> dict[str, Any]:
         assert self.config is not None
         model = model_override or self.config.litellm_model()
+        # model_override 可能是裸模型名
+        if model_override and "/" not in model_override:
+            tmp = LLMConfig(
+                provider=self.config.provider,
+                model=model_override,
+                api_key=self.config.api_key,
+                api_base=self.config.api_base,
+                api_format=self.config.api_format,
+            )
+            model = tmp.litellm_model()
+
         kw: dict[str, Any] = {
             "model": model,
             "api_key": self.config.api_key,
         }
-        if self.config.api_base:
-            kw["api_base"] = self.config.api_base
+        api_base = self.config.normalized_api_base()
+        if api_base:
+            kw["api_base"] = api_base
+            # Anthropic 兼容自定义端点（MiniMax 等）需要 custom_llm_provider
+            if model.startswith("anthropic/") and "anthropic.com" not in api_base:
+                kw["custom_llm_provider"] = "anthropic"
+            elif model.startswith("openai/") and "openai.com" not in api_base:
+                kw["custom_llm_provider"] = "openai"
         return kw
 
     async def complete(
@@ -89,12 +116,12 @@ class LLMProvider:
         try:
             resp = await litellm.acompletion(**call_kw)
         except Exception as e:
-            logger.exception("LLM complete failed")
+            logger.exception("LLM complete failed: model=%s base=%s", call_kw.get("model"), call_kw.get("api_base"))
             raise RuntimeError(f"LLM 调用失败: {e}") from e
 
         choice = resp.choices[0]
         msg = choice.message
-        text = msg.content or ""
+        text = _extract_text(msg)
         tool_calls: list[dict[str, Any]] = []
         if getattr(msg, "tool_calls", None):
             for tc in msg.tool_calls:
@@ -128,14 +155,12 @@ class LLMProvider:
 
     async def _stream(self, litellm: Any, call_kw: dict) -> AsyncIterator[LLMChunk]:
         call_kw["stream"] = True
-        # 部分 provider 流式 tool_calls 不稳定：若有 tools 则降级非流式再模拟流
         if call_kw.get("tools"):
             result = await self._complete_once(litellm, {**call_kw, "stream": False})
             if result.tool_calls:
                 for tc in result.tool_calls:
                     yield LLMChunk(type="tool_call", tool_call=tc)
             if result.text:
-                # 分片推送以保持 SSE 体验
                 step = 24
                 for i in range(0, len(result.text), step):
                     yield LLMChunk(type="text", text=result.text[i : i + step])
@@ -146,8 +171,9 @@ class LLMProvider:
             resp = await litellm.acompletion(**call_kw)
             async for chunk in resp:
                 delta = chunk.choices[0].delta
-                if getattr(delta, "content", None):
-                    yield LLMChunk(type="text", text=delta.content)
+                content = getattr(delta, "content", None)
+                if content:
+                    yield LLMChunk(type="text", text=content)
             yield LLMChunk(type="done", usage={})
         except Exception as e:
             logger.exception("LLM stream failed")
@@ -169,7 +195,6 @@ class LLMProvider:
         )
         assert isinstance(result, LLMCompleteResult)
         text = result.text.strip()
-        # 剥离 markdown code fence
         if text.startswith("```"):
             lines = text.split("\n")
             lines = [ln for ln in lines if not ln.strip().startswith("```")]
@@ -183,23 +208,128 @@ class LLMProvider:
                 return json.loads(text[start : end + 1])
             return {}
 
-    async def test_connection(self) -> tuple[bool, int, str]:
-        """测试连通性，返回 (success, latency_ms, model)。"""
+    async def test_connection(self, *, model_override: str | None = None) -> LLMTestResult:
+        """
+        真实请求一个模型：发送简短 prompt，收到非空回复视为通过。
+        """
         import time
 
         if not self.available or self.config is None:
-            return False, 0, ""
-        model = self.config.model
+            return LLMTestResult(
+                success=False,
+                latency_ms=0,
+                model="",
+                error="未配置 API Key",
+            )
+
+        display_model = model_override or self.config.model
+        litellm_name = ""
+        try:
+            kw = self._kwargs(model_override)
+            litellm_name = str(kw.get("model") or "")
+        except Exception:
+            litellm_name = display_model
+
         t0 = time.perf_counter()
         try:
-            await self.complete(
-                [{"role": "user", "content": "ping"}],
-                max_tokens=5,
+            # 推理型模型（如 MiniMax-M2.7）会先占用 thinking tokens，需给足预算
+            result = await self.complete(
+                [
+                    {
+                        "role": "user",
+                        "content": "Reply with exactly: OK",
+                    }
+                ],
+                max_tokens=256,
                 temperature=0,
                 stream=False,
+                model_override=model_override,
             )
+            assert isinstance(result, LLMCompleteResult)
             ms = int((time.perf_counter() - t0) * 1000)
-            return True, ms, model
-        except Exception:
+            reply = (result.text or "").strip()
+            if not reply:
+                return LLMTestResult(
+                    success=False,
+                    latency_ms=ms,
+                    model=display_model,
+                    reply="",
+                    error=(
+                        "模型返回空正文（可能仍在 thinking，"
+                        "请换用 highspeed 模型或增大 max_tokens）"
+                    ),
+                    litellm_model=litellm_name,
+                )
+            return LLMTestResult(
+                success=True,
+                latency_ms=ms,
+                model=display_model,
+                reply=reply[:500],
+                error="",
+                litellm_model=litellm_name,
+            )
+        except Exception as e:
             ms = int((time.perf_counter() - t0) * 1000)
-            return False, ms, model
+            err = str(e)
+            # 截断过长错误
+            if len(err) > 800:
+                err = err[:800] + "…"
+            return LLMTestResult(
+                success=False,
+                latency_ms=ms,
+                model=display_model,
+                reply="",
+                error=err,
+                litellm_model=litellm_name,
+            )
+
+
+def _extract_text(msg: Any) -> str:
+    """兼容 content 为 str / list(blocks)，以及 reasoning/thinking 回落。"""
+    content = getattr(msg, "content", None)
+    text = _coerce_content(content)
+    if text.strip():
+        return text
+
+    # MiniMax 等推理模型：正文可能仍为空，但有 reasoning_content
+    reasoning = getattr(msg, "reasoning_content", None)
+    if isinstance(reasoning, str) and reasoning.strip():
+        return reasoning.strip()
+
+    thinking_blocks = getattr(msg, "thinking_blocks", None)
+    if isinstance(thinking_blocks, list):
+        parts: list[str] = []
+        for b in thinking_blocks:
+            if isinstance(b, dict) and b.get("thinking"):
+                parts.append(str(b["thinking"]))
+            else:
+                t = getattr(b, "thinking", None)
+                if t:
+                    parts.append(str(t))
+        if parts:
+            return "\n".join(parts)
+
+    return ""
+
+
+def _coerce_content(content: Any) -> str:
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, str):
+                parts.append(block)
+            elif isinstance(block, dict):
+                if block.get("type") in ("text", "output_text"):
+                    parts.append(str(block.get("text") or ""))
+                elif "text" in block:
+                    parts.append(str(block.get("text") or ""))
+            else:
+                text = getattr(block, "text", None)
+                if text:
+                    parts.append(str(text))
+        return "".join(parts)
+    return str(content)

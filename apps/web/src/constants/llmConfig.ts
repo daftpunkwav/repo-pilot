@@ -74,6 +74,20 @@ export const LLM_PROVIDER_PRESETS: LlmProviderPreset[] = [
     default_model: 'deepseek-chat',
   },
   {
+    id: 'minimax',
+    display_name: 'MiniMax',
+    // 国内 Anthropic 兼容端点（国际站多为 api.minimax.io）
+    default_base_url: 'https://api.minimaxi.com/anthropic',
+    api_format: 'anthropic',
+    available_models: [
+      'MiniMax-M3',
+      'MiniMax-M2.7',
+      'MiniMax-M2.7-highspeed',
+      'MiniMax-M2.5',
+    ],
+    default_model: 'MiniMax-M2.7',
+  },
+  {
     id: 'ollama',
     display_name: 'Ollama（本地）',
     default_base_url: 'http://127.0.0.1:11434',

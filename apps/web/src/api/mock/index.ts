@@ -776,19 +776,31 @@ export class MockApiClient implements IApiClient {
     return wrapResponse({ masked: this.settings.llm_api_key_masked });
   }
 
-  async testLLM(): Promise<
-    ApiResponse<{ success: boolean; latency_ms: number; model: string }>
+  async testLLM(params?: {
+    model?: string;
+  }): Promise<
+    ApiResponse<{
+      success: boolean;
+      latency_ms: number;
+      model: string;
+      reply?: string;
+      error?: string;
+      litellm_model?: string;
+    }>
   > {
     await delay(800);
     requireAuth();
     const latency = 350 + Math.floor(Math.random() * 200);
+    const model = params?.model || this.settings.llm_model;
     this.settings.llm_last_test = new Date().toISOString();
     this.settings.llm_latency_ms = latency;
     this.settings.llm_configured = true;
     return wrapResponse({
       success: true,
       latency_ms: latency,
-      model: this.settings.llm_model,
+      model,
+      reply: 'OK',
+      litellm_model: model,
     });
   }
 

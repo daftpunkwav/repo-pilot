@@ -98,7 +98,18 @@ export interface IApiClient {
   getSettings(): Promise<ApiResponse<Settings>>;
   updateSettings(data: Partial<Settings>): Promise<ApiResponse<Settings>>;
   saveLlmApiKey(apiKey: string): Promise<ApiResponse<{ masked: string }>>;
-  testLLM(): Promise<ApiResponse<{ success: boolean; latency_ms: number; model: string }>>;
+  testLLM(params?: {
+    model?: string;
+  }): Promise<
+    ApiResponse<{
+      success: boolean;
+      latency_ms: number;
+      model: string;
+      reply?: string;
+      error?: string;
+      litellm_model?: string;
+    }>
+  >;
 
   listTrending(params?: {
     period?: TrendingPeriod;
