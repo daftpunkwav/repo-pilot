@@ -3,15 +3,24 @@ import type { Settings } from '@/api/types';
 import { getApi } from '@/api/client';
 import { extractErrorMessage } from '@/utils/errors';
 
+export interface LlmTestResult {
+  success: boolean;
+  latency_ms: number;
+  model?: string;
+  reply?: string;
+  error?: string;
+  litellm_model?: string;
+}
+
 interface SettingsState {
   settings: Settings | null;
   isLoading: boolean;
   isTestingLLM: boolean;
-  testResult: { success: boolean; latency_ms: number } | null;
+  testResult: LlmTestResult | null;
   error: string | null;
   loadSettings: () => Promise<void>;
   updateSettings: (data: Partial<Settings>) => Promise<void>;
-  testLLM: () => Promise<void>;
+  testLLM: (model?: string) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -52,23 +61,33 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
 
-  testLLM: async () => {
-    set({ isTestingLLM: true, testResult: null });
+  testLLM: async (model) => {
+    set({ isTestingLLM: true, testResult: null, error: null });
     try {
       const api = getApi();
-      const response = await api.testLLM();
+      const target =
+        model || get().settings?.llm_model || get().settings?.llm_default_model;
+      const response = await api.testLLM({ model: target });
       set({
         isTestingLLM: false,
         testResult: {
           success: response.data.success,
           latency_ms: response.data.latency_ms,
+          model: response.data.model,
+          reply: response.data.reply,
+          error: response.data.error,
+          litellm_model: response.data.litellm_model,
         },
       });
       await get().loadSettings();
     } catch (err) {
       set({
         isTestingLLM: false,
-        testResult: { success: false, latency_ms: 0 },
+        testResult: {
+          success: false,
+          latency_ms: 0,
+          error: extractErrorMessage(err),
+        },
         error: extractErrorMessage(err),
       });
     }

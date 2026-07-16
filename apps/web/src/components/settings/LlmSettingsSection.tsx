@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { AgentLlmConfig, AgentSpeakingStyle, LlmApiFormat, Settings } from '@/api/types';
+import type { LlmTestResult } from '@/stores/settingsStore';
 import { GlassSelect } from '@/components/common/GlassSelect';
 import { AGENT_CATALOG } from '@/constants/agentCatalog';
 import {
@@ -12,9 +13,9 @@ import {
 interface LlmSettingsSectionProps {
   settings: Settings;
   updateSettings: (data: Partial<Settings>) => Promise<unknown>;
-  testLLM: () => Promise<unknown>;
+  testLLM: (model?: string) => Promise<unknown>;
   isTestingLLM: boolean;
-  testResult: { success: boolean; latency_ms?: number } | null;
+  testResult: LlmTestResult | null;
   onSaveApiKey: (key: string) => Promise<unknown>;
 }
 
@@ -89,11 +90,13 @@ export function LlmSettingsSection({
       ? settings.llm_available_models
       : [settings.llm_default_model].filter(Boolean);
 
+  const activeModel = settings.llm_default_model || settings.llm_model;
+
   return (
     <div className="llm-settings">
       {!settings.llm_configured && (
         <div className="alert alert-warning">
-          <strong>未配置</strong> — 请填写 API Key 并测试连通；未配置时 Agent 将使用规则降级模式。
+          <strong>未配置</strong> — 请填写 API Key 并测试模型；未配置时 Agent 将使用规则降级模式。
         </div>
       )}
 
@@ -122,7 +125,7 @@ export function LlmSettingsSection({
             className="field input"
             value={settings.llm_provider_display_name}
             onChange={(e) => void updateSettings({ llm_provider_display_name: e.target.value })}
-            placeholder="展示用名称，如 智谱 AI"
+            placeholder="展示用名称，如 MiniMax"
           />
         </div>
 
@@ -133,9 +136,11 @@ export function LlmSettingsSection({
             className="field input"
             value={settings.llm_api_base ?? ''}
             onChange={(e) => void updateSettings({ llm_api_base: e.target.value || null })}
-            placeholder="https://api.example.com/v1"
+            placeholder="https://api.minimaxi.com/anthropic"
           />
-          <p className="field-hint">OpenAI 兼容接口通常以 /v1 结尾</p>
+          <p className="field-hint">
+            Anthropic 兼容填到 /anthropic 即可（如 MiniMax）；OpenAI 兼容通常以 /v1 结尾
+          </p>
         </div>
 
         <div className="form-row">
@@ -185,31 +190,14 @@ export function LlmSettingsSection({
           >
             保存密钥
           </button>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            disabled={isTestingLLM}
-            onClick={() => void testLLM()}
-          >
-            {isTestingLLM ? '测试中…' : '测试连通'}
-          </button>
-          {testResult && (
-            <span className={testResult.success ? 'text-success' : 'text-error'}>
-              {testResult.success ? `成功 · ${testResult.latency_ms}ms` : '连接失败'}
-            </span>
-          )}
-          {settings.llm_last_test && (
-            <span className="llm-last-test muted">
-              上次测试 {new Date(settings.llm_last_test).toLocaleString('zh-CN')}
-              {settings.llm_latency_ms ? ` · ${settings.llm_latency_ms}ms` : ''}
-            </span>
-          )}
         </div>
       </div>
 
       <div className="llm-settings-block glass-card glass-card--overview-inner">
         <h3 className="llm-block-title">模型</h3>
-        <p className="llm-block-desc">可选模型列表与全局默认模型</p>
+        <p className="llm-block-desc">
+          选择默认模型后，点击「测试模型」向该模型发起一次真实请求；返回有效内容即通过
+        </p>
 
         <div className="form-row">
           <label htmlFor="llm-default-model">默认模型</label>
@@ -225,7 +213,7 @@ export function LlmSettingsSection({
             }
             aria-label="默认模型"
           />
-          <p className="field-hint">未单独配置的 Agent 均使用此模型</p>
+          <p className="field-hint">未单独配置的 Agent 均使用此模型；测试也针对此模型</p>
         </div>
 
         <div className="form-row">
@@ -246,7 +234,7 @@ export function LlmSettingsSection({
           <div className="llm-model-add">
             <input
               className="field input"
-              placeholder="如 glm-5.2"
+              placeholder="如 MiniMax-M2.7"
               value={newModelInput}
               onChange={(e) => setNewModelInput(e.target.value)}
               onKeyDown={(e) => {
@@ -260,6 +248,56 @@ export function LlmSettingsSection({
               添加模型
             </button>
           </div>
+        </div>
+
+        <div className="llm-test-panel">
+          <div className="settings-actions llm-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={isTestingLLM || !settings.llm_configured || !activeModel}
+              onClick={() => void testLLM(activeModel)}
+              data-testid="test-llm-btn"
+            >
+              {isTestingLLM ? '测试中…' : `测试模型 · ${activeModel || '未选择'}`}
+            </button>
+            {!settings.llm_configured && (
+              <span className="muted">请先保存 API Key</span>
+            )}
+          </div>
+
+          {testResult && (
+            <div
+              className={`llm-test-result ${testResult.success ? 'llm-test-result--ok' : 'llm-test-result--fail'}`}
+              role="status"
+            >
+              <div className="llm-test-result__head">
+                <strong>{testResult.success ? '测试通过' : '测试失败'}</strong>
+                <span className="muted">
+                  {testResult.model ?? activeModel}
+                  {typeof testResult.latency_ms === 'number'
+                    ? ` · ${testResult.latency_ms}ms`
+                    : ''}
+                </span>
+              </div>
+              {testResult.success && testResult.reply && (
+                <pre className="llm-test-result__reply">{testResult.reply}</pre>
+              )}
+              {!testResult.success && testResult.error && (
+                <pre className="llm-test-result__error">{testResult.error}</pre>
+              )}
+              {testResult.litellm_model && (
+                <p className="field-hint">路由模型：{testResult.litellm_model}</p>
+              )}
+            </div>
+          )}
+
+          {settings.llm_last_test && !testResult && (
+            <p className="llm-last-test muted">
+              上次测试 {new Date(settings.llm_last_test).toLocaleString('zh-CN')}
+              {settings.llm_latency_ms ? ` · ${settings.llm_latency_ms}ms` : ''}
+            </p>
+          )}
         </div>
       </div>
 

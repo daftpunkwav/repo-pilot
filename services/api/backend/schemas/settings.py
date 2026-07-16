@@ -84,3 +84,11 @@ class LlmTestOut(BaseModel):
     success: bool
     latency_ms: int
     model: str
+    reply: str = ""
+    error: str = ""
+    litellm_model: str = ""
+
+
+class LlmTestIn(BaseModel):
+    """可选：指定测试模型；默认使用 settings 中的默认模型。"""
+    model: Optional[str] = Field(None, max_length=128)

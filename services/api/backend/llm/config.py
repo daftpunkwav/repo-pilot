@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,7 @@ class LLMConfig:
     model: str
     api_key: str
     api_base: str | None = None
+    api_format: str = "openai"
     max_context_tokens: int = 128_000
     max_output_tokens: int = 4096
     temperature: float = 0.7
@@ -34,20 +35,70 @@ class LLMConfig:
         blocked = {"gpt-3.5-turbo-0301", "text-davinci-003"}
         return self.model not in blocked
 
+    def normalized_api_base(self) -> str | None:
+        """规范化 api_base：去掉末尾斜杠与多余 messages 路径。"""
+        if not self.api_base:
+            return None
+        base = self.api_base.strip().rstrip("/")
+        # 用户若误填完整 messages 路径，截回 base
+        for suffix in (
+            "/v1/messages",
+            "/messages",
+            "/v1/chat/completions",
+            "/chat/completions",
+        ):
+            if base.endswith(suffix):
+                base = base[: -len(suffix)]
+                break
+        return base or None
+
     def litellm_model(self) -> str:
-        """转换为 litellm model 字符串。"""
-        p = (self.provider or "openai").lower()
-        m = self.model
-        if p in ("openai", "custom") or m.startswith(("openai/", "anthropic/", "deepseek/")):
-            if p == "deepseek" and not m.startswith("deepseek/"):
-                return f"deepseek/{m}"
-            if p == "anthropic" and not m.startswith("anthropic/"):
-                return f"anthropic/{m}"
+        """
+        转换为 litellm model 字符串。
+
+        - Anthropic 兼容（含 MiniMax）：anthropic/<model>
+        - Google：gemini/<model>
+        - Ollama：ollama/<model>
+        - OpenAI 兼容自定义 base：openai/<model>
+        """
+        m = (self.model or "").strip()
+        if not m:
+            m = "gpt-4o"
+        # 已带 provider 前缀
+        known = (
+            "openai/",
+            "anthropic/",
+            "deepseek/",
+            "gemini/",
+            "ollama/",
+            "minimax/",
+        )
+        if m.startswith(known):
             return m
-        if p == "anthropic":
-            return m if m.startswith("anthropic/") else f"anthropic/{m}"
+
+        fmt = (self.api_format or "openai").lower()
+        p = (self.provider or "openai").lower()
+        base = (self.normalized_api_base() or "").lower()
+
+        # MiniMax Anthropic 兼容域名 → 强制 anthropic 路由
+        if "minimax" in p or "minimax" in base or "minimaxi" in base:
+            if fmt in ("anthropic", "custom", "") or "anthropic" in base:
+                return f"anthropic/{m}"
+            return f"openai/{m}"
+
+        if fmt == "anthropic" or p == "anthropic":
+            return f"anthropic/{m}"
+        if fmt == "google" or p in ("google", "gemini"):
+            return f"gemini/{m}"
+        if fmt == "ollama" or p == "ollama":
+            return f"ollama/{m}"
         if p == "deepseek":
-            return m if m.startswith("deepseek/") else f"deepseek/{m}"
+            return f"deepseek/{m}"
+        # 有自定义 base 的 OpenAI 兼容
+        if self.api_base and p not in ("openai",):
+            return f"openai/{m}"
+        if self.api_base and fmt in ("openai", "custom"):
+            return f"openai/{m}"
         return m
 
 
@@ -67,11 +118,13 @@ def build_llm_config_from_settings(raw: dict[str, Any]) -> LLMConfig | None:
     model = raw.get("llm_model") or raw.get("llm_default_model") or "gpt-4o"
     provider = raw.get("llm_provider") or "openai"
     api_base = raw.get("llm_api_base") or None
+    api_format = raw.get("llm_api_format") or "openai"
     return LLMConfig(
         provider=provider,
         model=model,
         api_key=api_key,
         api_base=api_base,
+        api_format=api_format,
     )
 
 
