@@ -94,19 +94,13 @@ export function EmbedAgentChat({
           ? `已追加勾选 ${n} 个仓库`
           : `已自动勾选 ${n} 个仓库`;
     setLastAction(label);
+    // 仅短提示，完整清单由助手正文说明，避免与 assistant 气泡内容重复
     setLines((prev) => [
       ...prev,
       {
         id: `sys_${Date.now()}`,
         role: 'system',
-        content: `⚙️ **系统操控** · ${label}${event.reason ? `\n> ${event.reason}` : ''}${
-          n
-            ? `\n${event.repo_keys
-                .slice(0, 12)
-                .map((k) => `- \`${k}\``)
-                .join('\n')}${n > 12 ? `\n- …共 ${n} 个` : ''}`
-            : ''
-        }\n\n请确认左侧勾选，无误后点击 **导入选中**。`,
+        content: `⚙️ **系统操控** · ${label}。请看左侧勾选，确认后点 **导入选中**。`,
       },
     ]);
   };
@@ -132,16 +126,23 @@ export function EmbedAgentChat({
 
     let sawError = false;
     let errorMsg = '';
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    const clearFlush = () => {
+      if (flushTimer) {
+        clearTimeout(flushTimer);
+        flushTimer = null;
+      }
+    };
     try {
-      let flushScheduled = false;
       const scheduleFlush = () => {
-        if (flushScheduled) return;
-        flushScheduled = true;
-        setTimeout(() => {
-          flushScheduled = false;
+        if (flushTimer) return;
+        flushTimer = setTimeout(() => {
+          flushTimer = null;
+          if (ac.signal.aborted) return;
           const snapshot = assistant;
           setLines((prev) => {
             const rest = prev.filter((l) => l.id !== 'streaming');
+            if (!snapshot) return rest;
             return [...rest, { id: 'streaming', role: 'assistant', content: snapshot }];
           });
         }, 16);
@@ -150,14 +151,14 @@ export function EmbedAgentChat({
       for await (const event of stream as AsyncGenerator<SSEEvent>) {
         if (ac.signal.aborted) break;
         if (event.event === 'text_delta') {
-          assistant += asSSETextDelta(event.data).content;
-          scheduleFlush();
+          const piece = asSSETextDelta(event.data).content ?? '';
+          if (piece) {
+            assistant += piece;
+            scheduleFlush();
+          }
         }
         if (event.event === 'select_repos') {
           applySelectRepos(event.data as Record<string, unknown>);
-        }
-        if (event.event === 'thinking') {
-          // 轻量展示：不打断正文
         }
         if (event.event === 'done') {
           const usage = event.data as { usage?: { tokens?: number } };
@@ -173,6 +174,9 @@ export function EmbedAgentChat({
           setError(errorMsg);
         }
       }
+
+      // 流结束后：取消未触发的 flush，只落一条最终消息（杜绝竞态双份）
+      clearFlush();
       setLines((prev) => {
         const rest = prev.filter((l) => l.id !== 'streaming');
         if (!assistant.trim()) {
@@ -183,20 +187,25 @@ export function EmbedAgentChat({
                 id: `a_${Date.now()}`,
                 role: 'assistant',
                 content:
-                  '我这边暂时没生成正文（可能是网络抖动或模型只返回了思考过程）。请再说一次你的需求，例如「推荐 Python Web 项目」；若设置页 LLM 测试已通过，通常重试即可。',
+                  '我这边暂时没生成正文。请再说一次需求（例如「推荐 Python Web 项目」）。',
               },
             ];
           }
           return rest;
         }
-        return [...rest, { id: `a_${Date.now()}`, role: 'assistant', content: assistant }];
+        return [
+          ...rest,
+          { id: `a_${Date.now()}`, role: 'assistant', content: assistant },
+        ];
       });
     } catch (err) {
+      clearFlush();
       if (ac.signal.aborted) return;
       const message = err instanceof Error ? err.message : '连接中断，请重试';
       setError(message);
       addToast({ type: 'error', message });
     } finally {
+      clearFlush();
       if (streamAbortRef.current === ac) {
         streamAbortRef.current = null;
       }

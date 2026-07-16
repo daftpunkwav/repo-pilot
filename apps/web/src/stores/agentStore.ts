@@ -219,20 +219,24 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   processSSEStream: async (stream) => {
+    // 多 Agent 编排会多次发出 done；正文只在流结束时落盘一次，避免重复气泡
+    let sawQuestion = false;
     try {
       for await (const event of stream) {
         switch (event.event) {
           case 'text_delta': {
             const delta = asSSETextDelta(event.data);
+            const piece = delta.content ?? '';
+            if (!piece) break;
             set((state) => ({
-              streamingContent: state.streamingContent + delta.content,
+              streamingContent: state.streamingContent + piece,
             }));
             break;
           }
           case 'thinking': {
             const thinking = asSSEThinking(event.data);
             set((state) => ({
-              thinkingBuffer: state.thinkingBuffer + thinking.content,
+              thinkingBuffer: state.thinkingBuffer + (thinking.content ?? ''),
             }));
             break;
           }
@@ -246,10 +250,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               const newMap = new Map(state.toolCalls);
               newMap.set(callId, {
                 name: toolCall.name || String(raw.name ?? 'tool'),
-                args: (toolCall.args || (raw.args as Record<string, unknown>) || {}) as Record<
-                  string,
-                  unknown
-                >,
+                args: (toolCall.args ||
+                  (raw.args as Record<string, unknown>) ||
+                  {}) as Record<string, unknown>,
               });
               return { toolCalls: newMap };
             });
@@ -259,8 +262,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             const toolResult = asSSEToolResult(event.data);
             const raw = event.data as Record<string, unknown>;
             const callId =
-              toolResult.call_id ||
-              (typeof raw.id === 'string' ? raw.id : '');
+              toolResult.call_id || (typeof raw.id === 'string' ? raw.id : '');
             set((state) => {
               const newMap = new Map(state.toolCalls);
               const existing = callId ? newMap.get(callId) : undefined;
@@ -282,6 +284,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           }
           case 'question': {
             const question = event.data as unknown as AgentQuestion;
+            sawQuestion = true;
             set({ pendingQuestion: question, streaming: false });
             break;
           }
@@ -292,27 +295,17 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               switchData.to ||
               (typeof raw.agent_id === 'string' ? raw.agent_id : null) ||
               get().activeAgent;
-            set({ activeAgent: next as AgentId });
+            // 切换 Agent 时插入分隔，不拆成两条完整回复
+            set((state) => ({
+              activeAgent: next as AgentId,
+              streamingContent: state.streamingContent
+                ? `${state.streamingContent}\n\n`
+                : state.streamingContent,
+            }));
             break;
           }
           case 'done': {
-            const { streamingContent, currentSessionId, activeAgent } = get();
-            if (!currentSessionId) break;
-            const assistantMsg: AgentMessage = {
-              id: `msg_${Date.now()}`,
-              session_id: currentSessionId,
-              agent: activeAgent,
-              role: 'assistant',
-              content: streamingContent,
-              created_at: new Date().toISOString(),
-            };
-            set((state) => ({
-              messages: [...state.messages, assistantMsg],
-              streaming: false,
-              streamingContent: '',
-              thinkingBuffer: '',
-              toolCalls: new Map(),
-            }));
+            // 仅作中间信号：不在此处 push messages（防止多次 done 重复）
             break;
           }
           case 'error': {
@@ -324,12 +317,45 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             break;
         }
       }
+
+      // 流自然结束后统一落一条 assistant 消息
+      if (!sawQuestion) {
+        const { streamingContent, currentSessionId, activeAgent, error } = get();
+        if (currentSessionId && streamingContent.trim() && !error) {
+          const assistantMsg: AgentMessage = {
+            id: `msg_${Date.now()}`,
+            session_id: currentSessionId,
+            agent: activeAgent,
+            role: 'assistant',
+            content: streamingContent,
+            created_at: new Date().toISOString(),
+          };
+          set((state) => ({
+            messages: [...state.messages, assistantMsg],
+            streaming: false,
+            streamingContent: '',
+            thinkingBuffer: '',
+            toolCalls: new Map(),
+            streamAbortController: null,
+          }));
+        } else {
+          set({
+            streaming: false,
+            streamAbortController: null,
+            toolCalls: new Map(),
+          });
+        }
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        set({ streaming: false });
+        set({ streaming: false, streamAbortController: null });
         return;
       }
-      set({ error: '连接中断，请重试', streaming: false });
+      set({
+        error: '连接中断，请重试',
+        streaming: false,
+        streamAbortController: null,
+      });
     }
   },
 }));
