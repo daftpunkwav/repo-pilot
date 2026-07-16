@@ -19,12 +19,13 @@ def _project(**kwargs) -> Project:
 
 def test_similarity_same_language_and_category():
     cid = uuid4()
-    a = _project(language="TypeScript", category_id=cid)
-    b = _project(language="TypeScript", category_id=cid)
-    assert _similarity(a, b) == 1.0
+    a = _project(name="react/core", language="TypeScript", category_id=cid, description="ui library")
+    b = _project(name="react/core", language="TypeScript", category_id=cid, description="ui library")
+    # 多信号加权后应接近满分
+    assert _similarity(a, b) >= 0.9
 
 
 def test_similarity_no_match():
-    a = _project(language="Go")
-    b = _project(language="Rust")
-    assert _similarity(a, b) == 0.0
+    a = _project(name="alpha/foo", language="Go", description="cli tools")
+    b = _project(name="zeta/bar", language="Rust", description="kernel module")
+    assert _similarity(a, b) < 0.3

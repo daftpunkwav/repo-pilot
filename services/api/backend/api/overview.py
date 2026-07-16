@@ -49,5 +49,8 @@ async def get_recommended(
 
 
 @router.get("/trending", response_model=DataResponse[list[TrendingRepoOut]])
-async def get_trending():
-    return wrap_data(await list_trending())
+async def get_trending(
+    period: str = Query("weekly"),
+    language: str = Query(""),
+):
+    return wrap_data(await list_trending(language=language, period=period))

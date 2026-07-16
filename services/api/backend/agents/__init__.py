@@ -1,6 +1,3 @@
-"""
-Agent 包入口 —— 子 Agent 模块随 Phase 6 逐步补齐。
-"""
-from backend.agents import hub
+"""Agent 包 —— Hub / 注册表 / 推理引擎"""
 
-__all__ = ["hub"]
+__all__ = ["hub", "registry", "intent", "react"]

@@ -983,7 +983,8 @@ export class MockApiClient implements IApiClient {
     _sessionId: string,
     _questionId: string,
     _answers: QuestionAnswer[],
-    _signal?: AbortSignal
+    _signal?: AbortSignal,
+    _skipped?: boolean
   ): AsyncGenerator<SSEEvent> {
     requireAuth();
     yield* mockAfterQuestionAnswer();

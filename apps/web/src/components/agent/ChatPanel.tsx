@@ -69,9 +69,11 @@ export function ChatPanel() {
         <div className="chat-title">
           <h2>{currentSession?.title ?? '新对话'}</h2>
           <div className="ctx">
-            为 {projectCount} 个项目 · {user?.username ?? 'guest'} · {modelName}
+            项目库 {projectCount} · {user?.username ?? 'guest'} · {modelName}
             <span className="dot" />
-            <span style={{ color: 'var(--brand-500)' }}>6 个 Agent 在线</span>
+            <span style={{ color: 'var(--brand-500)' }}>
+              Hub 智能调度 · 7 Agent 在线
+            </span>
           </div>
         </div>
         <div className="chat-actions">
@@ -163,7 +165,9 @@ export function ChatPanel() {
             disabled={streaming || Boolean(pendingQuestion) || !llmOk}
           />
           <div className="chat-toolbar">
-            <span className="ctx-chip active">3 个项目上下文</span>
+            <span className="ctx-chip active">
+              {projectCount > 0 ? `${projectCount} 个项目上下文` : '无项目上下文'}
+            </span>
             <div className="spacer" />
             <span style={{ fontSize: 11, color: 'var(--text-400)', fontFamily: 'var(--font-mono)' }}>
               {input.length} 字符

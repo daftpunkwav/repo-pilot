@@ -176,6 +176,34 @@
   .chat-icon-btn:hover { background: var(--bg-300); color: var(--text-800); }
 
   /* Agent 切换器 */
+  .agent-switcher--hub-only {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 160px;
+  }
+  .agent-switcher__arrow {
+    color: var(--text-400);
+    font-size: 12px;
+    opacity: 0.8;
+  }
+  .agent-switcher__meta {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+    min-width: 0;
+  }
+  .agent-switcher__label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-100);
+    white-space: nowrap;
+  }
+  .agent-switcher__hint {
+    font-size: 10px;
+    color: var(--text-400);
+    white-space: nowrap;
+  }
   .agent-switcher {
     display: flex;
     gap: 4px;

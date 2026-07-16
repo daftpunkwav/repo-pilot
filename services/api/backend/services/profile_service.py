@@ -23,14 +23,31 @@ def profile_to_out(row: UserProfile) -> UserProfileOut:
     memory_items = memory_raw.get("memory_items", []) if isinstance(memory_raw, dict) else []
     extensions = memory_raw.get("extensions", {}) if isinstance(memory_raw, dict) else {}
     goals = [GoalOut.model_validate(g) for g in _parse_json(row.goals, [])]
-    memory = [MemoryItemOut.model_validate(m) for m in memory_items]
+    memory: list[MemoryItemOut] = []
+    for m in memory_items:
+        if not isinstance(m, dict):
+            continue
+        try:
+            # Agent 提案可能缺 category / id，做归一化
+            normalized = {
+                "id": m.get("id") or f"mem_{len(memory)}",
+                "category": m.get("category") or "summary",
+                "content": m.get("content") or m.get("value") or "",
+                "created_at": m.get("created_at") or m.get("at") or "",
+                "updated_at": m.get("updated_at"),
+            }
+            if not normalized["content"]:
+                continue
+            memory.append(MemoryItemOut.model_validate(normalized))
+        except Exception:
+            continue
     return UserProfileOut(
         tech_proficiency=_parse_json(row.tech_profile, {}),
         learning_preferences=_parse_json(row.preferences, {}),
         goals=goals,
         history_summary=row.history_summary or "",
         memory_items=memory,
-        extensions=extensions,
+        extensions=extensions if isinstance(extensions, dict) else {},
     )
 
 

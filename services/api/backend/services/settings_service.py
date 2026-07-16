@@ -90,3 +90,26 @@ async def update_settings(
     await db.commit()
     await db.refresh(user)
     return settings_to_out(user)
+
+
+async def record_llm_test(
+    db: AsyncSession,
+    user_id: UUID,
+    *,
+    success: bool,
+    latency_ms: int,
+    model: str,
+) -> None:
+    from datetime import datetime
+
+    user = await db.get(User, user_id)
+    if not user:
+        return
+    raw = _load_raw(user)
+    raw["llm_last_test"] = datetime.utcnow().isoformat() + "Z"
+    raw["llm_latency_ms"] = latency_ms
+    if model:
+        raw["llm_model"] = model
+    raw["llm_test_success"] = success
+    user.settings_json = json.dumps(raw, ensure_ascii=False)
+    await db.commit()

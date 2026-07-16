@@ -44,6 +44,7 @@ export const AGENT_INITIALS: Record<string, string> = {
   navigator: 'N',
   curator: 'C',
   scribe: 'S',
+  atlas: 'A',
 };
 
 export const AGENT_TAG_CLASS: Record<string, string> = {
@@ -53,6 +54,7 @@ export const AGENT_TAG_CLASS: Record<string, string> = {
   navigator: 'agent-tag-navigator',
   curator: 'agent-tag-curator',
   scribe: 'agent-tag-scribe',
+  atlas: 'agent-tag-navigator',
 };
 
 export const AGENT_ROLE_LABELS: Record<string, string> = {
@@ -62,6 +64,7 @@ export const AGENT_ROLE_LABELS: Record<string, string> = {
   navigator: '学习规划',
   curator: '分类管家',
   scribe: '笔记助手',
+  atlas: '图谱向导',
 };
 
 /** @deprecated 请优先使用 AGENT_CATALOG；保留兼容字段 desc */

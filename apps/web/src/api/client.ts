@@ -133,7 +133,8 @@ export interface IApiClient {
     sessionId: string,
     questionId: string,
     answers: QuestionAnswer[],
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    skipped?: boolean
   ): AsyncGenerator<SSEEvent>;
   analyzeProject(projectId: string, agent?: AgentId, signal?: AbortSignal): AsyncGenerator<SSEEvent>;
 

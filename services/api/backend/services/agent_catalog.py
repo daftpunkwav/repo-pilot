@@ -44,4 +44,11 @@ AGENT_PROFILES: list[AgentProfileOut] = [
         avatar_emoji="✍️",
         capabilities=["笔记生成", "知识整理", "摘要"],
     ),
+    AgentProfileOut(
+        id="atlas",
+        name="Atlas",
+        description="知识图谱向导，解读项目关联",
+        avatar_emoji="🗺️",
+        capabilities=["图谱查询", "关系解读", "探索建议"],
+    ),
 ]

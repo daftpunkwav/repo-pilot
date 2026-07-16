@@ -231,7 +231,14 @@ export interface ActivityItem {
 // Agent
 // ========================================
 
-export type AgentId = 'hub' | 'scout' | 'mentor' | 'navigator' | 'curator' | 'scribe';
+export type AgentId =
+  | 'hub'
+  | 'scout'
+  | 'mentor'
+  | 'navigator'
+  | 'curator'
+  | 'scribe'
+  | 'atlas';
 
 /** Agent 个性化推荐项目（总览「为你推荐」） */
 export interface RecommendedProject {
