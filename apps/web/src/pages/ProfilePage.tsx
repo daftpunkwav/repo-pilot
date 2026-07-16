@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 import { getApi } from '@/api/client';
 import { formatDateTime } from '@/utils/date';
@@ -23,6 +24,12 @@ export function ProfilePage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
+  const [summaryDraft, setSummaryDraft] = useState('');
+
+  const { data: learningProfile, refetch: refetchProfile } = useQuery({
+    queryKey: ['userProfile'],
+    queryFn: async () => (await getApi().getUserProfile()).data,
+  });
 
   if (!user) return <LoadingSpinner />;
 
@@ -128,6 +135,82 @@ export function ProfilePage() {
         >
           更新头像
         </button>
+      </GlassCard>
+
+      <GlassCard className="glass-card--overview-outer">
+        <h2>学习画像（Agent 共享）</h2>
+        <p className="muted small">
+          由 Hub 统筹维护：各 Agent 提交提案，证据加权合并后写入。可在此查看与补充摘要。
+        </p>
+        {learningProfile ? (
+          <>
+            <dl className="profile-dl">
+              <dt>历史摘要</dt>
+              <dd>{learningProfile.history_summary || '暂无'}</dd>
+              <dt>技术熟练度</dt>
+              <dd>
+                {Object.keys(learningProfile.tech_proficiency || {}).length === 0
+                  ? '暂无'
+                  : Object.entries(learningProfile.tech_proficiency)
+                      .map(([k, v]) => `${k}: ${String(v)}`)
+                      .join(' · ')}
+              </dd>
+              <dt>学习偏好</dt>
+              <dd>
+                {Object.keys(learningProfile.learning_preferences || {}).length === 0
+                  ? '暂无'
+                  : JSON.stringify(learningProfile.learning_preferences)}
+              </dd>
+              <dt>目标</dt>
+              <dd>
+                {(learningProfile.goals ?? []).length === 0
+                  ? '暂无'
+                  : learningProfile.goals.map((g) => g.title).join('；')}
+              </dd>
+              <dt>长期记忆</dt>
+              <dd>
+                {(() => {
+                  const items = learningProfile.memory_items ?? [];
+                  return items.length === 0
+                    ? '暂无'
+                    : items
+                        .slice(0, 8)
+                        .map((m) => m.content)
+                        .join(' · ');
+                })()}
+              </dd>
+            </dl>
+            <label className="form-field">
+              更新历史摘要
+              <textarea
+                className="input"
+                rows={3}
+                value={summaryDraft || learningProfile.history_summary || ''}
+                onChange={(e) => setSummaryDraft(e.target.value)}
+                placeholder="描述你的学习背景与目标…"
+              />
+            </label>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={async () => {
+                try {
+                  await getApi().updateUserProfile({
+                    history_summary: summaryDraft || learningProfile.history_summary,
+                  });
+                  void refetchProfile();
+                  addToast({ type: 'success', message: '学习画像已更新' });
+                } catch {
+                  addToast({ type: 'error', message: '更新失败' });
+                }
+              }}
+            >
+              保存画像
+            </button>
+          </>
+        ) : (
+          <p className="muted">加载中…</p>
+        )}
       </GlassCard>
 
       <GlassCard className="glass-card--overview-outer">

@@ -36,14 +36,6 @@ import type {
 import { parseSSEStream } from '@/utils/sse-parser';
 import { apiRequest, apiSSE, REFRESH_KEY, TOKEN_KEY } from './http';
 
-function throwApiError(code: string, message: string): never {
-  throw { error: { code, message } };
-}
-
-async function* emitNotImplemented(feature: string): AsyncGenerator<SSEEvent> {
-  yield { event: 'error', data: { code: 'NOT_IMPLEMENTED', message: `${feature} 尚未在后端实现` } };
-}
-
 function storeTokens(access: string, refresh: string) {
   localStorage.setItem(TOKEN_KEY, access);
   localStorage.setItem(REFRESH_KEY, refresh);
@@ -500,6 +492,25 @@ export class RealApiClient implements IApiClient {
     const res = await apiSSE(
       `/agent/analyze/${projectId}`,
       { depth, force_refresh: false },
+      signal
+    );
+    if (!res.body) return;
+    const reader = res.body.getReader();
+    yield* parseSSEStream(reader, signal);
+  }
+
+  async *generateNote(
+    projectId: string,
+    params?: { mode?: 'project' | 'standalone'; topic?: string },
+    signal?: AbortSignal
+  ): AsyncGenerator<SSEEvent> {
+    const res = await apiSSE(
+      '/agent/note/generate',
+      {
+        project_id: projectId,
+        mode: params?.mode ?? 'project',
+        topic: params?.topic,
+      },
       signal
     );
     if (!res.body) return;
