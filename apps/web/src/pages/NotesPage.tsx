@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAllNotes, useCreateNote, useDeleteNote, useUpdateNote } from '@/hooks/useNotes';
 import { useProjects } from '@/hooks/useProjects';
 import { useNoteStore } from '@/stores/noteStore';
 import { useUIStore } from '@/stores/uiStore';
+import { getApi } from '@/api/client';
+import { asSSETextDelta } from '@/utils/sse-helpers';
 import { NoteList } from '@/components/note/NoteList';
 import { NoteEditor } from '@/components/note/NoteEditor';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
@@ -12,6 +15,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 type NotesView = 'split' | 'list-only' | 'edit-only' | 'preview-only';
 
 export function NotesPage() {
+  const [searchParams] = useSearchParams();
   const { data: notes = [], isLoading } = useAllNotes();
   const { data: projectsData } = useProjects();
   const searchQuery = useNoteStore((s) => s.searchQuery);
@@ -20,15 +24,20 @@ export function NotesPage() {
   const editorContent = useNoteStore((s) => s.editorContent);
   const editorTitle = useNoteStore((s) => s.editorTitle);
   const startEditing = useNoteStore((s) => s.startEditing);
+  const setEditorContent = useNoteStore((s) => s.setEditorContent);
+  const setEditorTitle = useNoteStore((s) => s.setEditorTitle);
   const editingNoteId = useNoteStore((s) => s.editingNoteId);
   const createNote = useCreateNote();
   const updateNote = useUpdateNote();
   const deleteNote = useDeleteNote();
   const addToast = useUIStore((s) => s.addToast);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [newProjectId, setNewProjectId] = useState('');
+  const [newProjectId, setNewProjectId] = useState(
+    () => searchParams.get('project') ?? ''
+  );
   const [view, setView] = useState<NotesView>('split');
   const [saved, setSaved] = useState(true);
+  const [scribeStreaming, setScribeStreaming] = useState(false);
 
   const projectNames = useMemo(() => {
     const m = new Map<string, string>();
@@ -56,8 +65,58 @@ export function NotesPage() {
 
   const handleNew = () => {
     startEditing('new', '新笔记', '');
-    setNewProjectId(projectsData?.items[0]?.id ?? '');
+    setNewProjectId(
+      searchParams.get('project') || projectsData?.items[0]?.id || ''
+    );
     setSaved(false);
+  };
+
+  const runScribe = async () => {
+    const projectId =
+      newProjectId ||
+      notes.find((n) => n.id === editingNoteId)?.project_id ||
+      searchParams.get('project') ||
+      projectsData?.items[0]?.id;
+    if (!projectId) {
+      addToast({ type: 'warning', message: '请先选择关联项目' });
+      return;
+    }
+    if (!editingNoteId) {
+      startEditing('new', 'Scribe 笔记草稿', '');
+      setNewProjectId(projectId);
+    }
+    setScribeStreaming(true);
+    setSaved(false);
+    let buf = '';
+    try {
+      const stream = getApi().generateNote(projectId, {
+        mode: 'project',
+        topic: editorTitle || undefined,
+      });
+      for await (const event of stream) {
+        if (event.event === 'text_delta') {
+          buf += asSSETextDelta(event.data).content;
+          setEditorContent(buf);
+          if (buf.startsWith('# ')) {
+            const firstLine = buf.split('\n')[0]?.replace(/^#\s*/, '').trim();
+            if (firstLine) setEditorTitle(firstLine.slice(0, 80));
+          }
+        }
+        if (event.event === 'error') {
+          const msg =
+            (event.data as { message?: string })?.message ?? 'Scribe 生成失败';
+          addToast({ type: 'error', message: msg });
+        }
+      }
+      if (buf.trim()) {
+        addToast({ type: 'success', message: 'Scribe 已生成笔记草稿' });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Scribe 生成失败';
+      addToast({ type: 'error', message });
+    } finally {
+      setScribeStreaming(false);
+    }
   };
 
   const handleSave = async () => {
@@ -107,6 +166,15 @@ export function NotesPage() {
             <path d="M12 5v14M5 12h14" />
           </svg>
           新建笔记
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm"
+          disabled={scribeStreaming}
+          onClick={() => void runScribe()}
+          title="由 Scribe Agent 生成大纲与草稿"
+        >
+          {scribeStreaming ? 'Scribe 生成中…' : 'Scribe 辅助'}
         </button>
         <div className="view-toggle" role="tablist">
           {(

@@ -137,6 +137,12 @@ export interface IApiClient {
     skipped?: boolean
   ): AsyncGenerator<SSEEvent>;
   analyzeProject(projectId: string, agent?: AgentId, signal?: AbortSignal): AsyncGenerator<SSEEvent>;
+  /** Scribe 生成笔记大纲/草稿（SSE） */
+  generateNote(
+    projectId: string,
+    params?: { mode?: 'project' | 'standalone'; topic?: string },
+    signal?: AbortSignal
+  ): AsyncGenerator<SSEEvent>;
 
   /** 当前会话的上下文窗口用量 */
   getContextWindow(sessionId?: string | null): Promise<ApiResponse<ContextWindowStats>>;

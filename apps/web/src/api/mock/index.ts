@@ -1001,6 +1001,21 @@ export class MockApiClient implements IApiClient {
     yield* mockProjectAnalysis(name, agent ?? 'scout');
   }
 
+  async *generateNote(
+    projectId: string,
+    params?: { mode?: 'project' | 'standalone'; topic?: string },
+    _signal?: AbortSignal
+  ): AsyncGenerator<SSEEvent> {
+    requireAuth();
+    const project = this.projects.find((p) => p.id === projectId);
+    const name = params?.topic || project?.name || projectId;
+    const md = `# ${name} 学习笔记\n\n## 1. 项目定位\n\n## 2. 核心概念\n\n## 3. 上手路径\n\n## 4. 与已学项目对比\n\n> mode=${params?.mode ?? 'project'}\n`;
+    for (const ch of md) {
+      yield { event: 'text_delta', data: { content: ch } };
+    }
+    yield { event: 'done', data: { usage: { tokens: md.length }, iterations: 1 } };
+  }
+
   async getContextWindow(
     sessionId?: string | null
   ): Promise<ApiResponse<ContextWindowStats>> {

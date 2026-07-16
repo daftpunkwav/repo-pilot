@@ -265,9 +265,43 @@ export function ProjectDetailPage() {
               <strong style={{ color: 'var(--chart-4)' }}>Scribe Agent</strong>
               &nbsp;我可以基于 <span className="mono">{scribeName}</span> 的源码帮你生成笔记大纲，要试试吗？
             </div>
-            <Link className="tip-cta" to={`/notes?project=${project.id}`}>
+            <button
+              type="button"
+              className="tip-cta"
+              onClick={async () => {
+                try {
+                  let buf = '';
+                  const stream = getApi().generateNote(project.id, {
+                    mode: 'project',
+                    topic: project.name,
+                  });
+                  for await (const event of stream) {
+                    if (event.event === 'text_delta') {
+                      buf += asSSETextDelta(event.data).content;
+                    }
+                  }
+                  if (buf.trim()) {
+                    const title =
+                      buf.split('\n')[0]?.replace(/^#\s*/, '').trim() ||
+                      `${project.name} 学习笔记`;
+                    startEditing('new', title.slice(0, 80), buf);
+                    setTab('notes');
+                    addToast({
+                      type: 'success',
+                      message: 'Scribe 已生成草稿，可编辑后保存',
+                    });
+                  } else {
+                    addToast({ type: 'warning', message: '未生成内容，请检查 LLM 配置' });
+                  }
+                } catch (err) {
+                  const message =
+                    err instanceof Error ? err.message : 'Scribe 生成失败';
+                  addToast({ type: 'error', message });
+                }
+              }}
+            >
               生成笔记
-            </Link>
+            </button>
           </div>
         </div>
 
