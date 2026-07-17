@@ -32,6 +32,85 @@ class ReActEngine:
     def __init__(self, max_iterations: int | None = None):
         self.max_iterations = max_iterations or self.MAX_ITERATIONS
 
+    def _effective_max_iter(self, agent_def: AgentDefinition) -> int:
+        """优先使用 Agent 定义的 max_iterations。"""
+        defined = getattr(agent_def, "max_iterations", None)
+        if isinstance(defined, int) and defined > 0:
+            return min(defined, self.max_iterations)
+        return self.max_iterations
+
+    def _prefer_token_stream(self, agent_def: AgentDefinition, tools: list) -> bool:
+        """
+        CoT / 无工具：直接真流式吐 token。
+        ReAct 有工具时：工具轮非流式，最终回答轮再流式（见循环内分支）。
+        """
+        if not getattr(agent_def, "streaming", True):
+            return False
+        wf = (agent_def.workflow or "react").lower()
+        if wf in ("cot", "direct"):
+            return True
+        if not tools:
+            return True
+        return False
+
+    async def _stream_text_completion(
+        self,
+        *,
+        llm: LLMProvider,
+        messages: list[dict[str, Any]],
+        agent_def: AgentDefinition,
+        emit_sse: bool,
+    ) -> AsyncIterator[str | LLMCompleteResult]:
+        """真流式补全：边生成边 yield text_delta SSE；最后 yield LLMCompleteResult。"""
+        from backend.llm.provider import LLMChunk, LLMCompleteResult as LCR
+
+        full = ""
+        usage: dict[str, int] = {}
+        try:
+            stream = await llm.complete(
+                messages,
+                tools=None,
+                temperature=agent_def.temperature,
+                max_tokens=agent_def.max_tokens,
+                stream=True,
+                model_override=agent_def.model_override,
+            )
+            assert not isinstance(stream, LCR)
+            async for chunk in stream:
+                if not isinstance(chunk, LLMChunk):
+                    continue
+                if chunk.type == "text" and chunk.text:
+                    full += chunk.text
+                    if emit_sse:
+                        yield format_sse("text_delta", {"content": chunk.text})
+                elif chunk.type == "thinking" and chunk.text:
+                    if emit_sse:
+                        yield format_sse("thinking", {"content": chunk.text})
+                elif chunk.type == "done":
+                    usage = chunk.usage or {}
+                elif chunk.type == "error":
+                    err = chunk.error or "LLM 流式错误"
+                    if emit_sse:
+                        yield format_sse("error", {"code": "LLM_ERROR", "message": err})
+                    yield LCR(text=full or err, usage=usage)
+                    return
+        except Exception as e:
+            logger.exception("LLM stream error in engine")
+            err = f"LLM 调用失败：{e}"
+            if emit_sse:
+                yield format_sse("error", {"code": "LLM_ERROR", "message": err})
+            yield LCR(text=full or err, usage=usage)
+            return
+
+        if not full.strip():
+            full = (
+                f"我是 {agent_def.name}，已收到你的消息。"
+                "请补充更具体的需求（例如技术栈、学习目标），我会继续帮你。"
+            )
+            if emit_sse:
+                yield format_sse("text_delta", {"content": full})
+        yield LCR(text=full, usage=usage)
+
     async def run(
         self,
         *,
@@ -42,7 +121,12 @@ class ReActEngine:
     ) -> AsyncIterator[str | EngineResult]:
         """
         执行推理循环。yield SSE 字符串；最后 yield EngineResult。
+
+        - cot / 无工具：真 token 流式
+        - react 有工具：工具轮非流式；无工具后的最终回答流式
         """
+        from backend.llm.provider import LLMCompleteResult
+
         llm = ctx.llm
         if not llm.available:
             text = self._degraded_reply(agent_def, messages)
@@ -57,6 +141,18 @@ class ReActEngine:
             return
 
         tools = ctx.tool_registry.openai_tools_for(agent_def.id)
+        # 仅暴露 AgentDefinition.tools 白名单，避免 registry 里 allowed_agents 过宽
+        if agent_def.tools:
+            allow = set(agent_def.tools)
+            tools = [
+                t
+                for t in tools
+                if (t.get("function") or {}).get("name") in allow
+            ]
+        # CoT 工作流强制空工具表，避免走慢速工具环
+        if (agent_def.workflow or "").lower() in ("cot", "direct"):
+            tools = []
+
         # 工作流提示注入
         workflow_hint = self._workflow_hint(agent_def)
         if workflow_hint:
@@ -71,14 +167,60 @@ class ReActEngine:
         final_text = ""
         dispatches: list[dict[str, Any]] = []
         iteration = 0
+        max_iter = self._effective_max_iter(agent_def)
 
-        while iteration < self.max_iterations:
+        # —— 快速路径：CoT / 无工具 → 真流式 ——
+        if self._prefer_token_stream(agent_def, tools):
+            if emit_sse:
+                yield format_sse(
+                    "thinking",
+                    {
+                        "content": f"{agent_def.name} · {agent_def.workflow or 'cot'} 流式生成中",
+                        "iteration": 1,
+                    },
+                )
+            async for item in self._stream_text_completion(
+                llm=llm,
+                messages=messages,
+                agent_def=agent_def,
+                emit_sse=emit_sse,
+            ):
+                if isinstance(item, str):
+                    yield item
+                else:
+                    final_text = item.text or ""
+                    for k in total_usage:
+                        total_usage[k] = total_usage.get(k, 0) + (item.usage or {}).get(
+                            k, 0
+                        )
+            if emit_sse:
+                yield format_sse(
+                    "done",
+                    {
+                        "usage": {
+                            "tokens": total_usage.get("total_tokens", 0),
+                            **total_usage,
+                        },
+                        "iterations": 1,
+                        "agent_id": agent_def.id,
+                        "streamed": True,
+                    },
+                )
+            yield EngineResult(
+                text=final_text,
+                agent_id=agent_def.id,
+                usage=total_usage,
+                iterations=1,
+            )
+            return
+
+        while iteration < max_iter:
             iteration += 1
             if emit_sse:
                 yield format_sse(
                     "thinking",
                     {
-                        "content": f"{agent_def.name} 推理中… (第 {iteration} 轮)",
+                        "content": f"{agent_def.name} 推理中 (第 {iteration}/{max_iter} 轮 · {agent_def.workflow})",
                         "iteration": iteration,
                     },
                 )
@@ -115,8 +257,9 @@ class ReActEngine:
 
             if result.text and not result.tool_calls:
                 final_text = result.text
+                # 最终正文：假流式分片，避免整块空白等待感
                 if emit_sse:
-                    step = 32
+                    step = 24
                     for i in range(0, len(final_text), step):
                         yield format_sse(
                             "text_delta", {"content": final_text[i : i + step]}
@@ -132,7 +275,7 @@ class ReActEngine:
                         "请补充更具体的需求（例如技术栈、学习目标），我会继续帮你。"
                     )
                 if emit_sse:
-                    step = 32
+                    step = 24
                     for i in range(0, len(final_text), step):
                         yield format_sse(
                             "text_delta", {"content": final_text[i : i + step]}
@@ -395,22 +538,32 @@ class ReActEngine:
         )
 
     def _workflow_hint(self, agent_def: AgentDefinition) -> str:
-        if agent_def.workflow == "plan_execute":
+        wf = (agent_def.workflow or "react").lower()
+        if wf in ("cot", "direct"):
+            return (
+                "工作流: Chain-of-Thought（快速）。"
+                "直接基于已有上下文给出答案，优先速度与信息密度；"
+                "不要假装调用工具，不要输出 emoji。"
+            )
+        if wf == "plan_execute":
             return (
                 "工作流: Plan-and-Execute。先简短规划，再 dispatch_agent，"
-                "收集结果后合并回答。不要一次调度超过 3 个 Agent。"
+                "收集结果后合并回答。不要一次调度超过 3 个 Agent。禁止 emoji。"
             )
-        if agent_def.workflow == "reflexion":
+        if wf == "reflexion":
             return (
                 "工作流: Reflexion。提出方案 → 自我评估（重复/命名/过细）→ 反思改进，"
-                "最多 3 轮，最终给出建议。"
+                "最多 2 轮，最终给出建议。禁止 emoji。"
             )
-        if agent_def.workflow == "tot":
+        if wf == "tot":
             return (
-                "工作流: Tree-of-Thoughts。对复杂问题先列出 2-3 种讲解路径，"
-                "评估后选择最适合用户画像的一种展开。"
+                "工作流: Tree-of-Thoughts。对复杂问题在内部比较 2-3 种路径，"
+                "只展开最适合用户的一种；输出最终讲解即可。禁止 emoji。"
             )
-        return "工作流: ReAct。需要数据时先调用工具再回答。"
+        return (
+            "工作流: ReAct。需要数据时先调用工具再回答；"
+            "能直接答则不要硬调工具。禁止 emoji。"
+        )
 
     def _degraded_reply(
         self, agent_def: AgentDefinition, messages: list[dict[str, Any]]

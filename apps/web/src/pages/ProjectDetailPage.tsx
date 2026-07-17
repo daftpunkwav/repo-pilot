@@ -532,7 +532,7 @@ export function ProjectDetailPage() {
               ) : (
                 <p className="muted">
                   选择上方专家 Agent，点击「开始分析」；或在右侧「AI 学习助手」点「调用」。
-                  支持流式输出与思考过程（默认收起）。
+                  Scout 为 CoT 真流式秒级速览；思考过程默认收起，可点击展开。
                 </p>
               )}
             </div>

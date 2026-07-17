@@ -368,12 +368,30 @@ async def stream_question_answer(
 
 
 _ANALYZE_PROMPTS: dict[str, str] = {
-    "scout": "请快速扫描仓库结构，给出项目全貌、上手建议与风险点。",
-    "mentor": "请深入讲解该项目的架构、核心设计与关键源码路径，按初学者到进阶分层说明。",
-    "navigator": "请为学习该项目制定分阶段计划：前置知识、建议阅读顺序、里程碑与练习。",
-    "curator": "请为该项目建议分类、标签与和用户库中可能相关的技术主题归类理由。",
-    "scribe": "请基于项目信息生成结构化学习笔记大纲（标题 + 小节要点），便于用户保存为笔记。",
-    "atlas": "请从知识图谱视角说明该项目与常见生态/技术栈的关联，以及可迁移的学习路径。",
+    "scout": (
+        "请在 30 秒级给出项目速览：一句话定位、核心功能、技术栈、适合谁、学习门槛、下一步建议。"
+        "控制篇幅，禁止 emoji。"
+    ),
+    "mentor": (
+        "请深入讲解该项目的架构、核心设计与关键路径，按初学者到进阶分层说明。"
+        "禁止 emoji。"
+    ),
+    "navigator": (
+        "请为学习该项目制定分阶段计划：前置知识、阅读顺序、里程碑与练习。"
+        "禁止 emoji。"
+    ),
+    "curator": (
+        "请为该项目建议分类、标签与归类理由（对照常见预设：前端/后端/AI-ML/DevOps/其他）。"
+        "禁止 emoji。"
+    ),
+    "scribe": (
+        "请基于项目信息生成结构化学习笔记大纲（标题 + 小节要点），便于保存为笔记。"
+        "禁止 emoji。"
+    ),
+    "atlas": (
+        "请从知识图谱视角说明该项目与常见生态/技术栈的关联，以及可迁移学习路径。"
+        "禁止 emoji。"
+    ),
 }
 
 
@@ -424,7 +442,7 @@ async def stream_analyze(
         f"语言: {project.language or '未知'}\n"
         f"Stars: {project.stars}\n"
         f"学习进度: {project.progress}\n"
-        "请用中文简洁输出，可用 Markdown。"
+        "请用中文简洁输出，可用 Markdown。禁止任何 emoji。"
     )
     await append_message(db, session, role="user", content=prompt, agent_id="hub")
 

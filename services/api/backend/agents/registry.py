@@ -14,9 +14,11 @@ class AgentDefinition:
     capabilities: list[str]
     system_prompt: str
     soul: dict[str, str]
-    workflow: str = "react"  # react | plan_execute | reflexion | tot
+    # cot=直接链式思考+真流式; react=工具循环; plan_execute/reflexion/tot=多步
+    workflow: str = "react"  # cot | react | plan_execute | reflexion | tot
     temperature: float = 0.7
     max_tokens: int = 4096
+    max_iterations: int = 6
     streaming: bool = True
     auto_trigger: bool = False
     priority: int = 0
@@ -114,10 +116,19 @@ SOULS: dict[str, dict[str, str]] = {
 }
 
 
+# 全局输出约束：所有 Agent 共用
+GLOBAL_OUTPUT_RULES = (
+    "【输出硬性约束】\n"
+    "- 禁止输出任何 emoji / 颜文字 / 装饰性符号表情（包括但不限于 ✅❌🚀💡😀 等）。\n"
+    "- 使用中文纯文本与 Markdown 结构（标题、列表、代码块）。\n"
+    "- 不要用表情符号代替状态或强调。"
+)
+
+
 def render_soul(soul: dict[str, str], style: str = "default") -> str:
     core = soul.get("core", "")
     style_line = soul.get(style) or soul.get("default", "")
-    return f"{core}\n风格指示: {style_line}"
+    return f"{core}\n风格指示: {style_line}\n{GLOBAL_OUTPUT_RULES}"
 
 
 def _def(
@@ -159,33 +170,37 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "你是 RepoPilot Hub。用户所有对话都先到你这里。"
             "你使用 Plan-and-Execute：先规划，再通过 dispatch_agent 调度专家，最后合并回答。"
             "简单寒暄/元问题可自己回答；专业任务必须调度。"
-            "可调度: scout(速览), mentor(教学), navigator(路线), curator(分类), scribe(笔记)。"
-            "未来扩展：可调度更多 target_agent，保持接口稳定。"
+            "可调度: scout(速览), mentor(教学), navigator(路线), curator(分类), scribe(笔记), atlas(图谱)。"
+            "禁止 emoji。"
         ),
         workflow="plan_execute",
         priority=0,
         temperature=0.5,
+        max_tokens=2048,
+        max_iterations=4,
     ),
+    # Scout：CoT 直出 + 真流式，极少工具，追求秒级反馈
     "scout": _def(
         "scout",
         "Scout",
         "快速扫描项目，生成技术概览",
         [
-            "query_user_projects",
             "get_project_detail",
-            "fetch_github_repo",
             "fetch_readme",
-            "query_knowledge_graph",
-            "select_import_repos",
-            "propose_memory",
         ],
         system_prompt=(
-            "以 Markdown 输出速览：一句话、核心功能、技术栈、适合谁、学习门槛、与用户库关联、建议。"
+            "你是 Scout。优先基于已有项目元数据直接给出速览，只有关键信息缺失时才调用工具。"
+            "输出结构（Markdown）：一句话定位 / 核心功能 / 技术栈 / 适合谁 / 学习门槛 / 建议下一步。"
+            "控制在 400 字以内，禁止 emoji，禁止冗长寒暄。"
         ),
+        workflow="cot",
         auto_trigger=True,
         priority=10,
-        temperature=0.4,
+        temperature=0.3,
+        max_tokens=900,
+        max_iterations=1,
     ),
+    # Mentor：ToT 深度讲解，允许工具但限制轮次
     "mentor": _def(
         "mentor",
         "Mentor",
@@ -193,7 +208,6 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         [
             "query_user_projects",
             "get_project_detail",
-            "fetch_github_repo",
             "fetch_readme",
             "query_knowledge_graph",
             "list_notes",
@@ -202,13 +216,16 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "get_learning_stats",
         ],
         system_prompt=(
-            "教学前评估用户水平。复杂主题给出多种讲解路径并选择最适合画像的一种。"
-            "结构：全景 → 模块 → 设计亮点 → 与已有知识关联。"
+            "教学前评估用户水平。复杂主题先在内心列 2-3 条讲解路径，只展开最适合用户的一条。"
+            "结构：全景 → 关键模块 → 设计亮点 → 与已有知识关联。禁止 emoji。"
         ),
         workflow="tot",
         priority=20,
-        temperature=0.6,
+        temperature=0.55,
+        max_tokens=2800,
+        max_iterations=3,
     ),
+    # Navigator：CoT 规划，本地库工具为主
     "navigator": _def(
         "navigator",
         "Navigator",
@@ -221,10 +238,17 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "ask_user",
             "propose_memory",
         ],
-        system_prompt="输出分阶段学习路线、里程碑与验收标准，优先使用用户已有项目库。",
+        system_prompt=(
+            "输出分阶段学习路线、里程碑与验收标准，优先使用用户已有项目库。"
+            "步骤清晰可执行。禁止 emoji。"
+        ),
+        workflow="cot",
         priority=15,
-        temperature=0.5,
+        temperature=0.45,
+        max_tokens=1600,
+        max_iterations=2,
     ),
+    # Curator：轻量 Reflexion（2 轮），偏分类决策
     "curator": _def(
         "curator",
         "Curator",
@@ -232,7 +256,6 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         [
             "query_user_projects",
             "get_project_detail",
-            "fetch_github_repo",
             "list_categories",
             "suggest_category",
             "select_import_repos",
@@ -240,13 +263,17 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "propose_memory",
         ],
         system_prompt=(
-            "使用 Reflexion：提出分类 → 检查重复/命名/过细 → 最多反思 3 轮 → 输出建议供用户确认。"
+            "使用轻量 Reflexion：提出分类 → 自检重复/命名/过细 → 最多 2 轮 → 输出建议供确认。"
+            "禁止 emoji。"
         ),
         workflow="reflexion",
         auto_trigger=True,
         priority=5,
         temperature=0.3,
+        max_tokens=1200,
+        max_iterations=2,
     ),
+    # Scribe：CoT 结构化写作
     "scribe": _def(
         "scribe",
         "Scribe",
@@ -262,10 +289,15 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         ],
         system_prompt=(
             "辅助笔记：可生成大纲与正文草稿。Project 模式在图谱相似度高时对比已学项目。"
+            "输出干净 Markdown。禁止 emoji。"
         ),
+        workflow="cot",
         priority=5,
-        temperature=0.5,
+        temperature=0.45,
+        max_tokens=2400,
+        max_iterations=2,
     ),
+    # Atlas：CoT + 图谱工具
     "atlas": _def(
         "atlas",
         "Atlas",
@@ -277,9 +309,15 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "get_learning_stats",
             "propose_memory",
         ],
-        system_prompt="解读知识图谱节点与边，建议探索路径与聚类含义。",
+        system_prompt=(
+            "解读知识图谱节点与边，建议探索路径与聚类含义。"
+            "关系优先、证据清楚。禁止 emoji。"
+        ),
+        workflow="cot",
         priority=8,
-        temperature=0.5,
+        temperature=0.45,
+        max_tokens=1600,
+        max_iterations=2,
     ),
 }
 
