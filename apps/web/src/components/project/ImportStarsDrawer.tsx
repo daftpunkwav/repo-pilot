@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { SelectReposEvent, StarRepo } from '@/api/types';
-import { useGithubStars, useImportProjects } from '@/hooks/useProjects';
+import { useGithubStars, useImportProjects, useProjects } from '@/hooks/useProjects';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 import {
@@ -32,6 +32,7 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
   const { data: starsResult, isLoading, isFetching } = useGithubStars({
     enabled: open && Boolean(user?.github_bound),
   });
+  const { data: projectsPage } = useProjects();
   const importMutation = useImportProjects();
   const addToast = useUIStore((s) => s.addToast);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -80,6 +81,30 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
   const repoKeys = useMemo(
     () => selectableVisible.map(repoKey),
     [selectableVisible]
+  );
+
+  const availableRepos = useMemo(
+    () =>
+      stars.map((s) => ({
+        key: repoKey(s),
+        language: s.language,
+        stars: s.stars,
+        already_imported: s.already_imported,
+        description: s.description,
+      })),
+    [stars]
+  );
+
+  const importedProjects = useMemo(
+    () =>
+      (projectsPage?.items ?? []).map((p) => ({
+        name: p.name,
+        language: p.language,
+        progress: p.progress,
+        stars: p.stars,
+        description: p.description,
+      })),
+    [projectsPage]
   );
 
   const filterSummary = useMemo(() => {
@@ -176,6 +201,8 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
             mode: 'stars',
             available_repo_keys: repoKeys,
             selected_repo_keys: [...selected],
+            available_repos: availableRepos,
+            imported_projects: importedProjects,
           }}
           onSelectRepos={applyAgentSelection}
         />

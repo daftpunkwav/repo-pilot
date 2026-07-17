@@ -572,11 +572,33 @@ export interface ContextWindowStats {
   segments: ContextWindowSegment[];
 }
 
+/** 导入助手候选仓库摘要 */
+export interface ImportAssistRepoSummary {
+  key: string;
+  language?: string | null;
+  stars?: number;
+  already_imported?: boolean;
+  description?: string | null;
+}
+
+/** 用户已导入项目摘要（供推荐对比） */
+export interface ImportAssistImportedProject {
+  name: string;
+  language?: string | null;
+  progress?: string;
+  stars?: number;
+  description?: string | null;
+}
+
 /** 导入助手对话上下文 */
 export interface ImportAssistContext {
   mode: 'stars' | 'urls' | 'search';
   available_repo_keys?: string[];
   selected_repo_keys?: string[];
+  /** Stars/搜索结果摘要（语言/stars/是否已导入） */
+  available_repos?: ImportAssistRepoSummary[];
+  /** 用户库内已导入项目 */
+  imported_projects?: ImportAssistImportedProject[];
 }
 
 /** Agent 操控勾选事件 */

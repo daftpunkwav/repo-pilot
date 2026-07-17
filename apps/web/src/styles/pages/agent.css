@@ -1017,6 +1017,61 @@
   color: var(--text-500);
 }
 
+/* ── 流式渲染 · 思考过程（默认收起，主聊/嵌入共用） ── */
+.stream-renderer__thinking {
+  margin: 0 0 10px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.03);
+  font-size: 11.5px;
+  color: var(--text-600);
+  overflow: hidden;
+}
+.stream-renderer__thinking summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 10px;
+  font-weight: 600;
+  color: var(--text-500);
+  user-select: none;
+}
+.stream-renderer__thinking summary::-webkit-details-marker {
+  display: none;
+}
+.stream-renderer__thinking summary::before {
+  content: '▸ ';
+  color: var(--text-400);
+}
+.stream-renderer__thinking[open] summary::before {
+  content: '▾ ';
+}
+.stream-renderer__thinking pre {
+  margin: 0;
+  padding: 0 10px 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-600);
+  max-height: 160px;
+  overflow-y: auto;
+}
+.stream-renderer__cursor {
+  display: inline-block;
+  margin-left: 2px;
+  color: var(--brand-500);
+  animation: stream-cursor-blink 1s steps(1) infinite;
+}
+@keyframes stream-cursor-blink {
+  50% { opacity: 0; }
+}
+[data-theme='dark'] .stream-renderer__thinking {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 /* ── 嵌入式 Agent（导入弹窗 / 图谱向导） ── */
 .embed-agent-chat {
   display: flex;
