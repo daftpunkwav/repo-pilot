@@ -16,6 +16,7 @@ from backend.schemas.agent import (
     AgentChatBody,
     AgentChatRequest,
     AgentPermissionsOut,
+    AgentPermissionsUpdate,
     AgentProfileOut,
     AgentQuestionAnswer,
     AgentSessionDetailOut,
@@ -412,19 +413,43 @@ async def list_profiles():
     return wrap_data(AGENT_PROFILES)
 
 
-@router.get("/permissions", response_model=DataResponse[AgentPermissionsOut])
-async def get_permissions(current_user: User = Depends(get_current_user)):
+def _load_permissions(user: User) -> AgentPermissionsOut:
     import json
 
     try:
-        raw = json.loads(current_user.agent_permissions or "{}")
+        raw = json.loads(user.agent_permissions or "{}")
     except json.JSONDecodeError:
         raw = {}
-    return wrap_data(
-        AgentPermissionsOut.model_validate(
-            {**AgentPermissionsOut().model_dump(), **raw}
-        )
+    if not isinstance(raw, dict):
+        raw = {}
+    return AgentPermissionsOut.model_validate(
+        {**AgentPermissionsOut().model_dump(), **raw}
     )
+
+
+@router.get("/permissions", response_model=DataResponse[AgentPermissionsOut])
+async def get_permissions(current_user: User = Depends(get_current_user)):
+    return wrap_data(_load_permissions(current_user))
+
+
+@router.patch("/permissions", response_model=DataResponse[AgentPermissionsOut])
+async def patch_permissions(
+    body: AgentPermissionsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """更新当前用户 Agent 工具权限（敏感能力开关）。"""
+    import json
+
+    current = _load_permissions(current_user)
+    updates = body.model_dump(exclude_unset=True)
+    merged = current.model_dump()
+    merged.update(updates)
+    out = AgentPermissionsOut.model_validate(merged)
+    current_user.agent_permissions = json.dumps(out.model_dump(), ensure_ascii=False)
+    await db.commit()
+    await db.refresh(current_user)
+    return wrap_data(out)
 
 
 @router.get("/context-window", response_model=DataResponse[ContextWindowStatsOut])

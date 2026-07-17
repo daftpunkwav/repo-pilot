@@ -67,6 +67,28 @@ async def test_agent_sessions_and_profiles(client: AsyncClient, auth_headers: di
     perms = await client.get("/api/v1/agent/permissions", headers=auth_headers)
     assert perms.status_code == 200
 
+    patched = await client.patch(
+        "/api/v1/agent/permissions",
+        headers=auth_headers,
+        json={"allow_github_api": False, "max_iterations": 5},
+    )
+    assert patched.status_code == 200
+    pdata = patched.json()["data"]
+    assert pdata["allow_github_api"] is False
+    assert pdata["max_iterations"] == 5
+    # 未传字段保持默认
+    assert pdata["allow_web_search"] is True
+
+    again = await client.get("/api/v1/agent/permissions", headers=auth_headers)
+    assert again.json()["data"]["allow_github_api"] is False
+
+    bad = await client.patch(
+        "/api/v1/agent/permissions",
+        headers=auth_headers,
+        json={"max_iterations": 0},
+    )
+    assert bad.status_code == 422
+
     ctx = await client.get(
         "/api/v1/agent/context-window",
         headers=auth_headers,
