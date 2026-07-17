@@ -713,10 +713,11 @@
     .progress-row .pv { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text-800); text-align: right; }
     .progress-row .track { height: 8px; background: var(--bg-200); border-radius: var(--radius-pill); overflow: hidden; }
     .progress-row .fill { height: 100%; border-radius: var(--radius-pill); }
-    .fill-none { background: var(--text-300); }
-    .fill-learning { background: var(--warning); }
-    .fill-learned { background: var(--brand-300); }
-    .fill-mastered { background: var(--success); }
+    /* 与 progress-pill 语义色对齐 */
+    .fill-none { background: #a1a1aa; }
+    .fill-learning { background: linear-gradient(90deg, #f59e0b, #fb923c); }
+    .fill-learned { background: linear-gradient(90deg, #0a84ff, #38bdf8); }
+    .fill-mastered { background: linear-gradient(90deg, #22c55e, #4ade80); }
 
     /* 最近活动 · 每条为独立内层 overview-inner pill */
     .activity-list { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; }
