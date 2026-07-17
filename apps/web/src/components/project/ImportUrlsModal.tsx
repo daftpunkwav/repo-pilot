@@ -1,11 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getApi } from '@/api/client';
 import type { SelectReposEvent, StarRepo } from '@/api/types';
 import { useCreateProject, useImportProjects } from '@/hooks/useProjects';
 import { useUIStore } from '@/stores/uiStore';
 import { validateGithubUrls } from '@/utils/validators';
+import {
+  collectRepoLanguages,
+  countImportStatus,
+  DEFAULT_IMPORT_REPO_FILTER,
+  filterAndSortStarRepos,
+  type ImportRepoFilterState,
+} from '@/utils/importRepoFilter';
 import { ImportAgentModal } from './ImportAgentModal';
+import { ImportRepoFilterBar } from './ImportRepoFilterBar';
 import { EmbedAgentChat } from '@/components/agent/EmbedAgentChat';
 
 type ImportTab = 'paste' | 'search';
@@ -15,11 +23,18 @@ interface ImportUrlsModalProps {
   onClose: () => void;
 }
 
+function repoKey(s: Pick<StarRepo, 'owner' | 'repo'>): string {
+  return `${s.owner}/${s.repo}`;
+}
+
 export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
   const [tab, setTab] = useState<ImportTab>('paste');
   const [text, setText] = useState('');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [filters, setFilters] = useState<ImportRepoFilterState>(
+    DEFAULT_IMPORT_REPO_FILTER
+  );
   const importMutation = useImportProjects();
   const createMutation = useCreateProject();
   const addToast = useUIStore((s) => s.addToast);
@@ -30,18 +45,61 @@ export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
     enabled: open && tab === 'search' && search.trim().length >= 2,
   });
 
+  const filteredResults = useMemo(
+    () => filterAndSortStarRepos(searchResults, filters),
+    [searchResults, filters]
+  );
+
+  const languages = useMemo(
+    () => collectRepoLanguages(searchResults),
+    [searchResults]
+  );
+  const statusCounts = useMemo(
+    () => countImportStatus(searchResults),
+    [searchResults]
+  );
+
+  const selectableVisible = useMemo(
+    () => filteredResults.filter((s) => !s.already_imported),
+    [filteredResults]
+  );
+
   useEffect(() => {
     if (!open) {
       setText('');
       setSearch('');
       setSelected(new Set());
       setTab('paste');
+      setFilters(DEFAULT_IMPORT_REPO_FILTER);
     }
   }, [open]);
+
+  // 切换筛选后清理不可见勾选
+  useEffect(() => {
+    if (tab !== 'search') return;
+    setSelected((prev) => {
+      if (prev.size === 0) return prev;
+      const visibleKeys = new Set(selectableVisible.map(repoKey));
+      let changed = false;
+      const next = new Set<string>();
+      for (const k of prev) {
+        if (visibleKeys.has(k)) next.add(k);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [selectableVisible, tab]);
 
   if (!open) return null;
 
   const { valid, invalid } = validateGithubUrls(text);
+
+  const filterSummary = [
+    `显示 ${filteredResults.length}`,
+    `共 ${statusCounts.total}`,
+    `未导入 ${statusCounts.notImported}`,
+    `已导入 ${statusCounts.imported}`,
+  ].join(' · ');
 
   const toggle = (key: string) => {
     setSelected((prev) => {
@@ -52,12 +110,23 @@ export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
     });
   };
 
+  const selectVisible = () => {
+    setSelected(new Set(selectableVisible.map(repoKey)));
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
   const applyAgentSelection = (ev: SelectReposEvent) => {
+    const allowed =
+      tab === 'search'
+        ? new Set(searchResults.filter((s) => !s.already_imported).map(repoKey))
+        : new Set(valid.map((v) => v.name));
     setSelected((prev) => {
-      if (ev.action === 'set') return new Set(ev.repo_keys);
+      const sanitize = (keys: string[]) => keys.filter((k) => allowed.has(k));
+      if (ev.action === 'set') return new Set(sanitize(ev.repo_keys));
       if (ev.action === 'add') {
         const next = new Set(prev);
-        for (const k of ev.repo_keys) next.add(k);
+        for (const k of sanitize(ev.repo_keys)) next.add(k);
         return next;
       }
       const next = new Set(prev);
@@ -98,14 +167,14 @@ export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
 
   const handleSearchImport = () => {
     const repos = searchResults
-      .filter((s) => selected.has(`${s.owner}/${s.repo}`) && !s.already_imported)
+      .filter((s) => selected.has(repoKey(s)) && !s.already_imported)
       .map((s) => ({ owner: s.owner, repo: s.repo, url: s.url }));
     void importRepos(repos);
   };
 
   const availableKeys =
     tab === 'search'
-      ? searchResults.map((s) => `${s.owner}/${s.repo}`)
+      ? selectableVisible.map(repoKey)
       : valid.map((v) => v.name);
 
   return (
@@ -113,7 +182,7 @@ export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
       open={open}
       onClose={onClose}
       title="导入项目"
-      subtitle="粘贴地址或搜索；右侧助手可自动勾选并说明"
+      subtitle="粘贴地址或搜索筛选；右侧助手可自动勾选并说明"
       size="large"
       agentPanel={
         <EmbedAgentChat
@@ -186,31 +255,63 @@ export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
               />
             </label>
             {isFetching && <p className="muted">搜索中…</p>}
+
+            {searchResults.length > 0 && (
+              <ImportRepoFilterBar
+                value={filters}
+                onChange={setFilters}
+                languages={languages}
+                summary={filterSummary}
+                onSelectVisible={selectVisible}
+                onClearSelection={clearSelection}
+                selectVisibleDisabled={selectableVisible.length === 0}
+                clearSelectionDisabled={selected.size === 0}
+              />
+            )}
+
             <ul className="import-repo-list import-repo-list--fill">
-              {searchResults.map((s: StarRepo) => {
-                const key = `${s.owner}/${s.repo}`;
-                const isOn = selected.has(key);
-                return (
-                  <li
-                    key={key}
-                    className={`import-repo-item ${isOn ? 'import-repo-item--selected' : ''}`}
-                  >
-                    <label>
-                      <input
-                        type="checkbox"
-                        disabled={s.already_imported}
-                        checked={isOn}
-                        onChange={() => toggle(key)}
-                      />
-                      <span className="font-mono">{key}</span>
-                      {s.already_imported && <span className="badge">已导入</span>}
-                      {s.description && (
-                        <span className="import-repo-desc">{s.description}</span>
-                      )}
-                    </label>
-                  </li>
-                );
-              })}
+              {search.trim().length < 2 ? (
+                <li className="import-repo-empty">输入至少 2 个字符开始搜索</li>
+              ) : isFetching && searchResults.length === 0 ? (
+                <li className="import-repo-empty">搜索中…</li>
+              ) : searchResults.length === 0 ? (
+                <li className="import-repo-empty">未找到匹配仓库</li>
+              ) : filteredResults.length === 0 ? (
+                <li className="import-repo-empty">
+                  当前筛选下无结果，试试切换「全部」或调整语言/关键字
+                </li>
+              ) : (
+                filteredResults.map((s: StarRepo) => {
+                  const key = repoKey(s);
+                  const isOn = selected.has(key);
+                  return (
+                    <li
+                      key={key}
+                      className={`import-repo-item ${isOn ? 'import-repo-item--selected' : ''}`}
+                    >
+                      <label>
+                        <input
+                          type="checkbox"
+                          disabled={s.already_imported}
+                          checked={isOn}
+                          onChange={() => toggle(key)}
+                        />
+                        <span className="font-mono">{key}</span>
+                        {s.language && <span className="badge">{s.language}</span>}
+                        {typeof s.stars === 'number' && s.stars > 0 && (
+                          <span className="import-repo-stars">★ {s.stars}</span>
+                        )}
+                        {s.already_imported && (
+                          <span className="badge">已导入</span>
+                        )}
+                        {s.description && (
+                          <span className="import-repo-desc">{s.description}</span>
+                        )}
+                      </label>
+                    </li>
+                  );
+                })
+              )}
             </ul>
             <div className="import-biz-footer">
               <span className="muted">已选 {selected.size}</span>

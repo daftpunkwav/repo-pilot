@@ -16,6 +16,9 @@ def test_is_blocked_ip_private_and_link_local():
     assert is_blocked_ip(ipaddress.ip_address("169.254.169.254"))
     assert is_blocked_ip(ipaddress.ip_address("127.0.0.1"))
     assert not is_blocked_ip(ipaddress.ip_address("1.1.1.1"))
+    # fake-ip / RFC2544：代理 TUN 常用段，不得当作内网 SSRF 拦截
+    assert not is_blocked_ip(ipaddress.ip_address("198.18.0.1"))
+    assert not is_blocked_ip(ipaddress.ip_address("198.19.255.255"))
 
 
 def test_validate_rejects_http_and_localhost():
@@ -45,6 +48,17 @@ def test_assert_safe_outbound_allows_public(monkeypatch):
 
     monkeypatch.setattr("backend.core.url_safety.socket.getaddrinfo", fake_getaddrinfo)
     url = "https://api.openai.com/v1"
+    assert assert_safe_outbound_https_url(url) == url
+
+
+def test_assert_safe_outbound_allows_fake_ip_dns(monkeypatch):
+    """代理 fake-ip 将公网域名解析到 198.18.0.0/15 时应放行。"""
+
+    def fake_getaddrinfo(host, *args, **kwargs):
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("198.18.0.34", 0))]
+
+    monkeypatch.setattr("backend.core.url_safety.socket.getaddrinfo", fake_getaddrinfo)
+    url = "https://api.minimaxi.com/anthropic"
     assert assert_safe_outbound_https_url(url) == url
 
 
