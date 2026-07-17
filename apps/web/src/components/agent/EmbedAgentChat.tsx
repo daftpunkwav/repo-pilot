@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { getApi } from '@/api/client';
 import type { ImportAssistContext, SelectReposEvent, SSEEvent } from '@/api/types';
-import { asSSETextDelta } from '@/utils/sse-helpers';
+import { consumeAgentSSEStream } from '@/utils/agentSSEStream';
+import { StreamRenderer } from '@/components/agent/StreamRenderer';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
 import { useUIStore } from '@/stores/uiStore';
 
@@ -11,6 +12,7 @@ interface ChatLine {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
+  thinking?: string;
 }
 
 interface EmbedAgentChatProps {
@@ -22,7 +24,6 @@ interface EmbedAgentChatProps {
   importContext?: ImportAssistContext;
   graphNodeId?: string | null;
   placeholder?: string;
-  /** Agent 操控勾选：父组件同步左侧 checkbox */
   onSelectRepos?: (event: SelectReposEvent) => void;
 }
 
@@ -43,25 +44,28 @@ export function EmbedAgentChat({
       role: 'assistant',
       content:
         mode === 'import'
-          ? '我是 **导入助手**。可以说「推荐几个 Python Web 框架」——我会**在左侧自动勾选**，并说明推荐理由。确认后点「导入选中」。'
+          ? '我是 **导入助手**。可以说「我 star 的项目都是什么类型」「推荐和已学项目类似的仓库」——我会结合 **Stars / 已导入 / 学习进度** 回答，并在左侧自动勾选。确认后点「导入选中」。'
           : '我是 **Atlas · 图谱向导**，专门解读项目关系网络。可以问我「这两个项目为什么相连」。',
     },
   ]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
+  const [streamText, setStreamText] = useState('');
+  const [streamThinking, setStreamThinking] = useState('');
   const [tokenHint, setTokenHint] = useState({ in: 0, out: 0 });
   const [error, setError] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const textAccRef = useRef('');
+  const thinkingAccRef = useRef('');
   const addToast = useUIStore((s) => s.addToast);
-  // 始终用最新 context，避免闭包陈旧
   const importContextRef = useRef(importContext);
   importContextRef.current = importContext;
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [lines, streaming, error, lastAction]);
+  }, [lines, streaming, streamText, streamThinking, error, lastAction]);
 
   useEffect(
     () => () => {
@@ -74,6 +78,8 @@ export function EmbedAgentChat({
     streamAbortRef.current?.abort();
     streamAbortRef.current = null;
     setStreaming(false);
+    setStreamText('');
+    setStreamThinking('');
   };
 
   const applySelectRepos = (raw: Record<string, unknown>) => {
@@ -94,7 +100,6 @@ export function EmbedAgentChat({
           ? `已追加勾选 ${n} 个仓库`
           : `已自动勾选 ${n} 个仓库`;
     setLastAction(label);
-    // 仅短提示，完整清单由助手正文说明，避免与 assistant 气泡内容重复
     setLines((prev) => [
       ...prev,
       {
@@ -111,12 +116,16 @@ export function EmbedAgentChat({
     setInput('');
     setError(null);
     setLastAction(null);
+    textAccRef.current = '';
+    thinkingAccRef.current = '';
+    setStreamText('');
+    setStreamThinking('');
     setLines((prev) => [...prev, { id: `u_${Date.now()}`, role: 'user', content: text }]);
     setStreaming(true);
     streamAbortRef.current?.abort();
     const ac = new AbortController();
     streamAbortRef.current = ac;
-    let assistant = '';
+
     const api = getApi();
     const ctx = importContextRef.current ?? { mode: 'stars' as const };
     const stream =
@@ -124,8 +133,6 @@ export function EmbedAgentChat({
         ? api.importAssistChat(text, ctx, ac.signal)
         : api.graphGuideChat(text, { selected_node_id: graphNodeId }, ac.signal);
 
-    let sawError = false;
-    let errorMsg = '';
     let flushTimer: ReturnType<typeof setTimeout> | null = null;
     const clearFlush = () => {
       if (flushTimer) {
@@ -133,71 +140,79 @@ export function EmbedAgentChat({
         flushTimer = null;
       }
     };
+    const scheduleUi = () => {
+      if (flushTimer) return;
+      flushTimer = setTimeout(() => {
+        flushTimer = null;
+        if (ac.signal.aborted) return;
+        setStreamText(textAccRef.current);
+        setStreamThinking(thinkingAccRef.current);
+      }, 16);
+    };
+
     try {
-      const scheduleFlush = () => {
-        if (flushTimer) return;
-        flushTimer = setTimeout(() => {
-          flushTimer = null;
-          if (ac.signal.aborted) return;
-          const snapshot = assistant;
-          setLines((prev) => {
-            const rest = prev.filter((l) => l.id !== 'streaming');
-            if (!snapshot) return rest;
-            return [...rest, { id: 'streaming', role: 'assistant', content: snapshot }];
-          });
-        }, 16);
-      };
+      const result = await consumeAgentSSEStream(
+        stream as AsyncGenerator<SSEEvent>,
+        {
+          onTextDelta: (_p, full) => {
+            textAccRef.current = full;
+            scheduleUi();
+          },
+          onThinking: (_p, full) => {
+            thinkingAccRef.current = full;
+            scheduleUi();
+          },
+          onSelectRepos: applySelectRepos,
+          onDone: (data) => {
+            const usage = data as { usage?: { tokens?: number } };
+            setTokenHint((t) => ({
+              in: t.in + Math.round(text.length / 4),
+              out:
+                t.out +
+                (usage.usage?.tokens ?? Math.round(textAccRef.current.length / 4)),
+            }));
+          },
+          onError: (msg) => setError(msg),
+        },
+        { signal: ac.signal },
+      );
 
-      for await (const event of stream as AsyncGenerator<SSEEvent>) {
-        if (ac.signal.aborted) break;
-        if (event.event === 'text_delta') {
-          const piece = asSSETextDelta(event.data).content ?? '';
-          if (piece) {
-            assistant += piece;
-            scheduleFlush();
-          }
-        }
-        if (event.event === 'select_repos') {
-          applySelectRepos(event.data as Record<string, unknown>);
-        }
-        if (event.event === 'done') {
-          const usage = event.data as { usage?: { tokens?: number } };
-          setTokenHint((t) => ({
-            in: t.in + Math.round(text.length / 4),
-            out: t.out + (usage.usage?.tokens ?? assistant.length / 4),
-          }));
-        }
-        if (event.event === 'error') {
-          sawError = true;
-          errorMsg =
-            (event.data as { message?: string })?.message ?? '助手返回错误，请稍后再试。';
-          setError(errorMsg);
-        }
-      }
-
-      // 流结束后：取消未触发的 flush，只落一条最终消息（杜绝竞态双份）
       clearFlush();
+      const assistant = result.text;
+      const thinking = result.thinking;
+      setStreamText('');
+      setStreamThinking('');
+
       setLines((prev) => {
-        const rest = prev.filter((l) => l.id !== 'streaming');
         if (!assistant.trim()) {
-          if (!sawError) {
+          if (!result.sawError) {
             return [
-              ...rest,
+              ...prev,
               {
                 id: `a_${Date.now()}`,
                 role: 'assistant',
                 content:
-                  '我这边暂时没生成正文。请再说一次需求（例如「推荐 Python Web 项目」）。',
+                  '我这边暂时没生成正文。请再说一次需求（例如「推荐 Python Web 项目」或「我 star 了哪些类型」）。',
+                thinking: thinking || undefined,
               },
             ];
           }
-          return rest;
+          return prev;
         }
         return [
-          ...rest,
-          { id: `a_${Date.now()}`, role: 'assistant', content: assistant },
+          ...prev,
+          {
+            id: `a_${Date.now()}`,
+            role: 'assistant',
+            content: assistant,
+            thinking: thinking || undefined,
+          },
         ];
       });
+
+      if (result.sawError) {
+        addToast({ type: 'error', message: result.errorMessage || '助手返回错误' });
+      }
     } catch (err) {
       clearFlush();
       if (ac.signal.aborted) return;
@@ -209,10 +224,9 @@ export function EmbedAgentChat({
       if (streamAbortRef.current === ac) {
         streamAbortRef.current = null;
       }
-      if (sawError) {
-        addToast({ type: 'error', message: errorMsg || '助手返回错误' });
-      }
       setStreaming(false);
+      setStreamText('');
+      setStreamThinking('');
     }
   };
 
@@ -254,13 +268,25 @@ export function EmbedAgentChat({
           <div key={l.id} className={`embed-msg embed-msg--${l.role}`}>
             {l.role === 'user' ? (
               l.content
+            ) : l.role === 'assistant' ? (
+              <StreamRenderer content={l.content} thinking={l.thinking} streaming={false} />
             ) : (
               <MarkdownRenderer content={l.content} />
             )}
           </div>
         ))}
         {streaming && (
-          <div className="embed-msg embed-msg--system embed-msg--typing">助手思考中…</div>
+          <div className="embed-msg embed-msg--assistant embed-msg--streaming">
+            {streamText || streamThinking ? (
+              <StreamRenderer
+                content={streamText}
+                thinking={streamThinking || undefined}
+                streaming
+              />
+            ) : (
+              <span className="embed-msg--typing">助手思考中…</span>
+            )}
+          </div>
         )}
         <div ref={bottomRef} />
       </div>

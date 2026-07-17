@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getApi } from '@/api/client';
 import type { SelectReposEvent, StarRepo } from '@/api/types';
-import { useCreateProject, useImportProjects } from '@/hooks/useProjects';
+import { useCreateProject, useImportProjects, useProjects } from '@/hooks/useProjects';
 import { useUIStore } from '@/stores/uiStore';
 import { validateGithubUrls } from '@/utils/validators';
 import {
@@ -37,6 +37,7 @@ export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
   );
   const importMutation = useImportProjects();
   const createMutation = useCreateProject();
+  const { data: projectsPage } = useProjects();
   const addToast = useUIStore((s) => s.addToast);
 
   const { data: searchResults = [], isFetching } = useQuery({
@@ -177,6 +178,31 @@ export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
       ? selectableVisible.map(repoKey)
       : valid.map((v) => v.name);
 
+  const availableRepos =
+    tab === 'search'
+      ? searchResults.map((s) => ({
+          key: repoKey(s),
+          language: s.language,
+          stars: s.stars,
+          already_imported: s.already_imported,
+          description: s.description,
+        }))
+      : valid.map((v) => ({
+          key: v.name,
+          language: null,
+          stars: 0,
+          already_imported: false,
+          description: null,
+        }));
+
+  const importedProjects = (projectsPage?.items ?? []).map((p) => ({
+    name: p.name,
+    language: p.language,
+    progress: p.progress,
+    stars: p.stars,
+    description: p.description,
+  }));
+
   return (
     <ImportAgentModal
       open={open}
@@ -188,13 +214,15 @@ export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
         <EmbedAgentChat
           mode="import"
           title="导入助手"
-          subtitle="智能勾选 · 说明清单"
+          subtitle="智能勾选 · Stars/库内对比"
           agentInitial="S"
           agentClassName="agent-scout"
           importContext={{
             mode: tab === 'search' ? 'search' : 'urls',
             available_repo_keys: availableKeys,
             selected_repo_keys: [...selected],
+            available_repos: availableRepos,
+            imported_projects: importedProjects,
           }}
           onSelectRepos={applyAgentSelection}
         />

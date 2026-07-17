@@ -446,7 +446,70 @@ async def stream_import_assist(
     available = list(context.get("available_repo_keys") or [])
     selected = list(context.get("selected_repo_keys") or [])
     mode = context.get("mode") or "stars"
+    available_repos = list(context.get("available_repos") or [])
+    imported_from_client = list(context.get("imported_projects") or [])
     msg = (message or "").strip()
+
+    # 服务端补齐：用户库项目 + Stars 缓存（即使前端未传也能回答）
+    from sqlalchemy import func, select
+
+    from backend.models.project import Project
+
+    proj_rows = (
+        await db.execute(
+            select(Project)
+            .where(Project.user_id == user.id)
+            .order_by(Project.stars.desc())
+            .limit(80)
+        )
+    ).scalars().all()
+    imported_projects = imported_from_client or [
+        {
+            "name": p.name,
+            "language": p.language,
+            "progress": p.progress,
+            "stars": p.stars,
+            "description": (p.description or "")[:120],
+        }
+        for p in proj_rows
+    ]
+    progress_rows = (
+        await db.execute(
+            select(Project.progress, func.count())
+            .where(Project.user_id == user.id)
+            .group_by(Project.progress)
+        )
+    ).all()
+    progress_stats = {str(prog or "none"): int(cnt) for prog, cnt in progress_rows}
+
+    # Stars 缓存（settings_json.github_stars_cache）
+    stars_cache_items: list[dict] = []
+    try:
+        settings_raw = json.loads(user.settings_json or "{}")
+        cache = settings_raw.get("github_stars_cache") if isinstance(settings_raw, dict) else None
+        if isinstance(cache, dict) and isinstance(cache.get("items"), list):
+            stars_cache_items = cache["items"][:120]
+    except (json.JSONDecodeError, TypeError):
+        stars_cache_items = []
+
+    if not available and stars_cache_items and mode == "stars":
+        available = [
+            f"{it.get('owner')}/{it.get('name') or it.get('repo')}"
+            for it in stars_cache_items
+            if it.get("owner") and (it.get("name") or it.get("repo"))
+        ]
+    if not available_repos and stars_cache_items:
+        available_repos = [
+            {
+                "key": f"{it.get('owner')}/{it.get('name') or it.get('repo')}",
+                "language": it.get("language"),
+                "stars": it.get("stars", 0),
+                "already_imported": False,
+                "description": (it.get("description") or "")[:120],
+            }
+            for it in stars_cache_items
+            if it.get("owner") and (it.get("name") or it.get("repo"))
+        ][:80]
 
     def _emit_text(text: str):
         for i in range(0, len(text), 40):
@@ -469,15 +532,15 @@ async def stream_import_assist(
         flags=re.I,
     ):
         n = len(available)
+        n_imp = len(imported_projects)
         text = (
-            f"你好！我是导入助手。\n\n"
-            f"左侧当前有 **{n}** 个候选仓库"
-            + ("（GitHub Stars / 搜索结果）。" if n else "。")
-            + "\n你可以直接说：\n"
-            "- 「推荐几个 Python Web 项目」\n"
-            "- 「勾选前端相关」\n"
-            "- 「选 5 个高 star 的」\n\n"
-            "我会在左侧**自动勾选**，并说明理由；你确认后点 **导入选中** 即可。"
+            f"你好！我是导入助手（用户 **{user.username}**）。\n\n"
+            f"左侧候选 **{n}** 个仓库；你库中已导入 **{n_imp}** 个项目。\n"
+            "你可以直接说：\n"
+            "- 「我 star 的项目都是什么类型」\n"
+            "- 「推荐和我已学项目类似的仓库」\n"
+            "- 「勾选前端相关 / 选 5 个高 star」\n\n"
+            "我会结合 Stars、已导入与学习进度回答，并在左侧**自动勾选**。"
         )
         for chunk in _emit_text(text):
             yield chunk
@@ -528,21 +591,39 @@ async def stream_import_assist(
     await db.refresh(session)
 
     preview_keys = available[:80]
+    # 语言分布（基于候选摘要）
+    lang_counter: dict[str, int] = {}
+    for r in available_repos[:120]:
+        if not isinstance(r, dict):
+            continue
+        lang = (r.get("language") or "Unknown") or "Unknown"
+        lang_counter[str(lang)] = lang_counter.get(str(lang), 0) + 1
+    top_langs = sorted(lang_counter.items(), key=lambda x: -x[1])[:12]
+
     ctx_text = json.dumps(
         {
+            "user": {"username": user.username},
             "mode": mode,
             "available_count": len(available),
             "available_repo_keys_preview": preview_keys,
+            "available_repos_sample": available_repos[:40],
+            "stars_language_distribution": top_langs,
             "selected_repo_keys": selected,
+            "imported_count": len(imported_projects),
+            "imported_projects_sample": imported_projects[:40],
+            "progress_stats": progress_stats,
         },
         ensure_ascii=False,
     )
     prompt = (
         "你是 RepoPilot **导入助手**。用中文简洁回复。\n"
-        "若用户要筛选/推荐项目：必须调用工具 select_import_repos 勾选，再说明清单与理由。\n"
-        "若只是闲聊：直接文字回复，不要空回复。\n"
-        "repo_keys 只能来自 available_repo_keys_preview。\n"
-        "勾选后请用户点「导入选中」；不要声称已完成导入。\n"
+        "你掌握：① 用户 Stars/搜索候选 ② 左侧勾选 ③ 已导入项目与学习进度 ④ 用户名。\n"
+        "能力：\n"
+        "- 回答「star 了哪些类型 / 语言分布」：基于 stars_language_distribution 与 available_repos_sample。\n"
+        "- 对比已学项目推荐类似仓库：用 imported_projects_sample + progress_stats。\n"
+        "- 筛选/推荐并勾选：必须调用 select_import_repos，repo_keys 只能来自 available_repo_keys_preview。\n"
+        "- 查询库内项目可用 query_user_projects / get_learning_stats（本地库，勿打外网）。\n"
+        "勾选后请用户点「导入选中」；不要声称已完成导入。不要空回复。\n"
         f"上下文: {ctx_text}\n"
         f"用户: {msg}"
     )
@@ -550,15 +631,21 @@ async def stream_import_assist(
     memory = MemoryService(db)
     builder = ContextBuilder(db, memory)
     llm = LLMProvider(llm_cfg)
+    # 本地工具 + 勾选：不挂 fetch_github / fetch_readme，避免外网超时
+    slim_tools = [
+        "select_import_repos",
+        "query_user_projects",
+        "get_learning_stats",
+        "get_project_detail",
+    ]
     agent_def = replace(
         get_registry().get("curator"),
-        max_tokens=1024,
+        max_tokens=1536,
         temperature=0.4,
-        tools=["select_import_repos"],
+        tools=slim_tools,
     )
-    # 精简工具表：禁止会打 GitHub 外网、易超时的工具
     slim_reg = ToolRegistry()
-    for tname in ("select_import_repos",):
+    for tname in slim_tools:
         t = global_registry.get(tname)
         if t:
             slim_reg.register(t)
@@ -591,7 +678,15 @@ async def stream_import_assist(
             "reason": "导入助手",
         },
     )
-    yield format_sse("thinking", {"content": "导入助手处理中…"})
+    yield format_sse(
+        "thinking",
+        {
+            "content": (
+                f"分析候选 {len(available)} 个、已导入 {len(imported_projects)} 个、"
+                f"勾选 {len(selected)} 个；进度统计 {progress_stats}…"
+            )
+        },
+    )
 
     engine = ReActEngine(max_iterations=4)
     had_text = False
