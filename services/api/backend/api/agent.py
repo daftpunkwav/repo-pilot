@@ -48,6 +48,8 @@ router = APIRouter(prefix="/agent", tags=["agent"])
 class AnalyzeBody(BaseModel):
     depth: str = "quick"
     force_refresh: bool = False
+    # 指定专家 Agent；缺省时 depth=quick→scout，deep→mentor
+    agent_id: str | None = None
 
 
 class ImportAssistBody(BaseModel):
@@ -273,9 +275,16 @@ async def analyze_project(
             detail={"code": "FORBIDDEN", "message": "Project does not belong to current user"},
         )
     depth = (body.depth if body else "quick") or "quick"
+    agent_id = (body.agent_id if body else None) or None
 
     async def event_gen():
-        async for chunk in stream_analyze(db, current_user, project_id, depth=depth):
+        async for chunk in stream_analyze(
+            db,
+            current_user,
+            project_id,
+            depth=depth,
+            agent_id=agent_id,
+        ):
             yield chunk
 
     return StreamingResponse(event_gen(), media_type="text/event-stream")

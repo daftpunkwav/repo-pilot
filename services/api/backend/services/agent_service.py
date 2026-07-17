@@ -367,13 +367,25 @@ async def stream_question_answer(
         )
 
 
+_ANALYZE_PROMPTS: dict[str, str] = {
+    "scout": "请快速扫描仓库结构，给出项目全貌、上手建议与风险点。",
+    "mentor": "请深入讲解该项目的架构、核心设计与关键源码路径，按初学者到进阶分层说明。",
+    "navigator": "请为学习该项目制定分阶段计划：前置知识、建议阅读顺序、里程碑与练习。",
+    "curator": "请为该项目建议分类、标签与和用户库中可能相关的技术主题归类理由。",
+    "scribe": "请基于项目信息生成结构化学习笔记大纲（标题 + 小节要点），便于用户保存为笔记。",
+    "atlas": "请从知识图谱视角说明该项目与常见生态/技术栈的关联，以及可迁移的学习路径。",
+}
+
+
 async def stream_analyze(
     db: AsyncSession,
     user: User,
     project_id: UUID,
     *,
     depth: str = "quick",
+    agent_id: str | None = None,
 ) -> AsyncIterator[str]:
+    from backend.agents.registry import get_registry
     from backend.services.project_service import get_project_owned_by_user
 
     project = await get_project_owned_by_user(db, project_id, user.id)
@@ -384,30 +396,58 @@ async def stream_analyze(
         )
         return
 
+    # 解析 Agent：显式 agent_id 优先；否则 depth 兼容旧客户端
+    resolved = (agent_id or "").strip().lower() or (
+        "mentor" if depth == "deep" else "scout"
+    )
+    # 禁止 hub 作为详情分析入口；未知 id 回退 scout
+    if resolved == "hub" or not get_registry().has(resolved):
+        resolved = "scout"
+
     # 临时会话
     session = AgentSession(
         user_id=user.id,
-        title=f"分析 {project.name}",
-        active_agent="scout" if depth == "quick" else "mentor",
+        title=f"{resolved} · {project.name}",
+        active_agent=resolved,
         project_id=project_id,
     )
     db.add(session)
     await db.commit()
     await db.refresh(session)
 
-    agent_id = "scout" if depth == "quick" else "mentor"
+    role_hint = _ANALYZE_PROMPTS.get(resolved, _ANALYZE_PROMPTS["scout"])
     prompt = (
-        f"请{'快速' if depth == 'quick' else '深入'}分析项目 {project.name} ({project.url})。"
-        f"描述: {project.description or '无'}。语言: {project.language or '未知'}。"
+        f"{role_hint}\n\n"
+        f"项目: {project.name}\n"
+        f"URL: {project.url}\n"
+        f"描述: {project.description or '无'}\n"
+        f"语言: {project.language or '未知'}\n"
+        f"Stars: {project.stars}\n"
+        f"学习进度: {project.progress}\n"
+        "请用中文简洁输出，可用 Markdown。"
     )
     await append_message(db, session, role="user", content=prompt, agent_id="hub")
+
+    yield format_sse(
+        "agent_switch",
+        {
+            "agent_id": resolved,
+            "from": "hub",
+            "to": resolved,
+            "reason": "项目详情分析",
+        },
+    )
+    yield format_sse(
+        "thinking",
+        {"content": f"正在以 {resolved} 角色分析 {project.name}…"},
+    )
 
     hub = HubService(db)
     collected: list[str] = []
     async for chunk in hub.handle_direct_agent(
         user=user,
         session_id=session.id,
-        agent_id=agent_id,
+        agent_id=resolved,
         message=prompt,
         project_id=project_id,
     ):
@@ -421,7 +461,7 @@ async def stream_analyze(
 
     reply = "".join(collected)
     if reply:
-        await append_message(db, session, role="assistant", content=reply, agent_id=agent_id)
+        await append_message(db, session, role="assistant", content=reply, agent_id=resolved)
 
 
 async def stream_import_assist(
