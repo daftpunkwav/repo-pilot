@@ -70,15 +70,24 @@ def hash_refresh_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-@lru_cache(maxsize=4)
-def _fernet_for(secret_key: str) -> Fernet:
-    """由 SECRET_KEY 派生 Fernet 密钥（SHA-256 → urlsafe base64）。"""
-    digest = hashlib.sha256(secret_key.encode("utf-8")).digest()
+@lru_cache(maxsize=8)
+def _fernet_for(material: str) -> Fernet:
+    """由密钥材料派生 Fernet 密钥（SHA-256 → urlsafe base64）。"""
+    digest = hashlib.sha256(material.encode("utf-8")).digest()
     return Fernet(base64.urlsafe_b64encode(digest))
 
 
+def _encryption_key_material() -> str:
+    """优先 SECRETS_ENCRYPTION_KEY，否则回退 SECRET_KEY。"""
+    cfg = get_settings()
+    custom = (cfg.secrets_encryption_key or "").strip()
+    if custom:
+        return custom
+    return cfg.secret_key
+
+
 def _fernet() -> Fernet:
-    return _fernet_for(get_settings().secret_key)
+    return _fernet_for(_encryption_key_material())
 
 
 def encrypt_secret(plain: str) -> str:
