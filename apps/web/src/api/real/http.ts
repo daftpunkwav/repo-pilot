@@ -120,21 +120,46 @@ export async function apiSSE(
   body: unknown,
   signal?: AbortSignal
 ): Promise<Response> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    Accept: 'text/event-stream',
+  const buildHeaders = (): Record<string, string> => {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+    };
+    const token = localStorage.getItem(TOKEN_KEY);
+    if (token) headers.Authorization = `Bearer ${token}`;
+    return headers;
   };
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(buildUrl(path), {
+
+  let res = await fetch(buildUrl(path), {
     method: 'POST',
-    headers,
+    headers: buildHeaders(),
     body: JSON.stringify(body),
     signal,
   });
+
+  // 与 apiRequest 对齐：401 时单飞 refresh 后重试一次
+  if (res.status === 401 && (await refreshAccessToken())) {
+    res = await fetch(buildUrl(path), {
+      method: 'POST',
+      headers: buildHeaders(),
+      body: JSON.stringify(body),
+      signal,
+    });
+  }
+
   if (!res.ok) {
-    const json = await res.json();
-    throw new ApiRequestError('API_ERROR', extractApiErrorMessage(json));
+    let message = '请求失败';
+    try {
+      const json = await res.json();
+      message = extractApiErrorMessage(json);
+    } catch {
+      /* 非 JSON 错误体 */
+    }
+    if (res.status === 401) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem(REFRESH_KEY);
+    }
+    throw new ApiRequestError('API_ERROR', message);
   }
   return res;
 }
