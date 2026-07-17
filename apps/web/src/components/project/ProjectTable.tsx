@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import type { ChangeEvent } from 'react';
-import type { Project, Tag } from '@/api/types';
+import type { Category, Project, Tag } from '@/api/types';
 import { ProgressBadge } from './ProgressBadge';
-import { categoryLabel } from '@/utils/labels';
+import { categoryCssClass, categoryLabel } from '@/utils/labels';
 import {
   formatNumber,
   langCssClass,
@@ -14,19 +14,16 @@ import { useProjectStore } from '@/stores/projectStore';
 interface ProjectTableProps {
   projects: Project[];
   tags: Tag[];
+  categories?: Category[];
   onImportClick?: () => void;
 }
 
-const CAT_CLASS: Record<string, string> = {
-  cat_frontend: 'cat-frontend',
-  cat_backend: 'cat-backend',
-  cat_ai: 'cat-ai',
-  cat_data: 'cat-data',
-  cat_devops: 'cat-devops',
-  cat_tools: 'cat-tools',
-};
-
-export function ProjectTable({ projects, tags, onImportClick }: ProjectTableProps) {
+export function ProjectTable({
+  projects,
+  tags,
+  categories = [],
+  onImportClick,
+}: ProjectTableProps) {
   const navigate = useNavigate();
   const tagMap = new Map(tags.map((t) => [t.id, t.name]));
 
@@ -123,7 +120,7 @@ export function ProjectTable({ projects, tags, onImportClick }: ProjectTableProp
         <tbody>
           {projects.map((p, i) => {
             const { owner, repo } = splitRepoName(p.name);
-            const catCls = p.category_id ? CAT_CLASS[p.category_id] : undefined;
+            const catCls = categoryCssClass(p.category_id, categories);
             const isSelected = selectedSet.has(p.id);
             return (
               <tr
@@ -164,11 +161,9 @@ export function ProjectTable({ projects, tags, onImportClick }: ProjectTableProp
                   </div>
                 </td>
                 <td>
-                  {catCls ? (
-                    <span className={`badge ${catCls}`}>{categoryLabel(p.category_id)}</span>
-                  ) : (
-                    <span className="badge">{categoryLabel(p.category_id)}</span>
-                  )}
+                  <span className={`badge ${catCls}`}>
+                    {categoryLabel(p.category_id, categories)}
+                  </span>
                 </td>
                 <td>
                   <span className={`lang-dot ${langCssClass(p.language)}`}>

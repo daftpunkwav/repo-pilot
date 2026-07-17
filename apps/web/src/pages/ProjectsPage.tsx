@@ -14,6 +14,7 @@ import { FilterBar, useProjectLanguages } from '@/components/project/FilterBar';
 import { ProjectTable } from '@/components/project/ProjectTable';
 import { ImportStarsDrawer } from '@/components/project/ImportStarsDrawer';
 import { ImportUrlsModal } from '@/components/project/ImportUrlsModal';
+import { CategoryTagManager } from '@/components/project/CategoryTagManager';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { formatNumber } from '@/utils/format';
@@ -63,6 +64,7 @@ export function ProjectsPage() {
   const addToast = useUIStore((s) => s.addToast);
   const [starsOpen, setStarsOpen] = useState(false);
   const [urlsOpen, setUrlsOpen] = useState(false);
+  const [mgrOpen, setMgrOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
   const [searchParams] = useSearchParams();
@@ -141,6 +143,13 @@ export function ProjectsPage() {
           <div className="subtitle">{subtitle}</div>
         </div>
         <div className="actions">
+          <button
+            type="button"
+            className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive"
+            onClick={() => setMgrOpen(true)}
+          >
+            分类/标签
+          </button>
           <button
             type="button"
             className="btn glass-card glass-card--control liquid-glass--pill liquid-glass--interactive"
@@ -248,6 +257,7 @@ export function ProjectsPage() {
           <ProjectTable
             projects={data?.items ?? []}
             tags={tags}
+            categories={categories}
             onImportClick={() => setStarsOpen(true)}
           />
           {data && data.items.length > 0 && (
@@ -285,6 +295,12 @@ export function ProjectsPage() {
 
       <ImportStarsDrawer open={starsOpen} onClose={() => setStarsOpen(false)} />
       <ImportUrlsModal open={urlsOpen} onClose={() => setUrlsOpen(false)} />
+      <CategoryTagManager
+        open={mgrOpen}
+        onClose={() => setMgrOpen(false)}
+        categories={categories}
+        tags={tags}
+      />
 
       <ConfirmDialog
         open={confirmDelete}

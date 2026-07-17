@@ -127,26 +127,33 @@ async def list_user_projects(
     return items, total
 
 
-# 语言 → 预设分类名（降级 Curator 规则）
+# 语言 → 预设分类名（须与 seed_service.PRESET_CATEGORIES 名称一致）
 _LANG_CATEGORY = {
-    "TypeScript": "Web 前端",
-    "JavaScript": "Web 前端",
-    "Vue": "Web 前端",
-    "CSS": "Web 前端",
-    "HTML": "Web 前端",
-    "Python": "Web 后端",
-    "Go": "Web 后端",
-    "Rust": "工具 / 库",
-    "Java": "Web 后端",
-    "Kotlin": "移动开发",
-    "Swift": "移动开发",
-    "Dart": "移动开发",
-    "C++": "工具 / 库",
-    "C": "工具 / 库",
-    "Shell": "DevOps / 运维",
-    "Dockerfile": "DevOps / 运维",
-    "Jupyter Notebook": "数据科学",
-    "R": "数据科学",
+    "TypeScript": "前端",
+    "JavaScript": "前端",
+    "Vue": "前端",
+    "CSS": "前端",
+    "HTML": "前端",
+    "Svelte": "前端",
+    "Python": "后端",
+    "Go": "后端",
+    "Rust": "后端",
+    "Java": "后端",
+    "C#": "后端",
+    "PHP": "后端",
+    "Ruby": "后端",
+    "Kotlin": "其他",
+    "Swift": "其他",
+    "Dart": "其他",
+    "C++": "其他",
+    "C": "其他",
+    "Shell": "DevOps",
+    "Dockerfile": "DevOps",
+    "HCL": "DevOps",
+    "Jupyter Notebook": "AI/ML",
+    "R": "AI/ML",
+    "Lua": "其他",
+    "Scala": "后端",
 }
 
 
