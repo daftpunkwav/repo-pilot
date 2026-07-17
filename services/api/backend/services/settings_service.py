@@ -5,7 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.security import decrypt_secret, encrypt_secret
+from backend.core.security import decrypt_secret, encrypt_secret, ensure_encrypted_secret
 from backend.models.user import User
 from backend.schemas.settings import AgentLlmConfigOut, SettingsOut, SettingsUpdate
 
@@ -69,9 +69,22 @@ def settings_to_out(user: User) -> SettingsOut:
     return SettingsOut.model_validate(raw)
 
 
+async def _migrate_plaintext_llm_key(db: AsyncSession, user: User) -> None:
+    """读路径将历史明文 LLM Key 升级为 enc:v1 密文。"""
+    raw = _load_raw(user)
+    stored, migrated = ensure_encrypted_secret(raw.get("llm_api_key"))
+    if not migrated:
+        return
+    raw["llm_api_key"] = stored
+    user.settings_json = json.dumps(raw, ensure_ascii=False)
+    await db.commit()
+    await db.refresh(user)
+
+
 async def get_settings(db: AsyncSession, user_id: UUID) -> SettingsOut:
     user = await db.get(User, user_id)
     assert user is not None
+    await _migrate_plaintext_llm_key(db, user)
     return settings_to_out(user)
 
 
