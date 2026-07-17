@@ -17,6 +17,7 @@ from backend.schemas.project import (
     ProgressUpdateOut,
     ProjectCreate,
     ProjectOut,
+    ProjectProgress,
     ProjectStats,
     ProjectUpdate,
 )
@@ -157,7 +158,7 @@ async def import_projects(
 @router.put("/{project_id}/progress", response_model=DataResponse[ProgressUpdateOut])
 async def update_progress(
     project_id: UUID,
-    progress: str = Query(...),
+    progress: ProjectProgress = Query(...),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -169,4 +170,4 @@ async def update_progress(
         )
     project.progress = progress
     await db.commit()
-    return wrap_data(ProgressUpdateOut(id=project.id, progress=progress))  # type: ignore[arg-type]
+    return wrap_data(ProgressUpdateOut(id=project.id, progress=progress))

@@ -36,6 +36,13 @@ async def test_project_crud(client: AsyncClient, auth_headers: dict):
     assert prog.status_code == 200
     assert prog.json()["data"]["progress"] == "learning"
 
+    bad_prog = await client.put(
+        f"/api/v1/projects/{pid}/progress",
+        headers=auth_headers,
+        params={"progress": "not-a-valid-status"},
+    )
+    assert bad_prog.status_code == 422
+
     delete = await client.delete(f"/api/v1/projects/{pid}", headers=auth_headers)
     assert delete.status_code == 200
 
