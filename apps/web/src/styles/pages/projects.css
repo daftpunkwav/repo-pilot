@@ -915,6 +915,60 @@
 .import-biz-meta .small {
   font-size: 11px;
 }
+
+/* 导入列表筛选栏 */
+.import-repo-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+.import-repo-filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.import-repo-filters__search {
+  flex: 1 1 160px;
+  min-width: 140px;
+}
+.import-repo-filters__search .input {
+  width: 100%;
+  min-height: 32px;
+  font-size: 12px;
+  padding: 6px 10px;
+}
+.import-repo-filters__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.import-repo-filters__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+.import-repo-filters .small {
+  font-size: 11px;
+}
+.import-repo-stars {
+  font-size: 11px;
+  color: var(--text-500);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.import-repo-empty {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--text-500);
+  font-size: 13px;
+  list-style: none;
+}
 .import-repo-list {
   list-style: none;
   margin: 0;
@@ -936,11 +990,8 @@
   gap: 12px;
   padding: 12px 0 16px;
   border-top: 1px solid rgba(0, 0, 0, 0.06);
-  background: linear-gradient(
-    180deg,
-    transparent,
-    rgba(255, 255, 255, 0.55) 20%
-  );
+  /* 与弹窗主体同色透底，避免底部发白/发灰断层 */
+  background: transparent;
   position: sticky;
   bottom: 0;
   z-index: 2;
@@ -1019,7 +1070,11 @@
 }
 .import-url-textarea {
   width: 100%;
+  max-width: 100%;
   margin-bottom: 8px;
+  /* 仅允许上下拖拽高度，禁止左右拉宽破坏布局 */
+  resize: vertical;
+  box-sizing: border-box;
 }
 .import-search-field {
   width: 100%;

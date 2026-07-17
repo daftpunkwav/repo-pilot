@@ -5,8 +5,20 @@ import ipaddress
 import socket
 from urllib.parse import urlparse
 
+# Clash / Surge / mihomo 等 TUN 的 fake-ip 常用 198.18.0.0/15（RFC 2544）。
+# Python ipaddress 会将其标为 is_private，但并非真实内网服务；一律拦截会导致
+# 开启代理 fake-ip 的用户无法配置/调用任何自定义 LLM API Base（如 MiniMax）。
+_FAKE_IP_OR_BENCHMARK_V4 = ipaddress.ip_network("198.18.0.0/15")
+
 
 def is_blocked_ip(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    """判断解析后的 IP 是否属于 SSRF 高危范围。
+
+    故意放行 198.18.0.0/15：无代理时该段通常不可达（失败安全），
+    有 fake-ip 代理时则是正常出站路径。
+    """
+    if addr.version == 4 and addr in _FAKE_IP_OR_BENCHMARK_V4:
+        return False
     return bool(
         addr.is_private
         or addr.is_loopback
@@ -69,7 +81,9 @@ def validate_public_https_url(
             except ValueError:
                 continue
             if is_blocked_ip(resolved):
-                raise ValueError("API 基础地址解析到禁止的内网/保留 IP")
+                raise ValueError(
+                    f"API 基础地址解析到禁止的内网/保留 IP（{host} → {ip_str}）"
+                )
     return url.strip()
 
 

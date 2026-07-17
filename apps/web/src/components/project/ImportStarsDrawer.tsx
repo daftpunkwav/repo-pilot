@@ -5,13 +5,25 @@ import type { SelectReposEvent, StarRepo } from '@/api/types';
 import { useGithubStars, useImportProjects } from '@/hooks/useProjects';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
+import {
+  collectRepoLanguages,
+  countImportStatus,
+  DEFAULT_IMPORT_REPO_FILTER,
+  filterAndSortStarRepos,
+  type ImportRepoFilterState,
+} from '@/utils/importRepoFilter';
 import { ImportAgentModal } from './ImportAgentModal';
+import { ImportRepoFilterBar } from './ImportRepoFilterBar';
 import { EmbedAgentChat } from '@/components/agent/EmbedAgentChat';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
 interface ImportStarsDrawerProps {
   open: boolean;
   onClose: () => void;
+}
+
+function repoKey(s: Pick<StarRepo, 'owner' | 'repo'>): string {
+  return `${s.owner}/${s.repo}`;
 }
 
 export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
@@ -24,17 +36,61 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
   const addToast = useUIStore((s) => s.addToast);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
+  const [filters, setFilters] = useState<ImportRepoFilterState>(
+    DEFAULT_IMPORT_REPO_FILTER
+  );
 
   const stars = starsResult?.items ?? [];
 
+  const filteredStars = useMemo(
+    () => filterAndSortStarRepos(stars, filters),
+    [stars, filters]
+  );
+
+  const languages = useMemo(() => collectRepoLanguages(stars), [stars]);
+  const statusCounts = useMemo(() => countImportStatus(stars), [stars]);
+
+  const selectableVisible = useMemo(
+    () => filteredStars.filter((s) => !s.already_imported),
+    [filteredStars]
+  );
+
   useEffect(() => {
-    if (!open) setSelected(new Set());
+    if (!open) {
+      setSelected(new Set());
+      setFilters(DEFAULT_IMPORT_REPO_FILTER);
+    }
   }, [open]);
 
+  // 切换筛选后，去掉已不可见或已导入的勾选，避免「已选 N」与列表脱节
+  useEffect(() => {
+    setSelected((prev) => {
+      if (prev.size === 0) return prev;
+      const visibleKeys = new Set(selectableVisible.map(repoKey));
+      let changed = false;
+      const next = new Set<string>();
+      for (const k of prev) {
+        if (visibleKeys.has(k)) next.add(k);
+        else changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [selectableVisible]);
+
   const repoKeys = useMemo(
-    () => stars.map((s) => `${s.owner}/${s.repo}`),
-    [stars]
+    () => selectableVisible.map(repoKey),
+    [selectableVisible]
   );
+
+  const filterSummary = useMemo(() => {
+    const parts = [
+      `显示 ${filteredStars.length}`,
+      `共 ${statusCounts.total}`,
+      `未导入 ${statusCounts.notImported}`,
+      `已导入 ${statusCounts.imported}`,
+    ];
+    return parts.join(' · ');
+  }, [filteredStars.length, statusCounts]);
 
   const toggle = (key: string) => {
     setSelected((prev) => {
@@ -45,12 +101,20 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
     });
   };
 
+  const selectVisible = () => {
+    setSelected(new Set(selectableVisible.map(repoKey)));
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
   const applyAgentSelection = (ev: SelectReposEvent) => {
+    const allowed = new Set(stars.filter((s) => !s.already_imported).map(repoKey));
     setSelected((prev) => {
-      if (ev.action === 'set') return new Set(ev.repo_keys);
+      const sanitize = (keys: string[]) => keys.filter((k) => allowed.has(k));
+      if (ev.action === 'set') return new Set(sanitize(ev.repo_keys));
       if (ev.action === 'add') {
         const next = new Set(prev);
-        for (const k of ev.repo_keys) next.add(k);
+        for (const k of sanitize(ev.repo_keys)) next.add(k);
         return next;
       }
       const next = new Set(prev);
@@ -61,7 +125,7 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
 
   const handleImport = async () => {
     const repos = stars
-      .filter((s) => selected.has(`${s.owner}/${s.repo}`) && !s.already_imported)
+      .filter((s) => selected.has(repoKey(s)) && !s.already_imported)
       .map((s) => ({ owner: s.owner, repo: s.repo, url: s.url }));
     if (repos.length === 0) {
       addToast({ type: 'warning', message: '请选择未导入的项目' });
@@ -100,7 +164,7 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
       open={open}
       onClose={onClose}
       title="同步 GitHub Stars"
-      subtitle="左侧勾选仓库；右侧导入助手可自动勾选并说明推荐"
+      subtitle="左侧筛选并勾选仓库；右侧导入助手可自动勾选并说明推荐"
       agentPanel={
         <EmbedAgentChat
           mode="import"
@@ -149,32 +213,55 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
               {refreshing || isFetching ? '刷新中…' : '强制刷新'}
             </button>
           </div>
+
+          <ImportRepoFilterBar
+            value={filters}
+            onChange={setFilters}
+            languages={languages}
+            summary={filterSummary}
+            onSelectVisible={selectVisible}
+            onClearSelection={clearSelection}
+            selectVisibleDisabled={selectableVisible.length === 0}
+            clearSelectionDisabled={selected.size === 0}
+          />
+
           <ul className="import-repo-list import-repo-list--fill">
-            {stars.map((s: StarRepo) => {
-              const key = `${s.owner}/${s.repo}`;
-              const isOn = selected.has(key);
-              return (
-                <li
-                  key={key}
-                  className={`import-repo-item ${isOn ? 'import-repo-item--selected' : ''}`}
-                >
-                  <label>
-                    <input
-                      type="checkbox"
-                      disabled={s.already_imported}
-                      checked={isOn}
-                      onChange={() => toggle(key)}
-                    />
-                    <span className="font-mono">{key}</span>
-                    {s.language && <span className="badge">{s.language}</span>}
-                    {s.already_imported && <span className="badge">已导入</span>}
-                    {s.description && (
-                      <span className="import-repo-desc">{s.description}</span>
-                    )}
-                  </label>
-                </li>
-              );
-            })}
+            {filteredStars.length === 0 ? (
+              <li className="import-repo-empty">
+                {stars.length === 0
+                  ? '暂无 Star 仓库'
+                  : '当前筛选下无结果，试试切换「全部」或清空关键字'}
+              </li>
+            ) : (
+              filteredStars.map((s: StarRepo) => {
+                const key = repoKey(s);
+                const isOn = selected.has(key);
+                return (
+                  <li
+                    key={key}
+                    className={`import-repo-item ${isOn ? 'import-repo-item--selected' : ''}`}
+                  >
+                    <label>
+                      <input
+                        type="checkbox"
+                        disabled={s.already_imported}
+                        checked={isOn}
+                        onChange={() => toggle(key)}
+                      />
+                      <span className="font-mono">{key}</span>
+                      {s.language && <span className="badge">{s.language}</span>}
+                      {typeof s.stars === 'number' && s.stars > 0 && (
+                        <span className="import-repo-stars">★ {s.stars}</span>
+                      )}
+                      {s.already_imported && <span className="badge">已导入</span>}
+                      {s.description && (
+                        <span className="import-repo-desc">{s.description}</span>
+                      )}
+                    </label>
+                  </li>
+                );
+              })
+            )}
           </ul>
           <div className="import-biz-footer">
             <span className="muted">已选 {selected.size}</span>
