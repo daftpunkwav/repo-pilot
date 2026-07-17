@@ -55,16 +55,18 @@ export async function* parseSSEStream(
 
 function parseSSEBlock(block: string): SSEEvent | null {
   let eventType: SSEEventType | null = null;
-  let dataStr = '';
+  const dataLines: string[] = [];
 
   for (const line of block.split('\n')) {
     if (line.startsWith('event:')) {
       eventType = line.slice(6).trim() as SSEEventType;
     } else if (line.startsWith('data:')) {
-      dataStr += line.slice(5).trim();
+      // SSE 规范：多行 data 以 \n 拼接（字段值前可有可选空格）
+      dataLines.push(line.slice(5).replace(/^\s/, ''));
     }
   }
 
+  const dataStr = dataLines.join('\n');
   if (!eventType || !dataStr) return null;
 
   try {
