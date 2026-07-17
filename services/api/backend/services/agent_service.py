@@ -226,6 +226,8 @@ async def stream_chat(
     last_agent = "hub"
     usage: dict[str, Any] = {}
     aborted = False
+    # question 已落库时，不再把同轮 text_delta 再写成 assistant 气泡
+    saw_question = False
 
     try:
         async for chunk in hub.handle_chat(
@@ -265,6 +267,7 @@ async def stream_chat(
                     data_line = chunk.split("data: ", 1)[1].strip()
                     data = json.loads(data_line)
                     session.status = "pending_question"
+                    saw_question = True
                     await append_message(
                         db,
                         session,
@@ -281,6 +284,10 @@ async def stream_chat(
 
         # 客户端断开（生成器 CancelledError）或被同会话新流抢占时，不落最终 assistant 文本
         if aborted or cancel_ev.is_set():
+            return
+
+        # 已有 question 消息时跳过文本落库，避免同轮双气泡
+        if saw_question:
             return
 
         reply = "".join(collected)
