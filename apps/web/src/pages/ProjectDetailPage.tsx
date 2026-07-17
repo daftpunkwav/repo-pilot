@@ -14,8 +14,9 @@ import { EditProjectModal } from '@/components/project/EditProjectModal';
 import { useGraph } from '@/hooks/useGraph';
 import { useUIStore } from '@/stores/uiStore';
 import { getApi } from '@/api/client';
-import type { AgentId, ProjectProgress } from '@/api/types';
+import type { AgentId, ProjectProgress, SSEEvent } from '@/api/types';
 import { asSSETextDelta } from '@/utils/sse-helpers';
+import { consumeAgentSSEStream } from '@/utils/agentSSEStream';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
 import { NoteEditor } from '@/components/note/NoteEditor';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
@@ -65,11 +66,13 @@ export function ProjectDetailPage() {
   const [tab, setTab] = useState<DetailTab>('readme');
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [scoutContent, setScoutContent] = useState('');
-  const [scoutStreaming, setScoutStreaming] = useState(false);
+  const [activeAgent, setActiveAgent] = useState<AgentId>('scout');
+  const [aiContent, setAiContent] = useState('');
+  const [aiThinking, setAiThinking] = useState('');
+  const [aiStreaming, setAiStreaming] = useState(false);
   const [fontSize, setFontSize] = useState(14);
   const [noteGenerating, setNoteGenerating] = useState(false);
-  const scoutAbortRef = useRef<AbortController | null>(null);
+  const aiAbortRef = useRef<AbortController | null>(null);
 
   const {
     data: readmeData,
@@ -88,16 +91,16 @@ export function ProjectDetailPage() {
 
   // 离开 ai 标签 / 卸载页面时中断流，避免陈旧结果与资源浪费
   useEffect(() => {
-    if (tab !== 'ai' && scoutAbortRef.current) {
-      scoutAbortRef.current.abort();
-      scoutAbortRef.current = null;
-      setScoutStreaming(false);
+    if (tab !== 'ai' && aiAbortRef.current) {
+      aiAbortRef.current.abort();
+      aiAbortRef.current = null;
+      setAiStreaming(false);
     }
   }, [tab]);
 
   useEffect(
     () => () => {
-      scoutAbortRef.current?.abort();
+      aiAbortRef.current?.abort();
     },
     [],
   );
@@ -125,33 +128,34 @@ export function ProjectDetailPage() {
   const recommendedAgent: AgentId = project?.progress === 'mastered' ? 'mentor' : 'scout';
   const { repo } = splitRepoName(project?.name ?? '');
   const scribeName = repo || project?.name || '';
+  const activeAgentMeta =
+    DETAIL_AGENTS.find((a) => a.id === activeAgent) ?? DETAIL_AGENTS[0];
 
-  const runScout = async () => {
+  /** 页内调用指定专家 Agent 分析当前项目（可复用 SSE 消费器） */
+  const runAgent = async (agent: AgentId) => {
     if (!id) return;
+    const resolved = (agent === 'hub' ? 'scout' : agent) as AgentId;
+    setActiveAgent(resolved);
     setTab('ai');
-    setScoutContent('');
-    setScoutStreaming(true);
-    scoutAbortRef.current?.abort();
+    setAiContent('');
+    setAiThinking('');
+    setAiStreaming(true);
+    aiAbortRef.current?.abort();
     const ac = new AbortController();
-    scoutAbortRef.current = ac;
-    const stream = getApi().analyzeProject(id, 'scout', ac.signal);
+    aiAbortRef.current = ac;
+    const stream = getApi().analyzeProject(id, resolved, ac.signal);
     try {
-      for await (const event of stream) {
-        if (ac.signal.aborted) break;
-        switch (event.event) {
-          case 'text_delta': {
-            const d = asSSETextDelta(event.data);
-            setScoutContent((c) => c + d.content);
-            break;
-          }
-          case 'error': {
-            const msg = (event.data as { message?: string })?.message ?? '分析失败';
-            addToast({ type: 'error', message: msg });
-            break;
-          }
-          default:
-            break;
-        }
+      const result = await consumeAgentSSEStream(
+        stream as AsyncGenerator<SSEEvent>,
+        {
+          onTextDelta: (_p, full) => setAiContent(full),
+          onThinking: (_p, full) => setAiThinking(full),
+          onError: (msg) => addToast({ type: 'error', message: msg }),
+        },
+        { signal: ac.signal },
+      );
+      if (!result.text.trim() && !result.sawError && !ac.signal.aborted) {
+        addToast({ type: 'warning', message: '未生成分析内容，请检查 LLM 配置' });
       }
     } catch (err) {
       if (!ac.signal.aborted) {
@@ -159,8 +163,8 @@ export function ProjectDetailPage() {
         addToast({ type: 'error', message });
       }
     } finally {
-      if (scoutAbortRef.current === ac) {
-        setScoutStreaming(false);
+      if (aiAbortRef.current === ac) {
+        setAiStreaming(false);
       }
     }
   };
@@ -278,12 +282,17 @@ export function ProjectDetailPage() {
             </div>
           </div>
           <div className="pd-hero-actions">
-            <button type="button" className="btn btn-primary" onClick={() => void runScout()}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={aiStreaming}
+              onClick={() => void runAgent(recommendedAgent)}
+            >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={14} height={14}>
                 <circle cx="11" cy="11" r="8" />
                 <path d="m21 21-4.3-4.3" />
               </svg>
-              Scout 快速分析
+              {recommendedAgent === 'mentor' ? 'Mentor 深度分析' : 'Scout 快速分析'}
             </button>
             <a
               className={`btn ${OVERVIEW_INNER_GLASS}`}
@@ -473,19 +482,58 @@ export function ProjectDetailPage() {
 
         {tab === 'ai' && (
           <div className={`pd-readme ${OVERVIEW_OUTER_GLASS}`} style={{ minHeight: 200 }}>
-            <div className="pd-readme-toolbar">
-              <div className="left">Scout AI 分析</div>
-              {!scoutContent && (
-                <button type="button" className="btn btn-primary btn-sm" onClick={() => void runScout()}>
-                  开始分析
-                </button>
-              )}
+            <div className="pd-readme-toolbar pd-ai-toolbar">
+              <div className="left">
+                <span
+                  className="pd-ai-agent-dot"
+                  style={{ background: activeAgentMeta?.color }}
+                  aria-hidden
+                />
+                {activeAgentMeta?.name ?? 'Agent'} · {activeAgentMeta?.tagline ?? '分析'}
+              </div>
+              <div className="pd-ai-agent-switch" role="tablist" aria-label="选择分析 Agent">
+                {DETAIL_AGENTS.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    role="tab"
+                    className={`pd-ai-chip ${activeAgent === a.id ? 'is-active' : ''}`}
+                    aria-selected={activeAgent === a.id}
+                    disabled={aiStreaming}
+                    title={a.intro}
+                    onClick={() => {
+                      setActiveAgent(a.id as AgentId);
+                      if (!aiStreaming) {
+                        setAiContent('');
+                        setAiThinking('');
+                      }
+                    }}
+                  >
+                    {a.name}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                disabled={aiStreaming}
+                onClick={() => void runAgent(activeAgent)}
+              >
+                {aiStreaming ? '分析中…' : aiContent ? '重新分析' : '开始分析'}
+              </button>
             </div>
             <div className="pd-readme-body">
-              {scoutContent ? (
-                <StreamRenderer content={scoutContent} streaming={scoutStreaming} />
+              {aiContent || aiThinking || aiStreaming ? (
+                <StreamRenderer
+                  content={aiContent}
+                  thinking={aiThinking || undefined}
+                  streaming={aiStreaming}
+                />
               ) : (
-                <p className="muted">点击「Scout 快速分析」或「开始分析」生成项目速览</p>
+                <p className="muted">
+                  选择上方专家 Agent，点击「开始分析」；或在右侧「AI 学习助手」点「调用」。
+                  支持流式输出与思考过程（默认收起）。
+                </p>
               )}
             </div>
           </div>
@@ -608,15 +656,18 @@ export function ProjectDetailPage() {
               <button
                 key={a.id}
                 type="button"
-                className={`pd-agent ${a.id === recommendedAgent ? 'recommended' : ''}`}
-                onClick={() => navigate(`/agent?analyze=${project.id}&agent=${a.id}`)}
+                className={`pd-agent ${a.id === recommendedAgent ? 'recommended' : ''} ${activeAgent === a.id && tab === 'ai' ? 'is-active' : ''}`}
+                disabled={aiStreaming}
+                onClick={() => void runAgent(a.id as AgentId)}
               >
                 <div className="pd-agent-icon" style={{ background: a.color }}>
                   {a.name[0]}
                 </div>
                 <div className="pd-agent-name">{a.name}</div>
                 <div className="pd-agent-desc">{a.tagline}</div>
-                <span className="pd-agent-call">调用</span>
+                <span className="pd-agent-call">
+                  {aiStreaming && activeAgent === a.id ? '分析中…' : '调用'}
+                </span>
               </button>
             ))}
           </div>

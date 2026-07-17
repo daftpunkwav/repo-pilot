@@ -529,7 +529,12 @@ export class RealApiClient implements IApiClient {
     const depth = agent === 'mentor' ? 'deep' : 'quick';
     const res = await apiSSE(
       `/agent/analyze/${projectId}`,
-      { depth, force_refresh: false },
+      {
+        depth,
+        force_refresh: false,
+        // 透传专家 Agent；后端缺省时仍可按 depth 兼容
+        agent_id: agent && agent !== 'hub' ? agent : undefined,
+      },
       signal
     );
     if (!res.body) return;

@@ -16,6 +16,40 @@ async def test_agent_analyze_requires_auth(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_agent_analyze_accepts_agent_id(client: AsyncClient, auth_headers: dict, monkeypatch):
+    """analyze 支持 agent_id，流式返回 thinking + 正文。"""
+    create = await client.post(
+        "/api/v1/projects/",
+        headers=auth_headers,
+        json={"name": "acme/widget", "url": "https://github.com/acme/widget"},
+    )
+    assert create.status_code == 200
+    project_id = create.json()["data"]["id"]
+
+    async def fake_direct(*_a, **_k):
+        from backend.services.sse_stream import format_sse
+
+        yield format_sse("thinking", {"content": "plan…"})
+        yield format_sse("text_delta", {"content": "分析完成"})
+        yield format_sse("done", {"usage": {"tokens": 4}, "iterations": 1})
+
+    monkeypatch.setattr(
+        "backend.services.agent_service.HubService.handle_direct_agent",
+        fake_direct,
+    )
+
+    res = await client.post(
+        f"/api/v1/agent/analyze/{project_id}",
+        headers=auth_headers,
+        json={"agent_id": "navigator", "depth": "quick"},
+    )
+    assert res.status_code == 200
+    body = res.text
+    assert "event: thinking" in body or "thinking" in body
+    assert "分析完成" in body
+
+
+@pytest.mark.asyncio
 async def test_agent_analyze_forbidden_for_other_user(client: AsyncClient):
     # 注册用户 A 并创建一个项目
     a = await client.post(
