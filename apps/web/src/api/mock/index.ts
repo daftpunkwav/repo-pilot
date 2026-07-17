@@ -215,13 +215,17 @@ export class MockApiClient implements IApiClient {
     return wrapResponse({ success: true });
   }
 
-  async refresh(): Promise<ApiResponse<{ access_token: string }>> {
+  async refresh(): Promise<
+    ApiResponse<{ access_token: string; refresh_token?: string }>
+  > {
     await delay(100);
     const refresh = localStorage.getItem(REFRESH_KEY);
     if (!refresh) throwError('AUTH_FAILED', 'Refresh token 无效');
     const access = `mock_token_${Date.now()}`;
+    const nextRefresh = `mock_refresh_${Date.now()}`;
     localStorage.setItem(TOKEN_KEY, access);
-    return wrapResponse({ access_token: access });
+    localStorage.setItem(REFRESH_KEY, nextRefresh);
+    return wrapResponse({ access_token: access, refresh_token: nextRefresh });
   }
 
   async me(): Promise<ApiResponse<User>> {
