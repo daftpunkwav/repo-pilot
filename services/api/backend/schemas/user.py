@@ -10,10 +10,22 @@ import re
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
+def _validate_password_bcrypt_bytes(password: str) -> str:
+    """拒绝超过 bcrypt 72 字节的密码，避免静默截断。"""
+    if len(password.encode("utf-8")) > 72:
+        raise ValueError("密码过长（编码后不得超过 72 字节）")
+    return password
+
+
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=32)
-    password: str = Field(..., min_length=8, max_length=128)
+    password: str = Field(..., min_length=8, max_length=72)
     email: Optional[EmailStr] = None
+
+    @field_validator("password")
+    @classmethod
+    def _password_bytes(cls, v: str) -> str:
+        return _validate_password_bcrypt_bytes(v)
 
 
 class UserLogin(BaseModel):
@@ -70,7 +82,12 @@ class AccessTokenOut(BaseModel):
 
 class PasswordUpdate(BaseModel):
     old_password: str
-    new_password: str = Field(..., min_length=8, max_length=128)
+    new_password: str = Field(..., min_length=8, max_length=72)
+
+    @field_validator("new_password")
+    @classmethod
+    def _new_password_bytes(cls, v: str) -> str:
+        return _validate_password_bcrypt_bytes(v)
 
 
 class LogoutBody(BaseModel):

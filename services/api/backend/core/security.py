@@ -20,12 +20,29 @@ settings = get_settings()
 _SECRET_PREFIX = "enc:v1:"
 
 
+# bcrypt 仅使用前 72 字节；超长会静默截断，须在哈希前拒绝
+BCRYPT_MAX_PASSWORD_BYTES = 72
+
+
+def _password_bytes(password: str) -> bytes:
+    raw = password.encode("utf-8")
+    if len(raw) > BCRYPT_MAX_PASSWORD_BYTES:
+        raise ValueError(
+            f"密码编码后不得超过 {BCRYPT_MAX_PASSWORD_BYTES} 字节（bcrypt 限制）"
+        )
+    return raw
+
+
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    return bcrypt.hashpw(_password_bytes(password), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+    try:
+        raw = _password_bytes(password)
+    except ValueError:
+        return False
+    return bcrypt.checkpw(raw, hashed.encode("utf-8"))
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
