@@ -35,17 +35,7 @@ import type {
   UserProfile,
 } from '@/api/types';
 import { parseSSEStream } from '@/utils/sse-parser';
-import { apiRequest, apiSSE, REFRESH_KEY, TOKEN_KEY } from './http';
-
-function storeTokens(access: string, refresh: string) {
-  localStorage.setItem(TOKEN_KEY, access);
-  localStorage.setItem(REFRESH_KEY, refresh);
-}
-
-function clearTokens() {
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-}
+import { apiRequest, apiSSE, clearLegacyTokenStorage } from './http';
 
 export class RealApiClient implements IApiClient {
   async register(params: {
@@ -56,7 +46,8 @@ export class RealApiClient implements IApiClient {
       method: 'POST',
       body: JSON.stringify(params),
     });
-    storeTokens(res.data.access_token, res.data.refresh_token);
+    // 凭证由服务端 Set-Cookie (httpOnly)；清理历史 localStorage
+    clearLegacyTokenStorage();
     return res;
   }
 
@@ -68,19 +59,19 @@ export class RealApiClient implements IApiClient {
       method: 'POST',
       body: JSON.stringify(params),
     });
-    storeTokens(res.data.access_token, res.data.refresh_token);
+    clearLegacyTokenStorage();
     return res;
   }
 
   async logout(): Promise<ApiResponse<{ success: boolean }>> {
-    const refresh = localStorage.getItem(REFRESH_KEY);
     try {
+      // Cookie 中的 refresh 由服务端读取并吊销
       await apiRequest('/auth/logout', {
         method: 'POST',
-        body: JSON.stringify({ refresh_token: refresh }),
+        body: JSON.stringify({}),
       });
     } finally {
-      clearTokens();
+      clearLegacyTokenStorage();
     }
     return { data: { success: true }, meta: { ts: Date.now() } };
   }
@@ -88,20 +79,14 @@ export class RealApiClient implements IApiClient {
   async refresh(): Promise<
     ApiResponse<{ access_token: string; refresh_token?: string }>
   > {
-    const refresh = localStorage.getItem(REFRESH_KEY);
     const res = await apiRequest<{ access_token: string; refresh_token?: string }>(
       '/auth/refresh',
       {
         method: 'POST',
-        body: JSON.stringify({ refresh_token: refresh }),
+        body: JSON.stringify({}),
       }
     );
-    // 与 doRefreshAccessToken 对齐：轮换后必须写入新 refresh，否则留下已吊销凭证
-    if (res.data.refresh_token) {
-      storeTokens(res.data.access_token, res.data.refresh_token);
-    } else {
-      localStorage.setItem(TOKEN_KEY, res.data.access_token);
-    }
+    clearLegacyTokenStorage();
     return res;
   }
 

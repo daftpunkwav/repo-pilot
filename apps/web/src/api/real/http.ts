@@ -1,8 +1,11 @@
-/** HTTP 客户端 —— 真实后端请求与 JWT 刷新 */
+/** HTTP 客户端 —— 真实后端请求；凭证走 httpOnly Cookie + credentials */
 import type { ApiResponse } from '@/api/types';
 
 const API_PREFIX = '/api/v1';
+
+/** @deprecated 历史 localStorage 键；仅用于清理遗留数据，不再写入 */
 export const TOKEN_KEY = 'rp_token';
+/** @deprecated 历史 localStorage 键；仅用于清理遗留数据，不再写入 */
 export const REFRESH_KEY = 'rp_refresh';
 
 /** 统一的 API 错误类，便于 ErrorBoundary / Sentry 捕获 */
@@ -28,6 +31,16 @@ function buildUrl(path: string, params?: Record<string, string | number | undefi
     }
   }
   return url.toString();
+}
+
+/** 清除历史 localStorage 凭证（迁移后不应再依赖） */
+export function clearLegacyTokenStorage(): void {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+  } catch {
+    /* 隐私模式等 */
+  }
 }
 
 /** 解析 FastAPI / 统一错误体 */
@@ -62,20 +75,19 @@ async function parseJson<T>(res: Response): Promise<ApiResponse<T>> {
 let refreshPromise: Promise<boolean> | null = null;
 
 async function doRefreshAccessToken(): Promise<boolean> {
-  const refresh = localStorage.getItem(REFRESH_KEY);
-  if (!refresh) return false;
   try {
+    // 依赖 httpOnly Cookie；body 可空
     const res = await fetch(buildUrl('/auth/refresh'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refresh }),
+      body: JSON.stringify({}),
+      credentials: 'include',
     });
-    if (!res.ok) return false;
-    const json = (await res.json()) as ApiResponse<{ access_token: string; refresh_token?: string }>;
-    localStorage.setItem(TOKEN_KEY, json.data.access_token);
-    if (json.data.refresh_token) {
-      localStorage.setItem(REFRESH_KEY, json.data.refresh_token);
+    if (!res.ok) {
+      clearLegacyTokenStorage();
+      return false;
     }
+    clearLegacyTokenStorage();
     return true;
   } catch {
     return false;
@@ -90,6 +102,14 @@ async function refreshAccessToken(): Promise<boolean> {
   return refreshPromise;
 }
 
+function buildRequestInit(options: RequestInit, headers: Headers): RequestInit {
+  return {
+    ...options,
+    headers,
+    credentials: 'include',
+  };
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
@@ -99,18 +119,17 @@ export async function apiRequest<T>(
   if (options.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
-  const token = localStorage.getItem(TOKEN_KEY);
-  if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  let res = await fetch(buildUrl(path, params), { ...options, headers });
-  if (res.status === 401 && (await refreshAccessToken())) {
+  let res = await fetch(buildUrl(path, params), buildRequestInit(options, headers));
+  if (res.status === 401 && path !== '/auth/refresh' && (await refreshAccessToken())) {
     const retryHeaders = new Headers(options.headers);
     if (options.body && !retryHeaders.has('Content-Type')) {
       retryHeaders.set('Content-Type', 'application/json');
     }
-    const newToken = localStorage.getItem(TOKEN_KEY);
-    if (newToken) retryHeaders.set('Authorization', `Bearer ${newToken}`);
-    res = await fetch(buildUrl(path, params), { ...options, headers: retryHeaders });
+    res = await fetch(buildUrl(path, params), buildRequestInit(options, retryHeaders));
+  }
+  if (res.status === 401) {
+    clearLegacyTokenStorage();
   }
   return parseJson<T>(res);
 }
@@ -120,13 +139,11 @@ export async function apiSSE(
   body: unknown,
   signal?: AbortSignal
 ): Promise<Response> {
-  const buildHeaders = (): Record<string, string> => {
-    const headers: Record<string, string> = {
+  const buildHeaders = (): Headers => {
+    const headers = new Headers({
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
-    };
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (token) headers.Authorization = `Bearer ${token}`;
+    });
     return headers;
   };
 
@@ -135,6 +152,7 @@ export async function apiSSE(
     headers: buildHeaders(),
     body: JSON.stringify(body),
     signal,
+    credentials: 'include',
   });
 
   // 与 apiRequest 对齐：401 时单飞 refresh 后重试一次
@@ -144,6 +162,7 @@ export async function apiSSE(
       headers: buildHeaders(),
       body: JSON.stringify(body),
       signal,
+      credentials: 'include',
     });
   }
 
@@ -156,8 +175,7 @@ export async function apiSSE(
       /* 非 JSON 错误体 */
     }
     if (res.status === 401) {
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(REFRESH_KEY);
+      clearLegacyTokenStorage();
     }
     throw new ApiRequestError('API_ERROR', message);
   }
