@@ -63,8 +63,15 @@ class SettingsUpdate(BaseModel):
             addr = ipaddress.ip_address(host)
         except ValueError:
             addr = None  # 不是 IP，继续检查域名
-        if addr is not None and (addr.is_private or addr.is_loopback or addr.is_reserved):
-            raise ValueError("禁止指向私有 IP")
+        if addr is not None and (
+            addr.is_private
+            or addr.is_loopback
+            or addr.is_reserved
+            or addr.is_link_local
+            or addr.is_unspecified
+            or addr.is_multicast
+        ):
+            raise ValueError("禁止指向私有/链路本地/保留 IP")
         # 禁止常见内网域名后缀
         internal_suffixes = (".local", ".internal", ".lan", ".corp", ".home")
         if any(host.endswith(suffix) for suffix in internal_suffixes):

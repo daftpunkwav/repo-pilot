@@ -89,6 +89,17 @@ def test_settings_update_llm_api_base_rejects_private_ip():
         SettingsUpdate(llm_api_base="https://192.168.1.1/v1")
 
 
+def test_settings_update_llm_api_base_rejects_link_local():
+    """云元数据等链路本地地址应被拦截，防止 SSRF。"""
+    with pytest.raises(ValidationError):
+        SettingsUpdate(llm_api_base="https://169.254.169.254/")
+
+
+def test_settings_update_llm_api_base_rejects_unspecified():
+    with pytest.raises(ValidationError):
+        SettingsUpdate(llm_api_base="https://0.0.0.0/v1")
+
+
 def test_settings_update_llm_api_base_rejects_internal_domain():
     with pytest.raises(ValidationError):
         SettingsUpdate(llm_api_base="https://ollama.lan/v1")
