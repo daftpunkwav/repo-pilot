@@ -1,37 +1,49 @@
 """
 依赖注入 —— 获取当前用户、数据库会话等
+
+鉴权双通道（优先级）：
+1. Authorization: Bearer <access>
+2. httpOnly Cookie rp_access
 """
 from uuid import UUID
+
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.security.utils import get_authorization_scheme_param
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.core.auth_cookies import get_access_token_from_request
 from backend.core.security import decode_token
 from backend.database import get_session
 from backend.models.user import User
 
 
-class AuthBearer(HTTPBearer):
-    """自定义 Bearer 认证依赖：缺失 Authorization 头或 scheme 错误时返回 401。"""
+class OptionalAuthBearer(HTTPBearer):
+    """Bearer 可选：缺失头时不抛错，便于回落到 Cookie。"""
 
-    async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
+    def __init__(self) -> None:
+        super().__init__(auto_error=False)
+
+    async def __call__(
+        self, request: Request
+    ) -> HTTPAuthorizationCredentials | None:
         authorization = request.headers.get("Authorization")
         if not authorization:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"code": "UNAUTHORIZED", "message": "缺少 Authorization 头"},
-            )
+            return None
         scheme, _ = get_authorization_scheme_param(authorization)
         if scheme.lower() != "bearer":
+            # 显式错误 scheme 仍 401，避免误把 Basic 当 Cookie 旁路
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={"code": "UNAUTHORIZED", "message": "Authorization scheme 必须是 Bearer"},
+                detail={
+                    "code": "UNAUTHORIZED",
+                    "message": "Authorization scheme 必须是 Bearer",
+                },
             )
         return await super().__call__(request)
 
 
-security = AuthBearer()
+security = OptionalAuthBearer()
 
 
 async def get_db() -> AsyncSession:
@@ -39,17 +51,41 @@ async def get_db() -> AsyncSession:
         yield session
 
 
+def _resolve_access_token(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None,
+) -> str | None:
+    if credentials and credentials.credentials:
+        return credentials.credentials
+    return get_access_token_from_request(request)
+
+
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db=Depends(get_db),
 ) -> User:
-    token = credentials.credentials
+    token = _resolve_access_token(request, credentials)
+    if not token:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "code": "UNAUTHORIZED",
+                "message": "缺少认证凭证（Authorization 或 Cookie）",
+            },
+        )
     payload = decode_token(token)
     if not payload:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail={"code": "UNAUTHORIZED", "message": "Invalid token"})
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "UNAUTHORIZED", "message": "Invalid token"},
+        )
     user_id = payload.get("sub")
     if not user_id:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail={"code": "UNAUTHORIZED", "message": "Invalid token"})
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "UNAUTHORIZED", "message": "Invalid token"},
+        )
     try:
         uid = UUID(str(user_id))
     except (ValueError, TypeError, AttributeError):
@@ -59,7 +95,10 @@ async def get_current_user(
         )
     user = await db.get(User, uid)
     if not user:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail={"code": "UNAUTHORIZED", "message": "User not found"})
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "UNAUTHORIZED", "message": "User not found"},
+        )
     # 改密后 token_version 自增，旧 access 立即失效
     token_ver = payload.get("ver", 0)
     try:
