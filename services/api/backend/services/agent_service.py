@@ -1,6 +1,7 @@
 """Agent 会话与对话业务逻辑"""
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import datetime
 from typing import Any, AsyncIterator
@@ -26,6 +27,23 @@ from backend.services.sse_stream import format_sse
 from backend.tools.builtin import ensure_tools_loaded
 
 ensure_tools_loaded()
+
+# 会话级流控：同 session 新流会 set 旧 Event，旧流停止 yield 与最终落库
+_session_stream_cancel: dict[UUID, asyncio.Event] = {}
+
+
+def _begin_session_stream(session_id: UUID) -> asyncio.Event:
+    prev = _session_stream_cancel.get(session_id)
+    if prev is not None:
+        prev.set()
+    ev = asyncio.Event()
+    _session_stream_cancel[session_id] = ev
+    return ev
+
+
+def _end_session_stream(session_id: UUID, ev: asyncio.Event) -> None:
+    if _session_stream_cancel.get(session_id) is ev:
+        _session_stream_cancel.pop(session_id, None)
 
 
 def session_to_out(session: AgentSession) -> AgentSessionOut:
@@ -202,72 +220,87 @@ async def stream_chat(
 
     await append_message(db, session, role="user", content=message, agent_id="hub")
 
+    cancel_ev = _begin_session_stream(session_id)
     hub = HubService(db)
     collected: list[str] = []
     last_agent = "hub"
     usage: dict[str, Any] = {}
+    aborted = False
 
-    async for chunk in hub.handle_chat(
-        user=user,
-        session_id=session_id,
-        message=message,
-        project_id=session.project_id,
-    ):
-        # 解析部分事件以收集回复
-        if chunk.startswith("event: text_delta"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                collected.append(data.get("content") or "")
-            except Exception:
-                pass
-        elif chunk.startswith("event: agent_switch"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                last_agent = data.get("agent_id") or last_agent
-                session.active_agent = last_agent
-            except Exception:
-                pass
-        elif chunk.startswith("event: done"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                usage = data.get("usage") or {}
-            except Exception:
-                pass
-        elif chunk.startswith("event: question"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                session.status = "pending_question"
-                await append_message(
-                    db,
-                    session,
-                    role="assistant",
-                    content=json.dumps(data, ensure_ascii=False),
-                    agent_id=last_agent,
-                    content_type="question",
-                    metadata=data,
-                )
-                await db.commit()
-            except Exception:
-                pass
-        yield chunk
+    try:
+        async for chunk in hub.handle_chat(
+            user=user,
+            session_id=session_id,
+            message=message,
+            project_id=session.project_id,
+        ):
+            if cancel_ev.is_set():
+                aborted = True
+                break
+            # 解析部分事件以收集回复
+            if chunk.startswith("event: text_delta"):
+                try:
+                    data_line = chunk.split("data: ", 1)[1].strip()
+                    data = json.loads(data_line)
+                    collected.append(data.get("content") or "")
+                except Exception:
+                    pass
+            elif chunk.startswith("event: agent_switch"):
+                try:
+                    data_line = chunk.split("data: ", 1)[1].strip()
+                    data = json.loads(data_line)
+                    last_agent = data.get("agent_id") or last_agent
+                    session.active_agent = last_agent
+                except Exception:
+                    pass
+            elif chunk.startswith("event: done"):
+                try:
+                    data_line = chunk.split("data: ", 1)[1].strip()
+                    data = json.loads(data_line)
+                    usage = data.get("usage") or {}
+                except Exception:
+                    pass
+            elif chunk.startswith("event: question"):
+                try:
+                    data_line = chunk.split("data: ", 1)[1].strip()
+                    data = json.loads(data_line)
+                    session.status = "pending_question"
+                    await append_message(
+                        db,
+                        session,
+                        role="assistant",
+                        content=json.dumps(data, ensure_ascii=False),
+                        agent_id=last_agent,
+                        content_type="question",
+                        metadata=data,
+                    )
+                    await db.commit()
+                except Exception:
+                    pass
+            yield chunk
 
-    reply = "".join(collected)
-    if reply:
-        await append_message(
-            db,
-            session,
-            role="assistant",
-            content=reply,
-            agent_id=last_agent,
-            metadata={"usage": usage},
-        )
-        session.active_agent = last_agent
-        session.status = "active"
-        await db.commit()
+        # 客户端断开（生成器 CancelledError）或被同会话新流抢占时，不落最终 assistant 文本
+        if aborted or cancel_ev.is_set():
+            return
+
+        reply = "".join(collected)
+        if reply:
+            await append_message(
+                db,
+                session,
+                role="assistant",
+                content=reply,
+                agent_id=last_agent,
+                metadata={"usage": usage},
+            )
+            session.active_agent = last_agent
+            session.status = "active"
+            await db.commit()
+    except asyncio.CancelledError:
+        # 传输层取消：跳过最终落库，避免半截流与库内不一致
+        raise
+    finally:
+        _end_session_stream(session_id, cancel_ev)
 
 
 async def stream_question_answer(
