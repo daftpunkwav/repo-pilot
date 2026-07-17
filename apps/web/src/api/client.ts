@@ -41,7 +41,7 @@ export interface IApiClient {
   register(params: { username: string; password: string }): Promise<ApiResponse<LoginResponse>>;
   login(params: { username: string; password: string }): Promise<ApiResponse<LoginResponse>>;
   logout(): Promise<ApiResponse<{ success: boolean }>>;
-  refresh(): Promise<ApiResponse<{ access_token: string }>>;
+  refresh(): Promise<ApiResponse<{ access_token: string; refresh_token?: string }>>;
   me(): Promise<ApiResponse<User>>;
   updateProfile(data: Partial<User>): Promise<ApiResponse<User>>;
   changePassword(params: {
