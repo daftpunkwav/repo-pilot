@@ -305,6 +305,7 @@ class HubService:
             permissions=permissions,
             project_id=project_id,
             history=[],
+            disable_questions=True,
         ):
             if isinstance(item, EngineResult):
                 pass
@@ -514,6 +515,7 @@ class HubService:
         project_id: UUID | None,
         history: list,
         prior_summary: str | None = None,
+        disable_questions: bool = False,
     ) -> AsyncIterator[str | EngineResult]:
         agent_def = self.registry.get(agent_id)
         # per-agent model override
@@ -535,6 +537,9 @@ class HubService:
             speaking_style=style,
             permissions=permissions,
         )
+        # 详情页 / 导入等无反问 UI 的入口：禁止挂起 question 事件
+        if disable_questions:
+            ctx.extra["disable_questions"] = True
         messages = await self.context_builder.build_messages(
             agent_def=agent_def,
             ctx=ctx,

@@ -434,6 +434,13 @@ class ReActEngine:
                 assistant_msg["tool_calls"] = result.tool_calls
             messages.append(assistant_msg)
 
+            # 工具轮若附带部分正文，先记入思考区，避免信息丢失
+            if result.tool_calls and result.text and emit_sse:
+                yield format_sse(
+                    "thinking",
+                    {"content": f"[中间推理]\n{(result.text or '').strip()}\n"},
+                )
+
             if result.text and not result.tool_calls:
                 from backend.agents.think_stream import split_complete_text
 
@@ -539,14 +546,8 @@ class ReActEngine:
                             }
                         )
                         final_text = text_q
-                        # 结束循环，避免挂起等待
-                        yield EngineResult(
-                            text=final_text,
-                            agent_id=agent_def.id,
-                            usage=total_usage,
-                            iterations=iteration,
-                        )
-                        return
+                        # 继续循环让模型基于「反问已转文字」生成完整答复
+                        continue
 
                     question_payload = _normalize_question(
                         tool_result, agent_id=agent_def.id
@@ -564,6 +565,25 @@ class ReActEngine:
                             },
                         )
                         yield format_sse("question", question_payload)
+                        # 详情页等无 question UI 时，至少给一段可读说明，避免空正文
+                        if not final_text.strip():
+                            fallback_q = "需要你补充一些信息后才能继续深入分析。请在对话中说明你的基础与目标。"
+                            final_text = fallback_q
+                            step = 32
+                            for i in range(0, len(final_text), step):
+                                yield format_sse(
+                                    "text_delta",
+                                    {"content": final_text[i : i + step]},
+                                )
+                            yield format_sse(
+                                "done",
+                                {
+                                    "usage": total_usage,
+                                    "iterations": iteration,
+                                    "agent_id": agent_def.id,
+                                    "pending_question": True,
+                                },
+                            )
                     # 持久化 pending 到 extra
                     ctx.extra["pending_question"] = question_payload
                     yield EngineResult(
@@ -688,16 +708,56 @@ class ReActEngine:
             if emit_sse:
                 yield format_sse("text_delta", {"content": final_text})
 
-        # 工具轮结束后模型可能只返回 thinking 无 content（MiniMax 常见）
-        if emit_sse and not (final_text or "").strip() and not dispatches:
-            final_text = (
-                f"【{agent_def.name}】本轮未生成可见正文。"
-                "若你在导入场景，可再说一次想导入的技术栈（如 Python / React）；"
-                "或点击左侧手动勾选后导入。"
+        # 工具轮结束后仍无正文：强制无工具再答一轮（Mentor/ToT 常见只调工具不写正文）
+        if not (final_text or "").strip() and not dispatches:
+            if emit_sse:
+                yield format_sse(
+                    "thinking",
+                    {
+                        "content": (
+                            f"[收口] {agent_def.name} 工具轮结束仍无正文，"
+                            "改为直接生成分析…\n"
+                        )
+                    },
+                )
+            messages.append(
+                {
+                    "role": "user",
+                    "content": (
+                        "请停止调用任何工具，直接用中文输出完整分析正文（Markdown）。"
+                        "基于上文已有的工具结果与项目上下文作答。"
+                        "不要 emoji，不要只写一句话敷衍。"
+                    ),
+                }
             )
-            step = 40
-            for i in range(0, len(final_text), step):
-                yield format_sse("text_delta", {"content": final_text[i : i + step]})
+            async for item in self._stream_plain_text(
+                llm=llm,
+                messages=messages,
+                agent_def=agent_def,
+                emit_sse=emit_sse,
+                channel="text",
+                max_tokens=agent_def.max_tokens,
+            ):
+                if isinstance(item, str):
+                    yield item
+                else:
+                    final_text = (item.text or "").strip()
+                    for k in total_usage:
+                        total_usage[k] = total_usage.get(k, 0) + (
+                            item.usage or {}
+                        ).get(k, 0)
+
+            if not (final_text or "").strip():
+                final_text = (
+                    f"【{agent_def.name}】本轮未能生成分析正文。"
+                    "可能是模型只调用了工具或返回为空；请重试，或先用 Scout 快速分析。"
+                )
+                if emit_sse:
+                    step = 40
+                    for i in range(0, len(final_text), step):
+                        yield format_sse(
+                            "text_delta", {"content": final_text[i : i + step]}
+                        )
 
         if emit_sse:
             yield format_sse(

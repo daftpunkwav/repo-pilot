@@ -155,7 +155,10 @@ export function ProjectDetailPage() {
         { signal: ac.signal },
       );
       if (!result.text.trim() && !result.sawError && !ac.signal.aborted) {
-        addToast({ type: 'warning', message: '未生成分析内容，请检查 LLM 配置' });
+        const hint = result.thinking?.trim()
+          ? '模型只返回了思考/工具状态，未输出正文。请重试，或换 Scout 快速分析。'
+          : '未生成分析内容。请确认设置页 LLM 已配置且测试通过，然后重试。';
+        addToast({ type: 'warning', message: hint });
       }
     } catch (err) {
       if (!ac.signal.aborted) {
