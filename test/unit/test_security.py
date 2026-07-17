@@ -18,6 +18,15 @@ def test_hash_and_verify_password():
     assert not verify_password("wrong", hashed)
 
 
+def test_hash_password_rejects_over_72_bytes():
+    import pytest
+
+    long_pwd = "a" * 73
+    with pytest.raises(ValueError, match="72"):
+        hash_password(long_pwd)
+    assert verify_password(long_pwd, "x") is False
+
+
 def test_jwt_roundtrip():
     token = create_access_token({"sub": "user-1"})
     payload = decode_token(token)
