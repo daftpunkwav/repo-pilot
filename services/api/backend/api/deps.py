@@ -60,4 +60,16 @@ async def get_current_user(
     user = await db.get(User, uid)
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail={"code": "UNAUTHORIZED", "message": "User not found"})
+    # 改密后 token_version 自增，旧 access 立即失效
+    token_ver = payload.get("ver", 0)
+    try:
+        token_ver_int = int(token_ver)
+    except (TypeError, ValueError):
+        token_ver_int = -1
+    current_ver = int(getattr(user, "token_version", 0) or 0)
+    if token_ver_int != current_ver:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "UNAUTHORIZED", "message": "Token revoked"},
+        )
     return user
