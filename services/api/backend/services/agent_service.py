@@ -446,16 +446,7 @@ async def stream_analyze(
     )
     await append_message(db, session, role="user", content=prompt, agent_id="hub")
 
-    yield format_sse(
-        "agent_switch",
-        {
-            "agent_id": resolved,
-            "from": "hub",
-            "to": resolved,
-            "reason": "项目详情分析",
-        },
-    )
-    # 简短状态（真实推理由 CoT 两阶段写入 thinking）
+    # agent_switch 由 handle_direct_agent 统一发送，避免重复
     yield format_sse(
         "thinking",
         {

@@ -26,6 +26,7 @@ class LLMCompleteResult:
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     usage: dict[str, int] = field(default_factory=dict)
     raw_message: dict[str, Any] | None = None
+    failed: bool = False
 
 
 @dataclass
