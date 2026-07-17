@@ -144,6 +144,7 @@ async def patch_agent_session(
             title=body.title,
             project_id=body.project_id,
             clear_project=clear_project,
+            active_agent=body.active_agent,
         )
     except ValueError as exc:
         if str(exc) == "PROJECT_NOT_OWNED":
@@ -152,6 +153,14 @@ async def patch_agent_session(
                 detail={
                     "code": "FORBIDDEN",
                     "message": "无权绑定该项目到会话",
+                },
+            ) from exc
+        if str(exc) == "INVALID_ACTIVE_AGENT":
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "INVALID_ACTIVE_AGENT",
+                    "message": "未知的 active_agent",
                 },
             ) from exc
         raise

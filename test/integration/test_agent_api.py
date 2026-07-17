@@ -74,5 +74,21 @@ async def test_agent_sessions_and_profiles(client: AsyncClient, auth_headers: di
     )
     assert ctx.status_code == 200
 
+    patch = await client.patch(
+        f"/api/v1/agent/sessions/{sid}",
+        headers=auth_headers,
+        json={"active_agent": "scout", "title": "Scout 会话"},
+    )
+    assert patch.status_code == 200
+    assert patch.json()["data"]["agent"] == "scout"
+    assert patch.json()["data"]["title"] == "Scout 会话"
+
+    bad_agent = await client.patch(
+        f"/api/v1/agent/sessions/{sid}",
+        headers=auth_headers,
+        json={"active_agent": "not-an-agent"},
+    )
+    assert bad_agent.status_code == 422
+
     delete = await client.delete(f"/api/v1/agent/sessions/{sid}", headers=auth_headers)
     assert delete.status_code == 200
