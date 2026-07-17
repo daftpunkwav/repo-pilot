@@ -136,14 +136,25 @@ async def patch_agent_session(
     clear_project = (
         "project_id" in body.model_fields_set and body.project_id is None
     )
-    updated = await update_session(
-        db,
-        current_user.id,
-        session_id,
-        title=body.title,
-        project_id=body.project_id,
-        clear_project=clear_project,
-    )
+    try:
+        updated = await update_session(
+            db,
+            current_user.id,
+            session_id,
+            title=body.title,
+            project_id=body.project_id,
+            clear_project=clear_project,
+        )
+    except ValueError as exc:
+        if str(exc) == "PROJECT_NOT_OWNED":
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "FORBIDDEN",
+                    "message": "无权绑定该项目到会话",
+                },
+            ) from exc
+        raise
     if not updated:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
