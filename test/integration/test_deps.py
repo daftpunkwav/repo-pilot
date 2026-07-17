@@ -5,10 +5,11 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_missing_authorization_returns_401(client: AsyncClient):
-    """未携带 Authorization 头访问受保护端点应返回 401。"""
+    """未携带 Authorization 头且无 Cookie 访问受保护端点应返回 401。"""
     res = await client.get("/api/v1/auth/me")
     assert res.status_code == 401
     assert res.json()["detail"]["code"] == "UNAUTHORIZED"
+    assert "认证" in res.json()["detail"]["message"] or "凭证" in res.json()["detail"]["message"]
 
 
 @pytest.mark.asyncio

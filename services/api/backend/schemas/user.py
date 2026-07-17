@@ -71,7 +71,9 @@ class TokenOut(BaseModel):
 
 
 class RefreshBody(BaseModel):
-    refresh_token: str
+    """refresh_token 可选：浏览器可仅依赖 httpOnly Cookie。"""
+
+    refresh_token: Optional[str] = None
 
 
 class AccessTokenOut(BaseModel):

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User } from '@/api/types';
 import { getApi } from '@/api/client';
+import { clearLegacyTokenStorage } from '@/api/real/http';
 import { extractErrorMessage } from '@/utils/errors';
 
 interface AuthState {
@@ -43,8 +44,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const api = getApi();
       await api.logout();
     } finally {
-      localStorage.removeItem('rp_token');
-      localStorage.removeItem('rp_refresh');
+      clearLegacyTokenStorage();
       set({ user: null, isAuthenticated: false, error: null });
     }
   },
@@ -66,11 +66,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   fetchMe: async () => {
-    const token = localStorage.getItem('rp_token');
-    if (!token) {
-      set({ isLoading: false, isAuthenticated: false });
-      return;
-    }
+    // 会话状态由 httpOnly Cookie 持有；直接探测 /auth/me
     try {
       const api = getApi();
       const response = await api.me();
@@ -80,8 +76,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         isLoading: false,
       });
     } catch {
-      localStorage.removeItem('rp_token');
-      localStorage.removeItem('rp_refresh');
+      clearLegacyTokenStorage();
       set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },

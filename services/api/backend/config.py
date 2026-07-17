@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     # Access 默认 60 分钟；过长会扩大被盗 token 窗口（refresh 仍可轮换续期）
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 30
+    # 认证 Cookie：None=按 debug/生产策略自动选择；跨域可设 AUTH_COOKIE_SAMESITE=none
+    auth_cookie_secure: Optional[bool] = None
+    auth_cookie_samesite: Optional[str] = None
 
     # 速率限制
     rate_limit_enabled: bool = True
