@@ -10,6 +10,29 @@ logger = logging.getLogger(__name__)
 
 ToolHandler = Callable[..., Awaitable[Any]]
 
+# 工具名 → 所需用户权限键（对应 agent_permissions / AgentPermissionsOut）
+# 未列出的工具不校验权限开关
+TOOL_PERMISSION_MAP: dict[str, str] = {
+    "fetch_github_repo": "allow_github_api",
+    "fetch_readme": "allow_github_api",
+}
+
+# 权限默认值（与 AgentPermissionsOut 对齐）
+_PERMISSION_DEFAULTS: dict[str, bool] = {
+    "allow_web_search": True,
+    "allow_github_api": True,
+    "allow_file_write": False,
+}
+
+
+def _permission_allowed(permissions: dict[str, Any] | None, key: str) -> bool:
+    default = _PERMISSION_DEFAULTS.get(key, True)
+    if not permissions:
+        return default
+    if key not in permissions:
+        return default
+    return bool(permissions[key])
+
 
 @dataclass
 class ToolDefinition:
@@ -19,6 +42,7 @@ class ToolDefinition:
     handler: ToolHandler
     allowed_agents: list[str] = field(default_factory=list)
     timeout_ms: int = 30_000
+    required_permission: str | None = None
 
     def to_openai_format(self) -> dict[str, Any]:
         return {
@@ -60,6 +84,13 @@ class ToolRegistry:
         agent_id = getattr(context, "agent_id", None)
         if agent_id and agent_id not in tool.allowed_agents and "*" not in tool.allowed_agents:
             return {"error": f"Agent {agent_id} 无权使用工具 {name}"}
+        perm_key = tool.required_permission or TOOL_PERMISSION_MAP.get(name)
+        if perm_key:
+            permissions = getattr(context, "permissions", None) or {}
+            if not _permission_allowed(permissions, perm_key):
+                return {
+                    "error": f"权限不足：当前设置禁止 {perm_key}，无法调用工具 {name}",
+                }
         timeout = tool.timeout_ms / 1000.0
         try:
             return await asyncio.wait_for(
@@ -83,6 +114,7 @@ def tool(
     parameters: dict[str, Any],
     allowed_agents: list[str],
     timeout_ms: int = 30_000,
+    required_permission: str | None = None,
 ):
     def decorator(func: ToolHandler):
         global_registry.register(
@@ -93,6 +125,7 @@ def tool(
                 handler=func,
                 allowed_agents=allowed_agents,
                 timeout_ms=timeout_ms,
+                required_permission=required_permission or TOOL_PERMISSION_MAP.get(name),
             )
         )
         return func
