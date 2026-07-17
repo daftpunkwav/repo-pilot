@@ -2,12 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useProjectNotes } from '@/hooks/useNotes';
 import {
+  useCategories,
   useDeleteProject,
   useProject,
   useProjectReadme,
   useProjects,
+  useTags,
   useUpdateProgress,
 } from '@/hooks/useProjects';
+import { EditProjectModal } from '@/components/project/EditProjectModal';
 import { useGraph } from '@/hooks/useGraph';
 import { useUIStore } from '@/stores/uiStore';
 import { getApi } from '@/api/client';
@@ -50,6 +53,8 @@ export function ProjectDetailPage() {
   const { data: notes = [] } = useProjectNotes(id);
   const { data: graphData } = useGraph();
   const { data: allProjects } = useProjects();
+  const { data: categories = [] } = useCategories();
+  const { data: tags = [] } = useTags();
   const updateProgress = useUpdateProgress();
   const deleteProject = useDeleteProject();
   const createNote = useCreateNote();
@@ -59,6 +64,7 @@ export function ProjectDetailPage() {
 
   const [tab, setTab] = useState<DetailTab>('readme');
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [scoutContent, setScoutContent] = useState('');
   const [scoutStreaming, setScoutStreaming] = useState(false);
   const [fontSize, setFontSize] = useState(14);
@@ -534,7 +540,28 @@ export function ProjectDetailPage() {
             <div className="pd-info-row">
               <span className="k">分类</span>
               <span className="v">
-                <span className="badge">{categoryLabel(project.category_id)}</span>
+                <span className="badge">
+                  {categoryLabel(project.category_id, categories)}
+                </span>
+              </span>
+            </div>
+            <div className="pd-info-row">
+              <span className="k">标签</span>
+              <span className="v">
+                {(project.tags ?? []).length === 0 ? (
+                  '-'
+                ) : (
+                  <span className="pd-tag-list">
+                    {(project.tags ?? []).map((tid) => {
+                      const name = tags.find((t) => t.id === tid)?.name ?? tid.slice(0, 6);
+                      return (
+                        <span key={tid} className="badge">
+                          {name}
+                        </span>
+                      );
+                    })}
+                  </span>
+                )}
               </span>
             </div>
             <div className="pd-info-row">
@@ -556,16 +583,9 @@ export function ProjectDetailPage() {
             <button
               type="button"
               className={`btn btn-block ${OVERVIEW_INNER_GLASS}`}
-              onClick={() => addToast({ type: 'info', message: '编辑项目（演示）' })}
+              onClick={() => setEditOpen(true)}
             >
-              编辑项目
-            </button>
-            <button
-              type="button"
-              className={`btn btn-block ${OVERVIEW_INNER_GLASS}`}
-              onClick={() => addToast({ type: 'info', message: '重新分类（演示）' })}
-            >
-              重新分类
+              编辑分类与标签
             </button>
             <button
               type="button"
@@ -685,6 +705,14 @@ export function ProjectDetailPage() {
           </div>
         </div>
       </aside>
+
+      <EditProjectModal
+        open={editOpen}
+        project={project}
+        categories={categories}
+        tags={tags}
+        onClose={() => setEditOpen(false)}
+      />
 
       <ConfirmDialog
         open={deleteOpen}

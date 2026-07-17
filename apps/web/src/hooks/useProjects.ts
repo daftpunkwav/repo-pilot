@@ -176,6 +176,100 @@ export function useDeleteProject() {
   });
 }
 
+export function useUpdateProject() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<Project>;
+    }) => {
+      const res = await getApi().updateProject(id, data);
+      return res.data;
+    },
+    onSuccess: (_d, vars) => {
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+      void qc.invalidateQueries({ queryKey: ['project', vars.id] });
+      void invalidateOverviewQueries(qc);
+    },
+  });
+}
+
+export function useCreateCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await getApi().createCategory({ name });
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['categories'] });
+    },
+  });
+}
+
+export function useDeleteCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await getApi().deleteCategory(id);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['categories'] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+
+export function useCreateTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await getApi().createTag({ name });
+      return res.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['tags'] });
+    },
+  });
+}
+
+export function useDeleteTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await getApi().deleteTag(id);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['tags'] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+
+export function useSetProjectTags() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      projectId,
+      tagIds,
+    }: {
+      projectId: string;
+      tagIds: string[];
+    }) => {
+      const res = await getApi().setProjectTags(projectId, tagIds);
+      return res.data;
+    },
+    onSuccess: (_d, vars) => {
+      void qc.invalidateQueries({ queryKey: ['tags'] });
+      void qc.invalidateQueries({ queryKey: ['projects'] });
+      void qc.invalidateQueries({ queryKey: ['project', vars.projectId] });
+    },
+  });
+}
+
 export function useGithubStars(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ['githubStars'],
@@ -197,20 +291,6 @@ export function useGithubAccounts() {
       const api = getApi();
       const res = await api.listGithubAccounts();
       return res.data;
-    },
-  });
-}
-
-export function useSetProjectTags() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ projectId, tagIds }: { projectId: string; tagIds: string[] }) => {
-      const api = getApi();
-      await api.setProjectTags(projectId, tagIds);
-    },
-    onSuccess: (_d, vars) => {
-      void qc.invalidateQueries({ queryKey: ['project', vars.projectId] });
-      void qc.invalidateQueries({ queryKey: ['projects'] });
     },
   });
 }

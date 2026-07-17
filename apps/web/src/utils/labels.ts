@@ -1,4 +1,4 @@
-import type { ProjectProgress } from '@/api/types';
+import type { Category, ProjectProgress } from '@/api/types';
 import { AGENT_CATALOG } from '@/constants/agentCatalog';
 
 export type { AgentDefinition } from '@/constants/agentCatalog';
@@ -17,24 +17,53 @@ export function progressLabel(p: ProjectProgress | string | undefined): string {
   return PROGRESS_LABELS[p as ProjectProgress] ?? p;
 }
 
+/** Mock 兼容 id；真实环境以 API categories 为准 */
 const CATEGORY_MAP: Record<string, string> = {
-  cat_frontend: 'Web 前端',
-  cat_backend: 'Web 后端',
-  cat_ai: 'AI / 机器学习',
-  cat_data: '数据科学',
-  cat_devops: 'DevOps / 运维',
-  cat_mobile: '移动开发',
-  cat_desktop: '桌面应用',
-  cat_game: '游戏开发',
-  cat_security: '安全',
-  cat_tools: '工具 / 库',
-  cat_learning: '学习资源',
+  cat_frontend: '前端',
+  cat_backend: '后端',
+  cat_ai: 'AI/ML',
+  cat_data: 'AI/ML',
+  cat_devops: 'DevOps',
+  cat_mobile: '其他',
+  cat_desktop: '其他',
+  cat_game: '其他',
+  cat_security: '其他',
+  cat_tools: '其他',
+  cat_learning: '其他',
   cat_other: '其他',
 };
 
-export function categoryLabel(id: string | undefined | null): string {
+/** 按分类 id 解析显示名；优先使用 API 返回的 categories 列表 */
+export function categoryLabel(
+  id: string | undefined | null,
+  categories?: Category[] | null,
+): string {
   if (!id) return '-';
+  if (categories?.length) {
+    const hit = categories.find((c) => c.id === id);
+    if (hit) return hit.name;
+  }
   return CATEGORY_MAP[id] ?? id;
+}
+
+/** 根据分类名/id 选择 CSS 主题类 */
+export function categoryCssClass(
+  id: string | undefined | null,
+  categories?: Category[] | null,
+): string {
+  if (!id) return 'cat-other';
+  if (CATEGORY_MAP[id]) {
+    const key = id.replace('cat_', '');
+    return `cat-${key === 'data' ? 'ai' : key}`;
+  }
+  const name = (categories?.find((c) => c.id === id)?.name || '').toLowerCase();
+  if (name.includes('前端') || name.includes('front')) return 'cat-frontend';
+  if (name.includes('后端') || name.includes('back')) return 'cat-backend';
+  if (name.includes('ai') || name.includes('ml') || name.includes('数据')) return 'cat-ai';
+  if (name.includes('devops') || name.includes('运维')) return 'cat-devops';
+  if (name.includes('移动') || name.includes('mobile')) return 'cat-mobile';
+  if (name.includes('工具')) return 'cat-tools';
+  return 'cat-other';
 }
 
 export const AGENT_INITIALS: Record<string, string> = {

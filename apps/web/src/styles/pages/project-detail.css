@@ -126,6 +126,7 @@
     .pd-info-row .v { color: var(--text-800); font-weight: 500; text-align: right; word-break: break-all; }
     .pd-info-row .v a { color: var(--brand-500); font-family: var(--font-mono); font-size: 12px; }
     .pd-info-row .v a:hover { text-decoration: underline; }
+    .pd-tag-list { display: inline-flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
     .pd-info-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--bg-300); }
 
     /* ---------- 右侧栏：AI Agent（6 专家） ---------- */
