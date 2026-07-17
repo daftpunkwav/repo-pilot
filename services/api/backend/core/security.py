@@ -90,6 +90,10 @@ def _fernet() -> Fernet:
     return _fernet_for(_encryption_key_material())
 
 
+def is_encrypted_secret(value: str | None) -> bool:
+    return bool(value and value.startswith(_SECRET_PREFIX))
+
+
 def encrypt_secret(plain: str) -> str:
     """加密敏感字符串以便落库；空串原样返回。"""
     if not plain:
@@ -111,3 +115,12 @@ def decrypt_secret(value: str | None) -> str | None:
         return _fernet().decrypt(cipher.encode("ascii")).decode("utf-8")
     except (InvalidToken, ValueError, TypeError):
         return None
+
+
+def ensure_encrypted_secret(value: str | None) -> tuple[str | None, bool]:
+    """若为历史明文则加密；返回 (存储值, 是否发生了迁移)。"""
+    if value is None or value == "":
+        return value, False
+    if is_encrypted_secret(value):
+        return value, False
+    return encrypt_secret(value), True
