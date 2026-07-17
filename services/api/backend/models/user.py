@@ -22,7 +22,8 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-    github_accounts: Mapped[str] = mapped_column(String(1024), default="[]")  # JSON
+    # Text：加密后的 PAT 体积更大，避免多账号 JSON 被 VARCHAR 截断
+    github_accounts: Mapped[str] = mapped_column(Text, default="[]")
     agent_permissions: Mapped[str] = mapped_column(String(1024), default="{}")  # JSON
     settings_json: Mapped[str] = mapped_column(Text, default="{}")  # 用户设置 JSON
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

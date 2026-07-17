@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_current_user, get_db
 from backend.core.responses import wrap_data
+from backend.core.security import decrypt_secret, encrypt_secret
 from backend.models.project import Project
 from backend.models.user import User
 from backend.schemas.common import DataResponse
@@ -73,7 +74,7 @@ def _primary_token(user: User) -> tuple[str | None, str | None]:
     if not accounts:
         return None, None
     acc = accounts[0]
-    return acc.get("username"), acc.get("pat")
+    return acc.get("username"), decrypt_secret(acc.get("pat"))
 
 
 def _load_settings(user: User) -> dict:
@@ -251,7 +252,7 @@ async def bind_account(
     entry = {
         "id": str(uuid4()),
         "username": login,
-        "pat": body.pat,
+        "pat": encrypt_secret(body.pat),
         "avatar_url": avatar,
         "bound_at": datetime.utcnow().isoformat() + "Z",
     }
