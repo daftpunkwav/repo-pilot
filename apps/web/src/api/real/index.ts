@@ -85,13 +85,23 @@ export class RealApiClient implements IApiClient {
     return { data: { success: true }, meta: { ts: Date.now() } };
   }
 
-  async refresh(): Promise<ApiResponse<{ access_token: string }>> {
+  async refresh(): Promise<
+    ApiResponse<{ access_token: string; refresh_token?: string }>
+  > {
     const refresh = localStorage.getItem(REFRESH_KEY);
-    const res = await apiRequest<{ access_token: string }>('/auth/refresh', {
-      method: 'POST',
-      body: JSON.stringify({ refresh_token: refresh }),
-    });
-    localStorage.setItem(TOKEN_KEY, res.data.access_token);
+    const res = await apiRequest<{ access_token: string; refresh_token?: string }>(
+      '/auth/refresh',
+      {
+        method: 'POST',
+        body: JSON.stringify({ refresh_token: refresh }),
+      }
+    );
+    // 与 doRefreshAccessToken 对齐：轮换后必须写入新 refresh，否则留下已吊销凭证
+    if (res.data.refresh_token) {
+      storeTokens(res.data.access_token, res.data.refresh_token);
+    } else {
+      localStorage.setItem(TOKEN_KEY, res.data.access_token);
+    }
     return res;
   }
 
