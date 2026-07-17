@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.core.security import decrypt_secret, encrypt_secret
 from backend.models.user import User
 from backend.schemas.settings import AgentLlmConfigOut, SettingsOut, SettingsUpdate
 
@@ -45,9 +46,15 @@ def _normalize_agent_llm_configs(value: Any) -> list[dict[str, Any]]:
     return list(DEFAULT_AGENT_LLM_CONFIGS)
 
 
+def _get_plain_api_key(raw: dict[str, Any]) -> str | None:
+    """读取并解密 settings 中的 LLM API Key。"""
+    return decrypt_secret(raw.get("llm_api_key"))
+
+
 def settings_to_out(user: User) -> SettingsOut:
     raw = _load_raw(user)
-    api_key = raw.pop("llm_api_key", None)
+    api_key = _get_plain_api_key(raw)
+    raw.pop("llm_api_key", None)
     raw["llm_api_key_masked"] = _mask_api_key(api_key) if api_key else None
     raw["llm_configured"] = bool(api_key)
     # 默认模型与生效模型保持一致（优先 default）
@@ -69,11 +76,11 @@ async def get_settings(db: AsyncSession, user_id: UUID) -> SettingsOut:
 
 
 async def save_llm_api_key(db: AsyncSession, user_id: UUID, api_key: str) -> str:
-    """保存真实 LLM API Key 到用户 settings_json，返回掩码。"""
+    """保存真实 LLM API Key（加密落库）到用户 settings_json，返回掩码。"""
     user = await db.get(User, user_id)
     assert user is not None
     raw = _load_raw(user)
-    raw["llm_api_key"] = api_key
+    raw["llm_api_key"] = encrypt_secret(api_key)
     user.settings_json = json.dumps(raw, ensure_ascii=False)
     await db.commit()
     await db.refresh(user)
@@ -87,8 +94,10 @@ async def update_settings(
     assert user is not None
     raw = _load_raw(user)
     payload = data.model_dump(exclude_unset=True)
-    if "llm_api_key" in payload and payload["llm_api_key"] is None:
-        payload.pop("llm_api_key")
+    if "llm_api_key" in payload:
+        plain = payload.pop("llm_api_key")
+        if plain is not None:
+            payload["llm_api_key"] = encrypt_secret(plain)
     raw.update(payload)
     # 任一模型字段变更时双向同步，避免 default/model 漂移
     if data.llm_default_model is not None:

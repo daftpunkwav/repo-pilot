@@ -112,7 +112,9 @@ def _load_settings_dict(user: User) -> dict[str, Any]:
 
 def build_llm_config_from_settings(raw: dict[str, Any]) -> LLMConfig | None:
     """从 settings 字典构建配置；无 key 时返回 None。"""
-    api_key = (raw.get("llm_api_key") or "").strip()
+    from backend.core.security import decrypt_secret
+
+    api_key = (decrypt_secret(raw.get("llm_api_key")) or "").strip()
     if not api_key:
         return None
     model = raw.get("llm_model") or raw.get("llm_default_model") or "gpt-4o"
