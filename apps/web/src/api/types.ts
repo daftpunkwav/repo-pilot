@@ -95,6 +95,15 @@ export interface ImportResult {
 export type ProjectProgress = 'none' | 'learning' | 'learned' | 'mastered';
 export type ProjectSource = 'github' | 'manual';
 
+/** 按需拉取的项目 README */
+export interface ProjectReadme {
+  content?: string | null;
+  source: 'github' | 'empty' | 'error';
+  message?: string | null;
+  owner?: string | null;
+  repo?: string | null;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -108,6 +117,7 @@ export interface Project {
   source: ProjectSource;
   imported_at: string;
   updated_at?: string;
+  /** 兼容 mock；真实 API 请用 getProjectReadme */
   readme?: string;
   readme_fetched_at?: string;
 }

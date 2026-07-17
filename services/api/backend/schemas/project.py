@@ -53,6 +53,16 @@ class ProjectOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class ProjectReadmeOut(BaseModel):
+    """按需从 GitHub 拉取的 README（不落库）"""
+
+    content: Optional[str] = None
+    source: Literal["github", "empty", "error"] = "empty"
+    message: Optional[str] = None
+    owner: Optional[str] = None
+    repo: Optional[str] = None
+
+
 class ImportRepoItem(BaseModel):
     owner: str
     repo: str

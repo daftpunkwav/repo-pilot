@@ -47,6 +47,21 @@ export function useProject(id: string | undefined) {
   });
 }
 
+/** 按需拉取 GitHub README（详情 README tab） */
+export function useProjectReadme(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ['projectReadme', id],
+    queryFn: async () => {
+      if (!id) throw new Error('missing id');
+      const res = await getApi().getProjectReadme(id);
+      return res.data;
+    },
+    enabled: Boolean(id) && enabled,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+}
+
 export function useProjectStats() {
   return useQuery({
     queryKey: ['projectStats'],

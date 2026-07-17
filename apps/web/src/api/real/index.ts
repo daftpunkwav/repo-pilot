@@ -20,6 +20,7 @@ import type {
   PaginatedList,
   Project,
   ProjectListParams,
+  ProjectReadme,
   ProjectStats,
   QuestionAnswer,
   RecommendedProject,
@@ -166,6 +167,10 @@ export class RealApiClient implements IApiClient {
 
   async getProject(id: string): Promise<ApiResponse<Project>> {
     return apiRequest<Project>(`/projects/${id}`);
+  }
+
+  async getProjectReadme(id: string): Promise<ApiResponse<ProjectReadme>> {
+    return apiRequest<ProjectReadme>(`/projects/${id}/readme`);
   }
 
   async createProject(data: CreateProjectInput): Promise<ApiResponse<Project>> {
