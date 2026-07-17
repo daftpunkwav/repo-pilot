@@ -55,6 +55,14 @@ class Settings(BaseSettings):
     rate_limit_register: str = "3/hour"
     rate_limit_refresh: str = "20/minute"
 
+    # CORS：逗号分隔源列表；生产请通过 CORS_ALLOW_ORIGINS 显式配置
+    cors_allow_origins: str = (
+        "http://localhost:5173,http://localhost:4173,http://localhost:5193"
+    )
+
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
+
     # LLM (BYOK)
     llm_provider: str = "openai"
     llm_api_key: str = ""
