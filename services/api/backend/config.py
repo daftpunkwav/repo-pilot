@@ -45,6 +45,11 @@ class Settings(BaseSettings):
         ...,
         description="JWT 签名密钥，必须通过 SECRET_KEY 环境变量设置，长度不少于 32 字节",
     )
+    # 敏感字段 at-rest 加密密钥；未设置时回退 SECRET_KEY（兼容旧部署）
+    secrets_encryption_key: Optional[str] = Field(
+        default=None,
+        description="Fernet 派生用密钥，环境变量 SECRETS_ENCRYPTION_KEY；建议与 JWT 分离",
+    )
     # Access 默认 60 分钟；过长会扩大被盗 token 窗口（refresh 仍可轮换续期）
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 30
