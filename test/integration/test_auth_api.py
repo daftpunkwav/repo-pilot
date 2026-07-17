@@ -129,6 +129,13 @@ async def test_update_password_revokes_refresh_tokens(client: AsyncClient):
     )
     assert refresh_res.status_code == 401
 
+    # 旧 access token 也应因 token_version 提升而失效
+    me_res = await client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
+    assert me_res.status_code == 401
+
 
 @pytest.mark.asyncio
 async def test_register_rate_limit(client: AsyncClient, rate_limit_enabled):

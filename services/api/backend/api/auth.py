@@ -129,6 +129,8 @@ async def update_password(
             detail={"code": "AUTH_FAILED", "message": "旧密码不正确"},
         )
     current_user.password_hash = hash_password(data.new_password)
+    # 提升凭证版本，使已签发 access JWT 在下次鉴权时失效
+    current_user.token_version = int(getattr(current_user, "token_version", 0) or 0) + 1
     await db.commit()
     # 密码变更后撤销该用户所有未过期 refresh token，防止旧凭证继续被使用
     await revoke_all_user_refresh_tokens(db, current_user.id)

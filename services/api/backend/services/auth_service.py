@@ -39,9 +39,14 @@ def user_to_out(user: User) -> UserOut:
     )
 
 
+def _access_claims(user: User) -> dict:
+    """签发 access JWT 的标准 claims（含凭证版本）。"""
+    return {"sub": str(user.id), "ver": int(getattr(user, "token_version", 0) or 0)}
+
+
 async def issue_tokens(db: AsyncSession, user: User) -> TokenOut:
     """签发 access + refresh，并将 refresh 哈希入库。"""
-    access = create_access_token({"sub": str(user.id)})
+    access = create_access_token(_access_claims(user))
     refresh_plain = create_refresh_token_value()
     expires = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
     db.add(
@@ -119,7 +124,12 @@ async def rotate_refresh_token(
         await db.rollback()
         return None
 
-    access = create_access_token({"sub": str(user_id)})
+    user = await db.get(User, user_id)
+    if not user:
+        await db.rollback()
+        return None
+
+    access = create_access_token(_access_claims(user))
     new_refresh_plain = create_refresh_token_value()
     new_expires = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
     db.add(

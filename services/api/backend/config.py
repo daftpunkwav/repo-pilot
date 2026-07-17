@@ -45,7 +45,8 @@ class Settings(BaseSettings):
         ...,
         description="JWT 签名密钥，必须通过 SECRET_KEY 环境变量设置，长度不少于 32 字节",
     )
-    access_token_expire_minutes: int = 60 * 24  # 1 天
+    # Access 默认 60 分钟；过长会扩大被盗 token 窗口（refresh 仍可轮换续期）
+    access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 30
 
     # 速率限制
