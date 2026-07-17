@@ -1,7 +1,11 @@
 """
 认证 API —— 注册/登录/刷新/登出/当前用户/修改密码
+
+凭证双通道：
+- JSON 响应仍返回 access/refresh（API 客户端、测试、兼容）
+- 同时写入 httpOnly Cookie，供浏览器前端优先使用
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Response, status
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -9,6 +13,11 @@ from starlette.requests import Request
 
 from backend.api.deps import get_current_user, get_db
 from backend.config import get_settings
+from backend.core.auth_cookies import (
+    clear_auth_cookies,
+    get_refresh_token_from_request,
+    set_auth_cookies,
+)
 from backend.core.limiter import limiter
 from backend.core.responses import wrap_data
 from backend.core.security import hash_password, verify_password
@@ -46,7 +55,12 @@ def _login_key(request: Request) -> str:
 
 @router.post("/register", response_model=DataResponse[TokenOut])
 @limiter.limit(settings.rate_limit_register)
-async def register(request: Request, data: UserCreate, db: AsyncSession = Depends(get_db)):
+async def register(
+    request: Request,
+    response: Response,
+    data: UserCreate,
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(User).where(User.username == data.username))
     if result.scalar_one_or_none():
         raise HTTPException(
@@ -61,12 +75,22 @@ async def register(request: Request, data: UserCreate, db: AsyncSession = Depend
     db.add(user)
     await db.flush()
     tokens = await issue_tokens(db, user)
+    set_auth_cookies(
+        response,
+        access_token=tokens.access_token,
+        refresh_token=tokens.refresh_token,
+    )
     return wrap_data(tokens)
 
 
 @router.post("/login", response_model=DataResponse[TokenOut])
 @limiter.limit(settings.rate_limit_login, key_func=_login_key)
-async def login(request: Request, data: UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(
+    request: Request,
+    response: Response,
+    data: UserLogin,
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(select(User).where(User.username == data.username))
     user = result.scalar_one_or_none()
     if not user or not verify_password(data.password, user.password_hash):
@@ -75,25 +99,59 @@ async def login(request: Request, data: UserLogin, db: AsyncSession = Depends(ge
             detail={"code": "AUTH_FAILED", "message": "用户名或密码错误"},
         )
     tokens = await issue_tokens(db, user)
+    set_auth_cookies(
+        response,
+        access_token=tokens.access_token,
+        refresh_token=tokens.refresh_token,
+    )
     return wrap_data(tokens)
 
 
 @router.post("/refresh", response_model=DataResponse[AccessTokenOut])
 @limiter.limit(settings.rate_limit_refresh)
-async def refresh(request: Request, data: RefreshBody, db: AsyncSession = Depends(get_db)):
-    rotated = await rotate_refresh_token(db, data.refresh_token)
-    if not rotated:
+async def refresh(
+    request: Request,
+    response: Response,
+    data: RefreshBody | None = Body(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    # 优先 body，其次 Cookie（浏览器主路径）
+    refresh_plain = None
+    if data is not None and data.refresh_token:
+        refresh_plain = data.refresh_token
+    if not refresh_plain:
+        refresh_plain = get_refresh_token_from_request(request)
+    if not refresh_plain:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             detail={"code": "AUTH_FAILED", "message": "Refresh token 无效"},
         )
-    access, refresh, _ = rotated
-    return wrap_data(AccessTokenOut(access_token=access, refresh_token=refresh))
+    rotated = await rotate_refresh_token(db, refresh_plain)
+    if not rotated:
+        clear_auth_cookies(response)
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "AUTH_FAILED", "message": "Refresh token 无效"},
+        )
+    access, new_refresh, _ = rotated
+    set_auth_cookies(response, access_token=access, refresh_token=new_refresh)
+    return wrap_data(AccessTokenOut(access_token=access, refresh_token=new_refresh))
 
 
 @router.post("/logout", response_model=DataResponse[OkData])
-async def logout(data: LogoutBody, db: AsyncSession = Depends(get_db)):
-    await revoke_refresh_token(db, data.refresh_token)
+async def logout(
+    request: Request,
+    response: Response,
+    data: LogoutBody | None = Body(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    refresh_plain = None
+    if data is not None and data.refresh_token:
+        refresh_plain = data.refresh_token
+    if not refresh_plain:
+        refresh_plain = get_refresh_token_from_request(request)
+    await revoke_refresh_token(db, refresh_plain)
+    clear_auth_cookies(response)
     return wrap_data(OkData())
 
 
@@ -119,6 +177,7 @@ async def update_me(
 
 @router.put("/password", response_model=DataResponse[OkData])
 async def update_password(
+    response: Response,
     data: PasswordUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -134,4 +193,5 @@ async def update_password(
     await db.commit()
     # 密码变更后撤销该用户所有未过期 refresh token，防止旧凭证继续被使用
     await revoke_all_user_refresh_tokens(db, current_user.id)
+    clear_auth_cookies(response)
     return wrap_data(OkData())
