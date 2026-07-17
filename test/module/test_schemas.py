@@ -114,7 +114,7 @@ def test_settings_update_llm_api_base_rejects_dns_to_private(monkeypatch):
     """域名若解析到内网 IP，应拦截（防 SSRF）。"""
     import socket
 
-    import backend.schemas.settings as settings_mod
+    import backend.core.url_safety as url_safety
 
     def fake_getaddrinfo(host, *args, **kwargs):
         assert host == "evil.example.com"
@@ -122,7 +122,7 @@ def test_settings_update_llm_api_base_rejects_dns_to_private(monkeypatch):
             (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.5", 0)),
         ]
 
-    monkeypatch.setattr(settings_mod.socket, "getaddrinfo", fake_getaddrinfo)
+    monkeypatch.setattr(url_safety.socket, "getaddrinfo", fake_getaddrinfo)
     with pytest.raises(ValidationError):
         SettingsUpdate(llm_api_base="https://evil.example.com/v1")
 
@@ -130,14 +130,14 @@ def test_settings_update_llm_api_base_rejects_dns_to_private(monkeypatch):
 def test_settings_update_llm_api_base_allows_public_dns(monkeypatch):
     import socket
 
-    import backend.schemas.settings as settings_mod
+    import backend.core.url_safety as url_safety
 
     def fake_getaddrinfo(host, *args, **kwargs):
         return [
             (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("1.1.1.1", 0)),
         ]
 
-    monkeypatch.setattr(settings_mod.socket, "getaddrinfo", fake_getaddrinfo)
+    monkeypatch.setattr(url_safety.socket, "getaddrinfo", fake_getaddrinfo)
     obj = SettingsUpdate(llm_api_base="https://api.openai.com/v1")
     assert obj.llm_api_base == "https://api.openai.com/v1"
 

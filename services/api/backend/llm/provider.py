@@ -80,7 +80,15 @@ class LLMProvider:
         }
         api_base = self.config.normalized_api_base()
         if api_base:
-            kw["api_base"] = api_base
+            # 出站前二次 SSRF 校验（DNS TOCTOU：保存时安全不代表请求时仍安全）
+            from backend.core.url_safety import assert_safe_outbound_https_url
+
+            try:
+                api_base = assert_safe_outbound_https_url(api_base)
+            except ValueError as exc:
+                raise RuntimeError(f"LLM_API_BASE_BLOCKED: {exc}") from exc
+            if api_base:
+                kw["api_base"] = api_base
         # 按前缀显式指定 provider，避免 LiteLLM 无法识别自定义端点
         if model.startswith("anthropic/"):
             kw["custom_llm_provider"] = "anthropic"
