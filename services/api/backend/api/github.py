@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_current_user, get_db
 from backend.core.responses import wrap_data
-from backend.core.security import decrypt_secret, encrypt_secret
+from backend.core.security import decrypt_secret, encrypt_secret, ensure_encrypted_secret
 from backend.models.project import Project
 from backend.models.user import User
 from backend.schemas.common import DataResponse
@@ -69,7 +69,28 @@ def _save_accounts(user: User, accounts: list[dict]) -> None:
     user.github_accounts = json.dumps(accounts, ensure_ascii=False)
 
 
+def _migrate_plaintext_pats(user: User) -> bool:
+    """将 github_accounts 中历史明文 PAT 升级为密文；返回是否写入。"""
+    accounts = _load_accounts(user)
+    if not accounts:
+        return False
+    dirty = False
+    for acc in accounts:
+        if not isinstance(acc, dict):
+            continue
+        pat = acc.get("pat")
+        stored, migrated = ensure_encrypted_secret(pat if isinstance(pat, str) else None)
+        if migrated:
+            acc["pat"] = stored
+            dirty = True
+    if dirty:
+        _save_accounts(user, accounts)
+    return dirty
+
+
 def _primary_token(user: User) -> tuple[str | None, str | None]:
+    # 读路径顺带迁移明文 PAT（调用方需 commit）
+    _migrate_plaintext_pats(user)
     accounts = _load_accounts(user)
     if not accounts:
         return None, None
@@ -156,7 +177,12 @@ def _to_star_out(s: dict, existing_urls: set[str]) -> StarRepoOut:
 
 
 @router.get("/accounts", response_model=DataResponse[list[GithubAccountOut]])
-async def list_accounts(current_user: User = Depends(get_current_user)):
+async def list_accounts(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if _migrate_plaintext_pats(current_user):
+        await db.commit()
     accounts = _load_accounts(current_user)
     out = []
     for a in accounts:
@@ -182,9 +208,11 @@ async def get_stars(
     拉取用户全部 Stars（分页聚合）。
     默认使用 6 小时缓存；?refresh=true 强制更新。
     """
+    # _primary_token 可能迁移明文 PAT，需落库
     bound_user, token = _primary_token(current_user)
     uname = username or bound_user
     if not uname:
+        await db.commit()
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             detail={
@@ -215,6 +243,9 @@ async def get_stars(
         if user is not None:
             fetched_at = _write_stars_cache(user, uname, raw_items)
             await db.commit()
+    else:
+        # 缓存命中时仍提交可能的 PAT 迁移
+        await db.commit()
 
     items = [_to_star_out(s, existing_set) for s in raw_items]
     return wrap_data(
