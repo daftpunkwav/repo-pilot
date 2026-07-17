@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class LLMChunk:
-    type: Literal["text", "tool_call", "done", "error"]
+    type: Literal["text", "thinking", "tool_call", "done", "error"]
     text: str = ""
     tool_call: dict[str, Any] | None = None
     usage: dict[str, int] = field(default_factory=dict)
@@ -204,6 +204,10 @@ class LLMProvider:
                 content = getattr(delta, "content", None)
                 if content:
                     yield LLMChunk(type="text", text=content)
+                # 部分推理模型会在 delta 中带 reasoning_content
+                reasoning = getattr(delta, "reasoning_content", None)
+                if isinstance(reasoning, str) and reasoning:
+                    yield LLMChunk(type="thinking", text=reasoning)
             yield LLMChunk(type="done", usage={})
         except Exception as e:
             logger.exception("LLM stream failed")
