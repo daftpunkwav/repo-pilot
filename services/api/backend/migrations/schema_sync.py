@@ -15,6 +15,12 @@ def sync_sqlite_schema(connection) -> None:
             connection.execute(
                 text("ALTER TABLE users ADD COLUMN settings_json TEXT NOT NULL DEFAULT '{}'")
             )
+        if "token_version" not in cols:
+            connection.execute(
+                text(
+                    "ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0"
+                )
+            )
 
     if "projects" in tables:
         cols = {c["name"] for c in inspector.get_columns("projects")}
