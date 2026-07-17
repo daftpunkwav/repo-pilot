@@ -200,7 +200,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         max_tokens=900,
         max_iterations=1,
     ),
-    # Mentor：ToT 深度讲解，允许工具但限制轮次
+    # Mentor：ToT 深度讲解；详情页禁用 ask_user 挂起，工具轮后强制收口写正文
     "mentor": _def(
         "mentor",
         "Mentor",
@@ -211,13 +211,14 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "fetch_readme",
             "query_knowledge_graph",
             "list_notes",
-            "ask_user",
             "propose_memory",
             "get_learning_stats",
         ],
         system_prompt=(
-            "教学前评估用户水平。复杂主题先在内心列 2-3 条讲解路径，只展开最适合用户的一条。"
-            "结构：全景 → 关键模块 → 设计亮点 → 与已有知识关联。禁止 emoji。"
+            "教学前可根据上下文判断用户水平（不要调用 ask_user 挂起等待）。"
+            "复杂主题在内心列 2-3 条讲解路径，只展开最适合的一条。"
+            "必须输出完整 Markdown 正文：全景 → 关键模块 → 设计亮点 → 与已有知识关联。"
+            "禁止 emoji。不要只调工具而不写正文。"
         ),
         workflow="tot",
         priority=20,
