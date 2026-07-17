@@ -106,8 +106,11 @@ async def update_session(
     title: str | None = None,
     project_id: UUID | None = None,
     clear_project: bool = False,
+    active_agent: str | None = None,
 ) -> AgentSessionOut | None:
-    """更新会话。返回 None 表示会话不存在；project 非己有时抛 ValueError。"""
+    """更新会话。返回 None 表示会话不存在；非法字段抛 ValueError。"""
+    from backend.agents.registry import AGENT_DEFINITIONS
+
     session = await db.get(AgentSession, session_id)
     if not session or session.user_id != user_id:
         return None
@@ -120,6 +123,11 @@ async def update_session(
         if not owned:
             raise ValueError("PROJECT_NOT_OWNED")
         session.project_id = project_id
+    if active_agent is not None:
+        agent_id = active_agent.strip().lower()
+        if agent_id not in AGENT_DEFINITIONS:
+            raise ValueError("INVALID_ACTIVE_AGENT")
+        session.active_agent = agent_id
     session.updated_at = datetime.utcnow()
     await db.commit()
     await db.refresh(session)
