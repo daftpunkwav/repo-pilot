@@ -458,6 +458,26 @@ export class MockApiClient implements IApiClient {
     return wrapResponse(project);
   }
 
+  async getProjectReadme(id: string): Promise<ApiResponse<import('../types').ProjectReadme>> {
+    await delay();
+    requireAuth();
+    const project = this.projects.find((p) => p.id === id);
+    if (!project) throwError('NOT_FOUND', '项目不存在');
+    if (project.readme) {
+      return wrapResponse({
+        content: project.readme,
+        source: 'github',
+        owner: project.name.split('/')[0],
+        repo: project.name.split('/')[1],
+      });
+    }
+    return wrapResponse({
+      content: null,
+      source: 'empty',
+      message: '该仓库暂无 README 或无权访问',
+    });
+  }
+
   async createProject(data: CreateProjectInput): Promise<ApiResponse<Project>> {
     await delay();
     requireAuth();

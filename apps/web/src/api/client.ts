@@ -19,6 +19,7 @@ import type {
   PaginatedList,
   Project,
   ProjectListParams,
+  ProjectReadme,
   ProjectStats,
   QuestionAnswer,
   RecommendedProject,
@@ -62,6 +63,7 @@ export interface IApiClient {
 
   listProjects(params?: ProjectListParams): Promise<ApiResponse<PaginatedList<Project>>>;
   getProject(id: string): Promise<ApiResponse<Project>>;
+  getProjectReadme(id: string): Promise<ApiResponse<ProjectReadme>>;
   createProject(data: CreateProjectInput): Promise<ApiResponse<Project>>;
   updateProject(id: string, data: Partial<Project>): Promise<ApiResponse<Project>>;
   deleteProject(id: string): Promise<ApiResponse<{ success: boolean }>>;

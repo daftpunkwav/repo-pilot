@@ -4,6 +4,7 @@ import { useProjectNotes } from '@/hooks/useNotes';
 import {
   useDeleteProject,
   useProject,
+  useProjectReadme,
   useProjects,
   useUpdateProgress,
 } from '@/hooks/useProjects';
@@ -25,15 +26,19 @@ import {
 import { useNoteStore } from '@/stores/noteStore';
 import { formatNumber, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
 import { formatDate } from '@/utils/date';
-import { AGENT_CARDS, categoryLabel } from '@/utils/labels';
+import { categoryLabel } from '@/utils/labels';
+import { AGENT_CATALOG } from '@/constants/agentCatalog';
 import { OVERVIEW_INNER_GLASS, OVERVIEW_OUTER_GLASS } from '@/constants/overviewGlass';
 
 const PD_PROGRESS: { id: ProjectProgress; label: string; className: string }[] = [
-  { id: 'none', label: '未开始', className: 'progress-none' },
+  { id: 'none', label: '待开始', className: 'progress-none' },
   { id: 'learning', label: '学习中', className: 'progress-learning' },
-  { id: 'learned', label: '已入门', className: 'progress-learned' },
+  { id: 'learned', label: '已学习', className: 'progress-learned' },
   { id: 'mastered', label: '已掌握', className: 'progress-mastered' },
 ];
+
+/** 详情侧栏 6 大专家 Agent（不含 Hub 总入口） */
+const DETAIL_AGENTS = AGENT_CATALOG.filter((a) => a.id !== 'hub');
 
 type DetailTab = 'readme' | 'notes' | 'ai' | 'related';
 
@@ -57,7 +62,16 @@ export function ProjectDetailPage() {
   const [scoutContent, setScoutContent] = useState('');
   const [scoutStreaming, setScoutStreaming] = useState(false);
   const [fontSize, setFontSize] = useState(14);
+  const [noteGenerating, setNoteGenerating] = useState(false);
   const scoutAbortRef = useRef<AbortController | null>(null);
+
+  const {
+    data: readmeData,
+    isLoading: readmeLoading,
+    isFetching: readmeFetching,
+    isError: readmeError,
+    refetch: refetchReadme,
+  } = useProjectReadme(id, tab === 'readme' && Boolean(id));
 
   useEffect(() => {
     if (isError) {
@@ -170,13 +184,53 @@ export function ProjectDetailPage() {
     startEditing('new', '新笔记', '');
   };
 
+  const readmeText =
+    readmeData?.content ||
+    project?.readme ||
+    '';
+
   const copyReadme = async () => {
-    if (!project?.readme) return;
+    if (!readmeText) return;
     try {
-      await navigator.clipboard.writeText(project.readme);
+      await navigator.clipboard.writeText(readmeText);
       addToast({ type: 'success', message: 'README 已复制' });
     } catch {
       addToast({ type: 'error', message: '复制失败' });
+    }
+  };
+
+  const handleGenerateNote = async () => {
+    if (!project) return;
+    setNoteGenerating(true);
+    try {
+      let buf = '';
+      const stream = getApi().generateNote(project.id, {
+        mode: 'project',
+        topic: project.name,
+      });
+      for await (const event of stream) {
+        if (event.event === 'text_delta') {
+          buf += asSSETextDelta(event.data).content;
+        }
+      }
+      if (buf.trim()) {
+        const title =
+          buf.split('\n')[0]?.replace(/^#\s*/, '').trim() ||
+          `${project.name} 学习笔记`;
+        startEditing('new', title.slice(0, 80), buf);
+        setTab('notes');
+        addToast({
+          type: 'success',
+          message: 'Scribe 已生成草稿，可编辑后保存',
+        });
+      } else {
+        addToast({ type: 'warning', message: '未生成内容，请检查 LLM 配置' });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Scribe 生成失败';
+      addToast({ type: 'error', message });
+    } finally {
+      setNoteGenerating(false);
     }
   };
 
@@ -261,46 +315,17 @@ export function ProjectDetailPage() {
                 <polyline points="14 2 14 8 20 8" />
               </svg>
             </div>
-            <div>
+            <div className="pd-scribe-tip__body">
               <strong style={{ color: 'var(--chart-4)' }}>Scribe Agent</strong>
               &nbsp;我可以基于 <span className="mono">{scribeName}</span> 的源码帮你生成笔记大纲，要试试吗？
             </div>
             <button
               type="button"
-              className="tip-cta"
-              onClick={async () => {
-                try {
-                  let buf = '';
-                  const stream = getApi().generateNote(project.id, {
-                    mode: 'project',
-                    topic: project.name,
-                  });
-                  for await (const event of stream) {
-                    if (event.event === 'text_delta') {
-                      buf += asSSETextDelta(event.data).content;
-                    }
-                  }
-                  if (buf.trim()) {
-                    const title =
-                      buf.split('\n')[0]?.replace(/^#\s*/, '').trim() ||
-                      `${project.name} 学习笔记`;
-                    startEditing('new', title.slice(0, 80), buf);
-                    setTab('notes');
-                    addToast({
-                      type: 'success',
-                      message: 'Scribe 已生成草稿，可编辑后保存',
-                    });
-                  } else {
-                    addToast({ type: 'warning', message: '未生成内容，请检查 LLM 配置' });
-                  }
-                } catch (err) {
-                  const message =
-                    err instanceof Error ? err.message : 'Scribe 生成失败';
-                  addToast({ type: 'error', message });
-                }
-              }}
+              className="btn btn-primary btn-sm pd-scribe-tip__btn"
+              disabled={noteGenerating}
+              onClick={() => void handleGenerateNote()}
             >
-              生成笔记
+              {noteGenerating ? '生成中…' : '生成笔记'}
             </button>
           </div>
         </div>
@@ -346,7 +371,22 @@ export function ProjectDetailPage() {
                   +
                 </button>
               </div>
-              <button type="button" className={`btn btn-sm ${OVERVIEW_INNER_GLASS}`} style={{ height: 28, marginLeft: 4 }} onClick={() => void copyReadme()}>
+              <button
+                type="button"
+                className={`btn btn-sm ${OVERVIEW_INNER_GLASS}`}
+                style={{ height: 28, marginLeft: 4 }}
+                disabled={readmeLoading || readmeFetching}
+                onClick={() => void refetchReadme()}
+              >
+                {readmeFetching ? '刷新中…' : '刷新'}
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${OVERVIEW_INNER_GLASS}`}
+                style={{ height: 28, marginLeft: 4 }}
+                disabled={!readmeText}
+                onClick={() => void copyReadme()}
+              >
                 复制全文
               </button>
             </div>
@@ -355,10 +395,25 @@ export function ProjectDetailPage() {
               data-testid="readme-content"
               style={{ fontSize }}
             >
-              {project.readme ? (
-                <MarkdownRenderer content={project.readme} />
+              {readmeLoading ? (
+                <LoadingSpinner />
+              ) : readmeText ? (
+                <MarkdownRenderer content={readmeText} />
               ) : (
-                <p style={{ color: 'var(--text-400)' }}>该项目暂无 README</p>
+                <div className="pd-readme-empty">
+                  <p style={{ color: 'var(--text-400)', margin: '0 0 8px' }}>
+                    {readmeError
+                      ? 'README 加载失败'
+                      : readmeData?.message || '该项目暂无 README'}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-primary"
+                    onClick={() => void refetchReadme()}
+                  >
+                    重试
+                  </button>
+                </div>
               )}
             </div>
           </article>
@@ -526,10 +581,10 @@ export function ProjectDetailPage() {
         <div className={OVERVIEW_OUTER_GLASS}>
           <div className="card-header">
             <div className="card-title">AI 学习助手</div>
-            <span className="card-subtitle">6 agents</span>
+            <span className="card-subtitle">{DETAIL_AGENTS.length} agents</span>
           </div>
           <div className="pd-agent-grid">
-            {AGENT_CARDS.map((a) => (
+            {DETAIL_AGENTS.map((a) => (
               <button
                 key={a.id}
                 type="button"
@@ -540,8 +595,8 @@ export function ProjectDetailPage() {
                   {a.name[0]}
                 </div>
                 <div className="pd-agent-name">{a.name}</div>
-                <div className="pd-agent-desc">{a.desc}</div>
-                <span className={`btn btn-sm ${OVERVIEW_INNER_GLASS}`}>调用</span>
+                <div className="pd-agent-desc">{a.tagline}</div>
+                <span className="pd-agent-call">调用</span>
               </button>
             ))}
           </div>
