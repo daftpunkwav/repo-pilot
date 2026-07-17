@@ -455,12 +455,12 @@ async def stream_analyze(
             "reason": "项目详情分析",
         },
     )
-    # 状态行（带换行），避免与后续思考内容粘连；真正的模型推理在 THINK 通道
+    # 简短状态（真实推理由 CoT 两阶段写入 thinking）
     yield format_sse(
         "thinking",
         {
             "content": (
-                f"[状态] 角色={resolved} 项目={project.name}\n"
+                f"[状态] 角色={resolved} · 项目={project.name}\n"
                 f"[上下文] 语言={project.language or '未知'} · "
                 f"stars={project.stars} · 进度={project.progress}\n"
             )

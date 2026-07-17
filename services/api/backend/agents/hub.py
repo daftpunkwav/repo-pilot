@@ -248,6 +248,13 @@ class HubService:
                 {"code": "AGENT_NOT_FOUND", "message": f"未知 Agent: {agent_id}"},
             )
             return
+        from backend.llm.config import llm_config_status
+
+        # 重新读用户，避免 commit 后 expire 导致 settings 读空
+        try:
+            await self.db.refresh(user, attribute_names=["settings_json", "agent_permissions"])
+        except Exception:
+            pass
         llm_config = await build_llm_config_from_user(self.db, user.id)
         llm = LLMProvider(llm_config)
         raw_settings = {}
@@ -260,6 +267,23 @@ class HubService:
             permissions = json.loads(user.agent_permissions or "{}")
         except json.JSONDecodeError:
             pass
+
+        if not llm.available:
+            status = llm_config_status(raw_settings)
+            if status == "decrypt_failed":
+                msg = (
+                    "API Key 解密失败（可能更换过 SECRET_KEY）。"
+                    "请到设置页重新保存 LLM API Key 后再试。"
+                )
+            else:
+                msg = "未配置 LLM API Key，请到设置页填写并保存后再试。"
+            yield format_sse("error", {"code": "LLM_NOT_CONFIGURED", "message": msg})
+            yield format_sse(
+                "text_delta",
+                {"content": f"【{agent_id}】{msg}"},
+            )
+            yield format_sse("done", {"usage": {"tokens": 0}, "iterations": 0, "degraded": True})
+            return
 
         yield format_sse(
             "agent_switch",

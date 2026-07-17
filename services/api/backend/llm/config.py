@@ -112,10 +112,19 @@ def _load_settings_dict(user: User) -> dict[str, Any]:
 
 def build_llm_config_from_settings(raw: dict[str, Any]) -> LLMConfig | None:
     """从 settings 字典构建配置；无 key 时返回 None。"""
-    from backend.core.security import decrypt_secret
+    from backend.core.security import decrypt_secret, is_encrypted_secret
+    import logging
 
-    api_key = (decrypt_secret(raw.get("llm_api_key")) or "").strip()
+    logger = logging.getLogger(__name__)
+    stored = raw.get("llm_api_key")
+    api_key = (decrypt_secret(stored) or "").strip()
     if not api_key:
+        # 区分「未配置」与「密文无法解密」（如 SECRET_KEY 变更）
+        if stored and is_encrypted_secret(str(stored)):
+            logger.warning(
+                "llm_api_key 解密失败（enc:v1 密文存在但无法解密），"
+                "请用户在设置页重新保存 API Key"
+            )
         return None
     model = raw.get("llm_model") or raw.get("llm_default_model") or "gpt-4o"
     provider = raw.get("llm_provider") or "openai"
@@ -130,12 +139,33 @@ def build_llm_config_from_settings(raw: dict[str, Any]) -> LLMConfig | None:
     )
 
 
+def llm_config_status(raw: dict[str, Any]) -> str:
+    """诊断用：ok | missing | decrypt_failed。"""
+    from backend.core.security import decrypt_secret, is_encrypted_secret
+
+    stored = raw.get("llm_api_key")
+    if not stored:
+        return "missing"
+    plain = decrypt_secret(stored)
+    if plain and str(plain).strip():
+        return "ok"
+    if is_encrypted_secret(str(stored)):
+        return "decrypt_failed"
+    return "missing"
+
+
 async def build_llm_config_from_user(
     db: AsyncSession, user_id: UUID
 ) -> LLMConfig | None:
-    user = await db.get(User, user_id)
+    """始终重新读取用户行，避免 session expire 后拿到空 settings_json。"""
+    from sqlalchemy import select
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
     if not user:
         return None
+    # 强制从 DB 取最新 settings（防止 identity map 脏读）
+    await db.refresh(user, attribute_names=["settings_json"])
     return build_llm_config_from_settings(_load_settings_dict(user))
 
 

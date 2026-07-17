@@ -53,65 +53,28 @@ class ReActEngine:
             return True
         return False
 
-    async def _stream_text_completion(
+    async def _stream_plain_text(
         self,
         *,
         llm: LLMProvider,
         messages: list[dict[str, Any]],
         agent_def: AgentDefinition,
         emit_sse: bool,
-        split_think_tags: bool = True,
-    ) -> AsyncIterator[str | LLMCompleteResult]:
-        """真流式补全：边生成边 yield text_delta / thinking SSE；最后 yield LLMCompleteResult。
-
-        若 split_think_tags=True，解析 <<<THINK>>>...<<<END_THINK>>>，
-        使思考过程进入 thinking 通道，正文进入 text_delta。
-        """
-        from backend.agents.think_stream import (
-            THINK_FORMAT_HINT,
-            ThinkStreamSplitter,
-            split_complete_text,
-        )
+        channel: str = "text",
+        max_tokens: int | None = None,
+    ) -> AsyncIterator[str | Any]:
+        """纯流式：channel=text→text_delta，channel=thinking→thinking。最后 yield LLMCompleteResult。"""
         from backend.llm.provider import LLMChunk, LLMCompleteResult as LCR
 
-        # 注入格式提示（仅本轮消息副本，不污染外层）
-        run_messages = list(messages)
-        if split_think_tags:
-            run_messages = list(messages) + [
-                {"role": "system", "content": THINK_FORMAT_HINT}
-            ]
-
-        full_raw = ""
-        body_text = ""
+        full = ""
         usage: dict[str, int] = {}
-        splitter = ThinkStreamSplitter() if split_think_tags else None
-
-        def _emit_split(piece: str) -> list[str]:
-            nonlocal body_text
-            events: list[str] = []
-            if not splitter:
-                if piece and emit_sse:
-                    events.append(format_sse("text_delta", {"content": piece}))
-                body_text += piece
-                return events
-            for channel, text in splitter.feed(piece):
-                if not text:
-                    continue
-                if channel == "thinking":
-                    if emit_sse:
-                        events.append(format_sse("thinking", {"content": text}))
-                else:
-                    body_text += text
-                    if emit_sse:
-                        events.append(format_sse("text_delta", {"content": text}))
-            return events
-
+        event_name = "thinking" if channel == "thinking" else "text_delta"
         try:
             stream = await llm.complete(
-                run_messages,
+                messages,
                 tools=None,
                 temperature=agent_def.temperature,
-                max_tokens=agent_def.max_tokens,
+                max_tokens=max_tokens or agent_def.max_tokens,
                 stream=True,
                 model_override=agent_def.model_override,
             )
@@ -120,11 +83,11 @@ class ReActEngine:
                 if not isinstance(chunk, LLMChunk):
                     continue
                 if chunk.type == "text" and chunk.text:
-                    full_raw += chunk.text
-                    for ev in _emit_split(chunk.text):
-                        yield ev
+                    full += chunk.text
+                    if emit_sse:
+                        yield format_sse(event_name, {"content": chunk.text})
                 elif chunk.type == "thinking" and chunk.text:
-                    # 模型原生 reasoning_content
+                    # 原生 reasoning：始终进 thinking 通道
                     if emit_sse:
                         yield format_sse("thinking", {"content": chunk.text})
                 elif chunk.type == "done":
@@ -133,51 +96,141 @@ class ReActEngine:
                     err = chunk.error or "LLM 流式错误"
                     if emit_sse:
                         yield format_sse("error", {"code": "LLM_ERROR", "message": err})
-                    yield LCR(text=body_text or full_raw or err, usage=usage)
+                    yield LCR(text=full or err, usage=usage)
                     return
         except Exception as e:
             logger.exception("LLM stream error in engine")
             err = f"LLM 调用失败：{e}"
             if emit_sse:
                 yield format_sse("error", {"code": "LLM_ERROR", "message": err})
-            yield LCR(text=body_text or full_raw or err, usage=usage)
+            yield LCR(text=full or err, usage=usage)
             return
+        yield LCR(text=full, usage=usage)
 
-        if splitter:
-            for channel, text in splitter.flush():
-                if not text:
-                    continue
-                if channel == "thinking":
-                    if emit_sse:
-                        yield format_sse("thinking", {"content": text})
-                else:
-                    body_text += text
-                    if emit_sse:
-                        yield format_sse("text_delta", {"content": text})
+    async def _cot_two_phase_stream(
+        self,
+        *,
+        llm: LLMProvider,
+        messages: list[dict[str, Any]],
+        agent_def: AgentDefinition,
+        emit_sse: bool,
+        total_usage: dict[str, int],
+    ) -> AsyncIterator[str | EngineResult]:
+        """
+        CoT 两阶段（不依赖模型自觉写标记）：
+        1) 流式生成短推理 → thinking 通道
+        2) 流式生成正文 → text_delta 通道
+        """
+        if emit_sse:
+            yield format_sse(
+                "thinking",
+                {
+                    "content": (
+                        f"[状态] {agent_def.name} · {agent_def.workflow or 'cot'}\n"
+                        f"[阶段 1/2] 生成分析思路…\n"
+                    )
+                },
+            )
 
-        # 若模型没按标记输出，body 可能已在 detect→text 路径填入；兜底拆完整文本
-        if split_think_tags and not body_text.strip() and full_raw.strip():
-            think, body = split_complete_text(full_raw)
-            if think and emit_sse:
-                yield format_sse("thinking", {"content": think + "\n"})
-            if body:
-                body_text = body
-                if emit_sse:
-                    step = 24
-                    for i in range(0, len(body_text), step):
-                        yield format_sse(
-                            "text_delta", {"content": body_text[i : i + step]}
-                        )
+        think_messages = list(messages) + [
+            {
+                "role": "user",
+                "content": (
+                    "先只输出分析思路（3-6 句要点），说明你会看哪些方面、结论方向。"
+                    "不要写最终完整正文，不要标题装饰，不要 emoji。"
+                ),
+            }
+        ]
+        think_text = ""
+        async for item in self._stream_plain_text(
+            llm=llm,
+            messages=think_messages,
+            agent_def=agent_def,
+            emit_sse=emit_sse,
+            channel="thinking",
+            max_tokens=min(320, agent_def.max_tokens),
+        ):
+            if isinstance(item, str):
+                yield item
+            else:
+                think_text = (item.text or "").strip()
+                for k in total_usage:
+                    total_usage[k] = total_usage.get(k, 0) + (item.usage or {}).get(k, 0)
 
-        final = body_text.strip() or full_raw.strip()
-        if not final:
-            final = (
+        if emit_sse and not think_text:
+            yield format_sse(
+                "thinking",
+                {"content": "（思路阶段无内容，继续生成正文）\n"},
+            )
+        elif emit_sse and think_text and not think_text.endswith("\n"):
+            yield format_sse("thinking", {"content": "\n"})
+
+        if emit_sse:
+            yield format_sse(
+                "thinking",
+                {"content": "[阶段 2/2] 基于思路流式输出正文…\n"},
+            )
+
+        answer_messages = list(messages)
+        if think_text:
+            answer_messages = list(messages) + [
+                {
+                    "role": "assistant",
+                    "content": f"分析思路：\n{think_text}",
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        "请基于上述思路输出完整正文（Markdown）。"
+                        "不要重复思路段落，不要 emoji，直接给用户可读结论。"
+                    ),
+                },
+            ]
+
+        final_text = ""
+        async for item in self._stream_plain_text(
+            llm=llm,
+            messages=answer_messages,
+            agent_def=agent_def,
+            emit_sse=emit_sse,
+            channel="text",
+            max_tokens=agent_def.max_tokens,
+        ):
+            if isinstance(item, str):
+                yield item
+            else:
+                final_text = (item.text or "").strip()
+                for k in total_usage:
+                    total_usage[k] = total_usage.get(k, 0) + (item.usage or {}).get(k, 0)
+
+        if not final_text:
+            final_text = (
                 f"我是 {agent_def.name}，已收到你的消息。"
                 "请补充更具体的需求（例如技术栈、学习目标），我会继续帮你。"
             )
             if emit_sse:
-                yield format_sse("text_delta", {"content": final})
-        yield LCR(text=final, usage=usage)
+                yield format_sse("text_delta", {"content": final_text})
+
+        if emit_sse:
+            yield format_sse(
+                "done",
+                {
+                    "usage": {
+                        "tokens": total_usage.get("total_tokens", 0),
+                        **total_usage,
+                    },
+                    "iterations": 2,
+                    "agent_id": agent_def.id,
+                    "streamed": True,
+                    "cot_two_phase": True,
+                },
+            )
+        yield EngineResult(
+            text=final_text,
+            agent_id=agent_def.id,
+            usage=total_usage,
+            iterations=2,
+        )
 
     async def run(
         self,
@@ -237,53 +290,19 @@ class ReActEngine:
         iteration = 0
         max_iter = self._effective_max_iter(agent_def)
 
-        # —— 快速路径：CoT / 无工具 → 真流式（含 THINK 标记解析） ——
+        # —— 快速路径：CoT / 无工具 → 两阶段（先推理后正文真流式） ——
         if self._prefer_token_stream(agent_def, tools):
-            if emit_sse:
-                yield format_sse(
-                    "thinking",
-                    {
-                        "content": (
-                            f"[状态] {agent_def.name} · 工作流 {agent_def.workflow or 'cot'}，"
-                            "开始生成（下方为模型推理，结束后输出正文）\n"
-                        ),
-                        "iteration": 1,
-                    },
-                )
-            async for item in self._stream_text_completion(
+            async for item in self._cot_two_phase_stream(
                 llm=llm,
                 messages=messages,
                 agent_def=agent_def,
                 emit_sse=emit_sse,
-                split_think_tags=True,
+                total_usage=total_usage,
             ):
-                if isinstance(item, str):
+                if isinstance(item, EngineResult):
                     yield item
-                else:
-                    final_text = item.text or ""
-                    for k in total_usage:
-                        total_usage[k] = total_usage.get(k, 0) + (item.usage or {}).get(
-                            k, 0
-                        )
-            if emit_sse:
-                yield format_sse(
-                    "done",
-                    {
-                        "usage": {
-                            "tokens": total_usage.get("total_tokens", 0),
-                            **total_usage,
-                        },
-                        "iterations": 1,
-                        "agent_id": agent_def.id,
-                        "streamed": True,
-                    },
-                )
-            yield EngineResult(
-                text=final_text,
-                agent_id=agent_def.id,
-                usage=total_usage,
-                iterations=1,
-            )
+                    return
+                yield item
             return
 
         while iteration < max_iter:
