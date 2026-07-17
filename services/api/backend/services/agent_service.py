@@ -21,6 +21,7 @@ from backend.schemas.agent import (
     ContextWindowSegmentOut,
     ContextWindowStatsOut,
 )
+from backend.services.project_service import get_project_owned_by_user
 from backend.services.sse_stream import format_sse
 from backend.tools.builtin import ensure_tools_loaded
 
@@ -106,6 +107,7 @@ async def update_session(
     project_id: UUID | None = None,
     clear_project: bool = False,
 ) -> AgentSessionOut | None:
+    """更新会话。返回 None 表示会话不存在；project 非己有时抛 ValueError。"""
     session = await db.get(AgentSession, session_id)
     if not session or session.user_id != user_id:
         return None
@@ -114,6 +116,9 @@ async def update_session(
     if clear_project:
         session.project_id = None
     elif project_id is not None:
+        owned = await get_project_owned_by_user(db, project_id, user_id)
+        if not owned:
+            raise ValueError("PROJECT_NOT_OWNED")
         session.project_id = project_id
     session.updated_at = datetime.utcnow()
     await db.commit()
@@ -175,8 +180,15 @@ async def stream_chat(
         yield format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"})
         return
 
-    # 消息级 project_id 优先，并回写到会话
+    # 消息级 project_id 优先，并回写到会话（仅允许绑定当前用户拥有的项目）
     if project_id is not None:
+        owned = await get_project_owned_by_user(db, project_id, user.id)
+        if not owned:
+            yield format_sse(
+                "error",
+                {"code": "FORBIDDEN", "message": "无权绑定该项目到会话"},
+            )
+            return
         session.project_id = project_id
         await db.commit()
 
