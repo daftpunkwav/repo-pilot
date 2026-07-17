@@ -75,6 +75,16 @@ class AgentPermissionsOut(BaseModel):
     max_tokens_per_turn: int = 4096
 
 
+class AgentPermissionsUpdate(BaseModel):
+    """部分更新 Agent 权限；未传字段保持原值。"""
+
+    allow_web_search: bool | None = None
+    allow_github_api: bool | None = None
+    allow_file_write: bool | None = None
+    max_iterations: int | None = Field(None, ge=1, le=50)
+    max_tokens_per_turn: int | None = Field(None, ge=256, le=128_000)
+
+
 class ContextWindowSegmentOut(BaseModel):
     label: str
     tokens: int
