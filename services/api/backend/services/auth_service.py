@@ -85,7 +85,11 @@ async def revoke_all_user_refresh_tokens(db: AsyncSession, user_id: UUID) -> Non
 async def rotate_refresh_token(
     db: AsyncSession, refresh_plain: str
 ) -> tuple[str, str, UUID] | None:
-    """校验 refresh，轮换并返回新 access_token、新 refresh_token 与 user_id。"""
+    """校验 refresh，轮换并返回新 access_token、新 refresh_token 与 user_id。
+
+    使用乐观锁（UPDATE ... WHERE revoked=False）保证并发下仅一方胜出，
+    避免双写新 token 或误伤并发合法轮换。
+    """
     token_hash = hash_refresh_token(refresh_plain)
     result = await db.execute(
         select(RefreshToken).where(RefreshToken.token_hash == token_hash)
@@ -99,18 +103,31 @@ async def rotate_refresh_token(
         return None
     if row.expires_at < datetime.utcnow():
         return None
-    # 旧 token 标记撤销，实现 rotation
-    row.revoked = True
-    # 签发新 token 对
-    access = create_access_token({"sub": str(row.user_id)})
+
+    user_id = row.user_id
+    # 原子抢占：仅未撤销行可标记为 revoked，rowcount!=1 表示并发竞态失败
+    claim = await db.execute(
+        update(RefreshToken)
+        .where(
+            RefreshToken.id == row.id,
+            RefreshToken.revoked.is_(False),
+        )
+        .values(revoked=True)
+    )
+    if claim.rowcount != 1:
+        # 并发请求已完成轮换；不触发 family revoke，避免误吊销刚签发的 token
+        await db.rollback()
+        return None
+
+    access = create_access_token({"sub": str(user_id)})
     new_refresh_plain = create_refresh_token_value()
     new_expires = datetime.utcnow() + timedelta(days=settings.refresh_token_expire_days)
     db.add(
         RefreshToken(
-            user_id=row.user_id,
+            user_id=user_id,
             token_hash=hash_refresh_token(new_refresh_plain),
             expires_at=new_expires,
         )
     )
     await db.commit()
-    return access, new_refresh_plain, row.user_id
+    return access, new_refresh_plain, user_id
