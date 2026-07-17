@@ -96,16 +96,16 @@ class ReActEngine:
                     err = chunk.error or "LLM 流式错误"
                     if emit_sse:
                         yield format_sse("error", {"code": "LLM_ERROR", "message": err})
-                    yield LCR(text=full or err, usage=usage)
+                    yield LCR(text=full or err, usage=usage, failed=True)
                     return
         except Exception as e:
             logger.exception("LLM stream error in engine")
             err = f"LLM 调用失败：{e}"
             if emit_sse:
                 yield format_sse("error", {"code": "LLM_ERROR", "message": err})
-            yield LCR(text=full or err, usage=usage)
+            yield LCR(text=full or err, usage=usage, failed=True)
             return
-        yield LCR(text=full, usage=usage)
+        yield LCR(text=full, usage=usage, failed=False)
 
     async def _cot_two_phase_stream(
         self,
@@ -142,6 +142,7 @@ class ReActEngine:
             }
         ]
         think_text = ""
+        phase1_failed = False
         async for item in self._stream_plain_text(
             llm=llm,
             messages=think_messages,
@@ -154,8 +155,31 @@ class ReActEngine:
                 yield item
             else:
                 think_text = (item.text or "").strip()
+                phase1_failed = bool(getattr(item, "failed", False))
                 for k in total_usage:
                     total_usage[k] = total_usage.get(k, 0) + (item.usage or {}).get(k, 0)
+
+        if phase1_failed:
+            if emit_sse:
+                yield format_sse(
+                    "done",
+                    {
+                        "usage": {
+                            "tokens": total_usage.get("total_tokens", 0),
+                            **total_usage,
+                        },
+                        "iterations": 1,
+                        "agent_id": agent_def.id,
+                        "failed": True,
+                    },
+                )
+            yield EngineResult(
+                text=think_text or "LLM 调用失败",
+                agent_id=agent_def.id,
+                usage=total_usage,
+                iterations=1,
+            )
+            return
 
         if emit_sse and not think_text:
             yield format_sse(
@@ -290,19 +314,83 @@ class ReActEngine:
         iteration = 0
         max_iter = self._effective_max_iter(agent_def)
 
-        # —— 快速路径：CoT / 无工具 → 两阶段（先推理后正文真流式） ——
+        # —— 流式快路径 ——
+        # cot/direct：两阶段（真思考 + 正文）；其它无工具 workflow：单次正文流式
+        wf = (agent_def.workflow or "react").lower()
         if self._prefer_token_stream(agent_def, tools):
-            async for item in self._cot_two_phase_stream(
+            if wf in ("cot", "direct"):
+                async for item in self._cot_two_phase_stream(
+                    llm=llm,
+                    messages=messages,
+                    agent_def=agent_def,
+                    emit_sse=emit_sse,
+                    total_usage=total_usage,
+                ):
+                    if isinstance(item, EngineResult):
+                        yield item
+                        return
+                    yield item
+                return
+            # 无工具的非 CoT：单次流式，不硬塞「先写思路」
+            if emit_sse:
+                yield format_sse(
+                    "thinking",
+                    {
+                        "content": f"[状态] {agent_def.name} · 流式生成\n",
+                    },
+                )
+            async for item in self._stream_plain_text(
                 llm=llm,
                 messages=messages,
                 agent_def=agent_def,
                 emit_sse=emit_sse,
-                total_usage=total_usage,
+                channel="text",
             ):
-                if isinstance(item, EngineResult):
+                if isinstance(item, str):
                     yield item
-                    return
-                yield item
+                else:
+                    final_text = (item.text or "").strip()
+                    for k in total_usage:
+                        total_usage[k] = total_usage.get(k, 0) + (
+                            item.usage or {}
+                        ).get(k, 0)
+                    if getattr(item, "failed", False):
+                        if emit_sse:
+                            yield format_sse(
+                                "done",
+                                {
+                                    "usage": total_usage,
+                                    "iterations": 1,
+                                    "agent_id": agent_def.id,
+                                    "failed": True,
+                                },
+                            )
+                        yield EngineResult(
+                            text=final_text or "LLM 调用失败",
+                            agent_id=agent_def.id,
+                            usage=total_usage,
+                            iterations=1,
+                        )
+                        return
+            if emit_sse:
+                yield format_sse(
+                    "done",
+                    {
+                        "usage": {
+                            "tokens": total_usage.get("total_tokens", 0),
+                            **total_usage,
+                        },
+                        "iterations": 1,
+                        "agent_id": agent_def.id,
+                        "streamed": True,
+                    },
+                )
+            yield EngineResult(
+                text=final_text,
+                agent_id=agent_def.id,
+                usage=total_usage,
+                iterations=1,
+            )
             return
 
         while iteration < max_iter:

@@ -154,19 +154,35 @@ def llm_config_status(raw: dict[str, Any]) -> str:
     return "missing"
 
 
-async def build_llm_config_from_user(
+async def load_user_settings_dict(
     db: AsyncSession, user_id: UUID
-) -> LLMConfig | None:
-    """始终重新读取用户行，避免 session expire 后拿到空 settings_json。"""
+) -> dict[str, Any]:
+    """与 LLM 配置同源：强制刷新 settings_json。"""
     from sqlalchemy import select
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        return None
-    # 强制从 DB 取最新 settings（防止 identity map 脏读）
-    await db.refresh(user, attribute_names=["settings_json"])
-    return build_llm_config_from_settings(_load_settings_dict(user))
+        return {}
+    await db.refresh(user, attribute_names=["settings_json", "agent_permissions"])
+    return _load_settings_dict(user)
+
+
+async def build_llm_config_from_user(
+    db: AsyncSession, user_id: UUID
+) -> LLMConfig | None:
+    """始终重新读取用户行，避免 session expire 后拿到空 settings_json。"""
+    raw = await load_user_settings_dict(db, user_id)
+    return build_llm_config_from_settings(raw)
+
+
+async def build_llm_bundle_from_user(
+    db: AsyncSession, user_id: UUID
+) -> tuple[LLMConfig | None, str, dict[str, Any]]:
+    """一次查库返回 (config, status, settings_dict)，诊断与构建同源。"""
+    raw = await load_user_settings_dict(db, user_id)
+    cfg = build_llm_config_from_settings(raw)
+    return cfg, llm_config_status(raw), raw
 
 
 def get_agent_model_override(raw: dict[str, Any], agent_id: str) -> str | None:
