@@ -58,6 +58,16 @@ export async function consumeAgentSSEStream(
       case 'thinking': {
         const piece = asSSEThinking(event.data).content ?? '';
         if (piece) {
+          // 仅对「新状态行」插换行；模型 reasoning 的连续 token 不打断
+          const looksLikeStatusLine = /^\s*[\[【]/.test(piece);
+          if (
+            looksLikeStatusLine &&
+            thinking &&
+            !thinking.endsWith('\n') &&
+            !piece.startsWith('\n')
+          ) {
+            thinking += '\n';
+          }
           thinking += piece;
           handlers.onThinking?.(piece, thinking);
         }

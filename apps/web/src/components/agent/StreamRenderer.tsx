@@ -41,7 +41,8 @@ export function StreamRenderer({
         >
           <summary>
             思考过程
-            {streaming && !hasBody ? '（生成中…）' : ''}
+            {streaming && !hasBody ? '（推理生成中…）' : ''}
+            {!streaming && hasThinking && !hasBody ? '（仅状态/推理，无正文）' : ''}
           </summary>
           <pre>{thinking}</pre>
         </details>

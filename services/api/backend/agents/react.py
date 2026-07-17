@@ -60,15 +60,55 @@ class ReActEngine:
         messages: list[dict[str, Any]],
         agent_def: AgentDefinition,
         emit_sse: bool,
+        split_think_tags: bool = True,
     ) -> AsyncIterator[str | LLMCompleteResult]:
-        """真流式补全：边生成边 yield text_delta SSE；最后 yield LLMCompleteResult。"""
+        """真流式补全：边生成边 yield text_delta / thinking SSE；最后 yield LLMCompleteResult。
+
+        若 split_think_tags=True，解析 <<<THINK>>>...<<<END_THINK>>>，
+        使思考过程进入 thinking 通道，正文进入 text_delta。
+        """
+        from backend.agents.think_stream import (
+            THINK_FORMAT_HINT,
+            ThinkStreamSplitter,
+            split_complete_text,
+        )
         from backend.llm.provider import LLMChunk, LLMCompleteResult as LCR
 
-        full = ""
+        # 注入格式提示（仅本轮消息副本，不污染外层）
+        run_messages = list(messages)
+        if split_think_tags:
+            run_messages = list(messages) + [
+                {"role": "system", "content": THINK_FORMAT_HINT}
+            ]
+
+        full_raw = ""
+        body_text = ""
         usage: dict[str, int] = {}
+        splitter = ThinkStreamSplitter() if split_think_tags else None
+
+        def _emit_split(piece: str) -> list[str]:
+            nonlocal body_text
+            events: list[str] = []
+            if not splitter:
+                if piece and emit_sse:
+                    events.append(format_sse("text_delta", {"content": piece}))
+                body_text += piece
+                return events
+            for channel, text in splitter.feed(piece):
+                if not text:
+                    continue
+                if channel == "thinking":
+                    if emit_sse:
+                        events.append(format_sse("thinking", {"content": text}))
+                else:
+                    body_text += text
+                    if emit_sse:
+                        events.append(format_sse("text_delta", {"content": text}))
+            return events
+
         try:
             stream = await llm.complete(
-                messages,
+                run_messages,
                 tools=None,
                 temperature=agent_def.temperature,
                 max_tokens=agent_def.max_tokens,
@@ -80,10 +120,11 @@ class ReActEngine:
                 if not isinstance(chunk, LLMChunk):
                     continue
                 if chunk.type == "text" and chunk.text:
-                    full += chunk.text
-                    if emit_sse:
-                        yield format_sse("text_delta", {"content": chunk.text})
+                    full_raw += chunk.text
+                    for ev in _emit_split(chunk.text):
+                        yield ev
                 elif chunk.type == "thinking" and chunk.text:
+                    # 模型原生 reasoning_content
                     if emit_sse:
                         yield format_sse("thinking", {"content": chunk.text})
                 elif chunk.type == "done":
@@ -92,24 +133,51 @@ class ReActEngine:
                     err = chunk.error or "LLM 流式错误"
                     if emit_sse:
                         yield format_sse("error", {"code": "LLM_ERROR", "message": err})
-                    yield LCR(text=full or err, usage=usage)
+                    yield LCR(text=body_text or full_raw or err, usage=usage)
                     return
         except Exception as e:
             logger.exception("LLM stream error in engine")
             err = f"LLM 调用失败：{e}"
             if emit_sse:
                 yield format_sse("error", {"code": "LLM_ERROR", "message": err})
-            yield LCR(text=full or err, usage=usage)
+            yield LCR(text=body_text or full_raw or err, usage=usage)
             return
 
-        if not full.strip():
-            full = (
+        if splitter:
+            for channel, text in splitter.flush():
+                if not text:
+                    continue
+                if channel == "thinking":
+                    if emit_sse:
+                        yield format_sse("thinking", {"content": text})
+                else:
+                    body_text += text
+                    if emit_sse:
+                        yield format_sse("text_delta", {"content": text})
+
+        # 若模型没按标记输出，body 可能已在 detect→text 路径填入；兜底拆完整文本
+        if split_think_tags and not body_text.strip() and full_raw.strip():
+            think, body = split_complete_text(full_raw)
+            if think and emit_sse:
+                yield format_sse("thinking", {"content": think + "\n"})
+            if body:
+                body_text = body
+                if emit_sse:
+                    step = 24
+                    for i in range(0, len(body_text), step):
+                        yield format_sse(
+                            "text_delta", {"content": body_text[i : i + step]}
+                        )
+
+        final = body_text.strip() or full_raw.strip()
+        if not final:
+            final = (
                 f"我是 {agent_def.name}，已收到你的消息。"
                 "请补充更具体的需求（例如技术栈、学习目标），我会继续帮你。"
             )
             if emit_sse:
-                yield format_sse("text_delta", {"content": full})
-        yield LCR(text=full, usage=usage)
+                yield format_sse("text_delta", {"content": final})
+        yield LCR(text=final, usage=usage)
 
     async def run(
         self,
@@ -169,13 +237,16 @@ class ReActEngine:
         iteration = 0
         max_iter = self._effective_max_iter(agent_def)
 
-        # —— 快速路径：CoT / 无工具 → 真流式 ——
+        # —— 快速路径：CoT / 无工具 → 真流式（含 THINK 标记解析） ——
         if self._prefer_token_stream(agent_def, tools):
             if emit_sse:
                 yield format_sse(
                     "thinking",
                     {
-                        "content": f"{agent_def.name} · {agent_def.workflow or 'cot'} 流式生成中",
+                        "content": (
+                            f"[状态] {agent_def.name} · 工作流 {agent_def.workflow or 'cot'}，"
+                            "开始生成（下方为模型推理，结束后输出正文）\n"
+                        ),
                         "iteration": 1,
                     },
                 )
@@ -184,6 +255,7 @@ class ReActEngine:
                 messages=messages,
                 agent_def=agent_def,
                 emit_sse=emit_sse,
+                split_think_tags=True,
             ):
                 if isinstance(item, str):
                     yield item
@@ -256,8 +328,12 @@ class ReActEngine:
             messages.append(assistant_msg)
 
             if result.text and not result.tool_calls:
-                final_text = result.text
-                # 最终正文：假流式分片，避免整块空白等待感
+                from backend.agents.think_stream import split_complete_text
+
+                think, body = split_complete_text(result.text)
+                if think and emit_sse:
+                    yield format_sse("thinking", {"content": think + "\n"})
+                final_text = body or result.text
                 if emit_sse:
                     step = 24
                     for i in range(0, len(final_text), step):
