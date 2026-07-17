@@ -15,6 +15,11 @@ def test_user_create_min_length():
     assert u.username == "abc"
 
 
+def test_user_create_password_over_72_bytes():
+    with pytest.raises(ValidationError):
+        UserCreate(username="abcuser", password="a" * 73)
+
+
 def test_user_login_password_too_short():
     with pytest.raises(ValidationError):
         UserLogin(username="abc", password="short")
