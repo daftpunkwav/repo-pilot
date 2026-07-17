@@ -1,9 +1,21 @@
 """Pydantic schemas —— 用户设置（对齐前端 Settings 子集）"""
 import ipaddress
+import socket
 from typing import Literal, Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, field_validator
+
+
+def _is_blocked_ip(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    return bool(
+        addr.is_private
+        or addr.is_loopback
+        or addr.is_reserved
+        or addr.is_link_local
+        or addr.is_unspecified
+        or addr.is_multicast
+    )
 
 
 class AgentLlmConfigOut(BaseModel):
@@ -58,24 +70,37 @@ class SettingsUpdate(BaseModel):
             raise ValueError("API 基础地址必须包含有效域名")
         if host in ("localhost", "127.0.0.1", "::1"):
             raise ValueError("禁止指向 localhost")
-        # 禁止私有 IP
+        # 禁止字面量私有/链路本地等 IP
         try:
             addr = ipaddress.ip_address(host)
         except ValueError:
             addr = None  # 不是 IP，继续检查域名
-        if addr is not None and (
-            addr.is_private
-            or addr.is_loopback
-            or addr.is_reserved
-            or addr.is_link_local
-            or addr.is_unspecified
-            or addr.is_multicast
-        ):
+        if addr is not None and _is_blocked_ip(addr):
             raise ValueError("禁止指向私有/链路本地/保留 IP")
         # 禁止常见内网域名后缀
         internal_suffixes = (".local", ".internal", ".lan", ".corp", ".home")
         if any(host.endswith(suffix) for suffix in internal_suffixes):
             raise ValueError("禁止指向内网域名")
+        # 域名：解析 DNS 并对每个 A/AAAA 做二次校验，缓解 DNS rebinding / 恶意 DNS
+        if addr is None:
+            try:
+                infos = socket.getaddrinfo(host, None)
+            except socket.gaierror as exc:
+                raise ValueError("无法解析 API 基础地址域名") from exc
+            if not infos:
+                raise ValueError("无法解析 API 基础地址域名")
+            seen: set[str] = set()
+            for info in infos:
+                ip_str = info[4][0]
+                if ip_str in seen:
+                    continue
+                seen.add(ip_str)
+                try:
+                    resolved = ipaddress.ip_address(ip_str)
+                except ValueError:
+                    continue
+                if _is_blocked_ip(resolved):
+                    raise ValueError("API 基础地址解析到禁止的内网/保留 IP")
         return v
 
 
