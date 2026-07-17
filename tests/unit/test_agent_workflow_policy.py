@@ -37,3 +37,10 @@ def test_effective_max_iter_uses_agent_def():
     engine = ReActEngine(max_iterations=8)
     scout = AGENT_DEFINITIONS["scout"]
     assert engine._effective_max_iter(scout) == 1
+
+
+def test_llm_config_status_missing_and_ok():
+    from backend.llm.config import llm_config_status
+
+    assert llm_config_status({}) == "missing"
+    assert llm_config_status({"llm_api_key": "sk-plain"}) == "ok"
