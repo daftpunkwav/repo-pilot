@@ -49,6 +49,15 @@ describe('parseSSEStream', () => {
     expect(events).toEqual([{ event: 'done', data: {} }]);
   });
 
+  it('joins multi-line data fields with newline per SSE spec', async () => {
+    // 多行 data 按 SSE 规范以 \n 拼接；payload 需是合法 JSON（pretty-print 形式）
+    const reader = sseStream([
+      'event: text_delta\ndata: {\ndata: "content": "hi"\ndata: }\n\n',
+    ]);
+    const events = await collect(parseSSEStream(reader));
+    expect(events).toEqual([{ event: 'text_delta', data: { content: 'hi' } }]);
+  });
+
   it('stops yielding after AbortSignal is triggered', async () => {
     const encoder = new TextEncoder();
     let pushCount = 0;
@@ -57,10 +66,20 @@ describe('parseSSEStream', () => {
       start(controller) {
         const tick = () => {
           if (ac.signal.aborted || pushCount++ >= 5) {
-            controller.close();
+            try {
+              controller.close();
+            } catch {
+              // 可能已被 reader.cancel 关闭
+            }
             return;
           }
-          controller.enqueue(encoder.encode('event: text_delta\ndata: {"content":"x"}\n\n'));
+          try {
+            controller.enqueue(
+              encoder.encode('event: text_delta\ndata: {"content":"x"}\n\n')
+            );
+          } catch {
+            return;
+          }
           setTimeout(tick, 5);
         };
         tick();
