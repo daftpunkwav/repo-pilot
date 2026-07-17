@@ -50,7 +50,14 @@ async def get_current_user(
     user_id = payload.get("sub")
     if not user_id:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail={"code": "UNAUTHORIZED", "message": "Invalid token"})
-    user = await db.get(User, UUID(user_id))
+    try:
+        uid = UUID(str(user_id))
+    except (ValueError, TypeError, AttributeError):
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "UNAUTHORIZED", "message": "Invalid token"},
+        )
+    user = await db.get(User, uid)
     if not user:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail={"code": "UNAUTHORIZED", "message": "User not found"})
     return user

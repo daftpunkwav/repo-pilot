@@ -20,3 +20,17 @@ async def test_invalid_authorization_scheme_returns_401(client: AsyncClient):
     )
     assert res.status_code == 401
     assert res.json()["detail"]["code"] == "UNAUTHORIZED"
+
+
+@pytest.mark.asyncio
+async def test_jwt_sub_non_uuid_returns_401(client: AsyncClient):
+    """JWT sub 非 UUID 时不应 500，应返回 401。"""
+    from backend.core.security import create_access_token
+
+    token = create_access_token({"sub": "not-a-uuid"})
+    res = await client.get(
+        "/api/v1/auth/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 401
+    assert res.json()["detail"]["code"] == "UNAUTHORIZED"
