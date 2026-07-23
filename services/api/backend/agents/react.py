@@ -457,19 +457,9 @@ class ReActEngine:
                 break
 
             if not result.tool_calls:
-                # 无工具调用时：即便正文为空也尽量输出（避免前端「无正文」）
-                final_text = (result.text or "").strip()
-                if not final_text:
-                    final_text = (
-                        f"我是 {agent_def.name}，已收到你的消息。"
-                        "请补充更具体的需求（例如技术栈、学习目标），我会继续帮你。"
-                    )
-                if emit_sse:
-                    step = 24
-                    for i in range(0, len(final_text), step):
-                        yield format_sse(
-                            "text_delta", {"content": final_text[i : i + step]}
-                        )
+                # 无工具调用且正文为空：不要在这里填弱占位并结束。
+                # 弱占位会让 final_text 非空，从而跳过循环后的「强制无工具收口」，
+                # 这是 Mentor/ToT 工具轮后空正文的主要失败路径。
                 break
 
             # 处理工具调用

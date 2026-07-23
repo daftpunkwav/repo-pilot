@@ -484,7 +484,7 @@ export function ProjectDetailPage() {
         )}
 
         {tab === 'ai' && (
-          <div className={`pd-readme ${OVERVIEW_OUTER_GLASS}`} style={{ minHeight: 200 }}>
+          <div className={`pd-readme pd-ai-panel ${OVERVIEW_OUTER_GLASS}`}>
             <div className="pd-readme-toolbar pd-ai-toolbar">
               <div className="left">
                 <span
