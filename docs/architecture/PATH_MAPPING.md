@@ -39,7 +39,7 @@ RepoPilot/
 | `backend/api/` | `services/api/backend/api/` | FastAPI 路由 |
 | `backend/agents/` | `services/api/backend/agents/` | v1.0 实现位置；未来迁至 `services/agent/` |
 | `backend/config.py` | `services/api/backend/config.py` | 配置入口 |
-| `backend/migrations/` | `services/api/backend/migrations/` | Alembic |
+| `backend/migrations/` | `services/api/backend/migrations/` | 当前使用 `create_all` + `schema_sync.py`；Alembic 目录存在但尚未启用 |
 | `pyproject.toml`（根） | 根 + `services/api/pyproject.toml` | 根为 workspace；API 依赖在 `services/api/` |
 | `data/*.db` | `data/*.db`（仓库根） | 路径未变 |
 
@@ -50,7 +50,7 @@ RepoPilot/
 | 轨道 | 路径 | 阶段 |
 |------|------|------|
 | **设计归档** | `docs/design/v1/frontend/` | 审查记录、规格、HTML 原型 |
-| **正式应用** | `apps/web/` | **现行**：v1 Mock 已迁入，后续接 Real API |
+| **正式应用** | `apps/web/` | **现行**：已实现全部 MVP 页面与路由；默认 Mock，设置 `VITE_USE_MOCK=false` 可连接 `services/api` |
 
 文档中出现 `frontend/` 时：
 

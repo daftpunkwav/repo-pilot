@@ -722,7 +722,7 @@ export interface SSEError {
 
 export interface Settings {
   theme: 'dark' | 'light';
-  font_scale: number;            // 0.8 - 1.4
+  font_scale: number;            // 0.8 - 1.5
   code_font: string;             // 等宽字体名称
   llm_provider: string;          // "openai" | "anthropic" | "local"
   llm_model: string;
@@ -1437,7 +1437,7 @@ export const useUIStore = create<UIState>()(
       },
 
       setFontScale: (scale) => {
-        const clamped = Math.max(0.8, Math.min(1.4, scale));
+        const clamped = Math.max(0.8, Math.min(1.5, scale));
         set({ fontScale: clamped });
         document.documentElement.style.setProperty(
           '--font-scale',
@@ -2431,7 +2431,7 @@ NotesPage
 SettingsPage
 ├── Section: 外观
 │   ├── ThemeToggle (dark / light / system)
-│   └── FontScaleSlider (0.8 - 1.4, step 0.1)
+│   └── FontScaleSlider (0.8 - 1.5, step 0.1)
 ├── Section: GitHub 账号
 │   ├── GitHubAccountList
 │   │   └── GitHubAccountItem[] (头像 + 用户名 + 解绑按钮)

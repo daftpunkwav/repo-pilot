@@ -46,11 +46,12 @@ RepoPilot/
 
 | 模块 | 状态 | 代码位置 |
 |------|------|----------|
-| Web | ✅ 开发中 | `apps/web/`（v1 Mock 已迁入；设计归档在 `docs/design/v1/frontend/`） |
-| API | ✅ 开发中 | `services/api/backend/` |
-| Agent | 🟡 占位 | 逻辑在 `services/api/backend/agents/`，待迁 |
-| MCP | ⬜ 占位 | `services/mcp/` |
-| Desktop | ⬜ 占位 | `apps/desktop/` |
+| Web | ✅ 已实现核心功能 | `apps/web/`（全部 MVP 页面、路由、Mock/Real 双轨 API 客户端已就位） |
+| API | ✅ 已实现核心端点 | `services/api/backend/`（Auth/Projects/Categories/Tags/Notes/Graph/Settings/Agent 等） |
+| Agent | 🟡 运行时占位 | 核心逻辑在 `services/api/backend/agents/`，独立进程 `services/agent/` 尚未实现 |
+| MCP | ⬜ 占位 | `services/mcp/`（v1.4+ 规划） |
+| Desktop | ⬜ 占位 | `apps/desktop/`（规划中，尚未实现） |
+| Packages | 🟡 空壳 | `packages/types/ui/contracts/prompts/py-shared` 目录已建，实际共享代码尚未抽取 |
 
 ## 服务拆分触发条件
 
