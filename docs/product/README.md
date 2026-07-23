@@ -133,13 +133,15 @@ DEVELOPMENT_ROADMAP   ← 12 Phase 开发计划（Phase 0~11）
 
 所有文档均为 **v1.0 草案** 状态，尚未经过正式评审冻结。
 
+> **与代码状态的差距：** 根 `package.json` 与 `apps/web/package.json` 版本已推进至 **v2.0.0**，`docs/product/v2/` 已开始收集 v2 规划（`IDEA.md`），而 `services/api/backend/` 与 `apps/web/src/` 已实现 v1.0 大部分核心功能。产品文档层正在与代码对齐，具体实现状态以 `docs/architecture/REPO_LAYOUT.md` 和代码为准。
+
 | 文档 | 状态 | 说明 |
 |------|------|------|
 | PRD.md | 草案 | 产品需求 + 路线图（v1.1~v1.4） |
 | AGENT_PRD.md | 草案 | Agent 系统产品需求 |
 | TECHNICAL_SPEC.md | 草案 | 技术规格 |
 | AGENT_SPEC.md | 草案 | Agent 系统技术规格 |
-| MVP_SCOPE.md | 草案 | v1.0 实施范围 + 验收标准 |
+| MVP_SCOPE.md | 草案 | v1.0 实施范围 + 验收标准；部分内容已随代码迭代过期，正在修正 |
 
 ---
 
@@ -149,6 +151,7 @@ DEVELOPMENT_ROADMAP   ← 12 Phase 开发计划（Phase 0~11）
 |------|------|------|
 | 架构总览 | `../../architecture/OVERVIEW.md` | Monorepo 运行时架构 |
 | 路径对照 | `../../architecture/PATH_MAPPING.md` | 历史路径 → 现行路径 |
+| 开发进度报告 | `../development/PROGRESS_REPORT.md` | 当前代码实现状态、与文档差距、修改建议 |
 | 审查报告 | `v1/RepoPilot-v1-审查报告-第8轮.md` | 最近一次全面审查（开发者就绪性） |
 | 修复报告 | `v1/RepoPilot-v1-修复报告-第6次.md` | 第 8 轮审查问题修复记录 |
 

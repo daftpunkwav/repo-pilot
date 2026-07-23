@@ -1,8 +1,10 @@
 # RepoPilot v1.0 — MVP 实施规格
 
-> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 状态: 审核通过 - daftpunkwav
+> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 状态: 审核通过 - daftpunkwav（**本文档部分具体声明已随代码迭代过期，正在与代码对齐**）
 > 权威来源: `v1/PRD/PRD.md` (产品需求) · `v1/SPEC/TECHNICAL_SPEC.md` (技术规格)
 > 本文档定义 **v1.0 单版本发布** 的实施范围。所有设计细节以 PRD 和 SPEC 为准，本文档仅标注裁剪决策和扩展预留。
+>
+> ⚠️ **代码实际状态：** 根 `package.json` 与 `apps/web/package.json` 版本为 **v2.0.0**；`services/api/backend/` 与 `apps/web/src/` 已实现 v1.0 大部分核心功能，但部分数据模型、端点、缓存策略与本文档原规划不一致。下文已用标注说明差异。
 >
 > **仓库布局：** Monorepo。文中 `backend/`、`frontend/` 对照 [`docs/architecture/PATH_MAPPING.md`](../../architecture/PATH_MAPPING.md)。UI Mock 阶段以 `docs/design/v1/frontend/` 为准。
 
@@ -12,7 +14,7 @@
 
 v1.0 是 RepoPilot 的**首个完整交付版本**，采用单版本发布策略（不再细分 v0.1~v0.6 子版本，详见 PRD §7.1）。
 
-**v1.0 交付目标：** 让用户能够导入 GitHub Star 项目、手动管理项目库、使用关键词规则分类、查看项目关系图谱、撰写 Markdown 笔记，并通过 6 个专业 Agent（Scout / Mentor / Navigator / Curator / Scribe / Hub）实现深度学习、对比、规划、分类、笔记辅助等高级能力。
+**v1.0 交付目标：** 让用户能够导入 GitHub Star 项目、手动管理项目库、使用关键词规则分类、查看项目关系图谱、撰写 Markdown 笔记，并通过 **7 个 Agent**（Hub + Scout / Mentor / Navigator / Curator / Scribe / Atlas）实现深度学习、对比、规划、分类、笔记辅助、图谱解读等高级能力。
 
 **v1.0 的成功标准：** 一个开发者可以在 10 分钟内完成"注册 → 绑定 GitHub → 导入 Star → 浏览图谱 → 为某个项目写笔记 → 用 Scout 快速概览某个项目"的完整流程；配置 LLM API Key 后可与 Agent 对话。
 
@@ -33,10 +35,10 @@ v1.0 是 RepoPilot 的**首个完整交付版本**，采用单版本发布策略
 | **项目管理** | GitHub Star 批量导入 | §3.2 P0 | 完整实现，调用 GitHub API 拉取 Star 列表 |
 | **项目管理** | 项目搜索 | §3.2 P0 | 按名称模糊搜索 |
 | **项目管理** | 筛选/排序 | §3.2 P0 | 按分类、语言、Star 数、学习进度筛选 |
-| **分类系统** | 预设分类 | §3.5 P0 | 内置 10+ 常用分类 (前端、后端、AI/ML、DevOps、数据库、工具 等) |
+| **分类系统** | 预设分类 | §3.5 P0 | 实际内置 **5 个**预设分类：`前端、后端、AI/ML、DevOps、其他`；更细粒度分类尚未实现 |
 | **分类系统** | 自定义分类 | §3.5 P0 | 用户可增/删/改分类 |
 | **分类系统** | 多标签 | §3.5 P0 | 项目可打多个标签，标签可增/删 |
-| **分类系统** | 关键词规则分类 | §3.3.7 降级 | 基于项目 language + topics + name 的关键词匹配规则，作为 Curator Agent 的降级方案 |
+| **分类系统** | 关键词规则分类 | §3.3.7 降级 | 基于项目 `language` 的降级规则匹配（导入时按语言归入预设分类）；Curator Agent 可进一步提供分类建议 |
 | **笔记系统** | Markdown 笔记 | §3.4 P0 | 每个项目支持创建多篇笔记 |
 | **笔记系统** | MD 实时预览 | §3.4 P0 | 使用 react-markdown + remark-gfm，支持代码高亮 |
 | **可视化** | 项目关系图谱 | §3.6 P0 | 基于 TF-IDF 相似度的力导向图，支持缩放/拖拽/节点点击 |
@@ -49,6 +51,7 @@ v1.0 是 RepoPilot 的**首个完整交付版本**，采用单版本发布策略
 | **Agent 系统** | Navigator 学习规划 | §3.3 P0 | 基于用户画像 + 项目库生成学习路径 |
 | **Agent 系统** | Curator 智能分类 | §3.3 P0 | 关键词规则降级 → v1.0 升级为 LLM 建议分类 |
 | **Agent 系统** | Scribe 笔记助手 | §3.3 P0 | 笔记大纲生成、补充、总结 |
+| **Agent 系统** | Atlas 图谱向导 | §3.3 P0 | 解读知识图谱节点关系、建议探索路径 |
 | **Agent 系统** | 反问面板 | SPEC §8 P0 | 单选/多选/滑动/拖拽/知识地图 5 种反问类型 |
 | **Agent 系统** | 流式输出 (SSE) | §3.3 P0 | 全部 Agent 使用 SSE 流式输出 |
 | **Agent 系统** | 记忆系统 | §3.3 P0 | UserProfile（技术掌握/学习偏好/目标）+ 会话历史压缩 |
@@ -61,7 +64,7 @@ v1.0 是 RepoPilot 的**首个完整交付版本**，采用单版本发布策略
 |------|------|----------|---------|---------|
 | 用户系统 | 文件上传头像 | §3.1 P1 | v1.0 仅支持 URL 头像（GitHub 头像 URL），文件上传需配合存储/安全策略 | v1.1 |
 | 用户系统 | OAuth GitHub 绑定 | §3.1 P0 | OAuth 流程复杂，v1.0 使用 PAT 手动绑定（已在 v1.0 范围） | v1.1 |
-| 项目管理 | JSON 导入 | §3.2 P1 | 批量数据迁移，非核心使用流程（注：JSON **导出** `GET /export` 在 v1.0 实现，见 §4.1） | v1.1 |
+| 项目管理 | JSON 导入/导出 | §3.2 P1 | 批量数据迁移，非核心使用流程；**`GET /export` 尚未实现** | v1.1 |
 | 项目管理 | 列表/卡片双视图 | §3.2 P1 | v1.0 只实现列表视图 | v1.1 |
 | 笔记系统 | 笔记搜索 | §3.4 P1 | v1.0 暂用 LIKE 搜索，v1.1 升级全文搜索 | v1.1 |
 | 笔记系统 | 笔记导出 | §3.4 P2 | 导出为 PDF/Markdown | v1.1 |
@@ -84,24 +87,28 @@ v1.0 是 RepoPilot 的**首个完整交付版本**，采用单版本发布策略
 
 ### 3.1 v1.0 建表清单
 
+> **与代码实际的对齐说明：** 以下列出的是当前代码中真实存在的模型/表。原 SPEC 中规划的独立 `user_github_accounts`、`user_settings`、`graph_cache` 表目前并未独立建表，相关数据以 JSON 字段或运行时计算方式存在。
+
 | 表名 | 建表 | v1.0 写入 | 说明 |
 |------|------|---------|------|
-| `users` | ✅ | ✅ | 完整实现 |
+| `users` | ✅ | ✅ | 完整实现；GitHub 账号信息 (`github_accounts`) 和用户设置 (`settings_json`) 以 JSON 字段存储 |
 | `refresh_tokens` | ✅ | ✅ | 完整实现（SPEC §10.1），存 JWT refresh_token 的 SHA256 哈希，7 天过期，注销/改密时清空 |
-| `user_github_accounts` | ✅ | ✅ | 完整实现（替代原 `users.github_accounts` JSON 方案），详见 §3.3 |
-| `projects` | ✅ | ✅ | 完整实现，**不含** `note` 字段（移除决策见 D-12） |
+| `projects` | ✅ | ✅ | 完整实现；`note` 字段仍保留在模型中，但当前 UI 使用独立 `notes` 表管理笔记 |
 | `tags` | ✅ | ✅ | 完整实现（独立 CRUD 端点见 §4.1 Tags 节） |
 | `project_tags` | ✅ | ✅ | 完整实现 |
-| `categories` | ✅ | ✅ | 完整实现，含预设数据种子（见附录 B） |
+| `categories` | ✅ | ✅ | 完整实现，含 5 个预设分类种子（见附录 B） |
 | `notes` | ✅ | ✅ | 完整实现 |
-| `user_settings` | ✅ | ✅ | 完整实现，新增 `llm_provider`、`llm_model`、`llm_api_base` 字段 (见 §3.2) |
 | `user_profiles` | ✅ | ✅ | 完整实现并写入（v1.0 启用记忆系统） |
-| `agent_sessions` | ✅ | ✅ | 完整实现，6 个 Agent 共用 sessions 表 |
+| `agent_sessions` | ✅ | ✅ | 完整实现，7 个 Agent 共用 sessions 表 |
 | `agent_messages` | ✅ | ✅ | 完整实现，SSE 流式消息持久化 |
 | `project_analyses` | ✅ | ✅ | 完整实现，Scout/Mentor 分析结果缓存 |
-| `graph_cache` | ✅ | ✅ | 完整实现（决策 N-P-01），图谱增量缓存，避免每次重算 TF-IDF |
+| `user_github_accounts` | ⬜ | ⬜ | **尚未独立建表**；当前 GitHub 账号以 `users.github_accounts` JSON 字段存储（v1.1+ 可按 SPEC 拆出） |
+| `user_settings` | ⬜ | ⬜ | **尚未独立建表**；当前设置以 `users.settings_json` JSON 字段存储（v1.1+ 可按 SPEC 拆出） |
+| `graph_cache` | ⬜ | ⬜ | **尚未建表**；当前图谱由 `graph_service.py` 实时计算，无持久化缓存 |
 
 ### 3.2 user_settings 表 LLM 字段
+
+> **当前实现：** 独立的 `user_settings` 表尚未创建，以下字段实际存储在 `users.settings_json` JSON 字段中。
 
 SPEC §2.2 UserSetting 表已定义 `llm_provider`、`llm_model`、`llm_api_base`、`encrypted_api_key` 四个字段。MVP 实现约束：
 
@@ -109,6 +116,8 @@ SPEC §2.2 UserSetting 表已定义 `llm_provider`、`llm_model`、`llm_api_base
 - Settings UI 提供 BYOK 配置面板，用户可填写 provider/model/api_key/api_base 并测试连通性。
 
 ### 3.3 user_github_accounts 表（独立表，决策 N-S-04）
+
+> **当前实现：** 独立的 `user_github_accounts` 表尚未创建，GitHub PAT 仍加密存储在 `users.github_accounts` JSON 字段中。
 
 GitHub PAT 不再存储在 `users.github_accounts` JSON 字段，而是独立的 `user_github_accounts` 表。
 
@@ -162,14 +171,14 @@ GitHub PAT 不再存储在 `users.github_accounts` JSON 字段，而是独立的
 | GET | / | 项目列表 | 支持 search（匹配 name + description）、category、language、progress、tag、sort_by、sort_order、page、page_size 参数 |
 | POST | / | 添加项目 | 校验 URL 格式（**必须 https://github.com/{owner}/{repo}**，N-S-06），UNIQUE(user_id, url) 约束 |
 | POST | /import | 批量导入 | 接收 GitHub repo 列表，**单次最多 500 条**（D-18 统一），返回成功/失败计数（响应结构见下） |
-| GET | /{id} | 项目详情 | 含分类、标签、笔记列表、README（从 `projects.readme` 字段，F5-49 统一字段名） |
+| GET | /{id} | 项目详情 | 含分类、标签、笔记列表；README 通过 `GET /{id}/readme` 按需从 GitHub 拉取，不在 `projects` 表中持久化 |
 | PUT | /{id} | 更新项目 | 支持部分更新 name、description、category_id、tags（**不可更新** id、user_id、url、created_at、updated_at） |
 | DELETE | /{id} | 删除项目 | 级联删除 notes、project_tags、project_analyses |
 | PUT | /{id}/progress | 更新进度 | 枚举值: none / learning / learned / mastered，**默认值 'none'**（D-19） |
 | GET | /stats | 项目统计 | 返回分类分布、语言分布、进度分布的聚合数据 |
-| GET | /export | 导出所有项目 (JSON) | v1.0 实现（非推迟），便于用户数据迁移 |
-| GET | /{project_id}/notes | 获取项目笔记 | 按 updated_at 降序（Notes 路由归属见下方 §Notes 说明） |
-| POST | /{project_id}/notes | 创建笔记 | 标题必填，content 默认空 |
+| GET | /export | 导出所有项目 (JSON) | **尚未实现**（v1.1+ 规划） |
+| GET | /{project_id}/notes | 获取项目笔记 | **实际路径为 `/api/v1/notes/projects/{project_id}/notes`**，按 updated_at 降序 |
+| POST | /{project_id}/notes | 创建笔记 | **实际路径为 `/api/v1/notes/projects/{project_id}/notes`**；标题必填，content 默认空 |
 
 **`POST /import` 响应结构（D-26 补全）：**
 
@@ -211,7 +220,7 @@ GitHub PAT 不再存储在 `users.github_accounts` JSON 字段，而是独立的
 | GET | /{id} | 笔记详情 | 含完整 Markdown content（**修正路径冲突 N-04**：原 `/notes/notes/{id}` 修正为 `/{id}`） |
 | PUT | /{id} | 更新笔记 | 支持部分更新 title / content |
 | DELETE | /{id} | 删除笔记 | 物理删除 |
-| GET | /search | 跨项目搜索笔记 | v1.0 暂用 LIKE 搜索（v1.1 升级全文搜索） |
+| GET | /search | 跨项目搜索笔记 | **尚未实现**（v1.1+ 规划全文搜索） |
 
 #### Graph (`/api/v1/graph`)
 
@@ -231,37 +240,42 @@ GitHub PAT 不再存储在 `users.github_accounts` JSON 字段，而是独立的
 
 #### Agent (`/api/v1/agent`)
 
-v1.0 范围内**完整实现**以下端点（非 501 占位）：
+v1.0 范围内已实现以下端点；带 **×** 的端点在原规划中列出，但当前代码尚未实现：
 
-| 方法 | 路径 | 说明 | 验证 |
+| 方法 | 路径 | 说明 | 状态 |
 |------|------|------|------|
-| POST | /chat | 发送消息，SSE 流式响应 | JWT 必填，速率限制 20 次/分钟/user |
-| POST | /question | 提交反问答案，恢复对话 (SSE) | JWT 必填 |
-| POST | /analyze/{project_id} | 分析指定项目（Scout / Mentor 入口） | 速率限制 10 次/分钟/user |
-| POST | /compare | 对比多个项目（Mentor） | 速率限制 10 次/分钟/user |
-| POST | /classify | 为项目建议分类（Curator） | 速率限制 10 次/分钟/user |
-| POST | /recommend | 推荐相关开源项目（Navigator） | 速率限制 10 次/分钟/user |
-| POST | /note/generate | 为项目生成笔记大纲（Scribe） | 速率限制 10 次/分钟/user |
-| GET | /sessions | 会话列表（分页） | JWT 必填 |
-| GET | /sessions/{id} | 会话详情 + 消息历史 | JWT 必填 |
-| PUT | /sessions/{id} | 更新会话（重命名） | JWT 必填 |
-| DELETE | /sessions/{id} | 删除会话 | JWT 必填 |
-| POST | /sessions/{id}/archive | 归档会话 | JWT 必填 |
-| GET | /config | 获取 Agent 全局配置 | JWT 必填 |
-| PUT | /config | 更新 Agent 全局配置 | JWT 必填 |
-| POST | /config/test | 测试 LLM 连通性 | 速率限制 5 次/分钟/user |
-| GET | /permissions | 获取 Agent 权限配置 | JWT 必填（决策 N-06 补全） |
-| PUT | /permissions | 更新 Agent 权限配置 | JWT 必填（决策 N-06 补全） |
-| GET | /profiles | 获取所有 Agent 定义 | JWT 必填 |
-| GET | /profiles/{agent_id} | 获取单个 Agent 完整配置 | JWT 必填 |
-| PUT | /profiles/{agent_id}/soul | 更新 Agent 性格 (SOUL.md) | JWT 必填 |
-| PUT | /profiles/{agent_id}/agent | 更新 Agent 行为规范 (AGENT.md) | JWT 必填 |
-| GET | /user-profile | 获取当前用户画像 | JWT 必填 |
-| PUT | /user-profile | 更新用户画像 | JWT 必填 |
+| POST | /chat | 发送消息，SSE 流式响应 | ✅ 已实现（`POST /sessions/{id}/chat` 为推荐入口） |
+| POST | /question | 提交反问答案，恢复对话 (SSE) | ✅ 已实现 |
+| POST | /analyze/{project_id} | 分析指定项目（Scout / Mentor 入口） | ✅ 已实现 |
+| POST | /compare | 对比多个项目（Mentor） | **× 尚未实现** |
+| POST | /classify | 为项目建议分类（Curator） | ✅ 已实现 |
+| POST | /recommend | 推荐相关开源项目（Navigator） | **× 尚未实现** |
+| POST | /note/generate | 为项目生成笔记大纲（Scribe） | ✅ 已实现 |
+| POST | /import-assist | 导入助手（Curator） | ✅ 已实现 |
+| POST | /graph-guide | 图谱向导（Atlas） | ✅ 已实现 |
+| POST | /trending-scout | GitHub Trending 速览（Scout） | ✅ 已实现 |
+| GET | /context-window | 获取当前会话上下文窗口统计 | ✅ 已实现 |
+| GET | /sessions | 会话列表 | ✅ 已实现 |
+| POST | /sessions | 创建会话 | ✅ 已实现 |
+| GET | /sessions/{id} | 会话详情 + 消息历史 | ✅ 已实现 |
+| PATCH | /sessions/{id} | 更新会话（重命名 / 绑定项目 / 切换活跃 Agent） | ✅ 已实现 |
+| DELETE | /sessions/{id} | 删除会话 | ✅ 已实现 |
+| POST | /sessions/{id}/archive | 归档会话 | **× 尚未实现** |
+| GET | /config | 获取 Agent 全局配置 | **× 尚未实现** |
+| PUT | /config | 更新 Agent 全局配置 | **× 尚未实现** |
+| POST | /config/test | 测试 LLM 连通性 | **× 尚未实现**（LLM 测试使用 `/api/v1/settings/test-llm`） |
+| GET | /permissions | 获取 Agent 权限配置 | ✅ 已实现 |
+| PATCH | /permissions | 更新 Agent 权限配置 | ✅ 已实现 |
+| GET | /profiles | 获取所有 Agent 定义 | ✅ 已实现 |
+| GET | /profiles/{agent_id} | 获取单个 Agent 完整配置 | **× 尚未实现** |
+| PUT | /profiles/{agent_id}/soul | 更新 Agent 性格 (SOUL.md) | **× 尚未实现** |
+| PUT | /profiles/{agent_id}/agent | 更新 Agent 行为规范 (AGENT.md) | **× 尚未实现** |
+| GET | /user-profile | 获取当前用户画像 | **× 尚未实现**（用户画像使用 `/api/v1/user/profile`） |
+| PUT | /user-profile | 更新用户画像 | **× 尚未实现**（用户画像使用 `PATCH /api/v1/user/profile`） |
 
-### 4.2 不再使用 501 占位
+### 4.2 501 占位与未实现端点
 
-由于 v1.0 是单版本完整发布，**所有 §4.1 列出的端点在 v1.0 范围内必须完整实现**。删除"501 占位端点"列表。
+v1.0 原计划是单版本完整发布，但实际开发中部分端点尚未实现（见 §4.1 中 **×** 标记）。这些端点目前不存在或返回 501/404，计划在 v1.1+ 补全。
 
 ---
 
@@ -279,12 +293,12 @@ v1.0 范围内**完整实现**以下端点（非 501 占位）：
 | /register | RegisterPage | 注册表单，密码强度提示（≥ 8 字符 + 字母数字），注册成功自动登录 |
 | / | OverviewPage | **总览页**：产品简介、库统计、学习进度分布、最近活动、GitHub 热门项目（Mock）、快捷入口（导入/项目库/图谱/Agent） |
 | /projects | ProjectsPage | **项目库**：表格视图（v1.0 不做卡片双视图，见 §2.2），搜索栏，筛选 (分类/语言/进度/标签)，分页；**导入：① GitHub Star 抽屉（已绑定 GitHub 时）② URL 批量粘贴 Modal**（D-14）；无独立导入路由 |
-| /projects/:id | ProjectDetailPage | 项目基础信息卡片，README 查看器（从 `projects.readme` 字段渲染，详见 §8.4），笔记面板 (列表+编辑器+预览)，学习进度选择器，**Scout 快速分析按钮** |
+| /projects/:id | ProjectDetailPage | 项目基础信息卡片，README 查看器（通过 `/api/v1/projects/{id}/readme` 按需拉取，详见 §8.4），笔记面板 (列表+编辑器+预览)，学习进度选择器，**Scout 快速分析按钮** |
 | /graph | GraphPage | D3.js 力导向图，节点可点击跳转详情，支持缩放/拖拽/搜索高亮 |
 | /notes | NotesPage | 跨项目笔记列表 + 搜索（v1.0 客户端过滤）+ 编辑/预览 |
 | /settings | SettingsPage | **应用设置**：主题、字体缩放 (0.8–1.5)、GitHub 绑定、LLM BYOK、数据导出 |
 | /profile | ProfilePage | **个人资料**（Topbar 入口）：头像 URL、用户 ID（只读）、改密、账号信息展示 |
-| /agent | AgentPage | Agent 对话页面（v1.0 完整版，含反问面板、SSE 流式渲染、6 个 Agent 切换），见 AGENT_SPEC §8 |
+| /agent | AgentPage | Agent 对话页面（v1.0 已实现核心版，含反问面板、SSE 流式渲染、7 个 Agent 切换），见 AGENT_SPEC §8 |
 
 ### 5.2 v1.0 不实现的页面（推迟到 v1.1+）
 
@@ -346,6 +360,8 @@ v1.0 范围内**完整实现**以下端点（非 501 占位）：
 | E2E 测试 | 核心用户流程 (注册→导入→图谱→笔记→Agent 对话) | 5 条 happy path | Playwright |
 
 ### 6.3 数据库迁移
+
+> **当前实现：** Alembic 已列在依赖中，但尚未启用。当前使用 SQLAlchemy `metadata.create_all()` + `services/api/backend/migrations/schema_sync.py` 进行列补齐，无 `alembic/versions/` 迁移文件。
 
 使用 Alembic 管理 Schema 迁移。MVP 为初始迁移 (migration `001_initial`)，包含所有 §3.1 中"建表"的表。Agent 相关表（agent_sessions / agent_messages / project_analyses / user_profiles）在 v1.0 完整写入（§3.1 已标记 ✅），初始迁移必须包含全部表结构。
 
@@ -460,16 +476,16 @@ ERROR_CODES = {
 
 ## 7. 扩展预留清单（v1.0 → v1.4+）
 
-> **重要变更：** 由于 v1.0 是单版本完整发布，§7.1 后端预留中的 **AgentRegistry、ToolRegistry、MemoryService、Agent API 路由** 都不再是"预留"——它们必须在 v1.0 完整实现。本节仅列出推迟到 v1.1+ 的扩展点。
+> **与代码实际的对齐说明：** AgentRegistry、ToolRegistry、MemoryService、ReActEngine、HubService、SSE 流式输出、反问交互等核心模块已在 `services/api/backend/` 实现，但实现形态与 SPEC 中的目录/工具命名存在差异（如 Agent 配置集中在 `registry.py`，工具清单见 `tools/builtin.py`）。NotificationService / MCPToolAdapter 抽象接口尚未实现。
 
 ### 7.1 v1.0 必须实现的接口（v1.0 范围，非预留）
 
 | 接口 | 实现要求 | 验证方式 |
 |------|---------|---------|
 | **LLMProvider** | 完整实现 `complete()` 和 `test_connection()`，v1.0 启用 LiteLLM（决策 D-11：v1.0 完整实现含 `complete()`） | 单元测试覆盖 `complete()` 的 mock 调用，集成测试覆盖 `test_connection()` |
-| **AgentRegistry** | 完整实现 SPEC §2.1 的 `AgentDefinition` 和 `AgentRegistry`。`services/api/backend/agents/` 目录结构就位 (scout/mentor/navigator/curator/scribe/hub 六个子目录，含 AGENT.md/SOUL.md/system_prompt.j2/config.yaml) | AgentRegistry 扫描目录并加载 6 个 Agent 配置 |
-| **ToolRegistry** | 完整实现 SPEC §4.2 的 `ToolDefinition` 和 `ToolRegistry`。注册全部 14 个工具（详见 §7.4） | 单元测试覆盖注册和执行 |
-| **CapabilityDetector** | 完整实现 SPEC §5.3，`has_llm` 根据 user_settings 表判断 | 单元测试覆盖有/无 Key 两种场景 |
+| **AgentRegistry** | `AgentDefinition` 与 `AgentRegistry` 已在 `services/api/backend/agents/registry.py` 实现，注册 **7 个 Agent**（含 Atlas）。SPEC 中按子目录 + AGENT.md/SOUL.md/system_prompt.j2/config.yaml 组织的文件结构尚未落地 | AgentRegistry 单元测试覆盖 7 个 Agent 加载 |
+| **ToolRegistry** | `ToolDefinition` 与 `ToolRegistry` 已在 `services/api/backend/tools/registry.py` 实现。当前 `tools/builtin.py` 注册了 **15 个内置工具**，名称与 §7.4 的工具清单不完全一致（如 `fetch_github_repo`、`fetch_readme`、`select_import_repos` 等） | 单元测试覆盖注册和执行 |
+| **CapabilityDetector** | SPEC §5.3 中的独立 `CapabilityDetector` 尚未实现；当前 `has_llm` 能力判断由 `backend/llm/config.py` 中的 `build_llm_config_from_user()` 完成 | 单元/集成测试覆盖有/无 Key 两种场景 |
 | **MemoryService** | 完整实现 `get_user_profile()`、`save_session()`、`recall()` 等 | 集成测试覆盖用户画像读写 |
 | **ReActEngine** | 完整实现 AGENT_SPEC §4.1 的 ReAct 执行循环（§4.4 为无 Function Calling 降级模式） | 单元测试覆盖单步推理 + 工具调用 |
 | **HubService** | 完整实现 Hub 路由 + IntentClassifier | 集成测试覆盖意图分类 |
@@ -497,7 +513,9 @@ ERROR_CODES = {
 | 移动端适配 | v1.0 仅桌面端 | v1.4 |
 | Web 端独立部署 | 桌面壳架构改动大 | v1.4 |
 
-### 7.4 工具注册清单（v1.0 完整实现）
+### 7.4 工具注册清单（v1.0 规划清单）
+
+> **当前实现：** 实际注册的工具见 `services/api/backend/tools/builtin.py`，共 15 个，命名与权限白名单与本表存在差异（例如 `read_readme` 实际为 `fetch_readme`，`search_web` 尚未实现等）。本表保留为规划参考。
 
 | 工具名 | 用途 | 允许 Agent |
 |--------|------|-----------|
@@ -522,11 +540,12 @@ ERROR_CODES = {
 
 ### 8.1 分类规则的降级设计
 
-MVP 的分类系统使用纯代码关键词匹配规则，这是 Curator Agent 的降级方案 (PRD §3.3.7)。实现时必须保证：
+MVP 的分类降级规则当前按项目 `language` 映射到 5 个预设分类（见 `services/api/backend/services/project_service.py`）。这是 Curator Agent 的降级方案 (PRD §3.3.7)。实现时必须保证：
 
 1. 规则定义为声明式数据结构 (字典/列表)，不是硬编码的 if-else，方便后续替换为 AI 分类
 2. 规则匹配函数签名与未来 Curator Agent 的分类接口一致：`async def classify(project: Project) -> ClassifyResult`
 3. `ClassifyResult` 包含 `category` (分类名)、`confidence` (置信度 0-1)、`tags` (建议标签列表)、`source` ("rule" / "ai")
+4. **当前实现仅按 `language` 匹配，未使用 `topics` 与 `name` 关键词；更复杂的规则引擎尚未实现**
 
 ```python
 # 示例 — 规则定义格式
@@ -545,29 +564,33 @@ CLASSIFY_RULES = {
 
 ### 8.2 图谱 TF-IDF 计算
 
-图谱相似度基于项目 description + language + tags 的 TF-IDF 向量余弦相似度。实现要求：
+图谱相似度基于项目 description + language + tags 的 TF-IDF 向量余弦相似度，并叠加语言、分类、名称 token 重叠等多信号。实现要求：
 
 1. 使用 scikit-learn 的 `TfidfVectorizer`，不引入额外 NLP 依赖
 2. 相似度计算封装在 `GraphService` 中，函数签名：`def compute_graph(projects, min_similarity=0.1) -> GraphData`
 3. `GraphData` 结构：`{ "nodes": [...], "edges": [...] }`，与 SPEC §3.2 Graph API 响应格式一致
-4. 计算结果可缓存，项目数据变化时失效
+4. **当前实现为实时计算，无 `graph_cache` 持久化缓存；缓存策略尚未实现**
 
 ### 8.3 GitHub API 调用
+
+> **当前实现：** PAT 仍加密存储在 `users.github_accounts` JSON 字段中，独立表 `user_github_accounts` 尚未实现。
 
 1. 所有 GitHub API 调用封装在 `GitHubService` 中，不直接在路由层调用 httpx
 2. 统一错误处理：网络超时、401 (Token 无效)、403 (速率限制)、404 都要有明确的错误码和用户提示
 3. Star 列表拉取支持分页 (GitHub API 默认每页 30 条)，批量导入时自动翻页
-4. **PAT 存储：使用独立表 `user_github_accounts`（决策 N-S-04），加密方案与 `encrypted_api_key` 一致（Fernet）**
+4. **PAT 存储规划：使用独立表 `user_github_accounts`（决策 N-S-04），加密方案与 `encrypted_api_key` 一致（Fernet）；当前尚未独立建表**
 
 ### 8.4 项目 README 渲染策略（决策 D-13）
 
 | 方案 | 描述 | 选择 |
 |------|------|-----|
-| (a) 实时调 GitHub API | 每次打开详情页都调用 | ❌ 消耗 GitHub 5000 次/小时速率限制 |
-| (b) 导入时预存 README 全文 | 存到 `projects.readme` 字段（决策 D-13） | ✅ |
-| (c) 缓存策略 | 首次拉取后缓存，TTL 1 小时异步刷新（决策 C-07 补全） | ✅ |
+| (a) 实时调 GitHub API | 每次打开详情页都调用 | ✅ 当前实现 |
+| (b) 导入时预存 README 全文 | 存到 `projects.readme` 字段（决策 D-13） | ⬜ 尚未实现 |
+| (c) 缓存策略 | 首次拉取后缓存，TTL 1 小时异步刷新（决策 C-07 补全） | ⬜ 尚未实现 |
 
-**实施方案 (b) + (c)：**
+> **当前实现：** `projects` 表未设 `readme` 字段。项目详情页通过 `GET /api/v1/projects/{id}/readme` 按需调用 GitHub API 拉取 README，不持久化到数据库。
+
+**原规划方案 (b) + (c)（尚未实现）：**
 
 - `projects` 表新增字段：
   - `readme TEXT NULLABLE` — README Markdown 全文
@@ -590,7 +613,7 @@ CLASSIFY_RULES = {
 
 ### 8.6 预设分类种子数据注入（决策 D-17）
 
-- **注入时机：** Alembic data migration `002_preset_categories`，仅在 `categories` 表为空时执行
+- **注入时机：** 当前由 `services/api/backend/services/seed_service.py` 在应用启动时注入；原规划的 Alembic data migration `002_preset_categories` 尚未实现
 - **`user_id`：** `NULL`（所有用户共享预设分类）
 - **`is_preset`：** `true`
 - **升级时：** 幂等检查（`SELECT COUNT(*) FROM categories WHERE is_preset=true`，> 0 则跳过）
@@ -618,9 +641,9 @@ CLASSIFY_RULES = {
 | AC-05 | 重复 URL 检测 | 添加已存在的 URL → 返回错误提示 "该项目 URL 已存在" |
 | AC-06 | 绑定 GitHub | 填写 GitHub 用户名 + PAT → 验证连通 → **检查 X-OAuth-Scopes 响应头，拒绝超出 read:user + repo 范围的 PAT**（决策 S-03） → 绑定成功（v1.0 限 1 个账号） |
 | AC-07 | Star 导入 | 绑定 GitHub 后 → 拉取 Star 列表 → 一键批量导入（单次 ≤ 500 条）→ 项目出现在列表中 |
-| AC-08 | 自动分类 | 导入项目后 → 系统根据关键词规则自动分配分类和标签 |
+| AC-08 | 自动分类 | 导入项目后 → 系统根据 `language` 降级规则自动分配分类；**标签自动分配尚未实现** |
 | AC-09 | 搜索筛选 | 输入关键词搜索（匹配 name + description）→ 结果正确；选择分类/语言/进度/标签筛选 → 结果正确 |
-| AC-10 | 项目详情 | 点击项目 → 查看基本信息 + GitHub README 渲染（来自 projects.readme 字段） |
+| AC-10 | 项目详情 | 点击项目 → 查看基本信息 + GitHub README 渲染（通过 `/api/v1/projects/{id}/readme` 实时拉取） |
 | AC-11 | 笔记 CRUD | 创建笔记 → 编辑 Markdown → 实时预览 → 删除笔记 |
 | AC-12 | 图谱展示 | 打开图谱页 → 节点渲染 → 相似项目有连线 → 可缩放拖拽 → 点击节点跳转详情 |
 | AC-13 | 设置保存 | 切换主题 → 立即生效；调整字体缩放 → 立即生效；配置 LLM → 测试连通 |
@@ -683,6 +706,8 @@ CLASSIFY_RULES = {
 
 ## 10. 开发顺序
 
+> **当前状态：** 以下顺序是 v1.0 发布前的建议开发计划。实际开发已跨越这些阶段，实现形态与规划存在差异（如 Agent 配置未按子目录组织、未启用 Alembic、未建 `graph_cache` 表等）。本节保留为历史规划参考。
+
 v1.0 单版本完整发布的建议开发顺序（不含时间预估）。每个顺序对应一次 PR/迭代：
 
 | 顺序 | 模块 | 内容 | 验收 |
@@ -692,7 +717,7 @@ v1.0 单版本完整发布的建议开发顺序（不含时间预估）。每个
 | 3 | GitHub 集成 | GitHubService + `user_github_accounts` 表 + Star 拉取 + 批量导入（≤ 500 条/次）+ PAT 加密存储；前端绑定 GitHub UI + 导入流程 | AC-06, AC-07 通过 |
 | 4 | 笔记 + 图谱 | Note CRUD（修正路径冲突 N-04）+ Markdown 预览（react-markdown + remark-gfm）；GraphService (TF-IDF, sparse 矩阵, **graph_cache 表** N-P-01) + D3.js 图谱组件 | AC-11, AC-12 通过 |
 | 5 | 设置 + LLM | Settings 完整 (主题/缩放/LLM BYOK 配置)；LLMProvider（LiteLLM，完整实现 `complete()` 和 `test_connection()`，决策 D-11） | AC-13 通过 |
-| 6 | Agent 核心 | AgentRegistry + ToolRegistry（含 14 个工具注册） + ReActEngine + HubService + IntentClassifier + 6 个 Agent 配置文件（scout/mentor/navigator/curator/scribe/hub） | Agent 单元测试通过 |
+| 6 | Agent 核心 | AgentRegistry + ToolRegistry + ReActEngine + HubService + IntentClassifier + **7 个 Agent**（scout/mentor/navigator/curator/scribe/hub/atlas）；SPEC 中按子目录 + 配置文件组织的形态尚未落地 | Agent 单元测试通过 |
 | 7 | Agent API + SSE | 全部 `/agent/*` 端点实现（含反问、对比、分类、推荐、笔记生成）；SSE 流式输出（N-P-12 反压）；PromptGuard 注入检测（N-S-12） + System Prompt 分隔符（N-S-13） | AC-19 通过 |
 | 8 | Agent 前端 | AgentPage + ChatPanel + MessageBubble + QuestionRenderer（5 种反问组件）+ SSE Hook；agentStore 完整实现 | AC-18, AC-19 通过 |
 | 9 | 记忆系统 | MemoryService + UserProfile CRUD + UserProfileStore + ProjectMemoryStore + SessionStore + HistoryCompressor（N-P-11 不用 NLP 库） | AC-20 通过 |
@@ -712,19 +737,17 @@ Based on v1 PRD / SPEC / MVP_SCOPE
 
 ## 附录 B: 预设分类种子数据
 
+> **当前实现：** 实际注入的分类为 5 个，与 SPEC 中更细粒度的 12 个分类不同。
+
 ```python
 PRESET_CATEGORIES = [
-    {"name": "Web 前端", "icon": "layout", "color": "#61dafb"},
-    {"name": "Web 后端", "icon": "server", "color": "#68a063"},
-    {"name": "AI / 机器学习", "icon": "brain", "color": "#ff6f61"},
-    {"name": "数据科学", "icon": "bar-chart", "color": "#f7df1e"},
-    {"name": "DevOps / 运维", "icon": "cloud", "color": "#ff9900"},
-    {"name": "移动开发", "icon": "smartphone", "color": "#3ddc84"},
-    {"name": "桌面应用", "icon": "monitor", "color": "#0078d4"},
-    {"name": "游戏开发", "icon": "gamepad", "color": "#e60012"},
-    {"name": "安全", "icon": "shield", "color": "#ff4081"},
-    {"name": "工具 / 库", "icon": "wrench", "color": "#9e9e9e"},
-    {"name": "学习资源", "icon": "book", "color": "#8bc34a"},
-    {"name": "其他", "icon": "folder", "color": "#607d8b"},
+    {"name": "前端", "icon": "🎨", "color": "#3b82f6"},
+    {"name": "后端", "icon": "⚙️", "color": "#10b981"},
+    {"name": "AI/ML", "icon": "🤖", "color": "#8b5cf6"},
+    {"name": "DevOps", "icon": "🔧", "color": "#f59e0b"},
+    {"name": "其他", "icon": "📦", "color": "#6b7280"},
 ]
+```
+
+更细粒度的分类（如数据科学、移动开发、游戏开发、安全、工具/库、学习资源等）尚未实现。
 ```

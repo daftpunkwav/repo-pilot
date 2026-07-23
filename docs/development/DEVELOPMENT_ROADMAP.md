@@ -1,6 +1,9 @@
 # RepoPilot v1.0 — 开发路线图 (Development Roadmap)
 
 > 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 状态: 草案
+>
+> ⚠️ **与代码实际进度脱节的说明：** 本文档是 v1.0 发布前的计划草案，列出了预期的 Phase、任务清单与估算工时。实际开发已大幅推进（`apps/web`、`services/api` 及 Agent 运行时均已实现），但本文档中的任务清单未随代码更新，各 Phase 复选框仍为未勾选状态。如需了解当前实现，请参考 `docs/architecture/REPO_LAYOUT.md` 和代码本身。
+>
 > 权威来源: `v1/PRD/PRD.md` (产品需求) · `v1/SPEC/TECHNICAL_SPEC.md` (技术规格) · `v1/MVP/MVP_SCOPE.md` (实施范围)
 >
 > **仓库布局：** Monorepo。下文任务清单中的 `backend/`、`frontend/` 路径见 [`docs/architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)（API → `services/api/backend/`，正式 Web → `apps/web/`，**当前 Mock UI → `docs/design/v1/frontend/`**）。
