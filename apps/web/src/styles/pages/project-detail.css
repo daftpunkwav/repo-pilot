@@ -13,6 +13,7 @@
       max-height: calc(100vh - 88px);
       overflow-y: auto;
       overscroll-behavior: contain;
+      min-width: 0;
     }
 
     /* ---------- Hero ---------- */
@@ -296,6 +297,29 @@
 /* ---------- 玻璃面板内边距（替代原 .card padding） ---------- */
 .pd-side .glass-card {
   padding: 20px;
+  /* 防止侧栏空间不足时被压缩导致内容裁剪；超出时由 .pd-side 整体滚动 */
+  flex-shrink: 0;
+}
+
+/* 内容区独立滚动：信息过多时卡片内部出现滑动框，避免被整体裁剪；
+   max-height 取较大值，尽量让卡片完整显示内容 */
+.pd-side .pd-info-list,
+.pd-side .pd-agent-grid,
+.pd-side .pd-note-list,
+.pd-side .pd-related-list {
+  max-height: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 1100px) {
+  .pd-side .pd-info-list,
+  .pd-side .pd-agent-grid,
+  .pd-side .pd-note-list,
+  .pd-side .pd-related-list {
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 .pd-shell > .pd-main > .glass-card:not(.pd-hero):not(.pd-progress):not(.pd-notes-panel):not(.pd-readme) {
   padding: 16px 20px;
