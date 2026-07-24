@@ -286,6 +286,11 @@
 .pd-side .glass-card {
   padding: 20px;
 }
+
+/* 侧栏卡片标题不换行，避免「项目信息」等被挤压成两行 */
+.pd-side .card-title {
+  white-space: nowrap;
+}
 .pd-shell > .pd-main > .glass-card:not(.pd-hero):not(.pd-progress):not(.pd-notes-panel):not(.pd-readme) {
   padding: 16px 20px;
 }
