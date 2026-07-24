@@ -577,7 +577,9 @@ export function ProjectDetailPage() {
         <div className={OVERVIEW_OUTER_GLASS}>
           <div className="card-header" style={{ marginBottom: 12 }}>
             <div className="card-title">项目信息</div>
-            <span className="card-subtitle">#{project.id}</span>
+            <span className="card-subtitle mono" title={project.id} style={{ fontSize: 11 }}>
+              #{project.id.slice(0, 8)}
+            </span>
           </div>
           <div className="pd-info-list">
             <div className="pd-info-row">
