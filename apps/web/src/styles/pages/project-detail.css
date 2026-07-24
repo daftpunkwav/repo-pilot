@@ -10,9 +10,6 @@
       position: sticky;
       top: 72px;
       align-self: start;
-      max-height: calc(100vh - 88px);
-      overflow-y: auto;
-      overscroll-behavior: contain;
       min-width: 0;
     }
 
@@ -272,15 +269,6 @@
       color: var(--brand-600, #0066d6);
     }
 
-    /* ---------- 右侧栏：笔记列表 ---------- */
-    .pd-note-list { display: flex; flex-direction: column; gap: 8px; }
-    .pd-note { padding: 10px 12px; background: var(--bg-100); border: 1px solid var(--bg-300); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.18s var(--ease); }
-    .pd-note:hover { background: var(--bg-50); border-color: var(--brand-300); }
-    .pd-note-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; line-height: 1.4; }
-    .pd-note-meta { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--text-500); margin-bottom: 4px; }
-    .pd-note-meta svg { width: 12px; height: 12px; }
-    .pd-note-summary { font-size: 12px; color: var(--text-500); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-
     /* ---------- 右侧栏：关联项目 ---------- */
     .pd-related-list { display: flex; flex-direction: column; gap: 8px; }
     .pd-related-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); transition: background 0.15s; cursor: pointer; }
@@ -297,29 +285,6 @@
 /* ---------- 玻璃面板内边距（替代原 .card padding） ---------- */
 .pd-side .glass-card {
   padding: 20px;
-  /* 防止侧栏空间不足时被压缩导致内容裁剪；超出时由 .pd-side 整体滚动 */
-  flex-shrink: 0;
-}
-
-/* 内容区独立滚动：信息过多时卡片内部出现滑动框，避免被整体裁剪；
-   max-height 取较大值，尽量让卡片完整显示内容 */
-.pd-side .pd-info-list,
-.pd-side .pd-agent-grid,
-.pd-side .pd-note-list,
-.pd-side .pd-related-list {
-  max-height: 60vh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-@media (max-width: 1100px) {
-  .pd-side .pd-info-list,
-  .pd-side .pd-agent-grid,
-  .pd-side .pd-note-list,
-  .pd-side .pd-related-list {
-    max-height: none;
-    overflow-y: visible;
-  }
 }
 .pd-shell > .pd-main > .glass-card:not(.pd-hero):not(.pd-progress):not(.pd-notes-panel):not(.pd-readme) {
   padding: 16px 20px;
@@ -426,13 +391,6 @@
   border-color: rgba(255, 255, 255, 0.1);
 }
 [data-theme='dark'] .pd-agent:hover {
-  background: rgba(255, 255, 255, 0.08);
-}
-[data-theme='dark'] .pd-note {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-[data-theme='dark'] .pd-note:hover {
   background: rgba(255, 255, 255, 0.08);
 }
 [data-theme='dark'] .pd-readme,
