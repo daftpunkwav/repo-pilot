@@ -2,15 +2,20 @@
 /* ---------- 详情页外壳：左主区 + 右栏 ---------- */
     .pd-shell { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
     .pd-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
-    /* sticky 侧栏：避免左侧流式增高时侧栏随文档流重排产生抖动 */
+    /* sticky 右侧信息栏：一屏等高，上下留白对称（对齐 .content padding 32px） */
     .pd-side {
+      --pd-side-inset: 32px;
       display: flex;
       flex-direction: column;
       gap: 16px;
       position: sticky;
-      top: 72px;
+      top: calc(var(--topbar-h) + var(--pd-side-inset));
       align-self: start;
       min-width: 0;
+      height: calc(100vh - var(--topbar-h) - 2 * var(--pd-side-inset));
+      max-height: calc(100vh - var(--topbar-h) - 2 * var(--pd-side-inset));
+      overflow: hidden;
+      box-sizing: border-box;
     }
 
     /* ---------- Hero ---------- */
@@ -128,16 +133,25 @@
     .pd-readme-body { padding: 24px 28px; }
     .pd-readme .markdown { font-size: 14px; }
 
-    /* AI 分析区 · EmbedAgentChat 对话壳 + 消息流 */
+    /* AI 分析区：随内容增高，不设 max-height，由页面整体滚动 */
     .pd-ai-panel {
       display: flex;
       flex-direction: column;
       min-height: 360px;
-      max-height: min(78vh, 860px);
-      overflow: hidden;
+      max-height: none;
+      height: auto;
+      overflow: visible;
     }
     .pd-ai-panel.embed-agent-chat {
       height: auto;
+      min-height: 360px;
+    }
+    .pd-ai-panel .embed-agent-chat__messages,
+    .pd-ai-chat-messages {
+      flex: 0 0 auto;
+      min-height: 0;
+      overflow: visible;
+      overscroll-behavior: auto;
     }
     .pd-ai-chat-head {
       flex-wrap: wrap;
@@ -178,11 +192,6 @@
       color: var(--brand-700, #004fad);
     }
     .pd-ai-chip:disabled { opacity: 0.55; cursor: not-allowed; }
-    .pd-ai-chat-messages {
-      flex: 1 1 auto;
-      min-height: 0;
-      overscroll-behavior: contain;
-    }
     .pd-ai-chat-actions {
       align-items: center;
       gap: 12px;
@@ -352,12 +361,54 @@
 
     @media (max-width: 1100px) {
       .pd-shell { grid-template-columns: 1fr; }
-      .pd-side { position: static; }
+      .pd-side {
+        position: static;
+        height: auto;
+        max-height: none;
+        overflow: visible;
+      }
+      .pd-side > .glass-card {
+        flex: none;
+        overflow: visible;
+      }
+      .pd-side .pd-agent-grid {
+        flex: none;
+        grid-auto-rows: auto;
+      }
     }
 
 /* ---------- 玻璃面板内边距（替代原 .card padding） ---------- */
 .pd-side .glass-card {
   padding: 20px;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.pd-side .card-header {
+  flex-shrink: 0;
+}
+.pd-side .pd-info-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.pd-side .pd-info-actions {
+  flex-shrink: 0;
+  margin-top: auto;
+}
+.pd-side .pd-agent-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  grid-auto-rows: 1fr;
+  align-content: stretch;
+}
+.pd-side .pd-agent {
+  min-height: 0;
+  height: 100%;
 }
 
 /* 侧栏卡片标题不换行，避免「项目信息」等被挤压成两行 */
