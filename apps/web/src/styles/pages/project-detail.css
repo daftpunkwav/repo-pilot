@@ -241,12 +241,13 @@
       background: var(--bg-100);
       border: 1px solid var(--bg-300);
       display: flex;
-      flex-direction: column;
-      gap: 4px;
-      align-items: flex-start;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
       transition: all 0.18s var(--ease);
       cursor: pointer;
       min-height: 0;
+      text-align: left;
     }
     .pd-agent:hover {
       background: var(--bg-50);
@@ -258,6 +259,14 @@
       border-color: rgba(0, 122, 255, 0.45);
       background: linear-gradient(135deg, rgba(0, 122, 255, 0.1), var(--bg-50));
       box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.12);
+    }
+    .pd-agent-body {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
     }
     .pd-agent-icon {
       width: 24px;
@@ -275,29 +284,62 @@
       font-size: 10.5px;
       color: var(--text-500);
       line-height: 1.35;
-      flex: 1;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
+    /* 右侧紧凑操作按钮 */
     .pd-agent-call {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      height: 22px;
+      gap: 3px;
+      flex-shrink: 0;
+      height: 26px;
       padding: 0 10px;
+      box-sizing: border-box;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+      border-radius: var(--radius-pill);
+      background: rgba(0, 122, 255, 0.08);
+      border: 1px solid rgba(0, 122, 255, 0.18);
+      color: var(--brand-600, #0066d6);
+      transition:
+        background 0.15s var(--ease),
+        border-color 0.15s var(--ease),
+        color 0.15s var(--ease);
+    }
+    .pd-agent-call::after {
+      content: '→';
       font-size: 11px;
       font-weight: 600;
-      border-radius: var(--radius-pill);
-      background: rgba(255, 255, 255, 0.55);
-      border: 1px solid rgba(0, 0, 0, 0.08);
-      color: var(--text-700);
-      margin-top: 2px;
+      opacity: 0.65;
+      transition: transform 0.15s var(--ease), opacity 0.15s var(--ease);
     }
-    .pd-agent:hover .pd-agent-call {
-      border-color: rgba(0, 122, 255, 0.28);
-      color: var(--brand-600, #0066d6);
+    .pd-agent-call.is-busy {
+      color: var(--text-500);
+      background: rgba(0, 0, 0, 0.04);
+      border-color: rgba(0, 0, 0, 0.08);
+    }
+    .pd-agent-call.is-busy::after {
+      content: none;
+    }
+    .pd-agent:hover .pd-agent-call:not(.is-busy) {
+      background: rgba(0, 122, 255, 0.14);
+      border-color: rgba(0, 122, 255, 0.32);
+      color: var(--brand-700, #004fad);
+    }
+    .pd-agent:hover .pd-agent-call:not(.is-busy)::after {
+      transform: translateX(2px);
+      opacity: 1;
+    }
+    .pd-agent.is-active .pd-agent-call:not(.is-busy),
+    .pd-agent.recommended .pd-agent-call:not(.is-busy) {
+      background: rgba(0, 122, 255, 0.16);
+      border-color: rgba(0, 122, 255, 0.36);
     }
 
     /* ---------- 右侧栏：关联项目 ---------- */
@@ -418,9 +460,24 @@
   box-shadow: 0 0 0 1px rgba(10, 132, 255, 0.16);
 }
 [data-theme='dark'] .pd-agent-call {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.12);
-  color: var(--text-700);
+  background: rgba(10, 132, 255, 0.14);
+  border-color: rgba(10, 132, 255, 0.28);
+  color: #64d2ff;
+}
+[data-theme='dark'] .pd-agent-call.is-busy {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-500);
+}
+[data-theme='dark'] .pd-agent:hover .pd-agent-call:not(.is-busy) {
+  background: rgba(10, 132, 255, 0.22);
+  border-color: rgba(10, 132, 255, 0.42);
+  color: #7adcff;
+}
+[data-theme='dark'] .pd-agent.is-active .pd-agent-call:not(.is-busy),
+[data-theme='dark'] .pd-agent.recommended .pd-agent-call:not(.is-busy) {
+  background: rgba(10, 132, 255, 0.24);
+  border-color: rgba(10, 132, 255, 0.48);
 }
 [data-theme='dark'] .pd-agent {
   background: rgba(255, 255, 255, 0.04);

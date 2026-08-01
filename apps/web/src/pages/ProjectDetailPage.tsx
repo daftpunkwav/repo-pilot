@@ -715,13 +715,17 @@ export function ProjectDetailPage() {
                 disabled={aiStreaming}
                 onClick={() => void runAgent(a.id as AgentId)}
               >
-                <div className="pd-agent-icon" style={{ background: a.color }}>
-                  {a.name[0]}
+                <div className="pd-agent-body">
+                  <div className="pd-agent-icon" style={{ background: a.color }}>
+                    {a.name[0]}
+                  </div>
+                  <div className="pd-agent-name">{a.name}</div>
+                  <div className="pd-agent-desc">{a.tagline}</div>
                 </div>
-                <div className="pd-agent-name">{a.name}</div>
-                <div className="pd-agent-desc">{a.tagline}</div>
-                <span className="pd-agent-call">
-                  {aiStreaming && activeAgent === a.id ? '分析中…' : '调用'}
+                <span
+                  className={`pd-agent-call${aiStreaming && activeAgent === a.id ? ' is-busy' : ''}`}
+                >
+                  {aiStreaming && activeAgent === a.id ? '分析中' : '调用'}
                 </span>
               </button>
             ))}
