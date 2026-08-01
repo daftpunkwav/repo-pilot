@@ -152,7 +152,7 @@ class MemoryService:
         await self.db.commit()
 
     async def _merge_tech_profile(self, user_id: UUID, proposal: dict) -> None:
-        """技术熟练度：证据加权，取交集倾向（共同点）。"""
+        """技术熟练度：证据加权，并同步到侧栏 tech memory_items。"""
         row = await get_or_create_profile(self.db, user_id)
         tech = self._parse(row.tech_profile, {})
         if not isinstance(tech, dict):
@@ -175,6 +175,39 @@ class MemoryService:
             # 加权平均：新证据 * conf + 旧值 * (1-conf)
             tech[k] = round(old * (1 - conf) + float(v) * conf, 1)
         row.tech_profile = json.dumps(tech, ensure_ascii=False)
+
+        # 同步到 memory_items（category=tech），供侧栏展示
+        prefs = self._parse(row.agent_prefs, {})
+        if not isinstance(prefs, dict):
+            prefs = {}
+        items: list[dict] = list(prefs.get("memory_items") or [])
+        for k, score in tech.items():
+            content = f"{k}: {score}"
+            found = False
+            for existing in items:
+                if not isinstance(existing, dict):
+                    continue
+                if existing.get("category") == "tech" and str(
+                    existing.get("content", "")
+                ).startswith(f"{k}:"):
+                    existing["content"] = content
+                    existing["confidence"] = conf
+                    existing["updated_at"] = proposal["at"]
+                    found = True
+                    break
+            if not found:
+                items.append(
+                    {
+                        "id": f"tech_{k}_{int(datetime.utcnow().timestamp())}",
+                        "category": "tech",
+                        "content": content,
+                        "confidence": conf,
+                        "source_agent": proposal["agent_id"],
+                        "created_at": proposal["at"],
+                    }
+                )
+        prefs["memory_items"] = items[-100:]
+        row.agent_prefs = json.dumps(prefs, ensure_ascii=False)
         await self.db.commit()
 
     async def _merge_preference(self, user_id: UUID, proposal: dict) -> None:
@@ -182,18 +215,103 @@ class MemoryService:
         prefs_data = self._parse(row.preferences, {})
         if not isinstance(prefs_data, dict):
             prefs_data = {}
-        value = proposal["value"]
+        value = str(proposal.get("value") or "").strip()
+        if not value:
+            return
+
+        # 拒绝把答题 JSON / ask_user 结构直接塞进偏好
+        readable = self._preference_readable(value)
+        if readable is None:
+            return
+
         try:
-            if value.strip().startswith("{"):
-                prefs_data.update(json.loads(value))
-            elif ":" in value:
+            if value.startswith("{") and '"type"' not in value[:80]:
+                parsed = json.loads(value)
+                if isinstance(parsed, dict) and not self._looks_like_answer_dump(parsed):
+                    prefs_data.update(parsed)
+                else:
+                    prefs_data["note"] = readable
+            elif ":" in value and not value.startswith("{"):
                 k, v = value.split(":", 1)
                 prefs_data[k.strip()] = v.strip()
+            else:
+                prefs_data["note"] = readable
         except json.JSONDecodeError:
-            prefs_data["note"] = value
+            prefs_data["note"] = readable
         row.preferences = json.dumps(prefs_data, ensure_ascii=False)
+
+        # 同步偏好词条到侧栏（只存可读文案）
+        agent_prefs = self._parse(row.agent_prefs, {})
+        if not isinstance(agent_prefs, dict):
+            agent_prefs = {}
+        items: list[dict] = list(agent_prefs.get("memory_items") or [])
+        content = readable[:500]
+        if not any(
+            isinstance(m, dict)
+            and m.get("category") == "preference"
+            and m.get("content") == content
+            for m in items
+        ):
+            items.append(
+                {
+                    "id": f"pref_{int(datetime.utcnow().timestamp())}",
+                    "category": "preference",
+                    "content": content,
+                    "confidence": proposal["confidence"],
+                    "source_agent": proposal["agent_id"],
+                    "created_at": proposal["at"],
+                }
+            )
+            agent_prefs["memory_items"] = items[-100:]
+            row.agent_prefs = json.dumps(agent_prefs, ensure_ascii=False)
         await self.db.commit()
 
+    @staticmethod
+    def _looks_like_answer_dump(obj: dict) -> bool:
+        """判断是否为答题结果 / ask_user 结构，不应作为偏好原文。"""
+        if "items" in obj or "questions" in obj or "question_id" in obj:
+            return True
+        vals = list(obj.values())
+        if not vals:
+            return False
+        sample = vals[0]
+        return isinstance(sample, dict) and "type" in sample and (
+            "value" in sample or "values" in sample
+        )
+
+    @classmethod
+    def _preference_readable(cls, value: str) -> str | None:
+        """把偏好提案转成侧栏可读短句；无法识别的答题 JSON 则丢弃。"""
+        t = value.strip()
+        if not t:
+            return None
+        if t.startswith("{") or t.startswith("["):
+            try:
+                parsed = json.loads(t)
+            except json.JSONDecodeError:
+                return t[:200]
+            if isinstance(parsed, dict) and cls._looks_like_answer_dump(parsed):
+                # 尽量抽几条 value 做成摘要，而不是整段 JSON
+                bits: list[str] = []
+                for v in parsed.values():
+                    if isinstance(v, dict):
+                        label = v.get("other_text") or v.get("value") or v.get("values")
+                        if isinstance(label, list):
+                            bits.append("、".join(str(x) for x in label[:3]))
+                        elif label:
+                            bits.append(str(label))
+                    elif isinstance(v, (str, int, float)):
+                        bits.append(str(v))
+                    if len(bits) >= 3:
+                        break
+                if bits:
+                    return "答题偏好 · " + " · ".join(bits)
+                return None
+            if isinstance(parsed, dict):
+                # 普通偏好 dict → key: value 摘要
+                parts = [f"{k}: {v}" for k, v in list(parsed.items())[:4]]
+                return "；".join(parts) if parts else None
+        return t[:200]
     async def compress_history_if_needed(
         self,
         messages: list[dict[str, Any]],

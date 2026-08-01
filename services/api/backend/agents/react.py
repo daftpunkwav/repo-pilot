@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
@@ -555,29 +556,21 @@ class ReActEngine:
                             },
                         )
                         yield format_sse("question", question_payload)
-                        # 详情页等无 question UI 时，至少给一段可读说明，避免空正文
-                        if not final_text.strip():
-                            fallback_q = "需要你补充一些信息后才能继续深入分析。请在对话中说明你的基础与目标。"
-                            final_text = fallback_q
-                            step = 32
-                            for i in range(0, len(final_text), step):
-                                yield format_sse(
-                                    "text_delta",
-                                    {"content": final_text[i : i + step]},
-                                )
-                            yield format_sse(
-                                "done",
-                                {
-                                    "usage": total_usage,
-                                    "iterations": iteration,
-                                    "agent_id": agent_def.id,
-                                    "pending_question": True,
-                                },
-                            )
+                        # 有结构化反问面板时，不再追加 text_delta，避免前端出现
+                        # 「弹窗 + 半截回复」叠在一起，以及后续轮次状态错乱
+                        yield format_sse(
+                            "done",
+                            {
+                                "usage": total_usage,
+                                "iterations": iteration,
+                                "agent_id": agent_def.id,
+                                "pending_question": True,
+                            },
+                        )
                     # 持久化 pending 到 extra
                     ctx.extra["pending_question"] = question_payload
                     yield EngineResult(
-                        text=final_text,
+                        text="",
                         agent_id=agent_def.id,
                         usage=total_usage,
                         iterations=iteration,
@@ -609,6 +602,44 @@ class ReActEngine:
                                 {
                                     "ok": True,
                                     "message": f"已记录调度 {tool_result.get('target_agent')}",
+                                },
+                                ensure_ascii=False,
+                            ),
+                        }
+                    )
+                    continue
+
+                # 会话项目上下文变更 → 前端刷新右栏
+                if isinstance(tool_result, dict) and tool_result.get("__session_projects__"):
+                    if emit_sse:
+                        yield format_sse(
+                            "tool_result",
+                            {
+                                "call_id": tc_id,
+                                "id": tc_id,
+                                "name": name,
+                                "status": "success",
+                                "preview": f"上下文项目 {tool_result.get('count', 0)} 个",
+                                "result": tool_result,
+                            },
+                        )
+                        yield format_sse(
+                            "session_projects",
+                            {
+                                "project_ids": tool_result.get("project_ids") or [],
+                                "action": tool_result.get("action") or "add",
+                                "count": tool_result.get("count") or 0,
+                            },
+                        )
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tc_id,
+                            "content": json.dumps(
+                                {
+                                    "ok": True,
+                                    "project_ids": tool_result.get("project_ids") or [],
+                                    "message": "已更新会话项目上下文",
                                 },
                                 ensure_ascii=False,
                             ),
@@ -832,6 +863,161 @@ def _normalize_question(tool_result: dict[str, Any], *, agent_id: str) -> dict[s
     title = tool_result.get("title") or "请回答以下问题"
     items = tool_result.get("items") or []
     questions: list[dict[str, Any]] = []
+
+    def _clean_options(raw: Any) -> list[dict[str, str]]:
+        """过滤空选项；兼容字符串/字母键字典/JSON；拒绝字符串被逐字拆开。"""
+        list_raw: list[Any] = []
+        if isinstance(raw, str):
+            t = raw.strip()
+            # 优先按 A/B/C 行解析
+            letter_opts = _parse_letter_options(t)
+            if len(letter_opts) >= 2:
+                return letter_opts
+            if t.startswith("["):
+                try:
+                    parsed = json.loads(t)
+                    if isinstance(parsed, list):
+                        list_raw = parsed
+                except json.JSONDecodeError:
+                    list_raw = [x.strip() for x in re.split(r"[,，;；|]", t) if x.strip()]
+            elif "\n" in t:
+                list_raw = [x.strip() for x in t.split("\n") if x.strip()]
+            elif t:
+                list_raw = [x.strip() for x in re.split(r"[,，;；|]", t) if x.strip()]
+        elif isinstance(raw, list):
+            # 防护：list("abc") → ['a','b','c']；保留合法的 ['A','B','C']
+            if (
+                len(raw) >= 2
+                and all(isinstance(x, str) and len(x) <= 1 for x in raw)
+                and not all(
+                    isinstance(x, str) and re.match(r"^[A-Da-d]$", x) for x in raw
+                )
+            ):
+                list_raw = []
+            else:
+                list_raw = raw
+        elif isinstance(raw, dict):
+            items = list(raw.items())
+            if len(items) >= 2 and all(
+                str(k).isdigit() and isinstance(v, str) and len(v) <= 1
+                for k, v in items
+            ):
+                list_raw = []
+            else:
+                list_raw = [{"value": k, "label": v} for k, v in items]
+
+        out: list[dict[str, str]] = []
+        for o in list_raw:
+            if o is None:
+                continue
+            if isinstance(o, (str, int, float)):
+                s = str(o).strip()
+                if not s:
+                    continue
+                m = re.match(r"^([A-Da-d])[.、)）：:\s]+\s*(.+)$", s)
+                if m:
+                    letter = m.group(1).upper()
+                    out.append({"value": letter, "label": f"{letter}. {m.group(2).strip()}"})
+                else:
+                    out.append({"value": s, "label": s})
+                continue
+            if isinstance(o, (list, tuple)) and len(o) >= 2:
+                letter = str(o[0]).strip()
+                label = str(o[1]).strip()
+                if label:
+                    if re.match(r"^[A-Da-d]$", letter):
+                        out.append(
+                            {
+                                "value": letter.upper(),
+                                "label": f"{letter.upper()}. {label}",
+                            }
+                        )
+                    else:
+                        out.append({"value": letter, "label": label})
+                continue
+            if isinstance(o, dict):
+                label = str(
+                    o.get("label")
+                    or o.get("text")
+                    or o.get("name")
+                    or o.get("content")
+                    or ""
+                ).strip()
+                value = str(o.get("value") or o.get("id") or o.get("key") or "").strip()
+                if not label and not value:
+                    if len(o) == 1:
+                        k, v = next(iter(o.items()))
+                        value = str(k).strip()
+                        label = str(v).strip()
+                if not label and value:
+                    label = value
+                if not value and label:
+                    value = label
+                if not label and not value:
+                    continue
+                # 丢弃无意义单字符（非 A-D 题号）
+                if len(label) <= 1 and not re.match(r"^[A-Da-d]$", label):
+                    continue
+                item: dict[str, str] = {"value": value, "label": label}
+                if o.get("description"):
+                    item["description"] = str(o["description"])
+                out.append(item)
+
+        # 再防一层：多数选项仍是单字符 → 视为损坏
+        if len(out) >= 2:
+            short = sum(1 for x in out if len(x.get("label") or "") <= 1)
+            if short >= max(2, (len(out) + 1) // 2):
+                return []
+        return out
+
+    def _parse_letter_options(text: str) -> list[dict[str, str]]:
+        out: list[dict[str, str]] = []
+        seen: set[str] = set()
+        for m in re.finditer(
+            r"(?:^|\n)\s*(?:[-*•]\s*)?(?:\*\*)?([A-Da-d])(?:\*\*)?[.、)）：:]\s*(.+?)(?=(?:\n\s*(?:[-*•]\s*)?(?:\*\*)?[A-Da-d](?:\*\*)?[.、)）：:])|\n\n|$)",
+            text,
+            flags=re.S,
+        ):
+            letter = m.group(1).upper()
+            label = re.sub(r"\*\*", "", m.group(2)).strip()
+            if not label or letter in seen:
+                continue
+            seen.add(letter)
+            out.append({"value": letter, "label": f"{letter}. {label}"})
+        return out
+
+    def _default_options(qid_item: str, prompt: str) -> list[dict[str, str]]:
+        key = f"{qid_item} {prompt}".lower()
+        if any(k in key for k in ("水平", "level", "掌握", "熟练", "程度")):
+            return [
+                {"value": "beginner", "label": "初学 · 刚接触"},
+                {"value": "intermediate", "label": "了解 · 能读简单代码"},
+                {"value": "advanced", "label": "掌握 · 能独立改功能"},
+                {"value": "expert", "label": "精通 · 能讲架构与设计"},
+            ]
+        if any(k in key for k in ("语言", "language", "tech", "技术栈", "想学")):
+            return [
+                {"value": "python", "label": "Python"},
+                {"value": "typescript", "label": "TypeScript / JavaScript"},
+                {"value": "go", "label": "Go"},
+                {"value": "rust", "label": "Rust"},
+                {"value": "cpp", "label": "C / C++"},
+                {"value": "other", "label": "其他（下方填写）"},
+            ]
+        if any(k in key for k in ("想做", "目标", "goal", "这次", "目的")):
+            return [
+                {"value": "overview", "label": "快速了解某个项目"},
+                {"value": "learn", "label": "系统学习 / 跟读源码"},
+                {"value": "path", "label": "规划学习路径"},
+                {"value": "compare", "label": "对比多个项目"},
+            ]
+        return [
+            {"value": "a", "label": "选项 A"},
+            {"value": "b", "label": "选项 B"},
+            {"value": "c", "label": "选项 C"},
+            {"value": "d", "label": "选项 D"},
+        ]
+
     for it in items:
         if not isinstance(it, dict):
             continue
@@ -839,44 +1025,38 @@ def _normalize_question(tool_result: dict[str, Any], *, agent_id: str) -> dict[s
         qid_item = it.get("id") or f"item_{len(questions)}"
         prompt = it.get("prompt") or it.get("text") or "请选择"
         options = it.get("options") or []
-        if qtype in ("single_choice", "radio"):
+        if qtype in ("single_choice", "radio", "quiz"):
+            opt_list = _clean_options(options)
+            if len(opt_list) < 2:
+                opt_list = _parse_letter_options(str(prompt))
+            if len(opt_list) < 2:
+                opt_list = _default_options(str(qid_item), str(prompt))
+            exam = qtype == "quiz" or bool(
+                re.search(r"测验|考试|小测试|第\s*\d+\s*题", f"{prompt} {title}")
+            )
             questions.append(
                 {
                     "id": qid_item,
                     "text": prompt,
                     "type": "radio",
-                    "options": [
-                        {"value": str(o), "label": str(o)}
-                        if not isinstance(o, dict)
-                        else {
-                            "value": str(o.get("value", o.get("label", ""))),
-                            "label": str(o.get("label", o.get("value", ""))),
-                        }
-                        for o in options
-                    ]
-                    or [
-                        {"value": "beginner", "label": "初学"},
-                        {"value": "intermediate", "label": "了解"},
-                        {"value": "advanced", "label": "掌握"},
-                        {"value": "expert", "label": "精通"},
-                    ],
-                    "allow_other": True,
+                    "options": opt_list,
+                    "allow_other": not exam,
+                    "exam": exam,
                 }
             )
         elif qtype in ("multi_choice", "checkbox"):
+            opt_list = _clean_options(options)
+            if len(opt_list) < 2:
+                opt_list = _parse_letter_options(str(prompt))
+            if len(opt_list) < 2:
+                opt_list = _default_options(str(qid_item), str(prompt))
             questions.append(
                 {
                     "id": qid_item,
                     "text": prompt,
                     "type": "checkbox",
                     "options": [
-                        {"value": str(o), "text": str(o)}
-                        if not isinstance(o, dict)
-                        else {
-                            "value": str(o.get("value", o.get("text", ""))),
-                            "text": str(o.get("text", o.get("value", ""))),
-                        }
-                        for o in options
+                        {"value": o["value"], "text": o["label"]} for o in opt_list
                     ],
                 }
             )
@@ -892,13 +1072,13 @@ def _normalize_question(tool_result: dict[str, Any], *, agent_id: str) -> dict[s
                 }
             )
         else:
-            # text → 用 radio + other
+            # text → 短答用滑块式自由填写入口
             questions.append(
                 {
                     "id": qid_item,
                     "text": prompt,
                     "type": "radio",
-                    "options": [{"value": "other", "label": "自由填写"}],
+                    "options": [{"value": "other", "label": "自由填写（下方输入）"}],
                     "allow_other": True,
                 }
             )
@@ -908,11 +1088,7 @@ def _normalize_question(tool_result: dict[str, Any], *, agent_id: str) -> dict[s
                 "id": "default",
                 "text": title,
                 "type": "radio",
-                "options": [
-                    {"value": "beginner", "label": "初学"},
-                    {"value": "intermediate", "label": "了解"},
-                    {"value": "advanced", "label": "掌握"},
-                ],
+                "options": _default_options("level", "水平"),
                 "allow_other": True,
             }
         )

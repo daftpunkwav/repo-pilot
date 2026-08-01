@@ -30,3 +30,23 @@ def sync_sqlite_schema(connection) -> None:
                     "ALTER TABLE projects ADD COLUMN source VARCHAR(16) NOT NULL DEFAULT 'manual'"
                 )
             )
+
+    if "agent_sessions" in tables:
+        cols = {c["name"] for c in inspector.get_columns("agent_sessions")}
+        if "source" not in cols:
+            connection.execute(
+                text(
+                    "ALTER TABLE agent_sessions ADD COLUMN source VARCHAR(16) DEFAULT 'chat'"
+                )
+            )
+        # 每次启动轻量回填：把明显是快速分析的会话标为 analyze
+        connection.execute(
+            text(
+                "UPDATE agent_sessions SET source = 'analyze' "
+                "WHERE (source IS NULL OR source = '' OR source = 'chat') AND ("
+                "title LIKE 'scout · %' OR title LIKE 'mentor · %' OR "
+                "title LIKE 'navigator · %' OR title LIKE 'curator · %' OR "
+                "title LIKE 'scribe · %' OR title LIKE 'atlas · %' OR "
+                "title LIKE '分析 %')"
+            )
+        )

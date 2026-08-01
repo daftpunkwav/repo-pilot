@@ -177,6 +177,14 @@
   --fluid-c3: #5c1f3a;
   --fluid-c4: #1f5c3a;
 
+  /* 深色下浅色 brand 表面必须改成半透明，否则会与浅字叠成「看不见」 */
+  --brand-50:  rgba(10, 132, 255, 0.16);
+  --brand-100: rgba(10, 132, 255, 0.24);
+  --brand-200: rgba(10, 132, 255, 0.32);
+  --success-surface: rgba(52, 199, 89, 0.16);
+  --error-surface: rgba(255, 59, 48, 0.16);
+  --warning-surface: rgba(255, 159, 10, 0.16);
+
   /* Category palette · 深色：半透明底 + 提亮字色（对齐 progress pill） */
   --cat-frontend-bg: rgba(10, 132, 255, 0.2);  --cat-frontend-fg: #64d2ff;
   --cat-backend-bg:  rgba(48, 209, 88, 0.18);  --cat-backend-fg:  #30d158;

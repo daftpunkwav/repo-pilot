@@ -30,6 +30,9 @@ class AgentRunContext:
     tool_registry: ToolRegistry = field(default_factory=lambda: global_registry)
     project_id: UUID | None = None
     project: Project | None = None
+    # 多项目上下文（含主项目）
+    project_ids: list[UUID] = field(default_factory=list)
+    projects: list[Project] = field(default_factory=list)
     user_profile: dict[str, Any] = field(default_factory=dict)
     long_memory: list[dict] = field(default_factory=list)
     short_memory: list[dict] = field(default_factory=list)
@@ -66,12 +69,23 @@ class ContextBuilder:
         speaking_style: str = "default",
         permissions: dict | None = None,
     ) -> AgentRunContext:
-        project = None
-        if project_id:
-            project = await self.db.get(Project, project_id)
-            if project and project.user_id != user_id:
-                project = None
-                project_id = None
+        from backend.services.agent_service import get_session_project_ids
+
+        # 会话绑定的多项目 + 调用方传入的主项目
+        bound_ids = await get_session_project_ids(self.db, session_id)
+        if project_id and project_id not in bound_ids:
+            bound_ids = [project_id, *bound_ids]
+
+        projects: list[Project] = []
+        valid_ids: list[UUID] = []
+        for pid in bound_ids:
+            p = await self.db.get(Project, pid)
+            if p and p.user_id == user_id:
+                projects.append(p)
+                valid_ids.append(pid)
+
+        primary_id = project_id if project_id in valid_ids else (valid_ids[0] if valid_ids else None)
+        project = next((p for p in projects if p.id == primary_id), None) if primary_id else None
 
         profile = await self.memory.get_user_profile_dict(user_id)
         long_mem = await self.memory.get_long_memory(user_id)
@@ -85,8 +99,10 @@ class ContextBuilder:
             llm=llm,
             llm_config=llm_config,
             memory=self.memory,
-            project_id=project_id,
+            project_id=primary_id,
             project=project,
+            project_ids=valid_ids,
+            projects=projects,
             user_profile=profile,
             long_memory=long_mem,
             short_memory=short_mem,
@@ -112,7 +128,22 @@ class ContextBuilder:
             "## 本 Agent 短期记忆",
             self._format_short(ctx.short_memory),
         ]
-        if ctx.project:
+        if ctx.projects:
+            parts.extend(["", "## 当前项目上下文"])
+            for i, p in enumerate(ctx.projects):
+                tag = "（主）" if ctx.project_id and p.id == ctx.project_id else ""
+                parts.extend(
+                    [
+                        f"### 项目 {i + 1}{tag}: {p.name}",
+                        f"- ID: {p.id}",
+                        f"- URL: {p.url}",
+                        f"- 语言: {p.language or '未知'}",
+                        f"- Stars: {p.stars}",
+                        f"- 进度: {p.progress}",
+                        f"- 描述: {(p.description or '')[:500]}",
+                    ]
+                )
+        elif ctx.project:
             parts.extend(
                 [
                     "",
@@ -125,6 +156,15 @@ class ContextBuilder:
                     f"- 描述: {(ctx.project.description or '')[:500]}",
                 ]
             )
+        else:
+            parts.extend(
+                [
+                    "",
+                    "## 当前项目上下文",
+                    "（未绑定项目。若用户提到具体仓库，先 query_user_projects 查找，"
+                    "再用 manage_session_projects 加入会话上下文，勿臆造项目。）",
+                ]
+            )
         style = STYLE_HINTS.get(ctx.speaking_style, STYLE_HINTS["default"])
         parts.extend(["", f"## 风格: {style}"])
         parts.extend(
@@ -133,9 +173,11 @@ class ContextBuilder:
                 "## 输出规范",
                 "- 使用中文回答（用户明确要求其他语言除外）。",
                 "- **禁止输出 emoji / 颜文字 / 装饰性表情符号**（包括 ✅❌🚀💡 等）。",
-                "- 需要反问时，调用 ask_user 工具，不要只在正文里提问。",
+                "- 需要反问、摸底水平或出题测验时，必须调用 ask_user 工具弹出交互面板"
+                "（选择题/多选/滑块/测验），禁止只在正文里出题让用户手打题号答案。",
                 "- 可调用工具获取真实数据，不要编造用户库中不存在的项目。",
                 "- 更新用户画像或长期记忆时，调用 propose_memory 工具提交提案。",
+                "- 需要把项目加入/移出会话上下文时，调用 manage_session_projects。",
                 "- 优先简洁可执行；不要堆砌套话。",
             ]
         )

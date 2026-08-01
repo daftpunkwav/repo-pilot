@@ -135,9 +135,10 @@ async def patch_agent_session(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # project_id 显式 null 时清除
+    # project_id / project_ids 显式 null 或空列表时清除
     clear_project = (
-        "project_id" in body.model_fields_set and body.project_id is None
+        ("project_id" in body.model_fields_set and body.project_id is None)
+        or ("project_ids" in body.model_fields_set and body.project_ids is not None and len(body.project_ids) == 0)
     )
     try:
         updated = await update_session(
@@ -146,6 +147,7 @@ async def patch_agent_session(
             session_id,
             title=body.title,
             project_id=body.project_id,
+            project_ids=body.project_ids if not clear_project else None,
             clear_project=clear_project,
             active_agent=body.active_agent,
         )

@@ -50,7 +50,9 @@ export function StreamRenderer({
       {hasBody ? (
         <MarkdownRenderer content={rendered} />
       ) : streaming ? (
-        <p className="stream-renderer__placeholder muted">正在输出…</p>
+        <p className="stream-renderer__placeholder muted">
+          {hasThinking ? '推理中，等待正文…' : '正在输出…'}
+        </p>
       ) : null}
       {streaming && hasBody && (
         <span className="stream-renderer__cursor" aria-hidden>

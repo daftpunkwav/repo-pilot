@@ -21,7 +21,10 @@ class AgentChatBody(BaseModel):
 
 class SessionUpdateBody(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
+    # 单项目兼容：null 清除全部；非 null 替换为仅该项目
     project_id: Optional[UUID] = None
+    # 多项目：整体替换会话绑定的项目列表
+    project_ids: Optional[list[UUID]] = None
     active_agent: Optional[str] = None
 
 
@@ -43,6 +46,10 @@ class AgentMessageOut(BaseModel):
     agent: str
     role: str
     content: Optional[str] = None
+    content_type: Optional[str] = "text"
+    # 反问结构 / 答题详情等（由 message_meta 解析）
+    question: Optional[dict[str, Any]] = None
+    question_answer: Optional[dict[str, Any]] = None
     created_at: str
 
 
@@ -53,6 +60,9 @@ class AgentSessionOut(BaseModel):
     updated_at: str
     unread: bool = False
     project_id: Optional[UUID] = None
+    project_ids: list[UUID] = Field(default_factory=list)
+    # chat=用户主动；analyze=详情页快速分析
+    source: str = "chat"
 
 
 class AgentSessionDetailOut(AgentSessionOut):

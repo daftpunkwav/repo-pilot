@@ -7,9 +7,13 @@ import { AgentContextSidebar } from '@/components/agent/AgentContextSidebar';
 vi.mock('@/api/client', () => ({
   getApi: () => ({
     getUserProfile: vi.fn().mockResolvedValue({
-      data: { memory_items: [], goals: [] },
+      data: { memory_items: [], goals: [], tech_proficiency: {} },
     }),
     updateUserProfile: vi.fn(),
+    getAgentSession: vi.fn().mockResolvedValue({
+      data: { id: 's1', project_ids: [], project_id: null, messages: [] },
+    }),
+    listProjects: vi.fn().mockResolvedValue({ data: { items: [] } }),
   }),
 }));
 
@@ -22,8 +26,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 describe('AgentContextSidebar', () => {
   const baseProps = {
-    contextProjects: [],
-    sessionId: null,
+    sessionId: null as string | null,
     toolLogOpen: false,
     onToggleToolLog: vi.fn(),
     toolCalls: new Map<string, { name: string; result?: unknown }>(),

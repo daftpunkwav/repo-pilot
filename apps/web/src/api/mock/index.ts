@@ -948,6 +948,8 @@ export class MockApiClient implements IApiClient {
       agent: 'hub',
       updated_at: new Date().toISOString(),
       unread: false,
+      project_ids: [],
+      source: 'chat',
     };
     this.sessions.unshift(session);
     this.messages[session.id] = [];
@@ -964,14 +966,20 @@ export class MockApiClient implements IApiClient {
 
   async updateAgentSession(
     id: string,
-    data: { title?: string; project_id?: string | null }
+    data: { title?: string; project_id?: string | null; project_ids?: string[] }
   ): Promise<ApiResponse<AgentSession>> {
     await delay();
     requireAuth();
     const session = this.sessions.find((s) => s.id === id);
     if (!session) throw { error: { code: 'NOT_FOUND', message: '会话不存在' } };
     if (data.title !== undefined) session.title = data.title;
-    if (data.project_id !== undefined) session.project_id = data.project_id;
+    if (data.project_ids !== undefined) {
+      session.project_ids = data.project_ids;
+      session.project_id = data.project_ids[0] ?? null;
+    } else if (data.project_id !== undefined) {
+      session.project_id = data.project_id;
+      session.project_ids = data.project_id ? [data.project_id] : [];
+    }
     session.updated_at = new Date().toISOString();
     return wrapResponse(session);
   }

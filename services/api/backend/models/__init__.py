@@ -1,5 +1,11 @@
 """ORM 模型聚合导出，供 metadata.create_all 使用。"""
-from backend.models.agent import AgentMessage, AgentSession, ProjectAnalysis, UserProfile
+from backend.models.agent import (
+    AgentMessage,
+    AgentSession,
+    ProjectAnalysis,
+    UserProfile,
+    agent_session_projects,
+)
 from backend.models.category import Category
 from backend.models.note import Note
 from backend.models.project import Project, Tag, project_tags

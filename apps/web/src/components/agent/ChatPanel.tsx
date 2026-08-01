@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { getApi } from '@/api/client';
 import { useAgentStore } from '@/stores/agentStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useSettings } from '@/hooks/useSettings';
-import { useProjects } from '@/hooks/useProjects';
+import { ensureAgentQuestion } from '@/utils/agentQuestion';
 import { AgentSelector } from './AgentSelector';
 import { MessageBubble } from './MessageBubble';
 import { StreamRenderer } from './StreamRenderer';
 import { ToolCallCard } from './ToolCallCard';
-import { QuestionPanel } from './QuestionPanel';
+import { LiveQuestionModal } from './QuestionHistoryCard';
 import { AGENT_INITIALS, AGENT_ROLE_LABELS } from '@/utils/labels';
 
 export function ChatPanel() {
@@ -20,7 +20,7 @@ export function ChatPanel() {
   const streaming = useAgentStore((s) => s.streaming);
   const streamingContent = useAgentStore((s) => s.streamingContent);
   const thinkingBuffer = useAgentStore((s) => s.thinkingBuffer);
-  const pendingQuestion = useAgentStore((s) => s.pendingQuestion);
+  const pendingQuestionRaw = useAgentStore((s) => s.pendingQuestion);
   const toolCalls = useAgentStore((s) => s.toolCalls);
   const activeAgent = useAgentStore((s) => s.activeAgent);
   const error = useAgentStore((s) => s.error);
@@ -29,18 +29,36 @@ export function ChatPanel() {
   const skipQuestion = useAgentStore((s) => s.skipQuestion);
   const { settings } = useSettings();
   const user = useAuthStore((s) => s.user);
-  const { data: projectsData } = useProjects();
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const pendingQuestion = useMemo(
+    () => (pendingQuestionRaw ? ensureAgentQuestion(pendingQuestionRaw) : null),
+    [pendingQuestionRaw]
+  );
 
   const { data: profiles = [] } = useQuery({
     queryKey: ['agentProfiles'],
     queryFn: async () => (await getApi().getAgentProfiles()).data,
   });
 
+  const { data: sessionDetail } = useQuery({
+    queryKey: ['agentSession', currentSessionId],
+    enabled: Boolean(currentSessionId),
+    queryFn: async () => {
+      if (!currentSessionId) return null;
+      return (await getApi().getAgentSession(currentSessionId)).data;
+    },
+  });
+
+  const boundCount = useMemo(() => {
+    if (!sessionDetail) return 0;
+    if (sessionDetail.project_ids?.length) return sessionDetail.project_ids.length;
+    return sessionDetail.project_id ? 1 : 0;
+  }, [sessionDetail]);
+
   const profile = profiles.find((p) => p.id === activeAgent);
   const currentSession = sessions.find((s) => s.id === currentSessionId);
-  const projectCount = projectsData?.items.length ?? 0;
   const llmOk = settings?.llm_configured !== false;
   const modelName = settings?.llm_model ?? 'gpt-4o';
 
@@ -69,16 +87,22 @@ export function ChatPanel() {
         <div className="chat-title">
           <h2>{currentSession?.title ?? '新对话'}</h2>
           <div className="ctx">
-            项目库 {projectCount} · {user?.username ?? 'guest'} · {modelName}
+            {boundCount > 0 ? `${boundCount} 个项目上下文` : '未绑定项目'} ·{' '}
+            {user?.username ?? 'guest'} · {modelName}
             <span className="dot" />
-            <span style={{ color: 'var(--brand-500)' }}>
-              Hub 智能调度 · 7 Agent 在线
-            </span>
+            <span style={{ color: 'var(--brand-500)' }}>Hub 智能调度 · 7 Agent 在线</span>
           </div>
         </div>
         <div className="chat-actions">
           <button type="button" className="chat-icon-btn" title="导出对话">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={16} height={16}>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              width={16}
+              height={16}
+            >
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
               <path d="M7 10l5 5 5-5M12 15V3" />
             </svg>
@@ -107,7 +131,7 @@ export function ChatPanel() {
             agentName={profiles.find((p) => p.id === m.agent)?.name}
           />
         ))}
-        {streaming && (
+        {streaming && !pendingQuestion && (
           <div className="msg">
             <div className={`msg-avatar agent-${activeAgent}`}>
               {AGENT_INITIALS[activeAgent] ?? 'A'}
@@ -127,30 +151,27 @@ export function ChatPanel() {
                   thinking={thinkingBuffer}
                   streaming={streaming}
                 />
+                {Array.from(toolCalls.entries())
+                  .filter(([, tc]) => tc.name !== 'ask_user')
+                  .map(([id, tc]) => (
+                    <ToolCallCard key={id} name={tc.name} args={tc.args} result={tc.result} />
+                  ))}
               </div>
-            </div>
-          </div>
-        )}
-        {Array.from(toolCalls.entries()).map(([id, tc]) => (
-          <ToolCallCard key={id} name={tc.name} args={tc.args} result={tc.result} />
-        ))}
-        {pendingQuestion && (
-          <div className="msg">
-            <div className={`msg-avatar agent-${activeAgent}`}>
-              {AGENT_INITIALS[activeAgent] ?? 'A'}
-            </div>
-            <div className="msg-body">
-              <QuestionPanel
-                question={pendingQuestion}
-                onSubmit={(a) => void answerQuestion(a)}
-                onSkip={skipQuestion}
-              />
             </div>
           </div>
         )}
         {error && <div className="error-banner">{error}</div>}
         <div ref={bottomRef} />
       </div>
+
+      {pendingQuestion && (
+        <LiveQuestionModal
+          question={pendingQuestion}
+          agentLabel={profile?.name ?? activeAgent}
+          onSubmit={(a) => void answerQuestion(a)}
+          onSkip={skipQuestion}
+        />
+      )}
 
       <div className="chat-input-wrap">
         <div className="chat-input">
@@ -165,11 +186,13 @@ export function ChatPanel() {
             disabled={streaming || Boolean(pendingQuestion) || !llmOk}
           />
           <div className="chat-toolbar">
-            <span className="ctx-chip active">
-              {projectCount > 0 ? `${projectCount} 个项目上下文` : '无项目上下文'}
+            <span className={`ctx-chip ${boundCount > 0 ? 'active' : ''}`}>
+              {boundCount > 0 ? `${boundCount} 个项目上下文` : '无项目上下文'}
             </span>
             <div className="spacer" />
-            <span style={{ fontSize: 11, color: 'var(--text-400)', fontFamily: 'var(--font-mono)' }}>
+            <span
+              style={{ fontSize: 11, color: 'var(--text-400)', fontFamily: 'var(--font-mono)' }}
+            >
               {input.length} 字符
             </span>
             <button
@@ -179,7 +202,14 @@ export function ChatPanel() {
               onClick={() => void handleSend()}
               disabled={streaming || Boolean(pendingQuestion) || !llmOk}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width={14} height={14}>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                width={14}
+                height={14}
+              >
                 <path d="M5 12l14 0M13 5l7 7-7 7" />
               </svg>
             </button>

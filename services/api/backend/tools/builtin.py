@@ -369,9 +369,15 @@ async def draft_note_outline(
 @tool(
     name="ask_user",
     description=(
-        "向用户发起结构化反问。暂停当前流程等待回答。"
+        "向用户发起结构化反问/测验，暂停当前流程等待回答。"
         "items 为问题列表，每项含 id/prompt/type/options。"
-        "type: single_choice | multi_choice | scale | text"
+        "type: single_choice | multi_choice | scale | text | quiz。"
+        "摸底水平、收集偏好、出考题时必须用本工具弹出交互面板，"
+        "禁止只在正文里出题让用户手打题号和答案。"
+        "quiz：options 为候选答案；选项可为对象并带 correct=true 供批改。"
+        "重要：options 必须是非空字符串数组，每个元素是完整选项文案，"
+        "如 ['Thought→Action→Observation','Action→Observation→Thought']；"
+        "禁止传空、禁止把一句话拆成单字符数组。"
     ),
     parameters={
         "type": "object",
@@ -386,11 +392,31 @@ async def draft_note_outline(
                         "prompt": {"type": "string"},
                         "type": {
                             "type": "string",
-                            "enum": ["single_choice", "multi_choice", "scale", "text"],
+                            "enum": [
+                                "single_choice",
+                                "multi_choice",
+                                "scale",
+                                "text",
+                                "quiz",
+                            ],
                         },
                         "options": {
                             "type": "array",
-                            "items": {"type": "string"},
+                            "items": {
+                                "anyOf": [
+                                    {"type": "string", "minLength": 2},
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "value": {"type": "string"},
+                                            "label": {"type": "string"},
+                                            "text": {"type": "string"},
+                                            "correct": {"type": "boolean"},
+                                        },
+                                    },
+                                ]
+                            },
+                            "minItems": 2,
                         },
                         "required": {"type": "boolean"},
                     },
@@ -411,12 +437,112 @@ async def ask_user(
     **kw,
 ):
     """特殊工具：返回 __question__ 标记，由 ReAct 引擎拦截。"""
+    # 运行时再洗一遍 options，避免上游把字符串拆成字符列表
+    cleaned_items: list[dict] = []
+    for it in items or []:
+        if not isinstance(it, dict):
+            continue
+        opts = it.get("options")
+        if isinstance(opts, str):
+            # 留给 normalize 解析；此处至少不 list(str)
+            pass
+        elif isinstance(opts, list) and len(opts) >= 2 and all(
+            isinstance(x, str) and len(x) <= 1 for x in opts
+        ):
+            # 损坏的字符数组 → 清空，交给 normalize 兜底
+            it = {**it, "options": []}
+        cleaned_items.append(it)
     return {
         "__question__": True,
         "title": title,
-        "items": items or [],
+        "items": cleaned_items,
         "allow_skip": allow_skip,
         "agent_id": getattr(context, "agent_id", "hub"),
+    }
+
+
+@tool(
+    name="manage_session_projects",
+    description=(
+        "管理当前会话绑定的项目上下文（可多选）。"
+        "action=add 追加、remove 移除、set 整体替换。"
+        "用户提到具体项目或需要对照多个仓库时调用；"
+        "先用 query_user_projects 拿到真实 project_id，勿臆造。"
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "action": {
+                "type": "string",
+                "enum": ["add", "remove", "set"],
+            },
+            "project_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+        },
+        "required": ["action", "project_ids"],
+    },
+    allowed_agents=["hub", "navigator", "mentor", "scout", "curator", "scribe", "atlas"],
+)
+async def manage_session_projects(
+    context=None,
+    action: str = "add",
+    project_ids: list | None = None,
+    **kw,
+):
+    from backend.models.agent import AgentSession
+    from backend.services.agent_service import (
+        add_session_project,
+        get_session_project_ids,
+        remove_session_project,
+        set_session_projects,
+    )
+
+    raw_ids = [str(x).strip() for x in (project_ids or []) if str(x).strip()]
+    parsed: list[UUID] = []
+    for s in raw_ids:
+        try:
+            parsed.append(UUID(s))
+        except ValueError:
+            return {"error": f"无效 project_id: {s}"}
+
+    session = await context.db.get(AgentSession, context.session_id)
+    if not session or session.user_id != context.user_id:
+        return {"error": "会话不存在"}
+
+    act = (action or "add").strip().lower()
+    try:
+        if act == "set":
+            ids = await set_session_projects(
+                context.db, session, parsed, user_id=context.user_id
+            )
+        elif act == "remove":
+            ids: list[UUID] = []
+            for pid in parsed:
+                ids = await remove_session_project(
+                    context.db, session, pid, user_id=context.user_id
+                )
+            if not parsed:
+                ids = await get_session_project_ids(context.db, session.id)
+        else:
+            ids = []
+            for pid in parsed:
+                ids = await add_session_project(
+                    context.db, session, pid, user_id=context.user_id
+                )
+            if not parsed:
+                ids = await get_session_project_ids(context.db, session.id)
+        await context.db.commit()
+    except ValueError:
+        return {"error": "无权操作其中部分项目"}
+
+    return {
+        "ok": True,
+        "action": act,
+        "project_ids": [str(i) for i in ids],
+        "count": len(ids),
+        "__session_projects__": True,
     }
 
 

@@ -142,7 +142,11 @@ export interface IApiClient {
   deleteAgentSession(id: string): Promise<ApiResponse<{ success: boolean }>>;
   updateAgentSession(
     id: string,
-    data: { title?: string; project_id?: string | null }
+    data: {
+      title?: string;
+      project_id?: string | null;
+      project_ids?: string[];
+    }
   ): Promise<ApiResponse<AgentSession>>;
   getAgentProfiles(): Promise<ApiResponse<AgentProfile[]>>;
   getUserProfile(): Promise<ApiResponse<UserProfile>>;

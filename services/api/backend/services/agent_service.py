@@ -7,13 +7,13 @@ from datetime import datetime
 from typing import Any, AsyncIterator
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.agents.hub import HubService
 from backend.llm.config import build_llm_config_from_user
 from backend.memory.service import MemoryService
-from backend.models.agent import AgentMessage, AgentSession
+from backend.models.agent import AgentMessage, AgentSession, agent_session_projects
 from backend.models.user import User
 from backend.schemas.agent import (
     AgentMessageOut,
@@ -31,6 +31,9 @@ ensure_tools_loaded()
 # 会话级流控：同 session 新流会 set 旧 Event，旧流停止 yield 与最终落库
 _session_stream_cancel: dict[UUID, asyncio.Event] = {}
 
+# 单会话最多绑定项目数，避免上下文膨胀
+MAX_SESSION_PROJECTS = 8
+
 
 def _begin_session_stream(session_id: UUID) -> asyncio.Event:
     prev = _session_stream_cancel.get(session_id)
@@ -46,24 +49,126 @@ def _end_session_stream(session_id: UUID, ev: asyncio.Event) -> None:
         _session_stream_cancel.pop(session_id, None)
 
 
-def session_to_out(session: AgentSession) -> AgentSessionOut:
+async def get_session_project_ids(db: AsyncSession, session_id: UUID) -> list[UUID]:
+    """读取会话绑定的全部项目 ID；无关联表数据时回退到 session.project_id。"""
+    rows = (
+        await db.execute(
+            select(agent_session_projects.c.project_id).where(
+                agent_session_projects.c.session_id == session_id
+            )
+        )
+    ).scalars().all()
+    ids = list(rows)
+    if ids:
+        return ids
+    session = await db.get(AgentSession, session_id)
+    if session and session.project_id:
+        return [session.project_id]
+    return []
+
+
+async def set_session_projects(
+    db: AsyncSession,
+    session: AgentSession,
+    project_ids: list[UUID],
+    *,
+    user_id: UUID,
+) -> list[UUID]:
+    """整体替换会话项目绑定；校验归属；同步主 project_id。"""
+    # 去重保序
+    seen: set[UUID] = set()
+    unique: list[UUID] = []
+    for pid in project_ids:
+        if pid in seen:
+            continue
+        seen.add(pid)
+        unique.append(pid)
+    unique = unique[:MAX_SESSION_PROJECTS]
+
+    owned: list[UUID] = []
+    for pid in unique:
+        p = await get_project_owned_by_user(db, pid, user_id)
+        if not p:
+            raise ValueError("PROJECT_NOT_OWNED")
+        owned.append(pid)
+
+    await db.execute(
+        delete(agent_session_projects).where(
+            agent_session_projects.c.session_id == session.id
+        )
+    )
+    if owned:
+        from sqlalchemy import insert as sa_insert
+
+        await db.execute(
+            sa_insert(agent_session_projects),
+            [{"session_id": session.id, "project_id": pid} for pid in owned],
+        )
+    session.project_id = owned[0] if owned else None
+    return owned
+
+
+async def add_session_project(
+    db: AsyncSession, session: AgentSession, project_id: UUID, *, user_id: UUID
+) -> list[UUID]:
+    current = await get_session_project_ids(db, session.id)
+    if project_id not in current:
+        current.append(project_id)
+    return await set_session_projects(db, session, current, user_id=user_id)
+
+
+async def remove_session_project(
+    db: AsyncSession, session: AgentSession, project_id: UUID, *, user_id: UUID
+) -> list[UUID]:
+    current = [p for p in await get_session_project_ids(db, session.id) if p != project_id]
+    return await set_session_projects(db, session, current, user_id=user_id)
+
+
+async def session_to_out(db: AsyncSession, session: AgentSession) -> AgentSessionOut:
+    project_ids = await get_session_project_ids(db, session.id)
+    source = (session.source or "chat").strip().lower() or "chat"
     return AgentSessionOut(
         id=session.id,
         title=session.title or "新对话",
         agent=session.active_agent or "hub",
         updated_at=(session.updated_at or session.created_at).isoformat() + "Z",
         unread=False,
-        project_id=session.project_id,
+        project_id=session.project_id or (project_ids[0] if project_ids else None),
+        project_ids=project_ids,
+        source=source,
     )
 
 
 def message_to_out(msg: AgentMessage) -> AgentMessageOut:
+    meta: dict = {}
+    if msg.message_meta:
+        try:
+            parsed = json.loads(msg.message_meta)
+            if isinstance(parsed, dict):
+                meta = parsed
+        except (json.JSONDecodeError, TypeError):
+            meta = {}
+
+    question = meta.get("question") if isinstance(meta.get("question"), dict) else None
+    question_answer = (
+        meta.get("question_answer")
+        if isinstance(meta.get("question_answer"), dict)
+        else None
+    )
+    # 兼容：content_type=question 时整份 metadata 即 AgentQuestion
+    if not question and (msg.content_type == "question" or meta.get("question_id")):
+        if meta.get("question_id") and meta.get("questions"):
+            question = meta
+
     return AgentMessageOut(
         id=msg.id,
         session_id=msg.session_id,
         agent=msg.agent_id or "hub",
         role=msg.role,
         content=msg.content,
+        content_type=msg.content_type or "text",
+        question=question,
+        question_answer=question_answer,
         created_at=msg.created_at.isoformat() + "Z",
     )
 
@@ -74,7 +179,8 @@ async def list_sessions(db: AsyncSession, user_id: UUID) -> list[AgentSessionOut
         .where(AgentSession.user_id == user_id)
         .order_by(AgentSession.updated_at.desc())
     )
-    return [session_to_out(s) for s in result.scalars().all()]
+    sessions = list(result.scalars().all())
+    return [await session_to_out(db, s) for s in sessions]
 
 
 async def get_session_detail(
@@ -90,7 +196,7 @@ async def get_session_detail(
             .order_by(AgentMessage.created_at.asc())
         )
     ).scalars().all()
-    base = session_to_out(session)
+    base = await session_to_out(db, session)
     return AgentSessionDetailOut(
         **base.model_dump(),
         messages=[message_to_out(m) for m in msgs],
@@ -102,18 +208,27 @@ async def create_session(
     user_id: UUID,
     *,
     project_id: UUID | None = None,
+    project_ids: list[UUID] | None = None,
     title: str = "新对话",
+    source: str = "chat",
 ) -> AgentSessionOut:
     session = AgentSession(
         user_id=user_id,
         title=title,
         active_agent="hub",
-        project_id=project_id,
+        project_id=None,
+        source=source or "chat",
     )
     db.add(session)
+    await db.flush()
+    ids = list(project_ids or [])
+    if project_id and project_id not in ids:
+        ids.insert(0, project_id)
+    if ids:
+        await set_session_projects(db, session, ids, user_id=user_id)
     await db.commit()
     await db.refresh(session)
-    return session_to_out(session)
+    return await session_to_out(db, session)
 
 
 async def update_session(
@@ -123,6 +238,7 @@ async def update_session(
     *,
     title: str | None = None,
     project_id: UUID | None = None,
+    project_ids: list[UUID] | None = None,
     clear_project: bool = False,
     active_agent: str | None = None,
 ) -> AgentSessionOut | None:
@@ -135,12 +251,12 @@ async def update_session(
     if title is not None:
         session.title = title
     if clear_project:
-        session.project_id = None
+        await set_session_projects(db, session, [], user_id=user_id)
+    elif project_ids is not None:
+        await set_session_projects(db, session, project_ids, user_id=user_id)
     elif project_id is not None:
-        owned = await get_project_owned_by_user(db, project_id, user_id)
-        if not owned:
-            raise ValueError("PROJECT_NOT_OWNED")
-        session.project_id = project_id
+        # 单项目替换：兼容旧前端点击绑定
+        await set_session_projects(db, session, [project_id], user_id=user_id)
     if active_agent is not None:
         agent_id = active_agent.strip().lower()
         if agent_id not in AGENT_DEFINITIONS:
@@ -149,13 +265,18 @@ async def update_session(
     session.updated_at = datetime.utcnow()
     await db.commit()
     await db.refresh(session)
-    return session_to_out(session)
+    return await session_to_out(db, session)
 
 
 async def delete_session(db: AsyncSession, user_id: UUID, session_id: UUID) -> bool:
     session = await db.get(AgentSession, session_id)
     if not session or session.user_id != user_id:
         return False
+    await db.execute(
+        delete(agent_session_projects).where(
+            agent_session_projects.c.session_id == session_id
+        )
+    )
     msgs = await db.execute(
         select(AgentMessage).where(AgentMessage.session_id == session_id)
     )
@@ -206,17 +327,17 @@ async def stream_chat(
         yield format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"})
         return
 
-    # 消息级 project_id 优先，并回写到会话（仅允许绑定当前用户拥有的项目）
+    # 消息级 project_id：追加到会话多项目上下文（不替换已有）
     if project_id is not None:
-        owned = await get_project_owned_by_user(db, project_id, user.id)
-        if not owned:
+        try:
+            await add_session_project(db, session, project_id, user_id=user.id)
+            await db.commit()
+        except ValueError:
             yield format_sse(
                 "error",
                 {"code": "FORBIDDEN", "message": "无权绑定该项目到会话"},
             )
             return
-        session.project_id = project_id
-        await db.commit()
 
     await append_message(db, session, role="user", content=message, agent_id="hub")
 
@@ -228,13 +349,15 @@ async def stream_chat(
     aborted = False
     # question 已落库时，不再把同轮 text_delta 再写成 assistant 气泡
     saw_question = False
+    bound_ids = await get_session_project_ids(db, session_id)
+    primary_project_id = session.project_id or (bound_ids[0] if bound_ids else None)
 
     try:
         async for chunk in hub.handle_chat(
             user=user,
             session_id=session_id,
             message=message,
-            project_id=session.project_id,
+            project_id=primary_project_id,
         ):
             if cancel_ev.is_set():
                 aborted = True
@@ -268,11 +391,22 @@ async def stream_chat(
                     data = json.loads(data_line)
                     session.status = "pending_question"
                     saw_question = True
+                    # 正文存可读摘要，完整结构放 metadata，避免聊天里出现原始 JSON
+                    intro = data.get("intro") or {}
+                    title = (
+                        intro.get("content")
+                        if isinstance(intro, dict)
+                        else None
+                    ) or data.get("title") or "结构化反问"
+                    # 去掉 markdown 粗体标记
+                    title_plain = (
+                        str(title).replace("**", "").strip() or "结构化反问"
+                    )
                     await append_message(
                         db,
                         session,
                         role="assistant",
-                        content=json.dumps(data, ensure_ascii=False),
+                        content=f"发起反问：{title_plain}（请在弹窗中选择）",
                         agent_id=last_agent,
                         content_type="question",
                         metadata=data,
@@ -324,12 +458,82 @@ async def stream_question_answer(
         yield format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"})
         return
 
-    answer_text = (
-        "[跳过反问]"
+    # 找回原始反问结构，便于历史卡片展示
+    question_payload: dict[str, Any] | None = None
+    prior_msgs = (
+        await db.execute(
+            select(AgentMessage)
+            .where(AgentMessage.session_id == session_id)
+            .order_by(AgentMessage.created_at.desc())
+            .limit(20)
+        )
+    ).scalars().all()
+    for m in prior_msgs:
+        if not m.message_meta:
+            continue
+        try:
+            meta = json.loads(m.message_meta)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if not isinstance(meta, dict):
+            continue
+        q = meta.get("question") if isinstance(meta.get("question"), dict) else meta
+        if isinstance(q, dict) and (
+            q.get("question_id") == question_id or m.content_type == "question"
+        ):
+            if q.get("question_id") or q.get("questions"):
+                question_payload = q
+                break
+
+    details: list[dict[str, str]] = []
+    if question_payload and isinstance(question_payload.get("questions"), list):
+        for qi in question_payload["questions"]:
+            if not isinstance(qi, dict):
+                continue
+            qid = str(qi.get("id") or "")
+            prompt = str(qi.get("text") or qi.get("prompt") or "")
+            ans = answers.get(qid) if qid else None
+            label = "（跳过）" if skipped else _format_answer_label(qi, ans)
+            details.append({"question": prompt, "answer": label})
+    summary = (
+        "已跳过"
         if skipped
-        else f"[反问回答] {json.dumps(answers, ensure_ascii=False)}"
+        else (
+            " · ".join(d["answer"] for d in details[:3])
+            if details
+            else "已回答"
+        )
     )
-    await append_message(db, session, role="user", content=answer_text, agent_id="hub")
+    if not skipped and details and len(details) > 3:
+        summary = f"已回答 {len(details)} 题"
+
+    answer_text = "[跳过反问]" if skipped else f"[反问回答] {summary}"
+    await append_message(
+        db,
+        session,
+        role="user",
+        content=answer_text,
+        agent_id="hub",
+        content_type="question_answer",
+        metadata={
+            "question_answer": {
+                "question": question_payload
+                or {
+                    "question_id": question_id,
+                    "intro": {"type": "markdown", "content": "结构化反问"},
+                    "questions": [],
+                    "actions": {"submit": {"text": "提交", "style": "primary"}},
+                    "allow_skip": True,
+                    "timeout": None,
+                },
+                "answers": list(answers.values()),
+                "skipped": skipped,
+                "summary": summary,
+                "details": details
+                or [{"question": "（题目）", "answer": summary}],
+            }
+        },
+    )
     session.status = "active"
 
     hub = HubService(db)
@@ -365,6 +569,33 @@ async def stream_question_answer(
         await append_message(
             db, session, role="assistant", content=reply, agent_id=last_agent
         )
+
+
+def _format_answer_label(qi: dict[str, Any], ans: Any) -> str:
+    """把单题答案格式化为可读文案。"""
+    if not isinstance(ans, dict):
+        return str(ans) if ans is not None else "（未答）"
+    atype = ans.get("type")
+    if atype == "radio":
+        other = (ans.get("other_text") or "").strip()
+        if other:
+            return other
+        val = str(ans.get("value") or "")
+        for o in qi.get("options") or []:
+            if isinstance(o, dict) and str(o.get("value")) == val:
+                return str(o.get("label") or o.get("text") or val)
+        return val or "（未答）"
+    if atype == "checkbox":
+        vals = ans.get("values") or []
+        labels: list[str] = []
+        opts = {str(o.get("value")): str(o.get("text") or o.get("label") or o.get("value"))
+                for o in (qi.get("options") or []) if isinstance(o, dict)}
+        for v in vals:
+            labels.append(opts.get(str(v), str(v)))
+        return "、".join(labels) if labels else "（未答）"
+    if atype == "slider":
+        return str(ans.get("value", ""))
+    return json.dumps(ans, ensure_ascii=False)[:120]
 
 
 _ANALYZE_PROMPTS: dict[str, str] = {
@@ -422,14 +653,17 @@ async def stream_analyze(
     if resolved == "hub" or not get_registry().has(resolved):
         resolved = "scout"
 
-    # 临时会话
+    # 快速分析会话：标记 source=analyze，默认不在 Agent Chat 主列表展开
     session = AgentSession(
         user_id=user.id,
         title=f"{resolved} · {project.name}",
         active_agent=resolved,
         project_id=project_id,
+        source="analyze",
     )
     db.add(session)
+    await db.flush()
+    await set_session_projects(db, session, [project_id], user_id=user.id)
     await db.commit()
     await db.refresh(session)
 

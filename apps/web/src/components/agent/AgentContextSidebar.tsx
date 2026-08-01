@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getApi } from '@/api/client';
 import type { Goal, MemoryItem, Project, UserProfile } from '@/api/types';
+import { useAgentStore } from '@/stores/agentStore';
 import { formatNumber, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/format';
-import { categoryLabel } from '@/utils/labels';
+import { formatMemoryChipContent } from '@/utils/agentQuestion';
 import { ProgressBadge } from '@/components/project/ProgressBadge';
 import { ContextWindowPanel } from './ContextWindowPanel';
 
@@ -45,7 +46,6 @@ const MAX_MEMORY_LENGTH = 500;
 const MAX_GOAL_LENGTH = 200;
 
 interface AgentContextSidebarProps {
-  contextProjects: Project[];
   sessionId?: string | null;
   toolLogOpen: boolean;
   onToggleToolLog: () => void;
@@ -55,7 +55,6 @@ interface AgentContextSidebarProps {
 }
 
 export function AgentContextSidebar({
-  contextProjects,
   sessionId,
   toolLogOpen,
   onToggleToolLog,
@@ -64,23 +63,89 @@ export function AgentContextSidebar({
   onToggleCollapse,
 }: AgentContextSidebarProps) {
   const qc = useQueryClient();
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [projectSearch, setProjectSearch] = useState('');
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   const { data: profile } = useQuery({
     queryKey: ['userProfile'],
     queryFn: async () => (await getApi().getUserProfile()).data,
   });
 
-  // 从会话列表同步已绑定项目
-  useQuery({
+  // 随活跃会话拉取真实绑定项目
+  const { data: sessionDetail } = useQuery({
     queryKey: ['agentSession', sessionId],
     enabled: Boolean(sessionId),
     queryFn: async () => {
       if (!sessionId) return null;
-      const res = await getApi().getAgentSession(sessionId);
-      setActiveProjectId(res.data.project_id ?? null);
-      return res.data;
+      return (await getApi().getAgentSession(sessionId)).data;
     },
   });
+
+  const boundIds = useMemo(() => {
+    if (!sessionDetail) return [] as string[];
+    if (sessionDetail.project_ids?.length) return sessionDetail.project_ids.map(String);
+    if (sessionDetail.project_id) return [String(sessionDetail.project_id)];
+    return [];
+  }, [sessionDetail]);
+
+  // 拉取绑定项目详情（并行 getProject；数量通常很少）
+  const { data: boundProjects = [] } = useQuery({
+    queryKey: ['sessionBoundProjects', sessionId, boundIds.join(',')],
+    enabled: boundIds.length > 0,
+    queryFn: async () => {
+      const api = getApi();
+      const results = await Promise.all(
+        boundIds.map(async (id) => {
+          try {
+            return (await api.getProject(id)).data;
+          } catch {
+            return null;
+          }
+        })
+      );
+      return results.filter((p): p is Project => Boolean(p));
+    },
+  });
+
+  // 添加项目：轻量搜索库
+  const { data: searchResults } = useQuery({
+    queryKey: ['projectPicker', projectSearch],
+    enabled: pickerOpen,
+    queryFn: async () => {
+      const res = await getApi().listProjects({
+        search: projectSearch.trim() || undefined,
+        page: 1,
+        page_size: 12,
+      });
+      return res.data.items;
+    },
+  });
+
+  // 工具 manage_session_projects / propose_memory 完成后刷新
+  useEffect(() => {
+    for (const tc of toolCalls.values()) {
+      const r = tc.result as Record<string, unknown> | undefined;
+      if (r && r.__session_projects__ && sessionId) {
+        void qc.invalidateQueries({ queryKey: ['agentSession', sessionId] });
+        void qc.invalidateQueries({ queryKey: ['sessionBoundProjects'] });
+        void qc.invalidateQueries({ queryKey: ['userProfile'] });
+      }
+      if (tc.name === 'propose_memory' && tc.result !== undefined) {
+        void qc.invalidateQueries({ queryKey: ['userProfile'] });
+      }
+    }
+  }, [toolCalls, sessionId, qc]);
+
+  // 会话列表中的 project_ids 变化时（SSE session_projects）同步刷新详情
+  const storeProjectIds = useAgentStore((s) => {
+    const cur = s.sessions.find((x) => x.id === sessionId);
+    return (cur?.project_ids ?? []).join(',');
+  });
+  useEffect(() => {
+    if (!sessionId) return;
+    void qc.invalidateQueries({ queryKey: ['agentSession', sessionId] });
+    void qc.invalidateQueries({ queryKey: ['sessionBoundProjects'] });
+  }, [storeProjectIds, sessionId, qc]);
 
   const updateProfile = useMutation({
     mutationFn: async (data: Partial<UserProfile>) =>
@@ -96,6 +161,14 @@ export function AgentContextSidebar({
 
   const memoryItems = profile?.memory_items ?? [];
   const goals = profile?.goals ?? [];
+
+  // 技术栈：优先 memory_items tech；若空则从 tech_proficiency 派生
+  const techChips = useMemo(() => {
+    const fromMem = memoryItems.filter((m) => m.category === 'tech');
+    if (fromMem.length > 0) return fromMem.map((m) => m.content);
+    const tech = profile?.tech_proficiency ?? {};
+    return Object.entries(tech).map(([k, v]) => `${k}: ${v}`);
+  }, [memoryItems, profile?.tech_proficiency]);
 
   const startEditing = (category: MemoryItem['category'] | 'goal') => {
     setEditingCategory(category);
@@ -163,6 +236,23 @@ export function AgentContextSidebar({
   const itemsByCategory = (cat: MemoryItem['category']) =>
     memoryItems.filter((m) => m.category === cat);
 
+  const setBoundProjects = async (ids: string[]) => {
+    if (!sessionId) return;
+    await getApi().updateAgentSession(sessionId, { project_ids: ids });
+    void qc.invalidateQueries({ queryKey: ['agentSession', sessionId] });
+  };
+
+  const addProject = (id: string) => {
+    if (boundIds.includes(id)) return;
+    void setBoundProjects([...boundIds, id]);
+    setPickerOpen(false);
+    setProjectSearch('');
+  };
+
+  const removeProject = (id: string) => {
+    void setBoundProjects(boundIds.filter((x) => x !== id));
+  };
+
   if (collapsed) {
     return (
       <aside className="context-panel context-panel--collapsed">
@@ -194,65 +284,103 @@ export function AgentContextSidebar({
       </button>
       <div className="context-section context-section--projects">
         <div className="context-title">
-          <span>当前上下文 · {contextProjects.length} 个项目</span>
+          <span>
+            当前上下文
+            {boundProjects.length > 0 ? ` · ${boundProjects.length}` : ''}
+          </span>
+          {sessionId && (
+            <button
+              type="button"
+              className="ctx-add-btn"
+              title="添加项目"
+              onClick={() => setPickerOpen((v) => !v)}
+            >
+              +
+            </button>
+          )}
         </div>
-        <div className="ctx-proj-list">
-          {contextProjects.map((p, i) => {
+
+        {!sessionId && (
+          <p className="ctx-proj-hint muted">选择或新建对话后可绑定项目</p>
+        )}
+
+        {sessionId && boundProjects.length === 0 && !pickerOpen && (
+          <p className="ctx-proj-empty muted">
+            尚未绑定项目。与 Hub 对话提到仓库时会自动加入，或点 + 手动添加。
+          </p>
+        )}
+
+        <div className="ctx-proj-chips">
+          {boundProjects.map((p, i) => {
             const { repo } = splitRepoName(p.name);
-            const pinned = Boolean(sessionId && activeProjectId === p.id);
             return (
-              <button
-                key={p.id}
-                type="button"
-                className={`ctx-proj ${pinned ? 'ctx-proj--active' : ''}`}
-                title={pinned ? '当前会话已绑定此项目' : '点击绑定到当前会话'}
-                onClick={() => {
-                  if (!sessionId) return;
-                  void (async () => {
-                    try {
-                      await getApi().updateAgentSession(sessionId, {
-                        project_id: pinned ? null : p.id,
-                      });
-                      setActiveProjectId(pinned ? null : p.id);
-                    } catch {
-                      /* ignore */
-                    }
-                  })();
-                }}
-              >
-                <div
-                  className="ctx-proj-icon"
+              <div key={p.id} className="ctx-proj-chip" title={p.name}>
+                <span
+                  className="ctx-proj-chip__icon"
                   style={{ background: REPO_AVATAR_GRADIENTS[i % REPO_AVATAR_GRADIENTS.length] }}
                 >
                   {(repo[0] ?? 'P').toUpperCase()}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="ctx-proj-name">
-                    {p.name}
-                    {pinned ? ' · 已绑定' : ''}
-                  </div>
-                  <div className="ctx-proj-meta">
-                    {categoryLabel(p.category_id)} · {p.language ?? '-'} · ★{formatNumber(p.stars)}
-                  </div>
-                  <div className="ctx-proj-progress">
-                    <ProgressBadge progress={p.progress} />
-                  </div>
-                </div>
-              </button>
+                </span>
+                <span className="ctx-proj-chip__name">{p.name}</span>
+                <ProgressBadge progress={p.progress} />
+                <button
+                  type="button"
+                  className="ctx-proj-chip__remove"
+                  aria-label={`移除 ${p.name}`}
+                  onClick={() => removeProject(p.id)}
+                >
+                  ×
+                </button>
+              </div>
             );
           })}
         </div>
-        <p className="ctx-proj-hint muted">
-          点击项目可绑定到当前会话；Hub 与专家 Agent 将获得该项目上下文
-        </p>
+
+        {pickerOpen && sessionId && (
+          <div className="ctx-proj-picker">
+            <input
+              className="input input--compact"
+              placeholder="搜索项目库…"
+              value={projectSearch}
+              onChange={(e) => setProjectSearch(e.target.value)}
+              autoFocus
+            />
+            <div className="ctx-proj-picker__list">
+              {(searchResults ?? [])
+                .filter((p) => !boundIds.includes(p.id))
+                .map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="ctx-proj-picker__item"
+                    onClick={() => addProject(p.id)}
+                  >
+                    <span>{p.name}</span>
+                    <span className="muted">
+                      {p.language ?? '-'} · ★{formatNumber(p.stars)}
+                    </span>
+                  </button>
+                ))}
+              {(searchResults ?? []).filter((p) => !boundIds.includes(p.id)).length === 0 && (
+                <p className="muted" style={{ fontSize: 11, padding: 6 }}>
+                  无匹配项目
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="context-panel-scroll">
         {(['summary', 'goal', 'tech', 'preference'] as const).map((cat) => {
           const meta = MEMORY_SECTION_META[cat];
-          const items = cat === 'goal' ? goals : itemsByCategory(cat);
-          const isEmpty = items.length === 0;
           const isEditing = editingCategory === cat;
+          const isEmpty =
+            cat === 'goal'
+              ? goals.length === 0
+              : cat === 'tech'
+                ? techChips.length === 0
+                : itemsByCategory(cat).length === 0;
 
           return (
             <div key={cat} className="context-section context-section--memory">
@@ -281,16 +409,26 @@ export function AgentContextSidebar({
                         )}
                       </div>
                     ))
-                  : itemsByCategory(cat).map((m) => (
-                      <div key={m.id} className="memory-chip">
-                        <span>{m.content}</span>
-                        {meta.userCanRemove && (
-                          <button type="button" aria-label="删除" onClick={() => removeMemory(m.id)}>
-                            ×
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                  : cat === 'tech'
+                    ? techChips.map((content) => (
+                        <div key={content} className="memory-chip">
+                          <span>{content}</span>
+                        </div>
+                      ))
+                    : itemsByCategory(cat).map((m) => (
+                        <div key={m.id} className="memory-chip" title={m.content}>
+                          <span>{formatMemoryChipContent(m.content)}</span>
+                          {meta.userCanRemove && (
+                            <button
+                              type="button"
+                              aria-label="删除"
+                              onClick={() => removeMemory(m.id)}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
+                      ))}
                 {isEditing && (
                   <div className="memory-chip memory-chip--editing">
                     <input
@@ -309,7 +447,9 @@ export function AgentContextSidebar({
                       <button
                         type="button"
                         className="btn btn-primary btn-sm"
-                        onClick={() => (cat === 'goal' ? validateAndAddGoal() : validateAndAddMemory(cat))}
+                        onClick={() =>
+                          cat === 'goal' ? validateAndAddGoal() : validateAndAddMemory(cat)
+                        }
                       >
                         保存
                       </button>
@@ -340,7 +480,13 @@ export function AgentContextSidebar({
           <button
             type="button"
             className="context-title collapsible-head"
-            style={{ width: '100%', border: 0, background: 'transparent', cursor: 'pointer', padding: 0 }}
+            style={{
+              width: '100%',
+              border: 0,
+              background: 'transparent',
+              cursor: 'pointer',
+              padding: 0,
+            }}
             onClick={onToggleToolLog}
           >
             <span>工具调用日志</span>
@@ -363,7 +509,10 @@ export function AgentContextSidebar({
                   <div style={{ fontSize: 11, color: 'var(--text-400)' }}>暂无工具调用</div>
                 ) : (
                   Array.from(toolCalls.entries()).map(([id, tc]) => (
-                    <div key={id} className={`tool-log-row ${tc.result !== undefined ? 'success' : 'running'}`}>
+                    <div
+                      key={id}
+                      className={`tool-log-row ${tc.result !== undefined ? 'success' : 'running'}`}
+                    >
                       {tc.result !== undefined ? <span className="check">✓</span> : <span className="dot" />}
                       <span>{tc.name}</span>
                     </div>

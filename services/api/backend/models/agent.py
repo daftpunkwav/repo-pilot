@@ -5,11 +5,29 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
+
+# 会话与项目多对多：一个对话可绑定多个项目上下文
+agent_session_projects = Table(
+    "agent_session_projects",
+    Base.metadata,
+    Column(
+        "session_id",
+        UUID(as_uuid=True),
+        ForeignKey("agent_sessions.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "project_id",
+        UUID(as_uuid=True),
+        ForeignKey("projects.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
 
 
 class UserProfile(Base):
@@ -36,9 +54,12 @@ class AgentSession(Base):
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
     title: Mapped[Optional[str]] = mapped_column(String(255), default="新对话")
+    # 主项目（兼容旧逻辑）；完整列表见 agent_session_projects
     project_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True
     )
+    # chat=用户主动对话；analyze=详情页快速 AI 分析
+    source: Mapped[Optional[str]] = mapped_column(String(16), default="chat")
     active_agent: Mapped[Optional[str]] = mapped_column(String(32), default="hub")
     status: Mapped[Optional[str]] = mapped_column(String(16), default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

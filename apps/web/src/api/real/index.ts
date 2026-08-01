@@ -404,6 +404,9 @@ export class RealApiClient implements IApiClient {
         ...s,
         id: String(s.id),
         agent: s.agent as AgentId,
+        project_id: s.project_id ? String(s.project_id) : null,
+        project_ids: (s.project_ids ?? []).map(String),
+        source: s.source ?? 'chat',
       })),
       meta: res.meta,
     };
@@ -420,6 +423,9 @@ export class RealApiClient implements IApiClient {
         ...res.data,
         id: String(res.data.id),
         agent: res.data.agent as AgentId,
+        project_id: res.data.project_id ? String(res.data.project_id) : null,
+        project_ids: (res.data.project_ids ?? []).map(String),
+        source: res.data.source ?? 'chat',
         messages: res.data.messages.map((m) => ({
           ...m,
           id: String(m.id),
@@ -435,7 +441,14 @@ export class RealApiClient implements IApiClient {
   async createAgentSession(): Promise<ApiResponse<AgentSession>> {
     const res = await apiRequest<AgentSession>('/agent/sessions', { method: 'POST' });
     return {
-      data: { ...res.data, id: String(res.data.id), agent: res.data.agent as AgentId },
+      data: {
+        ...res.data,
+        id: String(res.data.id),
+        agent: res.data.agent as AgentId,
+        project_id: res.data.project_id ? String(res.data.project_id) : null,
+        project_ids: (res.data.project_ids ?? []).map(String),
+        source: res.data.source ?? 'chat',
+      },
       meta: res.meta,
     };
   }
@@ -446,7 +459,7 @@ export class RealApiClient implements IApiClient {
 
   async updateAgentSession(
     id: string,
-    data: { title?: string; project_id?: string | null }
+    data: { title?: string; project_id?: string | null; project_ids?: string[] }
   ): Promise<ApiResponse<AgentSession>> {
     const res = await apiRequest<AgentSession>(`/agent/sessions/${id}`, {
       method: 'PATCH',
@@ -458,6 +471,8 @@ export class RealApiClient implements IApiClient {
         id: String(res.data.id),
         agent: res.data.agent as AgentId,
         project_id: res.data.project_id ? String(res.data.project_id) : null,
+        project_ids: (res.data.project_ids ?? []).map(String),
+        source: res.data.source ?? 'chat',
       },
       meta: res.meta,
     };

@@ -281,6 +281,10 @@ export interface AgentSession {
   updated_at: string;
   unread: boolean;
   project_id?: string | null;
+  /** 会话绑定的多项目上下文 */
+  project_ids?: string[];
+  /** chat=用户主动；analyze=详情页快速分析 */
+  source?: 'chat' | 'analyze' | string;
 }
 
 export interface AgentMessage {
@@ -290,7 +294,10 @@ export interface AgentMessage {
   role: MessageRole;
   content?: string;
   tool_call?: ToolCallData;
+  /** 助手发起的结构化反问（历史卡片） */
   question?: AgentQuestion;
+  /** 用户对反问的回答（历史卡片） */
+  question_answer?: QuestionAnswerRecord;
   created_at: string;
 }
 
@@ -345,6 +352,8 @@ export interface RadioQuestion {
   type: 'radio';
   options: RadioOption[];
   allow_other?: boolean;
+  /** quiz 考试题标记，前端以考试框样式展示 */
+  exam?: boolean;
 }
 
 export interface RadioOption {
@@ -395,11 +404,19 @@ export interface KnowledgeNode {
 }
 
 export type QuestionAnswer =
-  | { type: 'radio'; value: string; other_text?: string }
-  | { type: 'checkbox'; values: string[] }
-  | { type: 'slider'; value: number }
-  | { type: 'drag_sort'; order: string[] }
-  | { type: 'knowledge_map'; checked: string[] };
+  | { type: 'radio'; value: string; other_text?: string; question_id?: string }
+  | { type: 'checkbox'; values: string[]; question_id?: string }
+  | { type: 'slider'; value: number; question_id?: string }
+  | { type: 'drag_sort'; order: string[]; question_id?: string }
+  | { type: 'knowledge_map'; checked: string[]; question_id?: string };
+
+export interface QuestionAnswerRecord {
+  question: AgentQuestion;
+  answers: QuestionAnswer[];
+  skipped?: boolean;
+  summary: string;
+  details: { question: string; answer: string }[];
+}
 
 // ========================================
 // SSE
@@ -413,6 +430,7 @@ export type SSEEventType =
   | 'question'
   | 'agent_switch'
   | 'select_repos'
+  | 'session_projects'
   | 'done'
   | 'error';
 
