@@ -234,6 +234,7 @@
   .agent-navigator { background: linear-gradient(135deg, #00b8d4, #00d4aa); }
   .agent-curator   { background: linear-gradient(135deg, #34c759, #30d158); }
   .agent-scribe    { background: linear-gradient(135deg, #ff375f, #ff6b8a); }
+  .agent-atlas     { background: linear-gradient(135deg, #5ac8fa, #007aff); }
 
   /* ============ 消息流 ============ */
   .chat-messages {

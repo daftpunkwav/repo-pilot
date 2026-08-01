@@ -22,7 +22,6 @@ import { NoteEditor } from '@/components/note/NoteEditor';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { StreamRenderer } from '@/components/agent/StreamRenderer';
 import {
   useCreateNote,
   useUpdateNote,
@@ -33,6 +32,10 @@ import { formatDate } from '@/utils/date';
 import { categoryLabel } from '@/utils/labels';
 import { AGENT_CATALOG } from '@/constants/agentCatalog';
 import { OVERVIEW_INNER_GLASS, OVERVIEW_OUTER_GLASS } from '@/constants/overviewGlass';
+import {
+  ProjectAiPanel,
+  type ProjectAiLine,
+} from '@/components/project/ProjectAiPanel';
 
 const PD_PROGRESS: { id: ProjectProgress; label: string; className: string }[] = [
   { id: 'none', label: '待开始', className: 'progress-none' },
@@ -43,6 +46,16 @@ const PD_PROGRESS: { id: ProjectProgress; label: string; className: string }[] =
 
 /** 详情侧栏 6 大专家 Agent（不含 Hub 总入口） */
 const DETAIL_AGENTS = AGENT_CATALOG.filter((a) => a.id !== 'hub');
+
+function welcomeAiLine(projectName: string): ProjectAiLine {
+  return {
+    id: 'welcome',
+    role: 'assistant',
+    content:
+      `我是项目分析助手。选择上方专家后点击「开始分析」，或在右侧「AI 学习助手」点「调用」，即可针对 **${projectName}** 生成分析。\n\n` +
+      'Scout 为 CoT 真流式秒级速览；思考过程默认收起，可点击展开。追问请到 Agent 对话页。',
+  };
+}
 
 type DetailTab = 'readme' | 'notes' | 'ai' | 'related';
 
@@ -67,6 +80,9 @@ export function ProjectDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [activeAgent, setActiveAgent] = useState<AgentId>('scout');
+  const [aiLines, setAiLines] = useState<ProjectAiLine[]>(() => [
+    welcomeAiLine('当前项目'),
+  ]);
   const [aiContent, setAiContent] = useState('');
   const [aiThinking, setAiThinking] = useState('');
   const [aiStreaming, setAiStreaming] = useState(false);
@@ -95,6 +111,8 @@ export function ProjectDetailPage() {
       aiAbortRef.current.abort();
       aiAbortRef.current = null;
       setAiStreaming(false);
+      setAiContent('');
+      setAiThinking('');
     }
   }, [tab]);
 
@@ -104,6 +122,28 @@ export function ProjectDetailPage() {
     },
     [],
   );
+
+  // 切换项目时重置消息流
+  useEffect(() => {
+    if (!id) return;
+    aiAbortRef.current?.abort();
+    aiAbortRef.current = null;
+    setAiStreaming(false);
+    setAiContent('');
+    setAiThinking('');
+    setAiLines([welcomeAiLine('当前项目')]);
+  }, [id]);
+
+  // 项目名就绪后刷新欢迎语（仅尚未产生对话时）
+  useEffect(() => {
+    if (!project?.name) return;
+    setAiLines((prev) => {
+      if (prev.length === 1 && prev[0]?.id === 'welcome') {
+        return [welcomeAiLine(project.name)];
+      }
+      return prev;
+    });
+  }, [project?.name]);
 
   const related = useMemo(() => {
     if (!graphData || !id) return [];
@@ -128,17 +168,28 @@ export function ProjectDetailPage() {
   const recommendedAgent: AgentId = project?.progress === 'mastered' ? 'mentor' : 'scout';
   const { repo } = splitRepoName(project?.name ?? '');
   const scribeName = repo || project?.name || '';
-  const activeAgentMeta =
-    DETAIL_AGENTS.find((a) => a.id === activeAgent) ?? DETAIL_AGENTS[0];
 
-  /** 页内调用指定专家 Agent 分析当前项目（可复用 SSE 消费器） */
+  /** 页内调用指定专家 Agent 分析当前项目（消息流 + SSE） */
   const runAgent = async (agent: AgentId) => {
     if (!id) return;
     const resolved = (agent === 'hub' ? 'scout' : agent) as AgentId;
+    const meta =
+      DETAIL_AGENTS.find((a) => a.id === resolved) ?? DETAIL_AGENTS[0];
+    const agentName = meta?.name ?? 'Agent';
+    const agentTagline = meta?.tagline ?? '分析';
+    const projectLabel = project?.name ?? id;
     setActiveAgent(resolved);
     setTab('ai');
     setAiContent('');
     setAiThinking('');
+    setAiLines((prev) => [
+      ...prev,
+      {
+        id: `u_${Date.now()}`,
+        role: 'user',
+        content: `请用 ${agentName}（${agentTagline}）分析本项目：${projectLabel}`,
+      },
+    ]);
     setAiStreaming(true);
     aiAbortRef.current?.abort();
     const ac = new AbortController();
@@ -154,11 +205,35 @@ export function ProjectDetailPage() {
         },
         { signal: ac.signal },
       );
-      if (!result.text.trim() && !result.sawError && !ac.signal.aborted) {
+      if (ac.signal.aborted) return;
+
+      const assistantText = result.text.trim();
+      if (assistantText) {
+        setAiLines((prev) => [
+          ...prev,
+          {
+            id: `a_${Date.now()}`,
+            role: 'assistant',
+            content: assistantText,
+            thinking: result.thinking || undefined,
+            agentId: resolved,
+          },
+        ]);
+      } else if (!result.sawError) {
         const hint = result.thinking?.trim()
           ? '模型只返回了思考/工具状态，未输出正文。请重试，或换 Scout 快速分析。'
           : '未生成分析内容。请确认设置页 LLM 已配置且测试通过，然后重试。';
         addToast({ type: 'warning', message: hint });
+        setAiLines((prev) => [
+          ...prev,
+          {
+            id: `a_${Date.now()}`,
+            role: 'assistant',
+            content: hint,
+            thinking: result.thinking || undefined,
+            agentId: resolved,
+          },
+        ]);
       }
     } catch (err) {
       if (!ac.signal.aborted) {
@@ -167,9 +242,28 @@ export function ProjectDetailPage() {
       }
     } finally {
       if (aiAbortRef.current === ac) {
+        aiAbortRef.current = null;
         setAiStreaming(false);
+        setAiContent('');
+        setAiThinking('');
       }
     }
+  };
+
+  const abortAgent = () => {
+    aiAbortRef.current?.abort();
+    aiAbortRef.current = null;
+    setAiStreaming(false);
+    setAiContent('');
+    setAiThinking('');
+    setAiLines((prev) => [
+      ...prev,
+      {
+        id: `sys_${Date.now()}`,
+        role: 'assistant',
+        content: '已中止本次分析。可更换专家后重新开始。',
+      },
+    ]);
   };
 
   const handleSaveNote = async () => {
@@ -484,62 +578,18 @@ export function ProjectDetailPage() {
         )}
 
         {tab === 'ai' && (
-          <div className={`pd-readme pd-ai-panel ${OVERVIEW_OUTER_GLASS}`}>
-            <div className="pd-readme-toolbar pd-ai-toolbar">
-              <div className="left">
-                <span
-                  className="pd-ai-agent-dot"
-                  style={{ background: activeAgentMeta?.color }}
-                  aria-hidden
-                />
-                {activeAgentMeta?.name ?? 'Agent'} · {activeAgentMeta?.tagline ?? '分析'}
-              </div>
-              <div className="pd-ai-agent-switch" role="tablist" aria-label="选择分析 Agent">
-                {DETAIL_AGENTS.map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    role="tab"
-                    className={`pd-ai-chip ${activeAgent === a.id ? 'is-active' : ''}`}
-                    aria-selected={activeAgent === a.id}
-                    disabled={aiStreaming}
-                    title={a.intro}
-                    onClick={() => {
-                      setActiveAgent(a.id as AgentId);
-                      if (!aiStreaming) {
-                        setAiContent('');
-                        setAiThinking('');
-                      }
-                    }}
-                  >
-                    {a.name}
-                  </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                className="btn btn-primary btn-sm"
-                disabled={aiStreaming}
-                onClick={() => void runAgent(activeAgent)}
-              >
-                {aiStreaming ? '分析中…' : aiContent ? '重新分析' : '开始分析'}
-              </button>
-            </div>
-            <div className="pd-readme-body">
-              {aiContent || aiThinking || aiStreaming ? (
-                <StreamRenderer
-                  content={aiContent}
-                  thinking={aiThinking || undefined}
-                  streaming={aiStreaming}
-                />
-              ) : (
-                <p className="muted">
-                  选择上方专家 Agent，点击「开始分析」；或在右侧「AI 学习助手」点「调用」。
-                  Scout 为 CoT 真流式秒级速览；思考过程默认收起，可点击展开。
-                </p>
-              )}
-            </div>
-          </div>
+          <ProjectAiPanel
+            projectName={project.name}
+            agents={DETAIL_AGENTS}
+            activeAgent={activeAgent}
+            lines={aiLines}
+            streaming={aiStreaming}
+            streamContent={aiContent}
+            streamThinking={aiThinking}
+            onSelectAgent={(agentId) => setActiveAgent(agentId)}
+            onRun={() => void runAgent(activeAgent)}
+            onAbort={abortAgent}
+          />
         )}
 
         {tab === 'related' && (

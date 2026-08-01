@@ -118,34 +118,42 @@
 
     /* ---------- README 渲染区 ---------- */
     .pd-readme { display: flex; flex-direction: column; background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius); overflow: hidden; }
-    /* AI 分析区：固定可视高度，内容在内部滚动，避免整页被流式输出撑高 */
+    .pd-readme-toolbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--bg-300); background: var(--bg-100); }
+    .pd-readme-toolbar .left { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-500); }
+    .pd-readme-toolbar .left svg { width: 14px; height: 14px; }
+    .pd-readme-toolbar .font-ctrl { display: flex; align-items: center; background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius-pill); overflow: hidden; }
+    .pd-readme-toolbar .font-ctrl button { width: 28px; height: 28px; display: grid; place-items: center; border: 0; background: transparent; color: var(--text-600); cursor: pointer; }
+    .pd-readme-toolbar .font-ctrl button:hover { background: var(--bg-300); }
+    .pd-readme-toolbar .font-ctrl .font-display { width: 36px; height: 28px; display: grid; place-items: center; font-weight: 700; color: var(--text-800); border-left: 1px solid var(--bg-300); border-right: 1px solid var(--bg-300); }
+    .pd-readme-body { padding: 24px 28px; }
+    .pd-readme .markdown { font-size: 14px; }
+
+    /* AI 分析区 · EmbedAgentChat 对话壳 + 消息流 */
     .pd-ai-panel {
       display: flex;
       flex-direction: column;
-      min-height: 320px;
+      min-height: 360px;
       max-height: min(62vh, 640px);
       overflow: hidden;
     }
-    .pd-ai-panel .pd-readme-body {
-      flex: 1 1 auto;
-      min-height: 0;
-      overflow-y: auto;
-      overscroll-behavior: contain;
+    .pd-ai-panel.embed-agent-chat {
+      height: auto;
     }
-    .pd-readme-toolbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--bg-300); background: var(--bg-100); }
-    .pd-readme-toolbar .left { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-500); }
-    .pd-ai-toolbar { flex-wrap: wrap; gap: 8px 12px; }
-    .pd-ai-agent-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      flex-shrink: 0;
+    .pd-ai-chat-head {
+      flex-wrap: wrap;
+      gap: 10px 12px;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .pd-ai-chat-identity {
+      min-width: 0;
+      flex: 0 1 auto;
     }
     .pd-ai-agent-switch {
       display: flex;
       flex-wrap: wrap;
       gap: 4px;
-      flex: 1;
+      margin-left: auto;
       min-width: 0;
     }
     .pd-ai-chip {
@@ -170,27 +178,50 @@
       color: var(--brand-700, #004fad);
     }
     .pd-ai-chip:disabled { opacity: 0.55; cursor: not-allowed; }
+    .pd-ai-chat-messages {
+      flex: 1 1 auto;
+      min-height: 0;
+      overscroll-behavior: contain;
+    }
+    .pd-ai-chat-actions {
+      align-items: center;
+      gap: 12px;
+    }
+    .pd-ai-chat-hint {
+      flex: 1;
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text-500);
+    }
+    .pd-ai-run-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
     .pd-agent.is-active {
       border-color: rgba(0, 122, 255, 0.4);
       box-shadow: 0 0 0 1px rgba(0, 122, 255, 0.12);
     }
     [data-theme='dark'] .pd-ai-chip {
-      background: rgba(255, 255, 255, 0.06);
-      border-color: rgba(255, 255, 255, 0.12);
-      color: var(--text-600);
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.16);
+      color: var(--text-500);
     }
     [data-theme='dark'] .pd-ai-chip.is-active {
-      background: rgba(0, 122, 255, 0.2);
-      border-color: rgba(10, 132, 255, 0.4);
+      background: rgba(0, 122, 255, 0.22);
+      border-color: rgba(10, 132, 255, 0.45);
       color: #64d2ff;
     }
-    .pd-readme-toolbar .left svg { width: 14px; height: 14px; }
-    .pd-readme-toolbar .font-ctrl { display: flex; align-items: center; background: var(--bg-50); border: 1px solid var(--bg-300); border-radius: var(--radius-pill); overflow: hidden; }
-    .pd-readme-toolbar .font-ctrl button { width: 28px; height: 28px; display: grid; place-items: center; border: 0; background: transparent; color: var(--text-600); cursor: pointer; }
-    .pd-readme-toolbar .font-ctrl button:hover { background: var(--bg-300); }
-    .pd-readme-toolbar .font-ctrl .font-display { width: 36px; height: 28px; display: grid; place-items: center; font-weight: 700; color: var(--text-800); border-left: 1px solid var(--bg-300); border-right: 1px solid var(--bg-300); }
-    .pd-readme-body { padding: 24px 28px; }
-    .pd-readme .markdown { font-size: 14px; }
+    [data-theme='dark'] .pd-ai-chat-head {
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+    [data-theme='dark'] .pd-ai-panel .embed-msg--assistant {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
 
     /* ---------- 右侧栏：项目信息 ---------- */
     .pd-info-list { display: flex; flex-direction: column; gap: 12px; }
@@ -291,7 +322,7 @@
 .pd-side .card-title {
   white-space: nowrap;
 }
-.pd-shell > .pd-main > .glass-card:not(.pd-hero):not(.pd-progress):not(.pd-notes-panel):not(.pd-readme) {
+.pd-shell > .pd-main > .glass-card:not(.pd-hero):not(.pd-progress):not(.pd-notes-panel):not(.pd-readme):not(.pd-ai-panel) {
   padding: 16px 20px;
 }
 
@@ -402,6 +433,9 @@
 [data-theme='dark'] .pd-readme-toolbar {
   background: rgba(255, 255, 255, 0.03);
   border-color: rgba(255, 255, 255, 0.1);
+}
+[data-theme='dark'] .pd-ai-panel {
+  border-color: rgba(255, 255, 255, 0.12);
 }
 [data-theme='dark'] .pd-tab[aria-selected='true'] .pd-tab-count {
   background: rgba(0, 122, 255, 0.18);
