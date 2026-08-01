@@ -3,7 +3,7 @@
        登录页 · 页面级样式
        仅本页使用，所有令牌优先复用 design-system.css 的 CSS 变量
        ===================================================================== */
-    html, body { min-width: 900px; }
+    html, body { min-width: 0; }
     body.auth-bg {
       /* Apple 风格：浅色背景 + 顶部微弱品牌光晕（不引入新颜色，仅 brand + bg 合成） */
       background:
@@ -38,6 +38,10 @@
       gap: 32px;
       justify-content: center;
       align-items: start;
+    }
+    @media (max-width: 900px) {
+      .state-grid { grid-template-columns: minmax(0, 1fr); }
+      .auth-canvas { padding: 24px 16px 40px; }
     }
 
     .state-label {

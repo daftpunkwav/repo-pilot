@@ -7,16 +7,18 @@
   /* 四栏布局：sidebar + 会话列表 + 对话区 + 上下文面板 */
   .agent-shell {
     display: grid;
-    grid-template-columns: var(--sidebar-w) 280px 1fr 280px;
+    grid-template-columns: var(--sidebar-w) minmax(0, 280px) minmax(0, 1fr) minmax(0, 280px);
     height: 100vh;
+    height: 100dvh;
     max-height: 100vh;
+    max-height: 100dvh;
     overflow: hidden;
     background: var(--bg-200);
     transition: grid-template-columns 0.2s var(--ease);
   }
 
   .agent-shell.agent-shell--context-collapsed {
-    grid-template-columns: var(--sidebar-w) 280px 1fr 36px;
+    grid-template-columns: var(--sidebar-w) minmax(0, 280px) minmax(0, 1fr) 36px;
   }
 
   /* ============ 会话列表 ============ */
@@ -198,11 +200,17 @@
     font-weight: 600;
     color: var(--text-100);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
   }
   .agent-switcher__hint {
     font-size: 10px;
     color: var(--text-400);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
   }
   .agent-switcher {
     display: flex;
@@ -1308,4 +1316,26 @@
 [data-theme='dark'] .degrade-tip {
   background: rgba(255, 159, 10, 0.14);
   color: #ffb84d;
+}
+
+/* 缩放 / 窄视口：优先保住对话主列 */
+@media (max-width: 1280px) {
+  .agent-shell {
+    grid-template-columns: var(--sidebar-w) minmax(0, 220px) minmax(0, 1fr) minmax(0, 240px);
+  }
+  .agent-shell.agent-shell--context-collapsed {
+    grid-template-columns: var(--sidebar-w) minmax(0, 220px) minmax(0, 1fr) 36px;
+  }
+}
+@media (max-width: 1000px) {
+  .agent-shell,
+  .agent-shell.agent-shell--context-collapsed {
+    grid-template-columns: var(--sidebar-w) 0 minmax(0, 1fr) 0;
+  }
+  .agent-shell .session-list,
+  .agent-shell .context-panel {
+    visibility: hidden;
+    pointer-events: none;
+    overflow: hidden;
+  }
 }

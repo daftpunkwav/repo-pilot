@@ -3,7 +3,7 @@
        注册页 · 页面级样式
        视觉与登录页保持一致：相同的卡片骨架、相同的品牌色板
        ===================================================================== */
-    html, body { min-width: 900px; }
+    html, body { min-width: 0; }
     body.auth-bg {
       background:
         radial-gradient(1200px 600px at 50% -10%, var(--brand-50), transparent 60%),
@@ -16,6 +16,9 @@
       max-width: 1080px;
       margin: 0 auto;
       padding: 48px 32px 64px;
+    }
+    @media (max-width: 900px) {
+      .auth-canvas { padding: 24px 16px 40px; }
     }
 
     .design-doc-header {

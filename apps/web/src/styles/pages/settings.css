@@ -372,7 +372,7 @@
     .tip { cursor: help; border-bottom: 1px dashed var(--text-300); }
 
     /* ---------- 移动端 fallback（保持设计稿为主，移动端仅做基础响应） ---------- */
-    @media (max-width: 860px) {
+    @media (max-width: 1000px) {
       .settings-shell { grid-template-columns: 1fr; padding: 20px; }
       .subnav { position: static; flex-direction: row; flex-wrap: wrap; }
       .theme-cards { grid-template-columns: 1fr; }

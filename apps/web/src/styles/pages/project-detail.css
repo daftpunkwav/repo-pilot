@@ -1,6 +1,11 @@
 /* Extracted from archive/project-detail.html */
 /* ---------- 详情页外壳：左主区 + 右栏 ---------- */
-    .pd-shell { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+    .pd-shell {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) clamp(220px, 26vw, 320px);
+      gap: 24px;
+      align-items: start;
+    }
     .pd-main { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
     /* sticky 右侧信息栏：一屏等高，上下留白对称（对齐 .content padding 32px） */
     .pd-side {
@@ -12,6 +17,7 @@
       top: calc(var(--topbar-h) + var(--pd-side-inset));
       align-self: start;
       min-width: 0;
+      width: 100%;
       height: calc(100vh - var(--topbar-h) - 2 * var(--pd-side-inset));
       max-height: calc(100vh - var(--topbar-h) - 2 * var(--pd-side-inset));
       overflow: hidden;
@@ -19,12 +25,34 @@
     }
 
     /* ---------- Hero ---------- */
-    .pd-hero { display: flex; align-items: flex-start; gap: 20px; padding: 24px; }
-    .pd-hero-body { flex: 1; min-width: 0; }
-    .pd-hero-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .pd-hero {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      padding: 24px;
+      flex-wrap: wrap;
+    }
+    .pd-hero-body { flex: 1 1 200px; min-width: 0; }
+    .pd-hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
     .pd-avatar { width: 72px; height: 72px; border-radius: var(--radius-avatar-lg); background: linear-gradient(135deg, #53c1de 0%, #0080ff 60%, #007aff 100%); display: grid; place-items: center; color: #fff; box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25); flex-shrink: 0; }
     .pd-avatar svg { width: 44px; height: 44px; }
-    .pd-title { font-family: var(--font-mono); font-size: 22px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 4px; color: var(--text-800); line-height: 1.25; word-break: break-all; }
+    .pd-title {
+      font-family: var(--font-mono);
+      font-size: clamp(16px, 2.2vw, 22px);
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin: 0 0 4px;
+      color: var(--text-800);
+      line-height: 1.25;
+      overflow-wrap: anywhere;
+      word-break: normal;
+    }
     .pd-desc { color: var(--text-500); font-size: 14px; line-height: 1.5; margin: 0 0 12px; max-width: 720px; }
     .pd-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 18px; font-size: 12px; color: var(--text-500); }
     .pd-meta-item { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; }
@@ -236,7 +264,7 @@
     .pd-info-list { display: flex; flex-direction: column; gap: 12px; }
     .pd-info-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; font-size: 13px; }
     .pd-info-row .k { color: var(--text-500); flex-shrink: 0; }
-    .pd-info-row .v { color: var(--text-800); font-weight: 500; text-align: right; word-break: break-all; }
+    .pd-info-row .v { color: var(--text-800); font-weight: 500; text-align: right; overflow-wrap: anywhere; word-break: normal; }
     .pd-info-row .v a { color: var(--brand-500); font-family: var(--font-mono); font-size: 12px; }
     .pd-info-row .v a:hover { text-decoration: underline; }
     .pd-tag-list { display: inline-flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
@@ -359,10 +387,11 @@
     .pd-related-name { flex: 1; font-family: var(--font-mono); font-size: 12px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .pd-related-sim { display: inline-flex; align-items: center; gap: 3px; font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--success); }
 
-    @media (max-width: 1100px) {
+    @media (max-width: 1280px) {
       .pd-shell { grid-template-columns: 1fr; }
       .pd-side {
         position: static;
+        width: auto;
         height: auto;
         max-height: none;
         overflow: visible;
@@ -375,6 +404,14 @@
         flex: none;
         grid-auto-rows: auto;
       }
+    }
+    @media (max-width: 720px) {
+      .pd-hero { gap: 14px; padding: 16px; }
+      .pd-avatar { width: 56px; height: 56px; }
+      .pd-avatar svg { width: 34px; height: 34px; }
+      .pd-hero-actions { width: 100%; }
+      .pd-hero-actions .btn { flex: 1 1 auto; }
+      .pd-tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
     }
 
 /* ---------- 玻璃面板内边距（替代原 .card padding） ---------- */

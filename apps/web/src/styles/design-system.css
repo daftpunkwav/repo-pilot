@@ -134,7 +134,7 @@
   /* Layout */
   --sidebar-w: 260px;
   --topbar-h: 56px;
-  --content-max: 1320px;
+  --content-max: 1520px;
 
   /* Motion */
   --ease: cubic-bezier(.4, 0, .2, 1);
@@ -259,7 +259,7 @@ img, svg { display: block; max-width: 100%; }
    ========================================================================== */
 .app {
   display: grid;
-  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
   min-height: 100vh;
   position: relative;
   z-index: var(--z-content);
@@ -370,7 +370,10 @@ img, svg { display: block; max-width: 100%; }
 .topbar-spacer { flex: 1; }
 .topbar-search {
   display: flex; align-items: center; gap: 8px;
-  width: 320px; height: 36px;
+  width: min(320px, 36vw);
+  min-width: 0;
+  max-width: 320px;
+  height: 36px;
   padding: 0 12px;
   background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(16px);
@@ -422,10 +425,16 @@ img, svg { display: block; max-width: 100%; }
 
 .content {
   flex: 1;
-  padding: 32px;
+  min-width: 0;
+  padding: clamp(16px, 2.5vw, 32px);
   max-width: var(--content-max);
   width: 100%;
   margin: 0 auto;
+  box-sizing: border-box;
+}
+/* 详情页内容区取消限宽，避免宽屏两侧过大空边与缩放时主列过窄 */
+.content:has(.pd-shell) {
+  max-width: none;
 }
 
 /* ==========================================================================
@@ -677,7 +686,7 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   margin-bottom: 16px;
   align-items: center;
 }
-.filter-search { flex: 1; min-width: 240px; }
+.filter-search { flex: 1; min-width: 0; }
 .filter-chip {
   display: inline-flex; align-items: center; gap: 6px;
   height: 32px; padding: 0 12px;
