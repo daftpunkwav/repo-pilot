@@ -159,7 +159,14 @@
     .pd-readme-toolbar .font-ctrl button:hover { background: var(--bg-300); }
     .pd-readme-toolbar .font-ctrl .font-display { width: 36px; height: 28px; display: grid; place-items: center; font-weight: 700; color: var(--text-800); border-left: 1px solid var(--bg-300); border-right: 1px solid var(--bg-300); }
     .pd-readme-body { padding: 24px 28px; }
-    .pd-readme .markdown { font-size: 14px; }
+    /* 字号由内联 style 控制；子元素必须用 em/inherit，否则固定 px/rem 会无视缩放 */
+    .pd-readme-body .markdown-body { font-size: inherit; }
+    .pd-readme-body.markdown h1 { font-size: 1.85em; }
+    .pd-readme-body.markdown h2 { font-size: 1.35em; }
+    .pd-readme-body.markdown h3 { font-size: 1.14em; }
+    .pd-readme-body.markdown code { font-size: 0.93em; }
+    .pd-readme-body.markdown pre { font-size: 0.86em; }
+    .pd-readme-body.markdown table { font-size: 0.93em; }
 
     /* AI 分析区：随内容增高，不设 max-height，由页面整体滚动。
        保持 overflow:hidden 以裁切玻璃左侧高光（visible 时圆角失效会外露竖线） */

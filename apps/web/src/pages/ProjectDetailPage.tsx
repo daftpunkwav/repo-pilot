@@ -478,7 +478,9 @@ export function ProjectDetailPage() {
                 <button type="button" aria-label="缩小字号" onClick={() => setFontSize((f) => Math.max(11, f - 1))}>
                   −
                 </button>
-                <span className="font-display">{fontSize > 14 ? 'A+' : 'A'}</span>
+                <span className="font-display" title={`${fontSize}px`}>
+                  {fontSize}
+                </span>
                 <button type="button" aria-label="放大字号" onClick={() => setFontSize((f) => Math.min(20, f + 1))}>
                   +
                 </button>
