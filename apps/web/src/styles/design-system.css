@@ -176,6 +176,20 @@
   --fluid-c2: #2a1f5c;
   --fluid-c3: #5c1f3a;
   --fluid-c4: #1f5c3a;
+
+  /* Category palette · 深色：半透明底 + 提亮字色（对齐 progress pill） */
+  --cat-frontend-bg: rgba(10, 132, 255, 0.2);  --cat-frontend-fg: #64d2ff;
+  --cat-backend-bg:  rgba(48, 209, 88, 0.18);  --cat-backend-fg:  #30d158;
+  --cat-ai-bg:       rgba(255, 69, 58, 0.2);   --cat-ai-fg:       #ff6961;
+  --cat-data-bg:     rgba(255, 159, 10, 0.2);  --cat-data-fg:     #ffb340;
+  --cat-devops-bg:   rgba(94, 92, 230, 0.22);  --cat-devops-fg:   #a5a3ff;
+  --cat-mobile-bg:   rgba(48, 209, 88, 0.16);  --cat-mobile-fg:   #63e6a0;
+  --cat-desktop-bg:  rgba(10, 132, 255, 0.18); --cat-desktop-fg:  #64d2ff;
+  --cat-game-bg:     rgba(255, 55, 95, 0.2);   --cat-game-fg:     #ff6b8a;
+  --cat-security-bg: rgba(94, 92, 230, 0.22);  --cat-security-fg: #a5a3ff;
+  --cat-tools-bg:    rgba(174, 174, 178, 0.14); --cat-tools-fg:   #d1d1d6;
+  --cat-learning-bg: rgba(255, 159, 10, 0.2);  --cat-learning-fg: #ffb340;
+  --cat-other-bg:    rgba(174, 174, 178, 0.14); --cat-other-fg:   #aeaeb2;
 }
 
 /* ---------- Reset ---------- */
@@ -940,7 +954,7 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* 无分类徽章底（不影响 cat-* 彩色徽章） */
+/* 无主题类徽章底（cat-* 由深色 --cat-* 变量接管） */
 [data-theme="dark"] .badge:not([class*="cat-"]) {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text-700);

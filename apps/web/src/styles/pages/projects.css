@@ -132,6 +132,10 @@
 .filter-bar.glass-card {
   overflow: visible;
 }
+/* overflow:visible 时左侧 1px 高光无法被圆角裁切，竖线外露；关掉不影响边框/内阴影 */
+.filter-bar.glass-card::after {
+  content: none;
+}
 .filter-bar > * {
   position: relative;
   z-index: 1;
