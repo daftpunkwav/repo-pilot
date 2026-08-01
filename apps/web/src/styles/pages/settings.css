@@ -392,6 +392,10 @@
       padding: 18px 20px;
       overflow: visible;
     }
+    /* overflow:visible 时关掉左侧高光，避免竖线外露 */
+    .llm-settings-block.glass-card::after {
+      content: none;
+    }
     .llm-block-title {
       margin: 0 0 4px;
       font-size: 15px;

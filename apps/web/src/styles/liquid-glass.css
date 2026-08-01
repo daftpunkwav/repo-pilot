@@ -473,3 +473,23 @@
   --lg-edge-left-top: rgba(255, 255, 255, 0.42);
   --lg-edge-left-mid: rgba(255, 255, 255, 0.14);
 }
+
+/* --------------------------------------------------------------------------
+   overflow:visible 兼容
+   默认 glass-card 用 overflow:hidden 裁切圆角内的左侧 1px 高光。
+   下拉/浮层必须 visible 时加 .glass-overflow-visible，并关闭 ::after，
+   避免竖线外露；边框与 inset 阴影仍保留，观感接近。
+   -------------------------------------------------------------------------- */
+.glass-card.glass-overflow-visible,
+.liquid-glass.glass-overflow-visible,
+.glass.glass-overflow-visible {
+  overflow: visible;
+}
+.glass-card.glass-overflow-visible::after,
+.liquid-glass.glass-overflow-visible::after,
+.glass.glass-overflow-visible::after,
+.glass-card.glass-overflow-visible.glass-card--overview-outer::after,
+.glass-card.glass-overflow-visible.glass-card--overview-inner::after,
+.glass-card.glass-overflow-visible.glass-card--panel::after {
+  content: none;
+}

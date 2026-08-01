@@ -110,7 +110,7 @@ export function LlmSettingsSection({
         </div>
       )}
 
-      <div className="llm-settings-block glass-card glass-card--overview-inner">
+      <div className="llm-settings-block glass-card glass-card--overview-inner glass-overflow-visible">
         <h3 className="llm-block-title">供应商连接</h3>
         <p className="llm-block-desc">名称、Base URL、API 格式与密钥</p>
 
@@ -203,7 +203,7 @@ export function LlmSettingsSection({
         </div>
       </div>
 
-      <div className="llm-settings-block glass-card glass-card--overview-inner">
+      <div className="llm-settings-block glass-card glass-card--overview-inner glass-overflow-visible">
         <h3 className="llm-block-title">模型</h3>
         <p className="llm-block-desc">
           选择默认模型后，点击「测试模型」向该模型发起一次真实请求；返回有效内容即通过
@@ -324,7 +324,7 @@ export function LlmSettingsSection({
         </div>
       </div>
 
-      <div className="llm-settings-block glass-card glass-card--overview-inner">
+      <div className="llm-settings-block glass-card glass-card--overview-inner glass-overflow-visible">
         <h3 className="llm-block-title">Agent 模型与风格</h3>
         <p className="llm-block-desc">
           为每个 Agent 指定模型覆盖与说话风格；模型留空则使用全局默认

@@ -161,14 +161,15 @@
     .pd-readme-body { padding: 24px 28px; }
     .pd-readme .markdown { font-size: 14px; }
 
-    /* AI 分析区：随内容增高，不设 max-height，由页面整体滚动 */
+    /* AI 分析区：随内容增高，不设 max-height，由页面整体滚动。
+       保持 overflow:hidden 以裁切玻璃左侧高光（visible 时圆角失效会外露竖线） */
     .pd-ai-panel {
       display: flex;
       flex-direction: column;
       min-height: 360px;
       max-height: none;
       height: auto;
-      overflow: visible;
+      overflow: hidden;
     }
     .pd-ai-panel.embed-agent-chat {
       height: auto;
