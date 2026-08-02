@@ -38,23 +38,6 @@ export function StreamRenderer({
   const thinkingLines = hasThinking
     ? thinking!.trim().split('\n').filter(Boolean).length
     : 0;
-  const thinkingPreview = (() => {
-    if (!hasThinking) return '';
-    const lines = thinking!
-      .trim()
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean);
-    const meaningful = lines.filter(
-      (l) =>
-        !l.startsWith('[状态]') &&
-        !l.startsWith('[执行]') &&
-        !l.startsWith('意图识别:') &&
-        !l.startsWith('正在生成') &&
-        !l.startsWith('[规划完成]')
-    );
-    return meaningful.at(-1) ?? lines.at(-1) ?? '';
-  })();
 
   return (
     <div className="stream-renderer" data-testid="stream-renderer">
@@ -80,9 +63,6 @@ export function StreamRenderer({
               <span className="stream-renderer__thinking-hint">点击收起</span>
             )}
           </button>
-          {!thinkingExpanded && thinkingPreview && (
-            <p className="stream-renderer__thinking-preview">{thinkingPreview}</p>
-          )}
           {thinkingExpanded && <pre className="stream-renderer__thinking-body">{thinking}</pre>}
         </div>
       )}

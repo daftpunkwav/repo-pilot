@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAgentStore } from '@/stores/agentStore';
 import { ChatPanel } from '@/components/agent/ChatPanel';
@@ -29,6 +29,20 @@ function isAnalyzeSession(s: AgentSession): boolean {
   return false;
 }
 
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`chev-down ${open ? 'open' : ''}`}
+      viewBox="0 0 24 24"
+      width={12}
+      height={12}
+      aria-hidden
+    >
+      <path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
 export function AgentPage() {
   const { sessionId } = useParams<{ sessionId?: string }>();
   const sessions = useAgentStore((s) => s.sessions);
@@ -42,9 +56,17 @@ export function AgentPage() {
   const [batchDeleteIds, setBatchDeleteIds] = useState<string[] | null>(null);
   const [sessionSearch, setSessionSearch] = useState('');
   const [toolLogOpen, setToolLogOpen] = useState(true);
+  const [chatOpen, setChatOpen] = useState(true);
   const [analyzeOpen, setAnalyzeOpen] = useState(false);
   const [manageMode, setManageMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [sessionListCollapsed, setSessionListCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('rp_agent_session_collapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [contextPanelCollapsed, setContextPanelCollapsed] = useState(() => {
     try {
       return localStorage.getItem('rp_agent_context_collapsed') === '1';
@@ -55,14 +77,19 @@ export function AgentPage() {
 
   useEffect(() => {
     const shell = document.querySelector('.agent-shell');
+    shell?.classList.toggle('agent-shell--session-collapsed', sessionListCollapsed);
     shell?.classList.toggle('agent-shell--context-collapsed', contextPanelCollapsed);
     try {
+      localStorage.setItem('rp_agent_session_collapsed', sessionListCollapsed ? '1' : '0');
       localStorage.setItem('rp_agent_context_collapsed', contextPanelCollapsed ? '1' : '0');
     } catch {
       /* 隐私模式等场景下忽略 */
     }
-    return () => shell?.classList.remove('agent-shell--context-collapsed');
-  }, [contextPanelCollapsed]);
+    return () => {
+      shell?.classList.remove('agent-shell--session-collapsed');
+      shell?.classList.remove('agent-shell--context-collapsed');
+    };
+  }, [sessionListCollapsed, contextPanelCollapsed]);
 
   useEffect(() => {
     void loadSessions();
@@ -84,9 +111,11 @@ export function AgentPage() {
   );
 
   const visibleForManage = useMemo(() => {
-    if (analyzeOpen) return [...chatSessions, ...analyzeSessions];
-    return chatSessions;
-  }, [chatSessions, analyzeSessions, analyzeOpen]);
+    const list: AgentSession[] = [];
+    if (chatOpen) list.push(...chatSessions);
+    if (analyzeOpen) list.push(...analyzeSessions);
+    return list;
+  }, [chatSessions, analyzeSessions, chatOpen, analyzeOpen]);
 
   useEffect(() => {
     if (sessionId) {
@@ -98,6 +127,17 @@ export function AgentPage() {
       if (first) void switchSession(first.id);
     }
   }, [sessionId, chatSessions, currentSessionId, switchSession]);
+
+  // 切换会话时若目标落在折叠分组，展开该分组（仅随 sessionId 变化触发）
+  const prevSessionIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!currentSessionId || currentSessionId === prevSessionIdRef.current) return;
+    prevSessionIdRef.current = currentSessionId;
+    const target = sessions.find((s) => s.id === currentSessionId);
+    if (!target) return;
+    if (isAnalyzeSession(target)) setAnalyzeOpen(true);
+    else setChatOpen(true);
+  }, [currentSessionId, sessions]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -119,12 +159,12 @@ export function AgentPage() {
     clearSelection();
   };
 
-  const renderSessionItem = (s: AgentSession) => (
+  const renderSessionItem = (s: AgentSession, kind: 'chat' | 'analyze') => (
     <div
       key={s.id}
-      className={`session-item ${currentSessionId === s.id ? 'active' : ''} ${
-        selectedIds.has(s.id) ? 'session-item--selected' : ''
-      }`}
+      className={`session-item ${kind === 'analyze' ? 'session-item--analyze' : ''} ${
+        currentSessionId === s.id ? 'active' : ''
+      } ${selectedIds.has(s.id) ? 'session-item--selected' : ''}`}
       role="button"
       tabIndex={0}
       onClick={() => {
@@ -153,7 +193,12 @@ export function AgentPage() {
       )}
       <div className="session-item__main">
         <div className="session-title">
-          {s.title}
+          {kind === 'analyze' && (
+            <span className="session-source-chip" title="项目详情页快速调用">
+              快析
+            </span>
+          )}
+          <span className="session-title__text">{s.title}</span>
           {s.unread && <span className="session-unread" title="未读" />}
         </div>
         <div className="session-meta">
@@ -180,135 +225,142 @@ export function AgentPage() {
     </div>
   );
 
-  return (
-    <>
-      <aside className="session-list">
-        <div className="session-list-header">
-          <button
-            type="button"
-            className="btn btn-primary btn-block"
-            data-testid="new-session-btn"
-            onClick={() => void createSession()}
-            disabled={manageMode}
-          >
-            新建对话
-          </button>
-          <div className="field mt-sm" style={{ height: 32 }}>
-            <input
-              placeholder="搜索会话..."
-              value={sessionSearch}
-              onChange={(e) => setSessionSearch(e.target.value)}
-            />
-          </div>
-          <div className="session-manage-bar">
-            {!manageMode ? (
+  const sessionList = (
+    <aside className="session-list">
+      <div className="session-list-header">
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          data-testid="new-session-btn"
+          onClick={() => void createSession()}
+          disabled={manageMode}
+        >
+          新建对话
+        </button>
+        <div className="field mt-sm" style={{ height: 32 }}>
+          <input
+            placeholder="搜索会话..."
+            value={sessionSearch}
+            onChange={(e) => setSessionSearch(e.target.value)}
+          />
+        </div>
+        <div className="session-manage-bar">
+          {!manageMode ? (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setManageMode(true)}
+            >
+              批量管理
+            </button>
+          ) : (
+            <>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={selectAllVisible}>
+                全选
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={clearSelection}>
+                清空
+              </button>
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                onClick={() => setManageMode(true)}
+                style={{ color: 'var(--danger, #ff6b6b)' }}
+                disabled={selectedIds.size === 0}
+                onClick={() => setBatchDeleteIds([...selectedIds])}
               >
-                批量管理
+                删除 ({selectedIds.size})
               </button>
-            ) : (
-              <>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={selectAllVisible}>
-                  全选
-                </button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={clearSelection}>
-                  清空
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  style={{ color: 'var(--danger, #ff6b6b)' }}
-                  disabled={selectedIds.size === 0}
-                  onClick={() => setBatchDeleteIds([...selectedIds])}
-                >
-                  删除 ({selectedIds.size})
-                </button>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={exitManage}>
-                  完成
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-        <div className="session-list-tabs">
-          <span className="session-tab active">对话 {chatSessions.length}</span>
-          {analyzeSessions.length > 0 && (
-            <button
-              type="button"
-              className={`session-tab ${analyzeOpen ? 'active' : ''}`}
-              onClick={() => setAnalyzeOpen((v) => !v)}
-            >
-              快速分析 {analyzeSessions.length}
-            </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={exitManage}>
+                完成
+              </button>
+            </>
           )}
         </div>
-        <div className="session-list-body">
-          {chatSessions.length === 0 && (
-            <p className="muted" style={{ padding: '12px 8px', fontSize: 12 }}>
-              暂无主动对话，点击上方新建
-            </p>
-          )}
-          {chatSessions.map(renderSessionItem)}
+      </div>
 
-          {analyzeSessions.length > 0 && (
-            <div className="session-analyze-fold">
-              <button
-                type="button"
-                className="session-analyze-fold__head"
-                onClick={() => setAnalyzeOpen((v) => !v)}
-                aria-expanded={analyzeOpen}
-              >
-                <span>快速分析记录</span>
-                <span className="session-analyze-fold__meta">
-                  {analyzeSessions.length}
-                  <svg
-                    className={`chev-down ${analyzeOpen ? 'open' : ''}`}
-                    viewBox="0 0 24 24"
-                    width={12}
-                    height={12}
-                  >
-                    <path
-                      d="M6 9l6 6 6-6"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                </span>
-              </button>
-              {analyzeOpen && (
-                <div className="session-analyze-fold__body">
-                  {analyzeSessions.map(renderSessionItem)}
-                </div>
+      <div className="session-list-body">
+        <section className="session-section">
+          <button
+            type="button"
+            className="session-section__head"
+            onClick={() => setChatOpen((v) => !v)}
+            aria-expanded={chatOpen}
+          >
+            <span className="session-section__label">
+              <span className="session-section__dot session-section__dot--chat" />
+              手动对话
+            </span>
+            <span className="session-section__meta">
+              {chatSessions.length}
+              <Chevron open={chatOpen} />
+            </span>
+          </button>
+          {chatOpen && (
+            <div className="session-section__body">
+              {chatSessions.length === 0 ? (
+                <p className="session-section__empty">暂无主动对话，点击上方新建</p>
+              ) : (
+                chatSessions.map((s) => renderSessionItem(s, 'chat'))
               )}
             </div>
           )}
-        </div>
-        <div
-          className="session-list-header"
-          style={{ borderTop: '1px solid var(--bg-300)', borderBottom: 0, padding: '10px 14px' }}
-        >
-          <Link
-            to="/settings"
-            className="btn btn-sm btn-ghost"
-            style={{ justifyContent: 'flex-start', width: '100%', gap: 8 }}
+        </section>
+
+        <section className="session-section session-section--analyze">
+          <button
+            type="button"
+            className="session-section__head"
+            onClick={() => setAnalyzeOpen((v) => !v)}
+            aria-expanded={analyzeOpen}
+            disabled={analyzeSessions.length === 0}
           >
-            Agent 配置
-          </Link>
-        </div>
-      </aside>
+            <span className="session-section__label">
+              <span className="session-section__dot session-section__dot--analyze" />
+              快速分析
+            </span>
+            <span className="session-section__meta">
+              {analyzeSessions.length}
+              <Chevron open={analyzeOpen} />
+            </span>
+          </button>
+          {analyzeOpen && (
+            <div className="session-section__body">
+              {analyzeSessions.length === 0 ? (
+                <p className="session-section__empty">暂无快速分析记录</p>
+              ) : (
+                analyzeSessions.map((s) => renderSessionItem(s, 'analyze'))
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+
+      <div
+        className="session-list-header"
+        style={{ borderTop: '1px solid var(--bg-300)', borderBottom: 0, padding: '10px 14px' }}
+      >
+        <Link
+          to="/settings"
+          className="btn btn-sm btn-ghost"
+          style={{ justifyContent: 'flex-start', width: '100%', gap: 8 }}
+        >
+          Agent 配置
+        </Link>
+      </div>
+    </aside>
+  );
+
+  return (
+    <>
+      {sessionList}
 
       <main className="chat-area">
-        {currentSessionId ? (
-          <ChatPanel />
-        ) : (
-          <p className="muted" style={{ padding: 24 }}>
-            创建或选择一个会话开始对话
-          </p>
-        )}
+        <ChatPanel
+          sessionListCollapsed={sessionListCollapsed}
+          contextPanelCollapsed={contextPanelCollapsed}
+          onToggleSessionList={() => setSessionListCollapsed((v) => !v)}
+          onToggleContextPanel={() => setContextPanelCollapsed((v) => !v)}
+        />
       </main>
 
       <AgentContextSidebar
@@ -316,8 +368,6 @@ export function AgentPage() {
         toolLogOpen={toolLogOpen}
         onToggleToolLog={() => setToolLogOpen((v) => !v)}
         toolCalls={toolCalls}
-        collapsed={contextPanelCollapsed}
-        onToggleCollapse={() => setContextPanelCollapsed((v) => !v)}
       />
 
       <ConfirmDialog

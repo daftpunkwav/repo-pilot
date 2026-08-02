@@ -41,7 +41,12 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
             {pretty(message.agent_switch.from)} → {pretty(message.agent_switch.to)}
           </span>
           {message.agent_switch.reason && (
-            <span className="agent-switch-chip__reason">{message.agent_switch.reason}</span>
+            <span
+              className="agent-switch-chip__reason"
+              title={message.agent_switch.reason}
+            >
+              {message.agent_switch.reason}
+            </span>
           )}
         </div>
       </div>

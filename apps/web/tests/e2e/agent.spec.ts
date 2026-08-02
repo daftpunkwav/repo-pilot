@@ -21,12 +21,12 @@ test.describe('agent', () => {
     await page.goto('/agent');
     await expect(page.getByText(/当前上下文/)).toBeVisible({ timeout: 15000 });
 
-    await page.getByTestId('context-panel-collapse').click();
-    await expect(page.getByTestId('context-panel-expand')).toBeVisible();
+    await page.getByTestId('context-panel-toggle').click();
+    await expect(page.locator('.agent-shell--context-collapsed')).toHaveCount(1);
     await expect(page.getByText(/当前上下文/)).not.toBeVisible();
 
-    await page.getByTestId('context-panel-expand').click();
-    await expect(page.getByTestId('context-panel-collapse')).toBeVisible();
+    await page.getByTestId('context-panel-toggle').click();
+    await expect(page.locator('.agent-shell--context-collapsed')).toHaveCount(0);
     await expect(page.getByText(/当前上下文/)).toBeVisible();
   });
 });

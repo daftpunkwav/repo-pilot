@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { AgentContextSidebar } from '@/components/agent/AgentContextSidebar';
@@ -30,32 +30,10 @@ describe('AgentContextSidebar', () => {
     toolLogOpen: false,
     onToggleToolLog: vi.fn(),
     toolCalls: new Map<string, { name: string; result?: unknown }>(),
-    onToggleCollapse: vi.fn(),
   };
 
-  it('收起时仅显示展开标签', () => {
-    render(<AgentContextSidebar {...baseProps} collapsed />, { wrapper });
-    expect(screen.getByTestId('context-panel-expand')).toBeInTheDocument();
-    expect(screen.queryByText(/当前上下文/)).not.toBeInTheDocument();
-  });
-
-  it('展开时显示面板与收起按钮', () => {
-    render(<AgentContextSidebar {...baseProps} collapsed={false} />, { wrapper });
-    expect(screen.getByTestId('context-panel-collapse')).toBeInTheDocument();
+  it('渲染上下文面板主区块', () => {
+    render(<AgentContextSidebar {...baseProps} />, { wrapper });
     expect(screen.getByText(/当前上下文/)).toBeInTheDocument();
-  });
-
-  it('点击收起按钮触发 onToggleCollapse', () => {
-    const onToggleCollapse = vi.fn();
-    render(
-      <AgentContextSidebar
-        {...baseProps}
-        collapsed={false}
-        onToggleCollapse={onToggleCollapse}
-      />,
-      { wrapper }
-    );
-    fireEvent.click(screen.getByTestId('context-panel-collapse'));
-    expect(onToggleCollapse).toHaveBeenCalledOnce();
   });
 });

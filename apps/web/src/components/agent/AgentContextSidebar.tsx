@@ -50,8 +50,6 @@ interface AgentContextSidebarProps {
   toolLogOpen: boolean;
   onToggleToolLog: () => void;
   toolCalls: Map<string, { name: string; result?: unknown }>;
-  collapsed: boolean;
-  onToggleCollapse: () => void;
 }
 
 export function AgentContextSidebar({
@@ -59,8 +57,6 @@ export function AgentContextSidebar({
   toolLogOpen,
   onToggleToolLog,
   toolCalls,
-  collapsed,
-  onToggleCollapse,
 }: AgentContextSidebarProps) {
   const qc = useQueryClient();
   const [projectSearch, setProjectSearch] = useState('');
@@ -253,35 +249,8 @@ export function AgentContextSidebar({
     void setBoundProjects(boundIds.filter((x) => x !== id));
   };
 
-  if (collapsed) {
-    return (
-      <aside className="context-panel context-panel--collapsed">
-        <button
-          type="button"
-          className="context-panel-expand-tab"
-          onClick={onToggleCollapse}
-          aria-label="展开上下文面板"
-          data-testid="context-panel-expand"
-          title="展开上下文面板"
-        >
-          上下文
-        </button>
-      </aside>
-    );
-  }
-
   return (
     <aside className="context-panel">
-      <button
-        type="button"
-        className="context-panel__collapse"
-        onClick={onToggleCollapse}
-        aria-label="收起上下文面板"
-        data-testid="context-panel-collapse"
-        title="收起上下文面板"
-      >
-        ›
-      </button>
       <div className="context-section context-section--projects">
         <div className="context-title">
           <span>

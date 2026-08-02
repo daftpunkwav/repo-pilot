@@ -13,7 +13,39 @@ import { ToolCallCard } from './ToolCallCard';
 import { LiveQuestionModal } from './QuestionHistoryCard';
 import { AGENT_INITIALS, AGENT_ROLE_LABELS } from '@/utils/labels';
 
-export function ChatPanel() {
+export interface ChatPanelProps {
+  /** 左侧对话历史是否已收起 */
+  sessionListCollapsed?: boolean;
+  /** 右侧上下文是否已收起 */
+  contextPanelCollapsed?: boolean;
+  onToggleSessionList?: () => void;
+  onToggleContextPanel?: () => void;
+}
+
+function PanelLeftIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" width={16} height={16}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <path d="M9 4.5v15" />
+    </svg>
+  );
+}
+
+function PanelRightIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" width={16} height={16}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <path d="M15 4.5v15" />
+    </svg>
+  );
+}
+
+export function ChatPanel({
+  sessionListCollapsed = false,
+  contextPanelCollapsed = false,
+  onToggleSessionList,
+  onToggleContextPanel,
+}: ChatPanelProps) {
   const sessions = useAgentStore((s) => s.sessions);
   const currentSessionId = useAgentStore((s) => s.currentSessionId);
   const messages = useAgentStore((s) => s.messages);
@@ -83,6 +115,19 @@ export function ChatPanel() {
   return (
     <>
       <header className="chat-header">
+        {onToggleSessionList && (
+          <button
+            type="button"
+            className={`chat-icon-btn chat-panel-toggle ${sessionListCollapsed ? '' : 'is-on'}`}
+            onClick={onToggleSessionList}
+            aria-label={sessionListCollapsed ? '展开对话历史' : '收起对话历史'}
+            aria-pressed={!sessionListCollapsed}
+            data-testid="session-list-toggle"
+            title={sessionListCollapsed ? '展开对话历史' : '收起对话历史'}
+          >
+            <PanelLeftIcon />
+          </button>
+        )}
         <AgentSelector profiles={profiles} />
         <div className="chat-title">
           <h2>{currentSession?.title ?? '新对话'}</h2>
@@ -94,6 +139,19 @@ export function ChatPanel() {
           </div>
         </div>
         <div className="chat-actions">
+          {onToggleContextPanel && (
+            <button
+              type="button"
+              className={`chat-icon-btn chat-panel-toggle ${contextPanelCollapsed ? '' : 'is-on'}`}
+              onClick={onToggleContextPanel}
+              aria-label={contextPanelCollapsed ? '展开上下文面板' : '收起上下文面板'}
+              aria-pressed={!contextPanelCollapsed}
+              data-testid="context-panel-toggle"
+              title={contextPanelCollapsed ? '展开上下文面板' : '收起上下文面板'}
+            >
+              <PanelRightIcon />
+            </button>
+          )}
           <button type="button" className="chat-icon-btn" title="导出对话">
             <svg
               viewBox="0 0 24 24"
