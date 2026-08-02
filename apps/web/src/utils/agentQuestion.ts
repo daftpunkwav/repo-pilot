@@ -42,19 +42,32 @@ const ABCD_OPTS: RadioOption[] = [
   { value: 'D', label: '选项 D' },
 ];
 
+/** 无意义的占位选项（解析失败时的假 ABCD） */
+export function isPlaceholderOptions(opts: RadioOption[]): boolean {
+  if (opts.length < 2) return false;
+  const placeholders = opts.filter((o) =>
+    /^选项\s*[A-Da-d]$/u.test((o.label || o.value || '').trim())
+  );
+  return placeholders.length >= Math.min(2, opts.length);
+}
+
 function defaultOptionsFor(prompt: string, id: string): RadioOption[] {
   const key = `${id} ${prompt}`.toLowerCase();
   if (/水平|level|掌握|熟练|程度|阶段/.test(key)) return LEVEL_OPTS;
   if (/语言|language|tech|技术栈|熟悉|常用/.test(key)) return LANG_OPTS;
   if (/想做|目标|goal|这次|目的|来这里|主要想/.test(key)) return GOAL_OPTS;
-  return ABCD_OPTS;
+  // 测验类不再返回假「选项 A」——交由调用方改文本题或从题干解析
+  return [];
 }
 
-/** 检测是否被错误地按字符拆开（如 "ría" → r/í/a） */
+/** 检测是否被错误地按字符拆开（如 "ría" → r/í/a）；合法 A–D 题号不算 */
 function looksLikeCharSplit(opts: RadioOption[]): boolean {
   if (opts.length < 2) return false;
+  const allLetterKeys = opts.every((o) =>
+    /^[A-Da-d]$/.test((o.label || o.value).trim())
+  );
+  if (allLetterKeys && opts.length <= 8) return false;
   const short = opts.filter((o) => (o.label || o.value).trim().length <= 1);
-  // 超过一半是单字符，基本可认定是字符串被逐字展开
   return short.length >= Math.ceil(opts.length * 0.6);
 }
 
@@ -192,14 +205,41 @@ export function cleanOptions(raw: unknown, prompt = '', id = ''): RadioOption[] 
       }
       const obj = o as Record<string, unknown>;
       let label = String(
-        obj.label ?? obj.text ?? obj.name ?? obj.content ?? obj.desc ?? ''
+        obj.label ??
+          obj.text ??
+          obj.name ??
+          obj.content ??
+          obj.desc ??
+          obj.description ??
+          obj.answer ??
+          obj.option ??
+          obj.choice ??
+          obj.body ??
+          ''
       ).trim();
       let value = String(obj.value ?? obj.id ?? obj.key ?? '').trim();
+      // 仅有 A–D 题号时，尝试把 description 提成正文
+      if (
+        (!label || (/^[A-Da-d]$/.test(label) && label === value)) &&
+        obj.description
+      ) {
+        label = String(obj.description).trim();
+      }
       if (!label && !value) {
-        const entries = Object.entries(obj).filter(([k]) => k.length <= 2);
+        const entries = Object.entries(obj).filter(
+          ([k]) => !['correct', 'is_correct', 'score'].includes(k)
+        );
         if (entries.length === 1 && entries[0]) {
           value = entries[0][0];
           label = String(entries[0][1] ?? '').trim();
+        } else if (
+          entries.length >= 1 &&
+          entries.every(([k]) => /^[A-Da-d]$/i.test(k))
+        ) {
+          // {"A":"文案"} 单键对象
+          const [k, v] = entries[0]!;
+          value = k.toUpperCase();
+          label = String(v ?? '').trim();
         }
       }
       if (!label && value) label = value;
@@ -208,17 +248,27 @@ export function cleanOptions(raw: unknown, prompt = '', id = ''): RadioOption[] 
       label = stripOptionLetterPrefix(label);
       // 丢弃无意义的单字符（除非只是 A/B/C/D 字母题号且无更好标签——仍太短则跳过）
       if (label.length <= 1 && !/^[A-Da-d]$/.test(label)) continue;
+      // 纯题号无正文：跳过，留给题干解析 / 文本题兜底
+      if (/^[A-Da-d]$/.test(label) && (!obj.description || label === value)) {
+        continue;
+      }
       const opt: RadioOption = { value, label };
-      if (obj.description) opt.description = String(obj.description);
+      if (obj.description && String(obj.description) !== label) {
+        opt.description = String(obj.description);
+      }
       out.push(opt);
     }
   }
 
-  if (looksLikeCharSplit(out) || out.length < 2) {
+  if (looksLikeCharSplit(out) || out.length < 2 || isPlaceholderOptions(out)) {
     // 尝试从题干里抠 A/B/C
     const fromPrompt = parseLetterOptions(prompt);
-    if (fromPrompt.length >= 2) return fromPrompt;
-    return defaultOptionsFor(prompt, id);
+    if (fromPrompt.length >= 2 && !isPlaceholderOptions(fromPrompt)) {
+      return fromPrompt;
+    }
+    const defaults = defaultOptionsFor(prompt, id);
+    if (defaults.length >= 2) return defaults;
+    return out.length >= 2 && !isPlaceholderOptions(out) ? out : [];
   }
   return out;
 }
@@ -235,12 +285,24 @@ function normalizeItem(
   title = ''
 ): QuestionItem {
   const id = String(raw.id ?? `q_${index + 1}`);
-  const prompt = cleanQuestionText(String(raw.prompt ?? raw.text ?? raw.question ?? '请选择'));
+  const prompt = cleanQuestionText(
+    String(raw.prompt ?? raw.text ?? raw.question ?? '请选择')
+  );
   const qtype = String(raw.type ?? 'single_choice').toLowerCase();
-  const opts = cleanOptions(raw.options, prompt, id);
+  const rawOpts = raw.options ?? raw.choices ?? raw.answers ?? [];
+  const opts = cleanOptions(rawOpts, prompt, id);
   const exam = isExamLike(prompt, qtype, title);
 
   if (qtype === 'multi_choice' || qtype === 'checkbox') {
+    if (opts.length < 2) {
+      return {
+        id,
+        text: `${prompt}\n\n（选项未能解析，请直接填写）`,
+        type: 'radio',
+        options: [{ value: 'other', label: '自由填写（在下方输入）' }],
+        allow_other: true,
+      };
+    }
     return {
       id,
       text: prompt,
@@ -267,6 +329,17 @@ function normalizeItem(
       allow_other: true,
     };
   }
+  // 单选 / quiz：禁止假「选项 A」；解析失败则改为可填写
+  if (opts.length < 2 || isPlaceholderOptions(opts)) {
+    return {
+      id,
+      text: `${prompt}\n\n（选项未能解析，请直接填写你的答案）`,
+      type: 'radio',
+      options: [{ value: 'other', label: '自由填写（在下方输入）' }],
+      allow_other: true,
+      exam: false,
+    };
+  }
   return {
     id,
     text: prompt,
@@ -286,19 +359,43 @@ export function ensureAgentQuestion(raw: unknown, _agentId = 'hub'): AgentQuesti
   if (Array.isArray(obj.questions) && obj.question_id) {
     const q = obj as unknown as AgentQuestion;
     const title = questionTitle(q);
+    const generic = new Set(['请回答以下问题', '请选择', '请选择最符合的一项', '']);
     return {
       ...q,
       questions: q.questions.map((item) => {
         if (item.type === 'radio') {
           const opts = cleanOptions(item.options, item.text, item.id);
-          // 尊重后端 exam 标记；勿把 type 伪造成 quiz 导致全员变「测验」
           const exam =
             typeof item.exam === 'boolean'
               ? item.exam
               : isExamLike(item.text, 'single_choice', title);
+          if (opts.length < 2 || isPlaceholderOptions(opts)) {
+            return {
+              ...item,
+              text: cleanQuestionText(
+                /选项未能解析/.test(item.text)
+                  ? item.text
+                  : `${item.text}\n\n（选项未能解析，请直接填写你的答案）`
+              ),
+              options: [{ value: 'other', label: '自由填写（在下方输入）' }],
+              exam: false,
+              allow_other: true,
+            };
+          }
+          let text = cleanQuestionText(item.text);
+          if (generic.has(text.trim()) || text.trim() === title.trim()) {
+            const labels = opts.map((o) => o.label).join(' ');
+            if (/初学|了解|掌握|精通/.test(labels)) {
+              text = '你的编程 / 技术掌握水平大致处于哪个阶段？';
+            } else if (/Python|TypeScript|Go|Rust/.test(labels)) {
+              text = '你更熟悉 / 想用哪一类技术栈？';
+            } else {
+              text = '请选择最符合你情况的一项：';
+            }
+          }
           return {
             ...item,
-            text: cleanQuestionText(item.text),
+            text,
             options: opts,
             exam,
             allow_other: exam ? false : item.allow_other,
@@ -334,11 +431,30 @@ export function ensureAgentQuestion(raw: unknown, _agentId = 'hub'): AgentQuesti
   if (questions.length === 0) {
     questions.push({
       id: 'default',
-      text: title,
+      text: '你的编程 / 技术掌握水平大致处于哪个阶段？',
       type: 'radio',
       options: LEVEL_OPTS,
       allow_other: true,
     });
+  } else {
+    const generic = new Set(['请回答以下问题', '请选择', '请选择最符合的一项', '']);
+    for (const q of questions) {
+      const text = (q.text || '').trim();
+      if (text && !generic.has(text) && text !== title.trim()) continue;
+      const labels =
+        q.type === 'radio'
+          ? q.options.map((o) => o.label).join(' ')
+          : q.type === 'checkbox'
+            ? q.options.map((o) => o.text).join(' ')
+            : '';
+      if (/初学|了解|掌握|精通/.test(labels)) {
+        q.text = '你的编程 / 技术掌握水平大致处于哪个阶段？';
+      } else if (/Python|TypeScript|Go|Rust/.test(labels)) {
+        q.text = '你更熟悉 / 想用哪一类技术栈？';
+      } else if (generic.has(text) || text === title.trim()) {
+        q.text = '请选择最符合你情况的一项：';
+      }
+    }
   }
 
   const allowSkip = obj.allow_skip !== false;

@@ -78,6 +78,12 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   switchSession: async (sessionId) => {
+    // 同会话流式进行中禁止用 DB 覆盖，否则会冲掉尚未落库完的 thinking / 半截正文
+    const prev = get();
+    if (prev.streaming && prev.currentSessionId === sessionId) {
+      return;
+    }
+
     const api = getApi();
     const response = await api.getAgentSession(sessionId);
     const messages = hydrateAgentMessages(response.data.messages ?? []);
@@ -467,32 +473,34 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               get().activeAgent) as AgentId;
             const from = (switchData.from ||
               (typeof raw.from === 'string' ? raw.from : get().activeAgent) ||
-              'hub') as string;
+              'hub') as AgentId;
             const reason =
               switchData.reason ||
               (typeof raw.reason === 'string' ? raw.reason : undefined);
             const sid = get().currentSessionId ?? '';
+            // 在 set 外读取缓冲，切换归属用 from（正在结束的 Agent），避免 activeAgent 不同步
+            const snap = get();
+            const prior = snap.streamingContent.trim();
+            const priorThink = snap.thinkingBuffer.trim();
+            const flushAgent = (from || snap.activeAgent) as AgentId;
+            const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
             set((state) => {
               const msgs = [...state.messages];
-              // 切换前：把当前流式正文/思考落成上一个 Agent 的气泡
-              const prior = state.streamingContent.trim();
-              const priorThink = state.thinkingBuffer.trim();
               if (prior || priorThink) {
                 msgs.push({
-                  id: `msg_${Date.now()}_pre_switch`,
+                  id: `msg_${stamp}_pre_switch`,
                   session_id: sid,
-                  agent: state.activeAgent,
+                  agent: flushAgent,
                   role: 'assistant',
                   content: prior || undefined,
                   ...(priorThink ? { thinking: priorThink } : {}),
                   created_at: new Date().toISOString(),
                 });
               }
-              // 可见的切换提示
               if (from !== next) {
                 msgs.push({
-                  id: `msg_switch_${Date.now()}`,
+                  id: `msg_switch_${stamp}`,
                   session_id: sid,
                   agent: next,
                   role: 'assistant',

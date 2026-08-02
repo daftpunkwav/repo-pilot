@@ -11,11 +11,30 @@ import {
 describe('cleanOptions', () => {
   it('解析标准数组', () => {
     const opts = cleanOptions([
-      { value: 'a', label: '选项 A' },
-      { value: 'b', label: '选项 B' },
+      { value: 'a', label: 'RunnableSequence 链式组合' },
+      { value: 'b', label: '仅语法糖无实际对象' },
     ]);
     expect(opts).toHaveLength(2);
-    expect(opts[0]?.label).toBe('选项 A');
+    expect(opts[0]?.label).toMatch(/RunnableSequence/);
+  });
+
+  it('拒绝假「选项 A」占位并返回空（交由上层改文本题）', () => {
+    const opts = cleanOptions([
+      { value: 'a', label: '选项 A' },
+      { value: 'b', label: '选项 B' },
+      { value: 'c', label: '选项 C' },
+      { value: 'd', label: '选项 D' },
+    ], 'LCEL 流水线本质是？', 'q1');
+    expect(opts).toHaveLength(0);
+  });
+
+  it('从 description 提升为选项正文', () => {
+    const opts = cleanOptions([
+      { value: 'A', description: 'RunnableSequence 的简写' },
+      { value: 'B', description: '仅仅是语法糖' },
+    ]);
+    expect(opts).toHaveLength(2);
+    expect(opts[0]?.label).toMatch(/RunnableSequence/);
   });
 
   it('解析字母键字典', () => {
@@ -121,7 +140,7 @@ describe('ensureAgentQuestion', () => {
     expect((q!.questions[1] as { exam?: boolean }).exam).toBe(true);
   });
 
-  it('损坏的单字符 options 会被替换', () => {
+  it('损坏的单字符 options 改为可填写，禁止假 ABCD', () => {
     const q = ensureAgentQuestion({
       title: 'Agent 基础测验 - 第 1 题 / 5',
       items: [
@@ -137,8 +156,11 @@ describe('ensureAgentQuestion', () => {
     const item = q!.questions[0]!;
     expect(item.type).toBe('radio');
     if (item.type === 'radio') {
-      expect(item.options.every((o) => o.label.length > 1)).toBe(true);
-      expect(item.allow_other).toBe(false);
+      expect(item.options.some((o) => /自由填写|选项未能解析/.test(o.label) || o.value === 'other')).toBe(
+        true
+      );
+      expect(item.allow_other).toBe(true);
+      expect(item.options.every((o) => !/^选项\s*[A-D]$/.test(o.label))).toBe(true);
     }
   });
 });

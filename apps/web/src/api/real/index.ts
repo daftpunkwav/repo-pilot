@@ -432,6 +432,9 @@ export class RealApiClient implements IApiClient {
           session_id: String(m.session_id),
           agent: m.agent as AgentId,
           content: m.content ?? '',
+          ...(typeof m.thinking === 'string' && m.thinking.trim()
+            ? { thinking: m.thinking }
+            : {}),
         })),
       },
       meta: res.meta,

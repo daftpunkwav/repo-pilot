@@ -37,22 +37,27 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
         scribe: 'Scribe',
         atlas: 'Atlas',
       }[id] ?? id);
+    const from = pretty(message.agent_switch.from);
+    const to = pretty(message.agent_switch.to);
+    const reason = message.agent_switch.reason?.trim();
     return (
       <div className="msg msg--switch" data-testid="agent-switch-notice">
-        <div className="agent-switch-chip">
-          <span className="agent-switch-chip__label">Agent 切换</span>
-          <span className="agent-switch-chip__path">
-            {pretty(message.agent_switch.from)} → {pretty(message.agent_switch.to)}
-          </span>
-          {message.agent_switch.reason && (
-            <span
-              className="agent-switch-chip__reason"
-              title={message.agent_switch.reason}
-            >
-              {message.agent_switch.reason}
+        <div className="agent-switch" role="status" aria-label={`切换 ${from} 到 ${to}`}>
+          <span className="agent-switch__line" aria-hidden />
+          <div className="agent-switch__core">
+            <span className="agent-switch__from">{from}</span>
+            <span className="agent-switch__arrow" aria-hidden>
+              →
             </span>
-          )}
+            <span className="agent-switch__to">{to}</span>
+          </div>
+          <span className="agent-switch__line" aria-hidden />
         </div>
+        {reason && (
+          <p className="agent-switch__reason" title={reason}>
+            {reason}
+          </p>
+        )}
       </div>
     );
   }
@@ -138,15 +143,14 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
           <span className="msg-time">{formatMessageTime(message.created_at)}</span>
         </div>
         <div
-          className={`msg-content ${isLegacyAnswer || isLegacySkip ? 'msg-content--qa-legacy' : ''} ${
-            isLong && !expanded ? 'msg-content--collapsed' : ''
-          }`}
+          className={`msg-content ${isLegacyAnswer || isLegacySkip ? 'msg-content--qa-legacy' : ''}`}
         >
           {!isUser && (message.thinking || message.content) ? (
             <StreamRenderer
               content={message.content ?? ''}
               thinking={message.thinking}
               streaming={false}
+              collapseBody={isLong && !expanded}
             />
           ) : (
             message.content && <MarkdownRenderer content={message.content} />

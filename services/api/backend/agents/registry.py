@@ -197,7 +197,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         max_tokens=4096,
         max_iterations=4,
     ),
-    # Scout：轻量 react，可 0–1 次工具
+    # Scout：轻量 react，可 0–1 次工具；收口正文需够写完速览，避免半截截断
     "scout": _def(
         "scout",
         "Scout",
@@ -209,13 +209,14 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         system_prompt=(
             "你是 Scout。优先基于已有项目元数据直接给出速览，只有关键信息缺失时才调用工具。"
             "输出结构（Markdown）：一句话定位 / 核心功能 / 技术栈 / 适合谁 / 学习门槛 / 建议下一步。"
-            "控制在 400 字以内，禁止 emoji，禁止冗长寒暄。"
+            "控制在约 800–1200 字；必须写完所有章节与完整句，禁止半截收尾或未闭合括号。"
+            "禁止 emoji，禁止冗长寒暄。"
         ),
         workflow="react",
         auto_trigger=True,
         priority=10,
         temperature=0.3,
-        max_tokens=900,
+        max_tokens=2400,
         max_iterations=2,
     ),
     # Mentor：react 稳教学；可 ask_user；控制篇幅避免截断

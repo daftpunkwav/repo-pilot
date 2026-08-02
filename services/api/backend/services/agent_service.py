@@ -160,6 +160,13 @@ def message_to_out(msg: AgentMessage) -> AgentMessageOut:
         if meta.get("question_id") and meta.get("questions"):
             question = meta
 
+    thinking_raw = meta.get("thinking")
+    thinking = (
+        thinking_raw.strip()
+        if isinstance(thinking_raw, str) and thinking_raw.strip()
+        else None
+    )
+
     return AgentMessageOut(
         id=msg.id,
         session_id=msg.session_id,
@@ -167,6 +174,7 @@ def message_to_out(msg: AgentMessage) -> AgentMessageOut:
         role=msg.role,
         content=msg.content,
         content_type=msg.content_type or "text",
+        thinking=thinking,
         question=question,
         question_answer=question_answer,
         created_at=msg.created_at.isoformat() + "Z",
@@ -314,11 +322,16 @@ async def append_message(
     return msg
 
 
+# 单段思考落库上限，避免 metadata 膨胀
+_THINKING_META_MAX = 24000
+
+
 class _AgentSegmentBuffer:
-    """按 agent_switch 分段收集 text_delta，各自落库为独立 assistant 气泡。"""
+    """按 agent_switch 分段收集 text_delta / thinking，各自落库为独立 assistant 气泡。"""
 
     def __init__(self, *, agent_id: str = "hub"):
         self.parts: list[str] = []
+        self.think_parts: list[str] = []
         self.agent_id = agent_id
         self.usage: dict[str, Any] = {}
         self.flushed = False
@@ -326,6 +339,10 @@ class _AgentSegmentBuffer:
     def append_delta(self, content: str) -> None:
         if content:
             self.parts.append(content)
+
+    def append_thinking(self, content: str) -> None:
+        if content:
+            self.think_parts.append(content)
 
     async def flush(
         self,
@@ -335,17 +352,21 @@ class _AgentSegmentBuffer:
         metadata: dict | None = None,
     ) -> bool:
         text = "".join(self.parts).strip()
+        thinking = "".join(self.think_parts).strip()
         self.parts.clear()
-        if not text:
+        self.think_parts.clear()
+        if not text and not thinking:
             return False
         meta = dict(metadata or {})
+        if thinking:
+            meta["thinking"] = thinking[:_THINKING_META_MAX]
         if self.usage:
             meta.setdefault("usage", self.usage)
         await append_message(
             db,
             session,
             role="assistant",
-            content=text,
+            content=text or "",
             agent_id=self.agent_id,
             metadata=meta or None,
         )
@@ -415,6 +436,13 @@ async def stream_chat(
                     data_line = chunk.split("data: ", 1)[1].strip()
                     data = json.loads(data_line)
                     buf.append_delta(data.get("content") or "")
+                except Exception:
+                    pass
+            elif chunk.startswith("event: thinking"):
+                try:
+                    data_line = chunk.split("data: ", 1)[1].strip()
+                    data = json.loads(data_line)
+                    buf.append_thinking(data.get("content") or "")
                 except Exception:
                     pass
             elif chunk.startswith("event: agent_switch"):
@@ -595,6 +623,13 @@ async def stream_question_answer(
                 data_line = chunk.split("data: ", 1)[1].strip()
                 data = json.loads(data_line)
                 buf.append_delta(data.get("content") or "")
+            except Exception:
+                pass
+        elif chunk.startswith("event: thinking"):
+            try:
+                data_line = chunk.split("data: ", 1)[1].strip()
+                data = json.loads(data_line)
+                buf.append_thinking(data.get("content") or "")
             except Exception:
                 pass
         elif chunk.startswith("event: agent_switch"):

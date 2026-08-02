@@ -35,6 +35,11 @@
     pointer-events: none;
     overflow: hidden;
     border-color: transparent;
+    /* grid 列宽为 0 时仍可能因 min-width:auto 溢出到对话区，露出残片 */
+    min-width: 0;
+    max-width: 0;
+    padding: 0;
+    margin: 0;
   }
 
   /* ============ 会话列表 ============ */
@@ -45,6 +50,7 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
+    min-width: 0;
     overflow: hidden;
   }
   .session-list-header {
@@ -1038,6 +1044,7 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
+    min-width: 0;
     overflow: hidden;
   }
 
@@ -1463,14 +1470,32 @@
   color: var(--text-500);
 }
 
-/* ── 流式渲染 · 思考过程（入口可见，默认收起） ── */
-.stream-renderer__thinking {
+/* ── 流式渲染 · 思考过程（入口可见，默认收起；与正文折叠解耦） ── */
+.stream-renderer__status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   margin: 0 0 10px;
+}
+.stream-renderer__status-line {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-500);
+  line-height: 1.35;
+}
+.stream-renderer__thinking {
+  margin: 0 0 12px;
   padding: 0;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(0, 122, 255, 0.18);
-  background: rgba(0, 122, 255, 0.05);
-  font-size: 11.5px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 122, 255, 0.16);
+  background: rgba(0, 122, 255, 0.04);
+  font-size: 12px;
   color: var(--text-700);
   overflow: hidden;
 }
@@ -1480,7 +1505,7 @@
   gap: 6px;
   width: 100%;
   margin: 0;
-  padding: 7px 12px;
+  padding: 8px 12px;
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -1488,6 +1513,9 @@
   font-weight: 650;
   color: var(--text-700);
   text-align: left;
+}
+.stream-renderer__thinking-title {
+  letter-spacing: 0.01em;
 }
 .stream-renderer__thinking-caret {
   color: var(--brand-500);
@@ -1514,17 +1542,25 @@
 }
 .stream-renderer__thinking-body {
   margin: 0;
-  padding: 10px 12px 12px;
+  padding: 12px 14px 14px;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   word-break: break-word;
   font-family: var(--font-mono);
-  font-size: 11.5px;
-  line-height: 1.55;
-  color: var(--text-700);
-  max-height: 240px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-600);
+  max-height: min(52vh, 420px);
   overflow-y: auto;
   border-top: 1px solid rgba(0, 122, 255, 0.12);
   box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.12);
+}
+.stream-renderer__body--collapsed {
+  max-height: 28rem;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
 }
 .stream-renderer__cursor {
   display: inline-block;
@@ -1541,9 +1577,8 @@
   50% { opacity: 0; }
 }
 [data-theme='dark'] .stream-renderer__thinking {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.14);
-  color: var(--text-700);
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 [data-theme='dark'] .stream-renderer__thinking-toggle {
   color: var(--text-700);
@@ -1552,9 +1587,14 @@
   color: var(--text-500);
 }
 [data-theme='dark'] .stream-renderer__thinking-body {
-  color: var(--text-700);
+  color: var(--text-600);
   border-top-color: rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.28);
+}
+[data-theme='dark'] .stream-renderer__status-line {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-500);
 }
 
 /* ── 嵌入式 Agent（导入弹窗 / 图谱向导） ── */
@@ -1985,6 +2025,10 @@
     visibility: hidden;
     pointer-events: none;
     overflow: hidden;
+    min-width: 0;
+    max-width: 0;
+    padding: 0;
+    margin: 0;
   }
 }
 
@@ -2495,48 +2539,75 @@
 }
 
 .msg--switch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  align-self: center;
+  align-self: stretch;
+  width: 100%;
   max-width: 100%;
-  padding: 4px 0;
+  padding: 10px 8px;
+  gap: 6px;
 }
-.agent-switch-chip {
+.agent-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(100%, 420px);
+}
+.agent-switch__line {
+  flex: 1 1 auto;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.14),
+    transparent
+  );
+}
+[data-theme='light'] .agent-switch__line {
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.12), transparent);
+}
+.agent-switch__core {
   display: inline-flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 6px 8px;
-  box-sizing: border-box;
-  max-width: 100%;
-  padding: 8px 14px;
-  /* 多行 reason 时圆角胶囊会裁切，改用适中圆角 */
-  border-radius: 14px;
-  border: 1px solid rgba(0, 122, 255, 0.22);
-  background: rgba(0, 122, 255, 0.08);
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 4px 2px;
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.2;
+  color: var(--text-600);
+}
+.agent-switch__from,
+.agent-switch__to {
+  font-weight: 650;
+  font-family: var(--font-sans);
   color: var(--text-700);
 }
-.agent-switch-chip__label {
-  flex: 0 0 auto;
-  font-weight: 800;
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--brand-700);
+.agent-switch__to {
+  color: var(--brand-400);
 }
-.agent-switch-chip__path {
-  flex: 0 0 auto;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--text-800);
+.agent-switch__arrow {
+  color: var(--text-400);
+  font-size: 11px;
 }
-.agent-switch-chip__reason {
-  flex: 1 1 12em;
-  min-width: 0;
-  color: var(--text-500);
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
+.agent-switch__reason {
+  margin: 0;
+  width: min(100%, 420px);
+  max-width: min(100%, 420px);
+  padding: 0 2px;
+  text-align: left;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* legacy chip 保留类名以免旧缓存样式报错，不再使用 */
+.agent-switch-chip {
+  display: none;
 }
 
 .msg-content--collapsed {

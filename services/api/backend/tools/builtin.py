@@ -443,6 +443,15 @@ async def ask_user(
     for it in items or []:
         if not isinstance(it, dict):
             continue
+        prompt = str(it.get("prompt") or it.get("text") or "").strip()
+        # 缺题干：用 title 仅当 title 不像通用面板标题
+        if not prompt:
+            t = str(title or "").strip()
+            if t and t not in ("请回答以下问题", "请选择"):
+                prompt = t
+            else:
+                prompt = "请选择最符合你情况的一项："
+            it = {**it, "prompt": prompt}
         opts = it.get("options")
         if isinstance(opts, str):
             # 留给 normalize 解析；此处至少不 list(str)
@@ -455,7 +464,7 @@ async def ask_user(
         cleaned_items.append(it)
     return {
         "__question__": True,
-        "title": title,
+        "title": title or "请回答以下问题",
         "items": cleaned_items,
         "allow_skip": allow_skip,
         "agent_id": getattr(context, "agent_id", "hub"),

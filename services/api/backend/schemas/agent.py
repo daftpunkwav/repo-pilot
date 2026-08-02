@@ -47,6 +47,8 @@ class AgentMessageOut(BaseModel):
     role: str
     content: Optional[str] = None
     content_type: Optional[str] = "text"
+    # 本段思考过程（存于 message metadata.thinking）
+    thinking: Optional[str] = None
     # 反问结构 / 答题详情等（由 message_meta 解析）
     question: Optional[dict[str, Any]] = None
     question_answer: Optional[dict[str, Any]] = None

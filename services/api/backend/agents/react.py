@@ -433,12 +433,12 @@ class ReActEngine:
                         return
                     yield item
                 return
-            # direct / 无工具 react：单次正文流式
-            if emit_sse:
+            # direct / 无工具：Hub 汇总轮已有「汇总中」状态，勿再叠「生成中」
+            if emit_sse and agent_def.id != "hub":
                 yield format_sse(
                     "thinking",
                     {
-                        "content": f"[状态] {agent_def.name} · 流式生成\n",
+                        "content": f"[状态] {agent_def.name} · 生成中\n",
                     },
                 )
             async for item in self._stream_plain_text(
@@ -895,17 +895,20 @@ class ReActEngine:
                     "content": (
                         "请停止调用任何工具，直接用中文输出完整分析正文（Markdown）。"
                         "基于上文已有的工具结果与项目上下文作答。"
+                        "必须写完：完整句、完整列表与闭合括号；不要半截收尾。"
                         "不要 emoji，不要只写一句话敷衍。"
                     ),
                 }
             )
+            # 收口正文单独抬高 token 下限，避免专家 max_tokens 偏紧时半截截断
+            close_tokens = max(int(agent_def.max_tokens or 0), 2048)
             async for item in self._stream_plain_text(
                 llm=llm,
                 messages=messages,
                 agent_def=agent_def,
                 emit_sse=emit_sse,
                 channel="text",
-                max_tokens=agent_def.max_tokens,
+                max_tokens=close_tokens,
             ):
                 if isinstance(item, str):
                     yield item
@@ -1126,12 +1129,28 @@ def _normalize_question(tool_result: dict[str, Any], *, agent_id: str) -> dict[s
                     or o.get("text")
                     or o.get("name")
                     or o.get("content")
+                    or o.get("desc")
+                    or o.get("description")
+                    or o.get("answer")
+                    or o.get("option")
+                    or o.get("choice")
+                    or o.get("body")
                     or ""
                 ).strip()
                 value = str(o.get("value") or o.get("id") or o.get("key") or "").strip()
+                if (not label or (re.match(r"^[A-Da-d]$", label) and label == value)) and o.get(
+                    "description"
+                ):
+                    label = str(o.get("description") or "").strip()
                 if not label and not value:
-                    if len(o) == 1:
-                        k, v = next(iter(o.items()))
+                    # 单键 {"A": "文案"} 或过滤 correct 后仅剩一键
+                    pairs = [
+                        (k, v)
+                        for k, v in o.items()
+                        if k not in ("correct", "is_correct", "score")
+                    ]
+                    if len(pairs) == 1:
+                        k, v = pairs[0]
                         value = str(k).strip()
                         label = str(v).strip()
                 if not label and value:
@@ -1140,18 +1159,30 @@ def _normalize_question(tool_result: dict[str, Any], *, agent_id: str) -> dict[s
                     value = label
                 if not label and not value:
                     continue
+                # 纯题号无正文 → 跳过（交给题干解析 / 文本兜底）
+                if re.match(r"^[A-Da-d]$", label) and label == value:
+                    continue
                 # 丢弃无意义单字符（非 A-D 题号）
                 if len(label) <= 1 and not re.match(r"^[A-Da-d]$", label):
                     continue
                 item: dict[str, str] = {"value": value, "label": label}
-                if o.get("description"):
-                    item["description"] = str(o["description"])
+                desc = o.get("description")
+                if desc and str(desc).strip() != label:
+                    item["description"] = str(desc)
                 out.append(item)
 
         # 再防一层：多数选项仍是单字符 → 视为损坏
         if len(out) >= 2:
             short = sum(1 for x in out if len(x.get("label") or "") <= 1)
             if short >= max(2, (len(out) + 1) // 2):
+                return []
+            # 假「选项 A」占位也视为损坏
+            placeholders = sum(
+                1
+                for x in out
+                if re.match(r"^选项\s*[A-Da-d]$", (x.get("label") or "").strip())
+            )
+            if placeholders >= min(2, len(out)):
                 return []
         return out
 
@@ -1166,6 +1197,9 @@ def _normalize_question(tool_result: dict[str, Any], *, agent_id: str) -> dict[s
             letter = m.group(1).upper()
             label = re.sub(r"\*\*", "", m.group(2)).strip()
             if not label or letter in seen:
+                continue
+            # 跳过假占位
+            if re.match(r"^选项\s*[A-Da-d]$", label):
                 continue
             seen.add(letter)
             out.append({"value": letter, "label": f"{letter}. {label}"})
@@ -1196,12 +1230,8 @@ def _normalize_question(tool_result: dict[str, Any], *, agent_id: str) -> dict[s
                 {"value": "path", "label": "规划学习路径"},
                 {"value": "compare", "label": "对比多个项目"},
             ]
-        return [
-            {"value": "a", "label": "选项 A"},
-            {"value": "b", "label": "选项 B"},
-            {"value": "c", "label": "选项 C"},
-            {"value": "d", "label": "选项 D"},
-        ]
+        # 测验类禁止假「选项 A」——返回空，由上层改成可填写
+        return []
 
     for it in items:
         if not isinstance(it, dict):
@@ -1209,7 +1239,7 @@ def _normalize_question(tool_result: dict[str, Any], *, agent_id: str) -> dict[s
         qtype = it.get("type") or "single_choice"
         qid_item = it.get("id") or f"item_{len(questions)}"
         prompt = it.get("prompt") or it.get("text") or "请选择"
-        options = it.get("options") or []
+        options = it.get("options") or it.get("choices") or it.get("answers") or []
         if qtype in ("single_choice", "radio", "quiz"):
             opt_list = _clean_options(options)
             if len(opt_list) < 2:
@@ -1219,16 +1249,30 @@ def _normalize_question(tool_result: dict[str, Any], *, agent_id: str) -> dict[s
             exam = qtype == "quiz" or bool(
                 re.search(r"测验|考试|小测试|考考你|掌握度|第\s*\d+\s*题", f"{prompt} {title}")
             )
-            questions.append(
-                {
-                    "id": qid_item,
-                    "text": prompt,
-                    "type": "radio",
-                    "options": opt_list,
-                    "allow_other": not exam,
-                    "exam": exam,
-                }
-            )
+            if len(opt_list) < 2:
+                questions.append(
+                    {
+                        "id": qid_item,
+                        "text": f"{prompt}\n\n（选项未能解析，请直接填写你的答案）",
+                        "type": "radio",
+                        "options": [
+                            {"value": "other", "label": "自由填写（下方输入）"}
+                        ],
+                        "allow_other": True,
+                        "exam": False,
+                    }
+                )
+            else:
+                questions.append(
+                    {
+                        "id": qid_item,
+                        "text": prompt,
+                        "type": "radio",
+                        "options": opt_list,
+                        "allow_other": not exam,
+                        "exam": exam,
+                    }
+                )
         elif qtype in ("multi_choice", "checkbox"):
             opt_list = _clean_options(options)
             if len(opt_list) < 2:
@@ -1268,15 +1312,34 @@ def _normalize_question(tool_result: dict[str, Any], *, agent_id: str) -> dict[s
                 }
             )
     if not questions:
+        # 禁止把面板标题当成题干（否则出现 Q1=「请回答以下问题」）
         questions.append(
             {
                 "id": "default",
-                "text": title,
+                "text": "你的编程 / 技术掌握水平大致处于哪个阶段？",
                 "type": "radio",
                 "options": _default_options("level", "水平"),
                 "allow_other": True,
             }
         )
+    else:
+        # 题干缺失或与标题撞车时，按选项语义补一句真正的问题
+        generic = {"请回答以下问题", "请选择", "请选择最符合的一项", ""}
+        title_s = str(title or "").strip()
+        for q in questions:
+            text = str(q.get("text") or "").strip()
+            if text and text not in generic and text != title_s:
+                continue
+            labels = " ".join(
+                str((o.get("label") if isinstance(o, dict) else o) or "")
+                for o in (q.get("options") or [])
+            )
+            if any(k in labels for k in ("初学", "了解", "掌握", "精通")):
+                q["text"] = "你的编程 / 技术掌握水平大致处于哪个阶段？"
+            elif any(k in labels for k in ("Python", "TypeScript", "Go", "Rust")):
+                q["text"] = "你更熟悉 / 想用哪一类技术栈？"
+            elif text in generic or text == title_s:
+                q["text"] = "请选择最符合你情况的一项："
     return {
         "question_id": qid,
         "agent_id": agent_id,

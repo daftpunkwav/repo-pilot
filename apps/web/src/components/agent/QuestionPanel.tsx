@@ -161,7 +161,9 @@ function RadioBlock({
 }) {
   const selected = answer?.type === 'radio' ? answer.value : '';
   const other = answer?.type === 'radio' ? answer.other_text ?? '' : '';
-  const options = item.options.filter((o) => (o.label || o.value || '').trim());
+  const options = item.options.filter((o) =>
+    (o.label || (o as { text?: string }).text || o.value || '').trim()
+  );
 
   if (options.length === 0) {
     return (
@@ -190,7 +192,8 @@ function RadioBlock({
   return (
     <div className="exam-options">
       {options.map((o, idx) => {
-        const label = stripOptionLetterPrefix((o.label || o.value).trim());
+        const rawLabel = (o.label || (o as { text?: string }).text || o.value).trim();
+        const label = stripOptionLetterPrefix(rawLabel);
         const active = selected === o.value;
         const letter = String.fromCharCode(65 + (idx % 26));
         return (

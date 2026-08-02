@@ -119,7 +119,10 @@ export function AgentPage() {
 
   useEffect(() => {
     if (sessionId) {
-      void switchSession(sessionId);
+      // 已在目标会话时不要重复拉详情，避免 sessions 列表更新时冲掉内存中的 thinking
+      if (currentSessionId !== sessionId) {
+        void switchSession(sessionId);
+      }
       return;
     }
     if (!currentSessionId && chatSessions.length > 0) {
