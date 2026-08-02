@@ -324,10 +324,10 @@ class ReActEngine:
                 {
                     "role": "user",
                     "content": (
-                        "请按上述计划执行。"
-                        "需要调度专家时调用 dispatch_agent；"
+                        "请按上述计划立刻执行，不要再复述或改写「执行计划」列表。"
+                        "需要调度专家时必须调用 dispatch_agent（可一次多个）；"
                         "可直接回答则输出用户可见的完整正文（Markdown）。"
-                        "禁止 emoji。"
+                        "禁止只宣布计划、禁止 emoji。"
                     ),
                 },
             ]
@@ -390,6 +390,8 @@ class ReActEngine:
         dispatches: list[dict[str, Any]] = []
         iteration = 0
         max_iter = self._effective_max_iter(agent_def)
+        # plan_execute 偶发把「执行计划」当最终答复；最多纠正 2 次
+        plan_nudge_used = 0
 
         # —— 流式快路径 ——
         # cot/direct：两阶段（真思考 + 正文）；其它无工具 workflow：单次正文流式
@@ -537,9 +539,41 @@ class ReActEngine:
                 from backend.agents.think_stream import split_complete_text
 
                 think, body = split_complete_text(result.text)
+                candidate = (body or result.text or "").strip()
+                # Hub/plan_execute：只宣布「执行计划」而未调工具 → 纠正后继续，避免假完成
+                if (
+                    wf == "plan_execute"
+                    and iteration < max_iter
+                    and plan_nudge_used < 2
+                    and is_plan_announcement(candidate, agent_id=agent_def.id)
+                ):
+                    plan_nudge_used += 1
+                    if emit_sse:
+                        yield format_sse(
+                            "thinking",
+                            {
+                                "content": (
+                                    f"[纠正] 检测到仅宣布计划、未真正执行"
+                                    f"（第 {plan_nudge_used} 次），要求继续…\n"
+                                    f"{candidate[:500]}\n"
+                                )
+                            },
+                        )
+                    messages.append(
+                        {
+                            "role": "user",
+                            "content": (
+                                "上一段只是在复述/宣布计划，对用户没有完成交付。"
+                                "请立刻执行：要么调用 dispatch_agent（可一次多个）"
+                                "调度计划中的专家；要么直接输出完整可用的 Markdown 答复。"
+                                "禁止再只输出「执行计划」列表或「开始分派」之类宣告。"
+                            ),
+                        }
+                    )
+                    continue
                 if think and emit_sse:
                     yield format_sse("thinking", {"content": think + "\n"})
-                final_text = body or result.text
+                final_text = candidate or result.text
                 if emit_sse:
                     step = 24
                     for i in range(0, len(final_text), step):
@@ -902,8 +936,10 @@ class ReActEngine:
             )
         if wf == "plan_execute":
             return (
-                "工作流: Plan-and-Execute。先简短规划，再 dispatch_agent，"
-                "收集结果后合并回答。不要一次调度超过 3 个 Agent。禁止 emoji。"
+                "工作流: Plan-and-Execute。规划只在思考区；执行阶段必须真正行动："
+                "需要专家时调用 dispatch_agent，可直接答则写完整 Markdown 正文。"
+                "禁止把「执行计划」列表当作最终答复。不要一次调度超过 3 个 Agent。"
+                "禁止 emoji。"
             )
         if wf == "reflexion":
             return (
@@ -931,6 +967,41 @@ class ReActEngine:
             "系统将仅使用规则/图谱/GitHub 公开数据能力。"
             "请前往设置页配置 BYOK API Key 以启用完整多 Agent 推理。"
         )
+
+
+_PLAN_HEADER_RE = re.compile(
+    r"(?m)^\s*(执行计划|行动计划|计划步骤)\s*[:：]?",
+)
+_DISPATCH_HINT_RE = re.compile(
+    r"(调度|分派|dispatch).{0,24}(mentor|curator|navigator|scout|scribe|atlas)",
+    re.IGNORECASE,
+)
+_PLAN_ANNOUNCE_RE = re.compile(
+    r"(开始分派|开始执行|现开始|接下来将调度|正在调度专业|待\s*\d+\s*位专家)",
+)
+
+
+def is_plan_announcement(text: str, *, agent_id: str = "") -> bool:
+    """判断正文是否像「宣布执行计划」而非用户可见的完整交付。
+
+    Hub 在 plan_execute 下常输出「执行计划：1.调度 mentor…」后直接结束，
+    前端会停在第 1 轮，看起来像卡住。
+    """
+    t = (text or "").strip()
+    if len(t) < 20:
+        return False
+    has_header = bool(_PLAN_HEADER_RE.search(t)) or t.startswith(
+        ("执行计划", "行动计划", "计划步骤")
+    )
+    dispatch_hits = len(_DISPATCH_HINT_RE.findall(t))
+    announce = bool(_PLAN_ANNOUNCE_RE.search(t))
+    if has_header and (dispatch_hits >= 1 or announce):
+        return True
+    if agent_id == "hub" and dispatch_hits >= 2 and len(t) < 1200:
+        return True
+    if announce and dispatch_hits >= 1 and len(t) < 800:
+        return True
+    return False
 
 
 def _preview(result: Any, limit: int = 200) -> str:

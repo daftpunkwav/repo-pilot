@@ -30,6 +30,33 @@ logger = logging.getLogger(__name__)
 # 确保工具注册
 ensure_tools_loaded()
 
+# 汇总时传给 Hub 的专家正文上限（过短会导致 Hub 误判「专家没写完」而再次 dispatch）
+_EXPERT_SUMMARY_CHARS = 12000
+
+
+def _clip_expert_text(text: str, limit: int = _EXPERT_SUMMARY_CHARS) -> str:
+    t = (text or "").strip()
+    if len(t) <= limit:
+        return t
+    return t[:limit] + "\n…(已截断)"
+
+
+def apply_merge_mode(agent_def):
+    """汇总轮：强制 CoT 无工具，避免再次 dispatch 被外层丢弃。"""
+    from dataclasses import replace
+
+    return replace(
+        agent_def,
+        workflow="cot",
+        tools=[],
+        max_iterations=1,
+        system_prompt=(
+            (agent_def.system_prompt or "")
+            + "\n\n【本轮强制】你正在合并已返回的专家结果。"
+            "禁止规划、禁止工具、禁止 dispatch；直接写最终用户可见正文。"
+        ),
+    )
+
 
 async def route_message(message: str, session_id: str | None = None) -> str:
     """兼容旧测试的占位接口。"""
@@ -403,9 +430,11 @@ class HubService:
                     if isinstance(item, str) and item.startswith("event: done"):
                         continue
                     yield item
-            summaries.append(f"[{sub.agent_id}] {agent_text[:500]}")
+            summaries.append(
+                f"[{sub.agent_id}] {_clip_expert_text(agent_text)}"
+            )
 
-        # Hub 合并
+        # Hub 合并（禁止再调度）
         if summaries and llm.available:
             yield format_sse(
                 "agent_switch",
@@ -418,11 +447,7 @@ class HubService:
                     "reason": "合并多 Agent 结果",
                 },
             )
-            merge_msg = (
-                "请将以下专业 Agent 输出合并为对用户友好的统一回答：\n\n"
-                + "\n\n".join(summaries)
-                + f"\n\n用户原话：{message}"
-            )
+            merge_msg = self._merge_prompt(summaries, message)
             async for item in self._run_agent(
                 agent_id="hub",
                 user=user,
@@ -434,9 +459,16 @@ class HubService:
                 permissions=permissions,
                 project_id=project_id,
                 history=[],
+                merge_mode=True,
             ):
-                if not isinstance(item, EngineResult):
-                    yield item
+                if isinstance(item, EngineResult):
+                    if item.dispatches:
+                        logger.warning(
+                            "merge_mode Hub 仍返回 dispatches，已忽略: %s",
+                            [d.get("target_agent") for d in item.dispatches],
+                        )
+                    continue
+                yield item
         # 多 Agent 流程结束信号（子 Agent 的中间 done 已被过滤）
         yield format_sse(
             "done",
@@ -504,7 +536,7 @@ class HubService:
                     if isinstance(item, str) and item.startswith("event: done"):
                         continue
                     yield item
-            summaries.append(f"[{target}] {text[:800]}")
+            summaries.append(f"[{target}] {_clip_expert_text(text)}")
 
         if summaries:
             yield format_sse(
@@ -518,11 +550,7 @@ class HubService:
                     "reason": "汇总调度结果",
                 },
             )
-            merge = (
-                "作为 Hub，合并以下专家输出，给用户最终答复：\n"
-                + "\n".join(summaries)
-                + f"\n用户问题：{original_message}"
-            )
+            merge = self._merge_prompt(summaries, original_message)
             async for item in self._run_agent(
                 agent_id="hub",
                 user=user,
@@ -534,9 +562,30 @@ class HubService:
                 permissions=permissions,
                 project_id=project_id,
                 history=[],
+                merge_mode=True,
             ):
-                if not isinstance(item, EngineResult):
-                    yield item
+                if isinstance(item, EngineResult):
+                    if item.dispatches:
+                        logger.warning(
+                            "merge_mode Hub 仍返回 dispatches，已忽略: %s",
+                            [d.get("target_agent") for d in item.dispatches],
+                        )
+                    continue
+                yield item
+
+    @staticmethod
+    def _merge_prompt(summaries: list[str], user_message: str) -> str:
+        """专家已返回后的 Hub 汇总提示：禁止再规划/再调度。"""
+        return (
+            "【汇总任务 · 禁止再调度】专家已完成工作，下面是他们的完整输出。"
+            "请直接合并为面向用户的最终 Markdown 答复："
+            "突出关键路径与下一步，可适度精简重复，不要整段照抄；"
+            "若专家已给出分支选项，保留并引导用户选择。"
+            "严禁再次调用任何工具或 dispatch_agent；"
+            "严禁再输出「执行计划」或「正在调度」。\n\n"
+            + "\n\n".join(summaries)
+            + f"\n\n用户原话：{user_message}"
+        )
 
     async def _run_agent(
         self,
@@ -553,15 +602,19 @@ class HubService:
         history: list,
         prior_summary: str | None = None,
         disable_questions: bool = False,
+        merge_mode: bool = False,
     ) -> AsyncIterator[str | EngineResult]:
+        from dataclasses import replace
+
         agent_def = self.registry.get(agent_id)
         # per-agent model override
         override = get_agent_model_override(raw_settings, agent_id)
         if override:
-            agent_def = agent_def  # frozen-like; set on copy
-            from dataclasses import replace
-
             agent_def = replace(agent_def, model_override=override)
+
+        # 汇总轮：强制 CoT 无工具，避免 plan_execute 再次 dispatch 后外层丢弃导致假卡住
+        if merge_mode:
+            agent_def = apply_merge_mode(agent_def)
 
         style = get_agent_speaking_style(raw_settings, agent_id)
         ctx = await self.context_builder.build_run_context(
