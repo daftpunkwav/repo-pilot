@@ -27,10 +27,22 @@ def test_apply_merge_mode_disables_plan_execute_and_tools():
     assert hub.workflow == "plan_execute"
     assert "dispatch_agent" in hub.tools
     merged = apply_merge_mode(hub)
-    assert merged.workflow == "cot"
+    assert merged.workflow == "direct"
     assert merged.tools == []
     assert merged.max_iterations == 1
+    assert merged.max_tokens >= 4096
     assert "禁止" in (merged.system_prompt or "")
     # 原定义不被就地修改
     assert hub.workflow == "plan_execute"
     assert "dispatch_agent" in hub.tools
+
+
+def test_structure_expert_summary_keeps_headings():
+    from backend.agents.hub import structure_expert_summary
+
+    text = "# 阶段 1\n正文很多\n## 阶段 2\n更多"
+    out = structure_expert_summary("mentor", text)
+    assert "[mentor]" in out
+    assert "要点" in out
+    assert "阶段 1" in out
+

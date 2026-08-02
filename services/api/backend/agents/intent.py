@@ -29,8 +29,18 @@ class IntentClassifier:
 
     FAST_RULES: list[tuple[re.Pattern[str], str]] = [
         (re.compile(r"(快速)?(分析|扫一眼|速览|overview|scout)", re.I), "scout"),
-        (re.compile(r"(讲解|深入|教我|怎么理解|讲讲|mentor)", re.I), "mentor"),
-        (re.compile(r"(规划|路线|学习路径|怎么学|roadmap|navigator)", re.I), "navigator"),
+        # 路线/路径类优先 navigator，再落到 mentor 的「想学习」
+        (
+            re.compile(r"(规划|路线|学习路径|roadmap|navigator)", re.I),
+            "navigator",
+        ),
+        (
+            re.compile(
+                r"(想学习|想学|学习\S*|入门|教我|讲解|深入|怎么理解|怎么学|讲讲|mentor)",
+                re.I,
+            ),
+            "mentor",
+        ),
         (re.compile(r"(分类|整理|标签|归类|curator)", re.I), "curator"),
         (re.compile(r"(笔记|总结|摘要|outline|scribe)", re.I), "scribe"),
         (re.compile(r"(图谱|关联|相似项目|知识图|atlas)", re.I), "atlas"),

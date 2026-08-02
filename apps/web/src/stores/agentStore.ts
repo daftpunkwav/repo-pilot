@@ -274,7 +274,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     const { streamAbortController } = get();
     if (streamAbortController) {
       streamAbortController.abort();
-      set({ streamAbortController: null, streaming: false });
+      set({ streamAbortController: null });
     }
   },
 
@@ -622,8 +622,40 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        // 被新流抢占时不要清 pendingQuestion；只停 streaming
-        set({ streaming: false, streamAbortController: null });
+        // 中断时把半截正文落成气泡，避免「生成中」消失后内容全丢
+        const {
+          streamingContent,
+          thinkingBuffer,
+          currentSessionId,
+          activeAgent,
+          pendingQuestion,
+        } = get();
+        const prior = streamingContent.trim();
+        const priorThink = thinkingBuffer.trim();
+        if (currentSessionId && (prior || priorThink) && !pendingQuestion) {
+          const assistantMsg: AgentMessage = {
+            id: `msg_${Date.now()}_aborted`,
+            session_id: currentSessionId,
+            agent: activeAgent,
+            role: 'assistant',
+            content: prior
+              ? `${prior}\n\n*(已中断)*`
+              : '*(已中断)*',
+            ...(priorThink ? { thinking: priorThink } : {}),
+            created_at: new Date().toISOString(),
+          };
+          set((state) => ({
+            messages: [...state.messages, assistantMsg],
+            streaming: false,
+            streamingContent: '',
+            thinkingBuffer: '',
+            toolCalls: new Map(),
+            streamAbortController: null,
+          }));
+        } else {
+          // 被新流抢占且无半截正文：只停 streaming，保留 pendingQuestion
+          set({ streaming: false, streamAbortController: null });
+        }
         return;
       }
       set({

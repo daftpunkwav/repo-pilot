@@ -314,6 +314,55 @@ async def append_message(
     return msg
 
 
+class _AgentSegmentBuffer:
+    """按 agent_switch 分段收集 text_delta，各自落库为独立 assistant 气泡。"""
+
+    def __init__(self, *, agent_id: str = "hub"):
+        self.parts: list[str] = []
+        self.agent_id = agent_id
+        self.usage: dict[str, Any] = {}
+        self.flushed = False
+
+    def append_delta(self, content: str) -> None:
+        if content:
+            self.parts.append(content)
+
+    async def flush(
+        self,
+        db: AsyncSession,
+        session: AgentSession,
+        *,
+        metadata: dict | None = None,
+    ) -> bool:
+        text = "".join(self.parts).strip()
+        self.parts.clear()
+        if not text:
+            return False
+        meta = dict(metadata or {})
+        if self.usage:
+            meta.setdefault("usage", self.usage)
+        await append_message(
+            db,
+            session,
+            role="assistant",
+            content=text,
+            agent_id=self.agent_id,
+            metadata=meta or None,
+        )
+        self.flushed = True
+        return True
+
+    async def switch_agent(
+        self,
+        db: AsyncSession,
+        session: AgentSession,
+        new_agent: str,
+    ) -> None:
+        await self.flush(db, session)
+        self.agent_id = new_agent or self.agent_id
+        session.active_agent = self.agent_id
+
+
 async def stream_chat(
     db: AsyncSession,
     user: User,
@@ -343,9 +392,7 @@ async def stream_chat(
 
     cancel_ev = _begin_session_stream(session_id)
     hub = HubService(db)
-    collected: list[str] = []
-    last_agent = "hub"
-    usage: dict[str, Any] = {}
+    buf = _AgentSegmentBuffer(agent_id="hub")
     aborted = False
     # question 已落库时，不再把同轮 text_delta 再写成 assistant 气泡
     saw_question = False
@@ -367,22 +414,22 @@ async def stream_chat(
                 try:
                     data_line = chunk.split("data: ", 1)[1].strip()
                     data = json.loads(data_line)
-                    collected.append(data.get("content") or "")
+                    buf.append_delta(data.get("content") or "")
                 except Exception:
                     pass
             elif chunk.startswith("event: agent_switch"):
                 try:
                     data_line = chunk.split("data: ", 1)[1].strip()
                     data = json.loads(data_line)
-                    last_agent = data.get("agent_id") or last_agent
-                    session.active_agent = last_agent
+                    new_agent = data.get("agent_id") or buf.agent_id
+                    await buf.switch_agent(db, session, new_agent)
                 except Exception:
                     pass
             elif chunk.startswith("event: done"):
                 try:
                     data_line = chunk.split("data: ", 1)[1].strip()
                     data = json.loads(data_line)
-                    usage = data.get("usage") or {}
+                    buf.usage = data.get("usage") or {}
                 except Exception:
                     pass
             elif chunk.startswith("event: question"):
@@ -391,6 +438,8 @@ async def stream_chat(
                     data = json.loads(data_line)
                     session.status = "pending_question"
                     saw_question = True
+                    # 反问前先落库已生成的正文段
+                    await buf.flush(db, session)
                     # 正文存可读摘要，完整结构放 metadata，避免聊天里出现原始 JSON
                     intro = data.get("intro") or {}
                     title = (
@@ -407,38 +456,32 @@ async def stream_chat(
                         session,
                         role="assistant",
                         content=f"发起反问：{title_plain}（请在弹窗中选择）",
-                        agent_id=last_agent,
+                        agent_id=buf.agent_id,
                         content_type="question",
                         metadata=data,
                     )
-                    await db.commit()
                 except Exception:
                     pass
             yield chunk
 
-        # 客户端断开（生成器 CancelledError）或被同会话新流抢占时，不落最终 assistant 文本
+        # 客户端断开或被同会话新流抢占：尽量落库已完成分段，半截当前段丢弃
         if aborted or cancel_ev.is_set():
             return
 
-        # 已有 question 消息时跳过文本落库，避免同轮双气泡
+        # 已有 question 消息时跳过剩余文本落库，避免同轮双气泡
         if saw_question:
             return
 
-        reply = "".join(collected)
-        if reply:
-            await append_message(
-                db,
-                session,
-                role="assistant",
-                content=reply,
-                agent_id=last_agent,
-                metadata={"usage": usage},
-            )
-            session.active_agent = last_agent
+        if await buf.flush(db, session, metadata={"usage": buf.usage}):
+            session.active_agent = buf.agent_id
+            session.status = "active"
+            await db.commit()
+        elif buf.flushed:
+            session.active_agent = buf.agent_id
             session.status = "active"
             await db.commit()
     except asyncio.CancelledError:
-        # 传输层取消：跳过最终落库，避免半截流与库内不一致
+        # 传输层取消：已 flush 的分段保留；当前未完成段不落库
         raise
     finally:
         _end_session_stream(session_id, cancel_ev)
@@ -537,8 +580,7 @@ async def stream_question_answer(
     session.status = "active"
 
     hub = HubService(db)
-    collected: list[str] = []
-    last_agent = session.active_agent or "mentor"
+    buf = _AgentSegmentBuffer(agent_id=session.active_agent or "hub")
 
     async for chunk in hub.handle_question_answer(
         user=user,
@@ -552,23 +594,55 @@ async def stream_question_answer(
             try:
                 data_line = chunk.split("data: ", 1)[1].strip()
                 data = json.loads(data_line)
-                collected.append(data.get("content") or "")
+                buf.append_delta(data.get("content") or "")
             except Exception:
                 pass
         elif chunk.startswith("event: agent_switch"):
             try:
                 data_line = chunk.split("data: ", 1)[1].strip()
                 data = json.loads(data_line)
-                last_agent = data.get("agent_id") or last_agent
+                await buf.switch_agent(
+                    db, session, data.get("agent_id") or buf.agent_id
+                )
+            except Exception:
+                pass
+        elif chunk.startswith("event: done"):
+            try:
+                data_line = chunk.split("data: ", 1)[1].strip()
+                data = json.loads(data_line)
+                buf.usage = data.get("usage") or {}
+            except Exception:
+                pass
+        elif chunk.startswith("event: question"):
+            try:
+                data_line = chunk.split("data: ", 1)[1].strip()
+                data = json.loads(data_line)
+                await buf.flush(db, session)
+                intro = data.get("intro") or {}
+                title = (
+                    intro.get("content")
+                    if isinstance(intro, dict)
+                    else None
+                ) or data.get("title") or "结构化反问"
+                title_plain = str(title).replace("**", "").strip() or "结构化反问"
+                session.status = "pending_question"
+                await append_message(
+                    db,
+                    session,
+                    role="assistant",
+                    content=f"发起反问：{title_plain}（请在弹窗中选择）",
+                    agent_id=buf.agent_id,
+                    content_type="question",
+                    metadata=data,
+                )
             except Exception:
                 pass
         yield chunk
 
-    reply = "".join(collected)
-    if reply:
-        await append_message(
-            db, session, role="assistant", content=reply, agent_id=last_agent
-        )
+    if await buf.flush(db, session, metadata={"usage": buf.usage}):
+        session.active_agent = buf.agent_id
+        session.status = "active"
+        await db.commit()
 
 
 def _format_answer_label(qi: dict[str, Any], ans: Any) -> str:

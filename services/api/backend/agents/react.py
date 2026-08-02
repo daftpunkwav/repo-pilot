@@ -42,13 +42,14 @@ class ReActEngine:
 
     def _prefer_token_stream(self, agent_def: AgentDefinition, tools: list) -> bool:
         """
-        CoT / 无工具：直接真流式吐 token。
+        direct / 无工具：直接真流式吐 token。
+        cot 仅在无工具时走两阶段流式；有工具则走工具环。
         ReAct 有工具时：工具轮非流式，最终回答轮再流式（见循环内分支）。
         """
         if not getattr(agent_def, "streaming", True):
             return False
         wf = (agent_def.workflow or "react").lower()
-        if wf in ("cot", "direct"):
+        if wf == "direct":
             return True
         if not tools:
             return True
@@ -286,15 +287,43 @@ class ReActEngine:
                 "1) 用户意图理解；2) 是否需要调度专家（谁/为何）；"
                 "3) 自己直接回答什么。不要写给用户看的最终正文，不要 emoji。"
             )
+            exec_prompt = (
+                "请按上述计划立刻执行，不要再复述或改写「执行计划」列表。"
+                "需要调度专家时必须调用 dispatch_agent（可一次多个，默认≤2）；"
+                "可直接回答则输出用户可见的完整正文（Markdown）。"
+                "禁止只宣布计划、禁止 emoji。"
+            )
         elif workflow == "tot":
             plan_prompt = (
                 "先只输出讲解路径比较（2-3 条）并标明将展开哪一条。"
                 "不要写完整讲解正文，不要 emoji。"
             )
+            exec_prompt = (
+                "请按选定路径立刻写出用户可见的完整 Markdown 正文。"
+                "仅可使用你当前可用的工具白名单；禁止调用或提及 dispatch_agent。"
+                "禁止只宣布计划、禁止 emoji。"
+            )
         else:
             plan_prompt = (
                 "先只输出方案要点与自我检查清单（3-5 条）。"
                 "不要写最终建议正文，不要 emoji。"
+            )
+            exec_prompt = (
+                "请按检查清单立刻写出用户可见的完整 Markdown 正文。"
+                "仅可使用你当前可用的工具白名单；禁止调用或提及 dispatch_agent。"
+                "禁止只宣布计划、禁止 emoji。"
+            )
+
+        # 高置信快速编排：压缩规划 token
+        plan_cap = min(420, agent_def.max_tokens)
+        blob = " ".join(
+            str(m.get("content") or "") for m in messages if m.get("role") == "user"
+        )
+        if "[快速编排]" in blob:
+            plan_cap = min(280, plan_cap)
+            plan_prompt = (
+                "用 ≤3 条极短要点写出行动计划（意图 / 调度谁 / 是否自答），"
+                "不要最终正文，不要 emoji。"
             )
 
         plan_messages = list(messages) + [{"role": "user", "content": plan_prompt}]
@@ -305,7 +334,7 @@ class ReActEngine:
             agent_def=agent_def,
             emit_sse=emit_sse,
             channel="thinking",
-            max_tokens=min(420, agent_def.max_tokens),
+            max_tokens=plan_cap,
         ):
             if isinstance(item, str):
                 yield item
@@ -321,15 +350,7 @@ class ReActEngine:
         if plan_text:
             next_messages = list(messages) + [
                 {"role": "assistant", "content": f"行动计划：\n{plan_text}"},
-                {
-                    "role": "user",
-                    "content": (
-                        "请按上述计划立刻执行，不要再复述或改写「执行计划」列表。"
-                        "需要调度专家时必须调用 dispatch_agent（可一次多个）；"
-                        "可直接回答则输出用户可见的完整正文（Markdown）。"
-                        "禁止只宣布计划、禁止 emoji。"
-                    ),
-                },
+                {"role": "user", "content": exec_prompt},
             ]
         yield next_messages
 
@@ -371,8 +392,11 @@ class ReActEngine:
                 for t in tools
                 if (t.get("function") or {}).get("name") in allow
             ]
-        # CoT 工作流强制空工具表，避免走慢速工具环
-        if (agent_def.workflow or "").lower() in ("cot", "direct"):
+        else:
+            tools = []
+        # direct = 汇总/强制无工具快路径；cot 保留工具能力（由白名单决定）
+        wf = (agent_def.workflow or "react").lower()
+        if wf == "direct":
             tools = []
 
         # 工作流提示注入
@@ -394,10 +418,9 @@ class ReActEngine:
         plan_nudge_used = 0
 
         # —— 流式快路径 ——
-        # cot/direct：两阶段（真思考 + 正文）；其它无工具 workflow：单次正文流式
-        wf = (agent_def.workflow or "react").lower()
+        # cot：两阶段；direct / 其它无工具：单次正文流式
         if self._prefer_token_stream(agent_def, tools):
-            if wf in ("cot", "direct"):
+            if wf == "cot":
                 async for item in self._cot_two_phase_stream(
                     llm=llm,
                     messages=messages,
@@ -410,7 +433,7 @@ class ReActEngine:
                         return
                     yield item
                 return
-            # 无工具的非 CoT：单次流式，不硬塞「先写思路」
+            # direct / 无工具 react：单次正文流式
             if emit_sse:
                 yield format_sse(
                     "thinking",

@@ -1,4 +1,5 @@
 import type { AgentMessage } from '@/api/types';
+import { useState } from 'react';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
 import { StreamRenderer } from '@/components/agent/StreamRenderer';
 import { formatMessageTime } from '@/utils/date';
@@ -9,6 +10,8 @@ import {
   tryParseAnswerDump,
 } from '@/utils/agentQuestion';
 import { QuestionAnswerCard, QuestionOfferCard } from './QuestionHistoryCard';
+
+const LONG_MSG_CHARS = 2800;
 
 interface MessageBubbleProps {
   message: AgentMessage;
@@ -21,6 +24,7 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
   const name = agentName ?? agentId.charAt(0).toUpperCase() + agentId.slice(1);
   const role = AGENT_ROLE_LABELS[agentId] ?? agentId;
   const initial = isUser ? 'Z' : (AGENT_INITIALS[agentId] ?? name[0]);
+  const [expanded, setExpanded] = useState(false);
 
   if (message.agent_switch) {
     const pretty = (id: string) =>
@@ -121,6 +125,8 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
 
   const isLegacyAnswer = isUser && (message.content ?? '').startsWith('[反问回答]');
   const isLegacySkip = isUser && (message.content ?? '').startsWith('[跳过反问]');
+  const contentLen = (message.content ?? '').length;
+  const isLong = !isUser && contentLen > LONG_MSG_CHARS;
 
   return (
     <div className={`msg ${isUser ? 'msg-user' : ''}`}>
@@ -132,7 +138,9 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
           <span className="msg-time">{formatMessageTime(message.created_at)}</span>
         </div>
         <div
-          className={`msg-content ${isLegacyAnswer || isLegacySkip ? 'msg-content--qa-legacy' : ''}`}
+          className={`msg-content ${isLegacyAnswer || isLegacySkip ? 'msg-content--qa-legacy' : ''} ${
+            isLong && !expanded ? 'msg-content--collapsed' : ''
+          }`}
         >
           {!isUser && (message.thinking || message.content) ? (
             <StreamRenderer
@@ -144,6 +152,15 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
             message.content && <MarkdownRenderer content={message.content} />
           )}
         </div>
+        {isLong && (
+          <button
+            type="button"
+            className="msg-expand-btn"
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? '收起长文' : '展开全文'}
+          </button>
+        )}
       </div>
     </div>
   );

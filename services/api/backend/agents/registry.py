@@ -177,6 +177,9 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "你使用 Plan-and-Execute：先在思考区规划，执行时必须调用 dispatch_agent 调度专家，"
             "专家返回后再合并回答；禁止把「执行计划」列表当作最终正文发给用户。"
             "简单寒暄/元问题可自己回答；专业任务必须调度。"
+            "一次调度默认不超过 2 个专家；学习类优先 mentor，"
+            "仅当需要独立路线图/里程碑时再加 navigator，避免双专家各写长文。"
+            "dispatch 的 task 须含：用户目标 / 已知约束 / 禁止事项 / 期望产出形态。"
             "可调度: scout(速览), mentor(教学), navigator(路线), curator(分类), scribe(笔记), atlas(图谱)。"
             "新建对话默认无项目上下文；用户提到具体仓库时，先 query_user_projects，"
             "再用 manage_session_projects 把相关项目加入会话（可多选），再调度专家。"
@@ -191,10 +194,10 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         workflow="plan_execute",
         priority=0,
         temperature=0.5,
-        max_tokens=2048,
+        max_tokens=4096,
         max_iterations=4,
     ),
-    # Scout：CoT 直出 + 真流式，极少工具，追求秒级反馈
+    # Scout：轻量 react，可 0–1 次工具
     "scout": _def(
         "scout",
         "Scout",
@@ -208,14 +211,14 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "输出结构（Markdown）：一句话定位 / 核心功能 / 技术栈 / 适合谁 / 学习门槛 / 建议下一步。"
             "控制在 400 字以内，禁止 emoji，禁止冗长寒暄。"
         ),
-        workflow="cot",
+        workflow="react",
         auto_trigger=True,
         priority=10,
         temperature=0.3,
         max_tokens=900,
-        max_iterations=1,
+        max_iterations=2,
     ),
-    # Mentor：ToT 深度讲解；详情页禁用 ask_user 挂起，工具轮后强制收口写正文
+    # Mentor：react 稳教学；可 ask_user；控制篇幅避免截断
     "mentor": _def(
         "mentor",
         "Mentor",
@@ -229,25 +232,25 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "ask_user",
             "propose_memory",
             "get_learning_stats",
-            "manage_session_projects",
         ],
         system_prompt=(
-            "复杂主题在内心列 2-3 条讲解路径，只展开最适合的一条。"
-            "对用户水平不确定时，必须调用 ask_user 工具弹出选择题/滑块，禁止在正文里出题让用户手打 A/B/C/D。"
+            "你是 Mentor。先给骨架（阶段表 + 验收点 + 下一步选项），再补必要细节；"
+            "单次答复控制在可读长度，宁可分节也不要写到被截断。"
+            "对用户水平不确定时，必须调用 ask_user 弹出选择题/滑块，禁止在正文里出题让用户手打 A/B/C/D。"
             "测验/摸底：ask_user 的 items[].options 必须是完整句子的数组，"
             "例如 [\"Thought→Action→Observation\",\"Action→Observation→Thought\"]，"
             "严禁把字符串拆成单字符，严禁 options 为空。"
             "一次测验尽量在同一次 ask_user 中给出全部题目（每题一条 item），不要拆成多轮正文出题。"
             "详情页分析场景若无法挂起反问，则直接基于上下文讲解并写完整 Markdown 正文。"
-            "输出：全景 → 关键模块 → 设计亮点 → 与已有知识关联。禁止 emoji。"
+            "禁止调用或提及 dispatch_agent。禁止 emoji。"
         ),
-        workflow="tot",
+        workflow="react",
         priority=20,
         temperature=0.55,
-        max_tokens=2800,
+        max_tokens=4096,
         max_iterations=3,
     ),
-    # Navigator：CoT 规划，本地库工具为主
+    # Navigator：react，可工具
     "navigator": _def(
         "navigator",
         "Navigator",
@@ -262,12 +265,13 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         ],
         system_prompt=(
             "输出分阶段学习路线、里程碑与验收标准，优先使用用户已有项目库。"
-            "步骤清晰可执行。禁止 emoji。"
+            "先骨架后细节，控制篇幅；若前序专家已写过概念地图，只补路线与项目依赖，勿重复。"
+            "禁止调用或提及 dispatch_agent。禁止 emoji。"
         ),
-        workflow="cot",
+        workflow="react",
         priority=15,
         temperature=0.45,
-        max_tokens=1600,
+        max_tokens=3200,
         max_iterations=2,
     ),
     # Curator：轻量 Reflexion（2 轮），偏分类决策
@@ -313,13 +317,13 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "辅助笔记：可生成大纲与正文草稿。Project 模式在图谱相似度高时对比已学项目。"
             "输出干净 Markdown。禁止 emoji。"
         ),
-        workflow="cot",
+        workflow="react",
         priority=5,
         temperature=0.45,
         max_tokens=2400,
         max_iterations=2,
     ),
-    # Atlas：CoT + 图谱工具
+    # Atlas：react + 图谱工具
     "atlas": _def(
         "atlas",
         "Atlas",
@@ -335,7 +339,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
             "解读知识图谱节点与边，建议探索路径与聚类含义。"
             "关系优先、证据清楚。禁止 emoji。"
         ),
-        workflow="cot",
+        workflow="react",
         priority=8,
         temperature=0.45,
         max_tokens=1600,

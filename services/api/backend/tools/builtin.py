@@ -621,7 +621,11 @@ async def get_learning_stats(context=None, **kw):
     name="dispatch_agent",
     description=(
         "Hub 专用：将子任务派发给专业 Agent。"
-        "target_agent: scout|mentor|navigator|curator|scribe。"
+        "target_agent: scout|mentor|navigator|curator|scribe|atlas。"
+        "task 必须结构化，包含："
+        "1) 用户目标 2) 已知约束（反问答案/技术栈/水平）"
+        "3) 禁止事项 4) 期望产出形态（路径表/验收点/下一步选项）。"
+        "学习类优先只派 mentor；需要独立路线图再加 navigator；默认一次≤2。"
         "返回子任务描述，由 Hub 编排层实际执行。"
     ),
     parameters={
@@ -629,9 +633,21 @@ async def get_learning_stats(context=None, **kw):
         "properties": {
             "target_agent": {
                 "type": "string",
-                "enum": ["scout", "mentor", "navigator", "curator", "scribe"],
+                "enum": [
+                    "scout",
+                    "mentor",
+                    "navigator",
+                    "curator",
+                    "scribe",
+                    "atlas",
+                ],
             },
-            "task": {"type": "string"},
+            "task": {
+                "type": "string",
+                "description": (
+                    "结构化任务说明：目标 / 约束 / 禁止 / 期望产出"
+                ),
+            },
             "reason": {"type": "string"},
         },
         "required": ["target_agent", "task"],

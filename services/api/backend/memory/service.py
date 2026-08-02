@@ -331,7 +331,7 @@ class MemoryService:
         summary_parts = []
         for m in old:
             role = m.get("role", "?")
-            content = (m.get("content") or "")[:120]
+            content = (m.get("content") or "")[:400]
             if content:
                 summary_parts.append(f"{role}: {content}")
         summary = {

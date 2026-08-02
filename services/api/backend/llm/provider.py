@@ -145,9 +145,21 @@ class LLMProvider:
         return await self._complete_once(litellm, call_kw)
 
     async def _complete_once(self, litellm: Any, call_kw: dict) -> LLMCompleteResult:
+        import asyncio
+
         call_kw["stream"] = False
         try:
-            resp = await litellm.acompletion(**call_kw)
+            resp = await asyncio.wait_for(
+                litellm.acompletion(**call_kw),
+                timeout=120,
+            )
+        except asyncio.TimeoutError as e:
+            logger.exception(
+                "LLM complete timeout: model=%s base=%s",
+                call_kw.get("model"),
+                call_kw.get("api_base"),
+            )
+            raise RuntimeError("LLM 调用超时（120s）") from e
         except Exception as e:
             logger.exception("LLM complete failed: model=%s base=%s", call_kw.get("model"), call_kw.get("api_base"))
             raise RuntimeError(f"LLM 调用失败: {e}") from e
@@ -201,7 +213,12 @@ class LLMProvider:
             return
 
         try:
-            resp = await litellm.acompletion(**call_kw)
+            import asyncio
+
+            resp = await asyncio.wait_for(
+                litellm.acompletion(**call_kw),
+                timeout=120,
+            )
             async for chunk in resp:
                 delta = chunk.choices[0].delta
                 content = getattr(delta, "content", None)
@@ -212,6 +229,9 @@ class LLMProvider:
                 if isinstance(reasoning, str) and reasoning:
                     yield LLMChunk(type="thinking", text=reasoning)
             yield LLMChunk(type="done", usage={})
+        except asyncio.TimeoutError:
+            logger.exception("LLM stream timeout")
+            yield LLMChunk(type="error", error="LLM 调用超时（120s）")
         except Exception as e:
             logger.exception("LLM stream failed")
             yield LLMChunk(type="error", error=str(e))

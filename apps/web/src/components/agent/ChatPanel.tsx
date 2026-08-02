@@ -200,7 +200,10 @@ export function ChatPanel({
                 <span className="msg-role">{AGENT_ROLE_LABELS[activeAgent]}</span>
                 <span className="streaming-indicator">
                   <span className="streaming-dot" />
-                  生成中
+                  {activeAgent === 'hub' &&
+                  /汇总|合并/.test(thinkingBuffer || '')
+                    ? '汇总中'
+                    : '生成中'}
                 </span>
               </div>
               <div className="msg-content">

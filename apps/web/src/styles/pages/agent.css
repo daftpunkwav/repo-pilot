@@ -2539,6 +2539,26 @@
   word-break: break-word;
 }
 
+.msg-content--collapsed {
+  max-height: 28rem;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
+}
+.msg-expand-btn {
+  margin-top: 8px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: var(--brand-700);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.msg-expand-btn:hover {
+  text-decoration: underline;
+}
+
 /* 测验票卡即气泡本体，无需再套一层 msg-content */
 .msg-body:has(.qa-card) > .qa-card {
   margin-top: 0;
