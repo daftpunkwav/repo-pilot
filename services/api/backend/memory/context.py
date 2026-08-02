@@ -179,6 +179,9 @@ class ContextBuilder:
                 "- 更新用户画像或长期记忆时，调用 propose_memory 工具提交提案。",
                 "- 需要把项目加入/移出会话上下文时，调用 manage_session_projects。",
                 "- 优先简洁可执行；不要堆砌套话。",
+                "- 架构/分层图：优先用 Markdown 标题+列表，或纯英文标签的示意图；"
+                "**禁止**用含中文的 ASCII 边框图（中文双宽会导致框线错位）。"
+                "真实代码片段仍用 fenced code block。",
             ]
         )
         return "\n".join(parts)

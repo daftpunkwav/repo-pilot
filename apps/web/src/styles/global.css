@@ -122,12 +122,33 @@ a {
   font-size: 0.9375rem;
 }
 .markdown-body pre {
-  background: var(--bg-300);
-  padding: calc(var(--sp) * 3);
-  border-radius: var(--radius-sm);
+  background: var(--md-panel-bg);
+  color: var(--md-panel-fg);
+  padding: var(--md-panel-pad);
+  border-radius: var(--md-panel-radius);
   overflow-x: auto;
+  border: 1px solid var(--md-panel-border);
+  box-shadow: var(--md-panel-shadow);
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+}
+.markdown-body pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-family: inherit;
 }
 .markdown-body code {
   font-family: var(--font-mono);
   font-size: 0.875em;
+}
+.markdown-body blockquote {
+  margin: 12px 0;
+  border-radius: var(--md-panel-radius);
+  border: 1px solid var(--md-panel-border);
+  border-left: 3px solid var(--md-panel-accent);
+  background: var(--md-panel-bg);
+  box-shadow: var(--md-panel-shadow);
+  color: var(--md-panel-muted);
+  padding: 12px 16px 12px 14px;
 }

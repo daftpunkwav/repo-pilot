@@ -14,6 +14,7 @@ import '@/styles/liquid-glass.css';
 import '@/styles/shell.css';
 import '@/styles/pages/index.css';
 import '@/styles/global.css';
+import 'highlight.js/styles/github-dark.min.css';
 
 async function bootstrap() {
   syncOverviewMockRoundFromUrl();

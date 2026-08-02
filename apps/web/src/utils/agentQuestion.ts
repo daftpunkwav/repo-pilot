@@ -58,6 +58,36 @@ function looksLikeCharSplit(opts: RadioOption[]): boolean {
   return short.length >= Math.ceil(opts.length * 0.6);
 }
 
+/** 去掉选项文案上已有的 A. / B、 等题号前缀，避免 UI 再拼一次 */
+export function stripOptionLetterPrefix(label: string): string {
+  const t = label.trim();
+  const stripped = t.replace(/^[A-Da-d][.、)）：:]\s*/u, '').trim();
+  return stripped || t;
+}
+
+/** 展示用：统一成「A. 文案」，不重复字母 */
+export function formatRadioOptionLabel(
+  option: { value: string; label?: string },
+  index: number
+): string {
+  const letter = /^[A-Da-d]$/.test(option.value)
+    ? option.value.toUpperCase()
+    : String.fromCharCode(65 + (index % 26));
+  const body = stripOptionLetterPrefix(option.label || option.value);
+  if (!body) return letter;
+  if (body.toUpperCase() === letter) return letter;
+  return `${letter}. ${body}`;
+}
+
+/** 清理题干中泄漏的 markdown fence / 空白 */
+export function cleanQuestionText(text: string): string {
+  let t = String(text ?? '').trim();
+  t = t.replace(/^```(?:[\w+-]*)?\s*\n?/, '').replace(/\n?```\s*$/, '').trim();
+  t = t.replace(/^`{1,3}\s*/, '').replace(/\s*`{1,3}$/, '').trim();
+  if (!t || /^`{1,3}$/.test(t)) return '（题目文本缺失）';
+  return t;
+}
+
 /** 从多行文本解析 A/B/C/D 选项 */
 export function parseLetterOptions(text: string): RadioOption[] {
   const out: RadioOption[] = [];
@@ -67,10 +97,10 @@ export function parseLetterOptions(text: string): RadioOption[] {
   const seen = new Set<string>();
   while ((m = re.exec(text)) !== null) {
     const letter = m[1]!.toUpperCase();
-    const label = m[2]!.replace(/\*\*/g, '').trim();
+    const label = stripOptionLetterPrefix(m[2]!.replace(/\*\*/g, '').trim());
     if (!label || seen.has(letter)) continue;
     seen.add(letter);
-    out.push({ value: letter, label: `${letter}. ${label}` });
+    out.push({ value: letter, label });
   }
   return out;
 }
@@ -136,9 +166,12 @@ export function cleanOptions(raw: unknown, prompt = '', id = ''): RadioOption[] 
       if (!s) continue;
       const m = s.match(/^([A-Da-d])[.、)）：:\s]+\s*(.+)$/);
       if (m?.[1] && m[2]) {
-        out.push({ value: m[1].toUpperCase(), label: `${m[1].toUpperCase()}. ${m[2].trim()}` });
+        out.push({
+          value: m[1].toUpperCase(),
+          label: stripOptionLetterPrefix(m[2].trim()),
+        });
       } else {
-        out.push({ value: s, label: s });
+        out.push({ value: s, label: stripOptionLetterPrefix(s) });
       }
       continue;
     }
@@ -147,11 +180,11 @@ export function cleanOptions(raw: unknown, prompt = '', id = ''): RadioOption[] 
       if (Array.isArray(o)) {
         if (o.length >= 2) {
           const letter = String(o[0]).trim();
-          const label = String(o[1]).trim();
+          const label = stripOptionLetterPrefix(String(o[1]).trim());
           if (label) {
             out.push({
               value: /^[A-Da-d]$/.test(letter) ? letter.toUpperCase() : letter,
-              label: /^[A-Da-d]$/.test(letter) ? `${letter.toUpperCase()}. ${label}` : label,
+              label,
             });
           }
         }
@@ -172,6 +205,7 @@ export function cleanOptions(raw: unknown, prompt = '', id = ''): RadioOption[] 
       if (!label && value) label = value;
       if (!value && label) value = label;
       if (!label && !value) continue;
+      label = stripOptionLetterPrefix(label);
       // 丢弃无意义的单字符（除非只是 A/B/C/D 字母题号且无更好标签——仍太短则跳过）
       if (label.length <= 1 && !/^[A-Da-d]$/.test(label)) continue;
       const opt: RadioOption = { value, label };
@@ -191,7 +225,8 @@ export function cleanOptions(raw: unknown, prompt = '', id = ''): RadioOption[] 
 
 function isExamLike(prompt: string, qtype: string, title = ''): boolean {
   if (qtype === 'quiz') return true;
-  return /测验|考试|小测试|第\s*\d+\s*题|选择题/.test(`${prompt} ${title}`);
+  // 仅明确「测验/考试」语义才标 exam；普通选择题澄清不算测验
+  return /测验|考试|小测试|考考你|掌握度|第\s*\d+\s*题/.test(`${prompt} ${title}`);
 }
 
 function normalizeItem(
@@ -200,7 +235,7 @@ function normalizeItem(
   title = ''
 ): QuestionItem {
   const id = String(raw.id ?? `q_${index + 1}`);
-  const prompt = String(raw.prompt ?? raw.text ?? raw.question ?? '请选择');
+  const prompt = cleanQuestionText(String(raw.prompt ?? raw.text ?? raw.question ?? '请选择'));
   const qtype = String(raw.type ?? 'single_choice').toLowerCase();
   const opts = cleanOptions(raw.options, prompt, id);
   const exam = isExamLike(prompt, qtype, title);
@@ -256,8 +291,18 @@ export function ensureAgentQuestion(raw: unknown, _agentId = 'hub'): AgentQuesti
       questions: q.questions.map((item) => {
         if (item.type === 'radio') {
           const opts = cleanOptions(item.options, item.text, item.id);
-          const exam = item.exam || isExamLike(item.text, 'quiz', title);
-          return { ...item, options: opts, exam, allow_other: exam ? false : item.allow_other };
+          // 尊重后端 exam 标记；勿把 type 伪造成 quiz 导致全员变「测验」
+          const exam =
+            typeof item.exam === 'boolean'
+              ? item.exam
+              : isExamLike(item.text, 'single_choice', title);
+          return {
+            ...item,
+            text: cleanQuestionText(item.text),
+            options: opts,
+            exam,
+            allow_other: exam ? false : item.allow_other,
+          };
         }
         if (item.type === 'checkbox') {
           const opts = cleanOptions(
@@ -267,10 +312,11 @@ export function ensureAgentQuestion(raw: unknown, _agentId = 'hub'): AgentQuesti
           );
           return {
             ...item,
+            text: cleanQuestionText(item.text),
             options: opts.map((o) => ({ value: o.value, text: o.label })),
           };
         }
-        return item;
+        return { ...item, text: cleanQuestionText(item.text) };
       }),
     };
   }
@@ -424,16 +470,23 @@ export function formatAnswersForCard(
     }
     details.push({ question: qi.text, answer });
   });
+  // 卡片摘要保持短；完整选项进详情，避免一行挤满 A·B·C
+  const answered = details.filter((d) => d.answer && d.answer !== '（未答）').length;
   const summary =
-    details.length <= 3
-      ? details.map((d) => d.answer).join(' · ')
-      : `已回答 ${details.length} 题`;
+    answered === 0
+      ? '未作答'
+      : answered === 1
+        ? details.find((d) => d.answer && d.answer !== '（未答）')?.answer ?? `已答 1 题`
+        : `已答 ${answered} 题`;
   return { summary, details };
 }
 
 function labelForRadio(qi: QuestionItem, value: string): string {
   if (qi.type !== 'radio') return value;
-  return qi.options.find((o) => o.value === value)?.label ?? value;
+  const opt = qi.options.find((o) => o.value === value);
+  if (!opt) return value;
+  const idx = qi.options.findIndex((o) => o.value === value);
+  return formatRadioOptionLabel(opt, idx >= 0 ? idx : 0);
 }
 
 function labelForCheckbox(qi: QuestionItem, value: string): string {

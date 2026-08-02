@@ -6,7 +6,10 @@ def test_cors_origins_list_default_contains_dev_ports():
     s = Settings(secret_key="x" * 32)
     origins = s.cors_origins_list()
     assert "http://localhost:5173" in origins
+    assert "http://localhost:5174" in origins
+    assert "http://localhost:5175" in origins
     assert "http://localhost:4173" in origins
+    assert "http://127.0.0.1:5173" in origins
 
 
 def test_cors_origins_list_from_env_string():

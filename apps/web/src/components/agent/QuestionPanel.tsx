@@ -7,7 +7,7 @@ import type {
   RadioQuestion,
   SliderQuestion,
 } from '@/api/types';
-import { isExamQuestion, questionTitle } from '@/utils/agentQuestion';
+import { isExamQuestion, questionTitle, stripOptionLetterPrefix, cleanQuestionText } from '@/utils/agentQuestion';
 
 interface QuestionPanelProps {
   question: AgentQuestion;
@@ -97,7 +97,7 @@ export function QuestionPanel({ question, onSubmit, onSkip }: QuestionPanelProps
             <div className="exam-q__index">
               {exam ? `第 ${idx + 1} 题` : `Q${idx + 1}`}
             </div>
-            <h4 className="exam-q__prompt">{q.text}</h4>
+            <h4 className="exam-q__prompt">{cleanQuestionText(q.text)}</h4>
             <QuestionItemRenderer
               item={q}
               answer={answers[q.id]}
@@ -190,7 +190,7 @@ function RadioBlock({
   return (
     <div className="exam-options">
       {options.map((o, idx) => {
-        const label = (o.label || o.value).trim();
+        const label = stripOptionLetterPrefix((o.label || o.value).trim());
         const active = selected === o.value;
         const letter = String.fromCharCode(65 + (idx % 26));
         return (

@@ -293,11 +293,19 @@ export interface AgentMessage {
   agent: AgentId;
   role: MessageRole;
   content?: string;
+  /** 本轮流式思考/阶段状态（前端落盘，便于回看） */
+  thinking?: string;
   tool_call?: ToolCallData;
   /** 助手发起的结构化反问（历史卡片） */
   question?: AgentQuestion;
   /** 用户对反问的回答（历史卡片） */
   question_answer?: QuestionAnswerRecord;
+  /** Agent 切换提示条 */
+  agent_switch?: {
+    from: string;
+    to: string;
+    reason?: string;
+  };
   created_at: string;
 }
 

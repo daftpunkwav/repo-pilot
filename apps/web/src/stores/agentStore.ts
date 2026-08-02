@@ -24,6 +24,7 @@ import {
   questionTitle,
   recoverQuestionFromText,
 } from '@/utils/agentQuestion';
+import { ensureSessionProjectsFromMessage } from '@/utils/sessionProjectBind';
 
 interface ToolCallEntry {
   name: string;
@@ -156,10 +157,43 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       toolCalls: new Map(),
     }));
 
+    const api = getApi();
+
+    // 提及仓库时先导入并绑定，再开聊，保证本轮已有项目上下文
+    try {
+      const sess = get().sessions.find((s) => s.id === currentSessionId);
+      const currentIds =
+        sess?.project_ids?.length
+          ? sess.project_ids.map(String)
+          : sess?.project_id
+            ? [String(sess.project_id)]
+            : [];
+      const nextIds = await ensureSessionProjectsFromMessage(
+        api,
+        currentSessionId,
+        message,
+        currentIds
+      );
+      if (nextIds) {
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === currentSessionId
+              ? {
+                  ...s,
+                  project_ids: nextIds,
+                  project_id: nextIds[0] ?? null,
+                }
+              : s
+          ),
+        }));
+      }
+    } catch {
+      // 绑定失败不阻断对话
+    }
+
     const controller = new AbortController();
     set({ streamAbortController: controller });
 
-    const api = getApi();
     const stream = api.chatAgent(currentSessionId, message, controller.signal);
     await get().processSSEStream(stream);
   },
@@ -258,20 +292,28 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       created_at: new Date().toISOString(),
     });
 
-    /** 反问到来前，先把已流式输出的正文落成历史消息，避免“模型丢失内容” */
+    /** 反问到来前，先把已流式输出的正文/思考落成历史消息 */
     const withFlushedPrior = (
-      state: { messages: AgentMessage[]; streamingContent: string; activeAgent: AgentId; currentSessionId: string | null },
+      state: {
+        messages: AgentMessage[];
+        streamingContent: string;
+        thinkingBuffer: string;
+        activeAgent: AgentId;
+        currentSessionId: string | null;
+      },
       offer: AgentMessage
     ): AgentMessage[] => {
       const base = state.messages.filter((m) => m.id !== offer.id);
       const prior = state.streamingContent.trim();
-      if (prior && !isAskUserShapedText(prior)) {
+      const priorThink = state.thinkingBuffer.trim();
+      if ((prior && !isAskUserShapedText(prior)) || priorThink) {
         base.push({
           id: `msg_pre_${Date.now()}`,
           session_id: state.currentSessionId ?? '',
           agent: state.activeAgent,
           role: 'assistant',
-          content: prior,
+          content: prior && !isAskUserShapedText(prior) ? prior : undefined,
+          ...(priorThink ? { thinking: priorThink } : {}),
           created_at: new Date().toISOString(),
         });
       }
@@ -327,7 +369,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               (raw.args as Record<string, unknown>) ||
               {}) as Record<string, unknown>;
 
-            // 模型有时把 ask_user 参数放在 tool_call 里但不触发 question 事件 —— 兜底弹出
+            // ask_user：只挂起弹窗，等 question 事件再写入历史卡，避免临时 id 与正式 UUID 双卡
             if (name === 'ask_user') {
               const normalized = ensureAgentQuestion(
                 { ...args, title: args.title ?? '请回答以下问题' },
@@ -335,18 +377,30 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               );
               if (normalized) {
                 sawQuestion = true;
-                const offerMsg = buildOffer(normalized);
-                set((state) => ({
-                  pendingQuestion: normalized,
-                  streaming: false,
-                  streamingContent: '',
-                  thinkingBuffer: '',
-                  toolCalls: new Map(),
-                  messages: withFlushedPrior(
-                    { ...state, currentSessionId: get().currentSessionId },
-                    offerMsg
-                  ),
-                }));
+                set((state) => {
+                  const msgs = [...state.messages];
+                  const prior = state.streamingContent.trim();
+                  const priorThink = state.thinkingBuffer.trim();
+                  if ((prior && !isAskUserShapedText(prior)) || priorThink) {
+                    msgs.push({
+                      id: `msg_pre_${Date.now()}`,
+                      session_id: get().currentSessionId ?? '',
+                      agent: state.activeAgent,
+                      role: 'assistant',
+                      content: prior && !isAskUserShapedText(prior) ? prior : undefined,
+                      ...(priorThink ? { thinking: priorThink } : {}),
+                      created_at: new Date().toISOString(),
+                    });
+                  }
+                  return {
+                    pendingQuestion: normalized,
+                    streaming: false,
+                    streamingContent: '',
+                    thinkingBuffer: '',
+                    toolCalls: new Map(),
+                    messages: msgs,
+                  };
+                });
                 break;
               }
             }
@@ -408,17 +462,57 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           case 'agent_switch': {
             const switchData = asSSEAgentSwitch(event.data);
             const raw = event.data as Record<string, unknown>;
-            const next =
-              switchData.to ||
+            const next = (switchData.to ||
               (typeof raw.agent_id === 'string' ? raw.agent_id : null) ||
-              get().activeAgent;
-            // 切换 Agent 时插入分隔，不拆成两条完整回复
-            set((state) => ({
-              activeAgent: next as AgentId,
-              streamingContent: state.streamingContent
-                ? `${state.streamingContent}\n\n`
-                : state.streamingContent,
-            }));
+              get().activeAgent) as AgentId;
+            const from = (switchData.from ||
+              (typeof raw.from === 'string' ? raw.from : get().activeAgent) ||
+              'hub') as string;
+            const reason =
+              switchData.reason ||
+              (typeof raw.reason === 'string' ? raw.reason : undefined);
+            const sid = get().currentSessionId ?? '';
+
+            set((state) => {
+              const msgs = [...state.messages];
+              // 切换前：把当前流式正文/思考落成上一个 Agent 的气泡
+              const prior = state.streamingContent.trim();
+              const priorThink = state.thinkingBuffer.trim();
+              if (prior || priorThink) {
+                msgs.push({
+                  id: `msg_${Date.now()}_pre_switch`,
+                  session_id: sid,
+                  agent: state.activeAgent,
+                  role: 'assistant',
+                  content: prior || undefined,
+                  ...(priorThink ? { thinking: priorThink } : {}),
+                  created_at: new Date().toISOString(),
+                });
+              }
+              // 可见的切换提示
+              if (from !== next) {
+                msgs.push({
+                  id: `msg_switch_${Date.now()}`,
+                  session_id: sid,
+                  agent: next,
+                  role: 'assistant',
+                  content: '',
+                  agent_switch: {
+                    from,
+                    to: next,
+                    reason,
+                  },
+                  created_at: new Date().toISOString(),
+                });
+              }
+              return {
+                activeAgent: next,
+                messages: msgs,
+                streamingContent: '',
+                thinkingBuffer: '',
+                toolCalls: new Map(),
+              };
+            });
             break;
           }
           case 'session_projects': {
@@ -490,12 +584,14 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               };
             });
           } else {
+            const thinking = get().thinkingBuffer.trim();
             const assistantMsg: AgentMessage = {
               id: `msg_${Date.now()}`,
               session_id: currentSessionId,
               agent: activeAgent,
               role: 'assistant',
               content: streamingContent,
+              ...(thinking ? { thinking } : {}),
               created_at: new Date().toISOString(),
             };
             set((state) => ({

@@ -64,8 +64,12 @@ class Settings(BaseSettings):
     rate_limit_refresh: str = "20/minute"
 
     # CORS：逗号分隔源列表；生产请通过 CORS_ALLOW_ORIGINS 显式配置
+    # 含 Vite 端口回退（5173 被占用时会落到 5174/5175）与 127.0.0.1 同源写法
     cors_allow_origins: str = (
-        "http://localhost:5173,http://localhost:4173,http://localhost:5193"
+        "http://localhost:5173,http://localhost:5174,http://localhost:5175,"
+        "http://localhost:4173,http://localhost:5193,"
+        "http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175,"
+        "http://127.0.0.1:4173,http://127.0.0.1:5193"
     )
 
     def cors_origins_list(self) -> list[str]:

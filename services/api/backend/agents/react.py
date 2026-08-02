@@ -257,6 +257,82 @@ class ReActEngine:
             iterations=2,
         )
 
+
+    async def _plan_phase_to_thinking(
+        self,
+        *,
+        llm: LLMProvider,
+        messages: list[dict[str, Any]],
+        agent_def: AgentDefinition,
+        emit_sse: bool,
+        total_usage: dict[str, int],
+        workflow: str,
+    ) -> AsyncIterator[str | list[dict[str, Any]]]:
+        """多步工作流：先流式生成真实行动计划 → thinking，再把计划注入后续消息。"""
+        if emit_sse:
+            yield format_sse(
+                "thinking",
+                {
+                    "content": (
+                        f"[规划] {agent_def.name} · {workflow}\n"
+                        "正在生成行动计划…\n\n"
+                    )
+                },
+            )
+
+        if workflow == "plan_execute":
+            plan_prompt = (
+                "先只输出本轮行动计划（3-6 条短句要点），说明："
+                "1) 用户意图理解；2) 是否需要调度专家（谁/为何）；"
+                "3) 自己直接回答什么。不要写给用户看的最终正文，不要 emoji。"
+            )
+        elif workflow == "tot":
+            plan_prompt = (
+                "先只输出讲解路径比较（2-3 条）并标明将展开哪一条。"
+                "不要写完整讲解正文，不要 emoji。"
+            )
+        else:
+            plan_prompt = (
+                "先只输出方案要点与自我检查清单（3-5 条）。"
+                "不要写最终建议正文，不要 emoji。"
+            )
+
+        plan_messages = list(messages) + [{"role": "user", "content": plan_prompt}]
+        plan_text = ""
+        async for item in self._stream_plain_text(
+            llm=llm,
+            messages=plan_messages,
+            agent_def=agent_def,
+            emit_sse=emit_sse,
+            channel="thinking",
+            max_tokens=min(420, agent_def.max_tokens),
+        ):
+            if isinstance(item, str):
+                yield item
+            else:
+                plan_text = (item.text or "").strip()
+                for k in total_usage:
+                    total_usage[k] = total_usage.get(k, 0) + (item.usage or {}).get(k, 0)
+
+        if emit_sse:
+            yield format_sse("thinking", {"content": "\n[规划完成] 开始执行…\n"})
+
+        next_messages = list(messages)
+        if plan_text:
+            next_messages = list(messages) + [
+                {"role": "assistant", "content": f"行动计划：\n{plan_text}"},
+                {
+                    "role": "user",
+                    "content": (
+                        "请按上述计划执行。"
+                        "需要调度专家时调用 dispatch_agent；"
+                        "可直接回答则输出用户可见的完整正文（Markdown）。"
+                        "禁止 emoji。"
+                    ),
+                },
+            ]
+        yield next_messages
+
     async def run(
         self,
         *,
@@ -394,13 +470,28 @@ class ReActEngine:
             )
             return
 
+        # —— 多步工作流：先流式输出真实规划到 thinking，再进入工具环 ——
+        if wf in ("plan_execute", "tot", "reflexion"):
+            async for item in self._plan_phase_to_thinking(
+                llm=llm,
+                messages=messages,
+                agent_def=agent_def,
+                emit_sse=emit_sse,
+                total_usage=total_usage,
+                workflow=wf,
+            ):
+                if isinstance(item, list):
+                    messages = item
+                elif isinstance(item, str):
+                    yield item
+
         while iteration < max_iter:
             iteration += 1
             if emit_sse:
                 yield format_sse(
                     "thinking",
                     {
-                        "content": f"{agent_def.name} 推理中 (第 {iteration}/{max_iter} 轮 · {agent_def.workflow})",
+                        "content": f"\n[执行] {agent_def.name} · 第 {iteration}/{max_iter} 轮 · {agent_def.workflow}\n",
                         "iteration": iteration,
                     },
                 )
@@ -1032,7 +1123,7 @@ def _normalize_question(tool_result: dict[str, Any], *, agent_id: str) -> dict[s
             if len(opt_list) < 2:
                 opt_list = _default_options(str(qid_item), str(prompt))
             exam = qtype == "quiz" or bool(
-                re.search(r"测验|考试|小测试|第\s*\d+\s*题", f"{prompt} {title}")
+                re.search(r"测验|考试|小测试|考考你|掌握度|第\s*\d+\s*题", f"{prompt} {title}")
             )
             questions.append(
                 {

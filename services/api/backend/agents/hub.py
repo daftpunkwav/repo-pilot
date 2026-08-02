@@ -74,7 +74,7 @@ class HubService:
         except json.JSONDecodeError:
             pass
 
-        # 意图
+        # 意图：force_agent 才直达专家；普通会话一律经 Hub 编排（hub→专家→hub）
         if force_agent and self.registry.has(force_agent):
             intent = IntentResult(agent_id=force_agent, confidence=1.0)
         else:
@@ -83,14 +83,18 @@ class HubService:
         yield format_sse(
             "thinking",
             {
-                "content": f"意图识别: {intent.agent_id} (confidence={intent.confidence:.2f})"
-                + (f" multi=[{intent.plan_summary}]" if intent.is_multi else ""),
+                "content": (
+                    f"意图识别: {intent.agent_id} (confidence={intent.confidence:.2f})"
+                    + (f" multi=[{intent.plan_summary}]" if intent.is_multi else "")
+                    + ("" if force_agent else " → 经 Hub 编排")
+                    + "\n"
+                ),
             },
         )
 
         history = await self.context_builder.load_chat_history(session_id)
 
-        if intent.is_multi and intent.sub_intents:
+        if intent.is_multi and intent.sub_intents and not force_agent:
             async for chunk in self._orchestrate_multi(
                 user=user,
                 session_id=session_id,
@@ -106,8 +110,12 @@ class HubService:
                 yield chunk
             return
 
-        # 单 Agent：非 hub 直接执行；hub 则走 plan-execute（可能再 dispatch）
-        target = intent.agent_id if self.registry.has(intent.agent_id) else "hub"
+        # 单 Agent：仅 force_agent 直达；否则固定 Hub，由 dispatch_agent 调度
+        if force_agent and self.registry.has(force_agent):
+            target = force_agent
+        else:
+            target = "hub"
+
         if target != "hub":
             yield format_sse(
                 "agent_switch",
@@ -115,8 +123,19 @@ class HubService:
                     "agent_id": target,
                     "from": "hub",
                     "to": target,
-                    "reason": f"意图路由 confidence={intent.confidence:.2f}",
+                    "reason": f"强制直达 {target}",
                 },
+            )
+
+        # 把意图提示给 Hub，便于其决定是否 dispatch（不绕过 Hub）
+        run_message = message
+        if target == "hub" and intent.agent_id != "hub":
+            run_message = (
+                f"[编排提示] 本轮意图偏向 {intent.agent_id}"
+                f"（confidence={intent.confidence:.2f}）。"
+                "若属专业任务请用 dispatch_agent 调度对应专家，"
+                "专家结束后由你汇总；不要自己代替专家做深度分析。\n\n"
+                f"{message}"
             )
 
         result_text_parts: list[str] = []
@@ -124,7 +143,7 @@ class HubService:
             agent_id=target,
             user=user,
             session_id=session_id,
-            message=message,
+            message=run_message,
             llm=llm,
             llm_config=llm_config,
             raw_settings=raw_settings,
@@ -202,21 +221,22 @@ class HubService:
             )
 
         followup = (
-            f"{summary}\n\n请根据以上信息继续之前的任务，给出完整回答。"
+            f"{summary}\n\n请根据以上信息继续编排："
+            "若仍需专家深入，使用 dispatch_agent；否则由你直接给出完整回答。"
         )
         history = await self.context_builder.load_chat_history(session_id)
 
         yield format_sse(
             "agent_switch",
             {
-                "agent_id": "mentor",
+                "agent_id": "hub",
                 "from": "hub",
-                "to": "mentor",
-                "reason": "继续反问后的讲解",
+                "to": "hub",
+                "reason": "反问结束，回到 Hub 继续编排",
             },
         )
         async for item in self._run_agent(
-            agent_id="mentor",
+            agent_id="hub",
             user=user,
             session_id=session_id,
             message=followup,
@@ -228,7 +248,24 @@ class HubService:
             history=history,
         ):
             if isinstance(item, EngineResult):
-                pass
+                if item.question:
+                    return
+                if item.dispatches:
+                    async for chunk in self._handle_dispatches(
+                        dispatches=item.dispatches,
+                        user=user,
+                        session_id=session_id,
+                        original_message=followup,
+                        llm=llm,
+                        llm_config=llm_config,
+                        raw_settings=raw_settings,
+                        permissions=permissions,
+                        project_id=project_id,
+                        history=history,
+                        hub_preamble=item.text,
+                    ):
+                        yield chunk
+                    return
             else:
                 yield item
 

@@ -369,10 +369,11 @@ async def draft_note_outline(
 @tool(
     name="ask_user",
     description=(
-        "向用户发起结构化反问/测验，暂停当前流程等待回答。"
+        "向用户发起结构化反问或测验，暂停当前流程等待回答。"
         "items 为问题列表，每项含 id/prompt/type/options。"
         "type: single_choice | multi_choice | scale | text | quiz。"
-        "摸底水平、收集偏好、出考题时必须用本工具弹出交互面板，"
+        "澄清需求、确认仓库来源、摸底水平：用 single_choice（不是测验）。"
+        "只有考察掌握度/出考题时才用 type=quiz。"
         "禁止只在正文里出题让用户手打题号和答案。"
         "quiz：options 为候选答案；选项可为对象并带 correct=true 供批改。"
         "重要：options 必须是非空字符串数组，每个元素是完整选项文案，"

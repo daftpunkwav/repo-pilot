@@ -126,6 +126,8 @@ class LLMProvider:
             raise RuntimeError("litellm 未安装") from exc
 
         litellm.drop_params = True
+        # Anthropic：历史含 tool_calls / tool 消息时，无 tools= 会报 UnsupportedParamsError
+        litellm.modify_params = True
         call_kw = self._kwargs(model_override)
         call_kw.update(
             {

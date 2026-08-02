@@ -1,5 +1,6 @@
 import type { AgentMessage } from '@/api/types';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
+import { StreamRenderer } from '@/components/agent/StreamRenderer';
 import { formatMessageTime } from '@/utils/date';
 import { AGENT_INITIALS, AGENT_ROLE_LABELS } from '@/utils/labels';
 import {
@@ -20,6 +21,32 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
   const name = agentName ?? agentId.charAt(0).toUpperCase() + agentId.slice(1);
   const role = AGENT_ROLE_LABELS[agentId] ?? agentId;
   const initial = isUser ? 'Z' : (AGENT_INITIALS[agentId] ?? name[0]);
+
+  if (message.agent_switch) {
+    const pretty = (id: string) =>
+      ({
+        hub: 'Hub',
+        scout: 'Scout',
+        mentor: 'Mentor',
+        navigator: 'Navigator',
+        curator: 'Curator',
+        scribe: 'Scribe',
+        atlas: 'Atlas',
+      }[id] ?? id);
+    return (
+      <div className="msg msg--switch" data-testid="agent-switch-notice">
+        <div className="agent-switch-chip">
+          <span className="agent-switch-chip__label">Agent 切换</span>
+          <span className="agent-switch-chip__path">
+            {pretty(message.agent_switch.from)} → {pretty(message.agent_switch.to)}
+          </span>
+          {message.agent_switch.reason && (
+            <span className="agent-switch-chip__reason">{message.agent_switch.reason}</span>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (message.question) {
     const q = ensureAgentQuestion(message.question) ?? message.question;
@@ -102,7 +129,15 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
         <div
           className={`msg-content ${isLegacyAnswer || isLegacySkip ? 'msg-content--qa-legacy' : ''}`}
         >
-          {message.content && <MarkdownRenderer content={message.content} />}
+          {!isUser && (message.thinking || message.content) ? (
+            <StreamRenderer
+              content={message.content ?? ''}
+              thinking={message.thinking}
+              streaming={false}
+            />
+          ) : (
+            message.content && <MarkdownRenderer content={message.content} />
+          )}
         </div>
       </div>
     </div>

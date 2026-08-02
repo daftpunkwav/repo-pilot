@@ -172,5 +172,6 @@ describe('formatAnswersForCard', () => {
     ]);
     expect(formatted.details[0]?.answer).toMatch(/B/);
     expect(formatted.details[1]?.answer).toMatch(/C/);
+    expect(formatted.summary).toBe('已答 2 题');
   });
 });
