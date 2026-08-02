@@ -12,6 +12,13 @@ class AgentLlmConfigOut(BaseModel):
     speaking_style: str = "default"
 
 
+class AgentGuidelineOut(BaseModel):
+    """单个 Agent 的专属行为准则。"""
+
+    agent_id: str
+    guideline: str = Field(default="", max_length=2000)
+
+
 class SettingsOut(BaseModel):
     theme: Literal["dark", "light"] = "dark"
     font_scale: float = 1.0
@@ -28,6 +35,10 @@ class SettingsOut(BaseModel):
     llm_last_test: Optional[str] = None
     llm_latency_ms: Optional[int] = None
     agent_llm_configs: list[AgentLlmConfigOut] = Field(default_factory=list)
+    # 所有 Agent 必须遵守的通用行为准则
+    agent_code_of_conduct: str = Field(default="", max_length=4000)
+    # 各 Agent 专属准则
+    agent_guidelines: list[AgentGuidelineOut] = Field(default_factory=list)
 
 
 class SettingsUpdate(BaseModel):
@@ -43,6 +54,8 @@ class SettingsUpdate(BaseModel):
     llm_available_models: Optional[list[str]] = None
     llm_api_key: Optional[str] = Field(None, max_length=1024)
     agent_llm_configs: Optional[list[AgentLlmConfigOut]] = None
+    agent_code_of_conduct: Optional[str] = Field(None, max_length=4000)
+    agent_guidelines: Optional[list[AgentGuidelineOut]] = None
 
     @field_validator("llm_api_base")
     @classmethod

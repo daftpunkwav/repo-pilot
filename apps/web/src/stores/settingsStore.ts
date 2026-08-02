@@ -35,7 +35,15 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     try {
       const api = getApi();
       const response = await api.getSettings();
-      set({ settings: response.data, isLoading: false });
+      const data = response.data;
+      set({
+        settings: {
+          ...data,
+          agent_code_of_conduct: data.agent_code_of_conduct ?? '',
+          agent_guidelines: data.agent_guidelines ?? [],
+        },
+        isLoading: false,
+      });
     } catch (err) {
       set({ isLoading: false, error: extractErrorMessage(err) });
     }

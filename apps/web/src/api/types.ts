@@ -508,6 +508,12 @@ export interface AgentLlmConfig {
   speaking_style: AgentSpeakingStyle;
 }
 
+/** 单个 Agent 的专属行为准则 */
+export interface AgentGuideline {
+  agent_id: string;
+  guideline: string;
+}
+
 export interface Settings {
   theme: 'dark' | 'light';
   font_scale: number;
@@ -530,6 +536,10 @@ export interface Settings {
   llm_latency_ms?: number;
   /** 各 Agent 独立模型与说话风格 */
   agent_llm_configs: AgentLlmConfig[];
+  /** 所有 Agent 必须遵守的通用行为准则 */
+  agent_code_of_conduct: string;
+  /** 各 Agent 专属行为准则 */
+  agent_guidelines: AgentGuideline[];
 }
 
 export type ProficiencyLevel = 'none' | 'basic' | 'intermediate' | 'advanced' | 'mastered';

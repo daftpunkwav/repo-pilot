@@ -201,3 +201,18 @@ def get_agent_speaking_style(raw: dict[str, Any], agent_id: str) -> str:
             if isinstance(c, dict) and c.get("agent_id") == agent_id:
                 return c.get("speaking_style") or "default"
     return "default"
+
+
+def get_agent_code_of_conduct(raw: dict[str, Any]) -> str:
+    """读取全局行为准则（截断至 4000）。"""
+    return str(raw.get("agent_code_of_conduct") or "").strip()[:4000]
+
+
+def get_agent_guideline(raw: dict[str, Any], agent_id: str) -> str:
+    """读取指定 Agent 的专属行为准则（截断至 2000）。"""
+    items = raw.get("agent_guidelines") or []
+    if isinstance(items, list):
+        for item in items:
+            if isinstance(item, dict) and item.get("agent_id") == agent_id:
+                return str(item.get("guideline") or "").strip()[:2000]
+    return ""

@@ -1,4 +1,5 @@
 import type { Settings } from '@/api/types';
+import { AGENT_CATALOG } from '@/constants/agentCatalog';
 import { createDefaultAgentLlmConfigs } from '@/constants/llmConfig';
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -17,4 +18,6 @@ export const DEFAULT_SETTINGS: Settings = {
   llm_last_test: '2026-07-04T14:18:00Z',
   llm_latency_ms: 412,
   agent_llm_configs: createDefaultAgentLlmConfigs(),
+  agent_code_of_conduct: '',
+  agent_guidelines: AGENT_CATALOG.map((a) => ({ agent_id: a.id, guideline: '' })),
 };

@@ -151,6 +151,8 @@ export interface IApiClient {
   getAgentProfiles(): Promise<ApiResponse<AgentProfile[]>>;
   getUserProfile(): Promise<ApiResponse<UserProfile>>;
   updateUserProfile(data: Partial<UserProfile>): Promise<ApiResponse<UserProfile>>;
+  /** 清除 Agent 关于用户的画像记忆（不删除对话） */
+  clearUserMemory(): Promise<ApiResponse<UserProfile>>;
   getPermissions(): Promise<ApiResponse<AgentPermissions>>;
 
   chatAgent(sessionId: string, message: string, signal?: AbortSignal): AsyncGenerator<SSEEvent>;

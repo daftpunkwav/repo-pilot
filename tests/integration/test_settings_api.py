@@ -10,15 +10,29 @@ async def test_settings_roundtrip(client: AsyncClient, auth_headers: dict):
     data = get_res.json()["data"]
     assert isinstance(data["agent_llm_configs"], list)
     assert len(data["agent_llm_configs"]) >= 6
+    assert "agent_code_of_conduct" in data
+    assert isinstance(data["agent_guidelines"], list)
+    assert len(data["agent_guidelines"]) >= 7
 
     put_res = await client.put(
         "/api/v1/settings/",
         headers=auth_headers,
-        json={"theme": "dark", "font_scale": 1.1},
+        json={
+            "theme": "dark",
+            "font_scale": 1.1,
+            "agent_code_of_conduct": "回答务必简洁",
+            "agent_guidelines": [
+                {"agent_id": "hub", "guideline": "优先调度 Mentor"},
+            ],
+        },
     )
     assert put_res.status_code == 200
-    assert put_res.json()["data"]["theme"] == "dark"
-    assert put_res.json()["data"]["font_scale"] == 1.1
+    put_data = put_res.json()["data"]
+    assert put_data["theme"] == "dark"
+    assert put_data["font_scale"] == 1.1
+    assert put_data["agent_code_of_conduct"] == "回答务必简洁"
+    hub_g = next(g for g in put_data["agent_guidelines"] if g["agent_id"] == "hub")
+    assert hub_g["guideline"] == "优先调度 Mentor"
 
 
 @pytest.mark.asyncio

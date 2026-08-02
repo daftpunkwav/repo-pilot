@@ -91,3 +91,29 @@ async def update_user_profile(
     await db.commit()
     await db.refresh(row)
     return profile_to_out(row)
+
+
+async def clear_user_memory(db: AsyncSession, user_id: UUID) -> UserProfileOut:
+    """清除用户画像记忆，保留 extensions；不删除对话会话。"""
+    row = await get_or_create_profile(db, user_id)
+    current = _parse_json(row.agent_prefs, {})
+    if not isinstance(current, dict):
+        current = {}
+    extensions = current.get("extensions", {})
+    if not isinstance(extensions, dict):
+        extensions = {}
+    row.tech_profile = "{}"
+    row.preferences = "{}"
+    row.goals = "[]"
+    row.history_summary = ""
+    row.agent_prefs = json.dumps(
+        {
+            "memory_items": [],
+            "short_memory": {},
+            "extensions": extensions,
+        },
+        ensure_ascii=False,
+    )
+    await db.commit()
+    await db.refresh(row)
+    return profile_to_out(row)

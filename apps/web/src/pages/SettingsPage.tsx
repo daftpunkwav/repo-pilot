@@ -7,13 +7,15 @@ import { useUIStore } from '@/stores/uiStore';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { LlmSettingsSection } from '@/components/settings/LlmSettingsSection';
+import { AgentSettingsSection } from '@/components/settings/AgentSettingsSection';
 
-type Section = 'appearance' | 'github' | 'llm' | 'data' | 'about';
+type Section = 'appearance' | 'github' | 'llm' | 'agent' | 'data' | 'about';
 
 const NAV: { id: Section; label: string; icon: string }[] = [
   { id: 'appearance', label: '外观', icon: '◐' },
   { id: 'github', label: 'GitHub', icon: '⌂' },
   { id: 'llm', label: 'LLM', icon: '◇' },
+  { id: 'agent', label: 'Agent', icon: '◎' },
   { id: 'data', label: '数据', icon: '▤' },
   { id: 'about', label: '关于', icon: 'i' },
 ];
@@ -212,6 +214,10 @@ export function SettingsPage() {
               }}
             />
           </section>
+        )}
+
+        {section === 'agent' && (
+          <AgentSettingsSection settings={settings} updateSettings={updateSettings} />
         )}
 
         {section === 'data' && (

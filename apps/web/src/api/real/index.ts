@@ -499,6 +499,12 @@ export class RealApiClient implements IApiClient {
     });
   }
 
+  async clearUserMemory(): Promise<ApiResponse<UserProfile>> {
+    return apiRequest<UserProfile>('/user/profile/clear-memory', {
+      method: 'POST',
+    });
+  }
+
   async getPermissions(): Promise<ApiResponse<AgentPermissions>> {
     return apiRequest<AgentPermissions>('/agent/permissions');
   }

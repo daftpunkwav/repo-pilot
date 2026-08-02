@@ -805,6 +805,12 @@ export class MockApiClient implements IApiClient {
     if (data.agent_llm_configs) {
       next.agent_llm_configs = data.agent_llm_configs;
     }
+    if (data.agent_guidelines) {
+      next.agent_guidelines = data.agent_guidelines;
+    }
+    if (data.agent_code_of_conduct !== undefined) {
+      next.agent_code_of_conduct = data.agent_code_of_conduct;
+    }
     this.settings = next;
     return wrapResponse({ ...this.settings });
   }
@@ -1008,6 +1014,25 @@ export class MockApiClient implements IApiClient {
     if (data.goals) {
       this.userProfile.goals = data.goals;
     }
+    return wrapResponse(deepClone(this.userProfile));
+  }
+
+  async clearUserMemory(): Promise<ApiResponse<UserProfile>> {
+    await delay();
+    requireAuth();
+    this.userProfile = {
+      ...this.userProfile,
+      tech_proficiency: {},
+      learning_preferences: {
+        style: 'hands_on',
+        depth_first: false,
+        verbosity: 'balanced',
+        language: 'zh-CN',
+      },
+      goals: [],
+      history_summary: '',
+      memory_items: [],
+    };
     return wrapResponse(deepClone(this.userProfile));
   }
 

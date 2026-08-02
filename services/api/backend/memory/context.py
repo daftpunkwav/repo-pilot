@@ -38,6 +38,9 @@ class AgentRunContext:
     short_memory: list[dict] = field(default_factory=list)
     speaking_style: str = "default"
     permissions: dict[str, Any] = field(default_factory=dict)
+    # 用户自定义行为准则
+    code_of_conduct: str = ""
+    agent_guideline: str = ""
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -91,6 +94,16 @@ class ContextBuilder:
         long_mem = await self.memory.get_long_memory(user_id)
         short_mem = await self.memory.get_short_memory(user_id, agent_id)
 
+        from backend.llm.config import (
+            get_agent_code_of_conduct,
+            get_agent_guideline,
+            load_user_settings_dict,
+        )
+
+        raw_settings = await load_user_settings_dict(self.db, user_id)
+        code_of_conduct = get_agent_code_of_conduct(raw_settings)
+        agent_guideline = get_agent_guideline(raw_settings, agent_id)
+
         return AgentRunContext(
             user_id=user_id,
             session_id=session_id,
@@ -108,6 +121,8 @@ class ContextBuilder:
             short_memory=short_mem,
             speaking_style=speaking_style,
             permissions=permissions or {},
+            code_of_conduct=code_of_conduct,
+            agent_guideline=agent_guideline,
         )
 
     def build_system_prompt(self, agent_def: Any, ctx: AgentRunContext) -> str:
@@ -118,16 +133,36 @@ class ContextBuilder:
             "",
             "## 行为灵魂 (SOUL)",
             render_soul(agent_def.soul, ctx.speaking_style),
-            "",
-            "## 用户画像",
-            self._format_profile(ctx.user_profile),
-            "",
-            "## 长期记忆（共享）",
-            self._format_memory_items(ctx.long_memory),
-            "",
-            "## 本 Agent 短期记忆",
-            self._format_short(ctx.short_memory),
         ]
+        if ctx.code_of_conduct:
+            parts.extend(
+                [
+                    "",
+                    "## 用户行为准则（必须遵守）",
+                    ctx.code_of_conduct,
+                ]
+            )
+        if ctx.agent_guideline:
+            parts.extend(
+                [
+                    "",
+                    "## 本 Agent 专属准则",
+                    ctx.agent_guideline,
+                ]
+            )
+        parts.extend(
+            [
+                "",
+                "## 用户画像",
+                self._format_profile(ctx.user_profile),
+                "",
+                "## 长期记忆（共享）",
+                self._format_memory_items(ctx.long_memory),
+                "",
+                "## 本 Agent 短期记忆",
+                self._format_short(ctx.short_memory),
+            ]
+        )
         if ctx.projects:
             parts.extend(["", "## 当前项目上下文"])
             for i, p in enumerate(ctx.projects):
