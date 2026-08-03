@@ -1,7 +1,8 @@
-"""Agent 工具包"""
-from backend.tools.builtin import ensure_tools_loaded
-from backend.tools.registry import ToolRegistry, global_registry, tool
+"""兼容 shim 包：转发 agent_core.tools 公开符号；子模块见同目录 shim。"""
+from __future__ import annotations
 
-ensure_tools_loaded()
+import agent_core.tools as _impl
 
-__all__ = ["ToolRegistry", "global_registry", "tool", "ensure_tools_loaded"]
+globals().update(
+    {k: v for k, v in vars(_impl).items() if k not in {"__name__", "__file__", "__package__", "__loader__", "__spec__", "__cached__", "__builtins__", "__path__"}}
+)

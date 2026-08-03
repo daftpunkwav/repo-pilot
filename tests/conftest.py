@@ -4,7 +4,16 @@
 from __future__ import annotations
 
 import os
+import sys
 from collections.abc import AsyncIterator
+from pathlib import Path
+
+# 确保 backend 与 agent_core 均可导入（兼容不同 pytest rootdir）
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+for _p in (_REPO_ROOT / "services" / "api", _REPO_ROOT / "services" / "agent"):
+    _s = str(_p)
+    if _s not in sys.path:
+        sys.path.insert(0, _s)
 
 import pytest
 from httpx import ASGITransport, AsyncClient

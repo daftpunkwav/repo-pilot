@@ -48,7 +48,7 @@ RepoPilot/
 |------|------|----------|
 | Web | ✅ 已实现核心功能 | `apps/web/`（全部 MVP 页面、路由、Mock/Real 双轨 API 客户端已就位） |
 | API | ✅ 已实现核心端点 | `services/api/backend/`（Auth/Projects/Categories/Tags/Notes/Graph/Settings/Agent 等） |
-| Agent | 🟡 同进程已实现 | Hub + 6 专家在 `services/api/backend/agents/`；独立进程 `services/agent/` 仍为 `/health` 占位 |
+| Agent | ✅ 核心已迁入 | 实现在 `services/agent/agent_core/`（agents/llm/tools/memory）；`services/api/backend/{agents,llm,tools,memory}` 为兼容 shim；`agent_runtime` 可独立 SSE |
 | MCP | ⬜ 占位 | `services/mcp/`（v1.4+ 规划） |
 | Desktop | ⬜ 占位 | `apps/desktop/`（规划中，尚未实现） |
 | Packages | 🟡 空壳 | `packages/types/ui/contracts/prompts/py-shared/config` 目录已建，实际共享代码尚未抽取 |

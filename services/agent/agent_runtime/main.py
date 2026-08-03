@@ -1,9 +1,8 @@
 """
 Agent 独立运行时入口。
 
-当 API 配置 AGENT_BASE_URL 指向本服务时，由 API 反向代理 SSE。
-本进程复用 services/api 的 Hub / stream_chat（过渡期 import），共享 DATABASE_URL。
-后续将把 agents/llm/tools/memory 物理迁入本包。
+核心实现位于 agent_core（agents/llm/tools/memory）；
+共享持久化仍经 services/api 的 backend.database / models / agent_service。
 """
 from __future__ import annotations
 
@@ -15,10 +14,15 @@ from uuid import UUID
 from fastapi import FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
-_REPO = Path(__file__).resolve().parents[2]
+_AGENT_ROOT = Path(__file__).resolve().parents[1]
+_REPO = _AGENT_ROOT.parents[1]
 _API_ROOT = _REPO / "services" / "api"
-if str(_API_ROOT) not in sys.path:
-    sys.path.insert(0, str(_API_ROOT))
+
+# agent_core 与 backend 均需可导入
+for p in (_AGENT_ROOT, _API_ROOT):
+    s = str(p)
+    if s not in sys.path:
+        sys.path.insert(0, s)
 
 os.environ.setdefault(
     "SECRET_KEY", os.environ.get("SECRET_KEY", "agent-dev-secret-key-32bytes-min!!")
@@ -45,11 +49,16 @@ def _require_internal_token(token: str | None) -> None:
 
 @app.get("/health")
 async def health():
+    # 验证 agent_core 本地可导入
+    import agent_core  # noqa: F401
+    from agent_core.agents.registry import get_registry
+
     return {
         "status": "ok",
         "service": "agent-runtime",
         "version": "0.3.0",
-        "mode": "embedded-hub",
+        "mode": "agent_core",
+        "agents": sorted(d.id for d in get_registry().list_all()),
     }
 
 
@@ -92,7 +101,7 @@ async def chat_session(
     from backend.database import get_session_factory
     from backend.models.user import User
     from backend.services.agent_service import stream_chat
-    from backend.services.sse_stream import encode_stream_item
+    from agent_core.agents.stream_events import encode_stream_item
 
     factory = get_session_factory()
 
@@ -100,7 +109,7 @@ async def chat_session(
         async with factory() as db:
             user = await db.get(User, user_id)
             if not user:
-                from backend.services.sse_stream import format_sse
+                from agent_core.agents.stream_events import format_sse
 
                 yield format_sse(
                     "error",

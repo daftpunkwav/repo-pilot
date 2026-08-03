@@ -1,35 +1,30 @@
 # RepoPilot Agent 服务
 
-相对独立的 **AI Agent 运行时**，与传统 CRUD API 解耦。
+相对独立的 **AI Agent 运行时**：核心逻辑在 `agent_core/`，HTTP 入口在 `agent_runtime/`。
 
-## 当前状态
+## 布局
 
-**占位服务**（仅 `/health` 等骨架）。v1/v2 实现位于 `services/api/backend/agents/`，与本目录并行；  
-拆分触发条件见 `docs/architecture/REPO_LAYOUT.md`。
-
-当前同进程实现共 **7** 个 Agent：Hub + Scout / Mentor / Navigator / Curator / Scribe / **Atlas**。
-
-## 未来职责
-
-| 模块 | 说明 |
+| 路径 | 说明 |
 |------|------|
-| Hub | 统一对话入口、意图分类、多 Agent 派发 |
-| Agents | Scout / Mentor / Navigator / Curator / Scribe / Atlas |
-| Memory | 用户画像、会话历史压缩 |
-| Tools | LLM Tool 注册与执行（非 MCP 协议层） |
-| Prompts | 从 `packages/prompts` 加载模板 |
+| `agent_core/agents` | Hub / ReAct / 意图 / StreamEvent |
+| `agent_core/llm` | LLM 配置与 Provider |
+| `agent_core/tools` | 工具注册与 builtin |
+| `agent_core/memory` | 运行上下文与记忆服务 |
+| `agent_runtime` | FastAPI：`/health`、内部 SSE chat |
 
-## 启动（占位）
+API 侧 `services/api/backend/{agents,llm,tools,memory}` 为 **兼容 shim**（re-export `agent_core`），测试与 CRUD 服务可继续 `from backend.agents...`。
+
+## 启动
 
 ```bash
-# 仓库根
+# 仓库根（需与 API 共享 DATABASE_URL / SECRET_KEY / AGENT_INTERNAL_TOKEN）
 npm run dev:agent
 # 或：uvicorn agent_runtime.main:app --reload --port 19877 --app-dir services/agent
 ```
 
-> 注意：主 API 开发端口为 **19878**；**19877** 仅用于本占位服务，勿与 Vite 代理混淆。
+主 API 开发端口为 **19878**；设置 `AGENT_BASE_URL=http://127.0.0.1:19877` 后 API 将 SSE 代理到本服务。
 
 ## 与 API 的边界
 
-- **API**：用户认证、项目/笔记/图谱 CRUD、当前阶段同时承载 Agent 请求
-- **Agent（目标）**：LLM 调用、推理循环、流式 SSE、记忆读写
+- **API**：认证、CRUD、会话 HTTP、落库编排入口（可代理）
+- **Agent**：推理循环、工具、记忆、LLM；仍通过 `backend.models` / `backend.services` / `backend.database` 访问共享持久化层

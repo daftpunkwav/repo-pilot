@@ -37,7 +37,8 @@ RepoPilot/
 | `docs/design/v1/frontend/` | 设计归档 | **历史 Mock 沙盒**；主线代码在 `apps/web/` |
 | `backend/`（仓库根） | `services/api/backend/` | API 服务 Python 包（import 仍为 `backend.*`） |
 | `backend/api/` | `services/api/backend/api/` | FastAPI 路由 |
-| `backend/agents/` | `services/api/backend/agents/` | v1.0 实现位置；未来迁至 `services/agent/` |
+| `backend/agents/` | `services/agent/agent_core/agents/`（权威）；`services/api/backend/agents/` 为 shim | 物理实现已迁入 Agent 服务；API 侧保留 `backend.agents.*` 导入兼容 |
+| `backend/llm/` / `tools/` / `memory/` | `services/agent/agent_core/{llm,tools,memory}/` | 同上 |
 | `backend/config.py` | `services/api/backend/config.py` | 配置入口 |
 | `backend/migrations/` | `services/api/backend/migrations/` | 当前使用 `create_all` + `schema_sync.py`；Alembic 目录存在但尚未启用 |
 | `pyproject.toml`（根） | 根 + `services/api/pyproject.toml` | 根为 workspace；API 依赖在 `services/api/` |
