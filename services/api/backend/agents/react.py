@@ -89,7 +89,10 @@ class ReActEngine:
                     if emit_sse:
                         yield format_sse(event_name, {"content": chunk.text})
                 elif chunk.type == "thinking" and chunk.text:
-                    # 原生 reasoning：始终进 thinking 通道
+                    # 原生 reasoning：始终进 thinking 通道；
+                    # 当本段目标就是 thinking 时，一并计入 full（供规划注入后续消息）
+                    if channel == "thinking":
+                        full += chunk.text
                     if emit_sse:
                         yield format_sse("thinking", {"content": chunk.text})
                 elif chunk.type == "done":
@@ -314,8 +317,10 @@ class ReActEngine:
                 "禁止只宣布计划、禁止 emoji。"
             )
 
-        # 高置信快速编排：压缩规划 token
+        # 高置信快速编排：压缩规划 token；tot 讲解路径需要略宽
         plan_cap = min(420, agent_def.max_tokens)
+        if workflow == "tot":
+            plan_cap = min(900, agent_def.max_tokens)
         blob = " ".join(
             str(m.get("content") or "") for m in messages if m.get("role") == "user"
         )
@@ -516,7 +521,10 @@ class ReActEngine:
                 yield format_sse(
                     "thinking",
                     {
-                        "content": f"\n[执行] {agent_def.name} · 第 {iteration}/{max_iter} 轮 · {agent_def.workflow}\n",
+                        "content": (
+                            f"[状态] 执行 · {agent_def.name} · "
+                            f"{iteration}/{max_iter}\n"
+                        ),
                         "iteration": iteration,
                     },
                 )
@@ -541,6 +549,14 @@ class ReActEngine:
             assert isinstance(result, LLMCompleteResult)
             for k in total_usage:
                 total_usage[k] = total_usage.get(k, 0) + result.usage.get(k, 0)
+
+            # 原生 reasoning 立刻进思考区（工具轮非流式时尤其重要）
+            native_reason = (getattr(result, "reasoning", None) or "").strip()
+            if native_reason and emit_sse:
+                yield format_sse(
+                    "thinking",
+                    {"content": f"[中间推理]\n{native_reason}\n"},
+                )
 
             # assistant message
             assistant_msg: dict[str, Any] = {
@@ -871,11 +887,9 @@ class ReActEngine:
                     final_text = ""
                 break
 
-        # 若有 dispatch 且尚无最终文本，生成简短说明
+        # 若有 dispatch：正文预告由 Hub._handle_dispatches 发出，此处不占位
         if dispatches and not final_text:
-            final_text = "正在调度专业 Agent 处理…"
-            if emit_sse:
-                yield format_sse("text_delta", {"content": final_text})
+            final_text = ""
 
         # 工具轮结束后仍无正文：强制无工具再答一轮（Mentor/ToT 常见只调工具不写正文）
         if not (final_text or "").strip() and not dispatches:

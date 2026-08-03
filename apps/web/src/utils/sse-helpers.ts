@@ -2,6 +2,8 @@ import type {
   SSEAgentSwitch,
   SSEError,
   SSEEvent,
+  SSESubagentDone,
+  SSESubagentStart,
   SSEToolCall,
   SSEToolResult,
   SSETextDelta,
@@ -26,6 +28,14 @@ export function asSSEToolResult(data: Record<string, unknown>): SSEToolResult {
 
 export function asSSEAgentSwitch(data: Record<string, unknown>): SSEAgentSwitch {
   return data as unknown as SSEAgentSwitch;
+}
+
+export function asSSESubagentStart(data: Record<string, unknown>): SSESubagentStart {
+  return data as unknown as SSESubagentStart;
+}
+
+export function asSSESubagentDone(data: Record<string, unknown>): SSESubagentDone {
+  return data as unknown as SSESubagentDone;
 }
 
 export function asSSEError(data: Record<string, unknown>): SSEError {

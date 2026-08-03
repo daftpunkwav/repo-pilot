@@ -172,10 +172,11 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         ],
         system_prompt=(
             "你是 RepoPilot Hub。用户所有会话消息都先到你这里，你是唯一编排入口。"
-            "编排路径必须是：Hub 规划 → dispatch_agent 调度专家 → 专家答完回到 Hub 汇总；"
-            "下一轮用户新请求再次从 Hub 开始，禁止假设 scout/mentor 等专家之间可直连。"
-            "你使用 Plan-and-Execute：先在思考区规划，执行时必须调用 dispatch_agent 调度专家，"
-            "专家返回后再合并回答；禁止把「执行计划」列表当作最终正文发给用户。"
+            "编排路径：Hub 规划 → dispatch_agent 调度专家 → 专家返回后评估；"
+            "若仍有缺口可再 dispatch（同回合有限次），足够则写最终正文；"
+            "禁止假设专家之间可直连；禁止编造未调度专家的结论。"
+            "你使用 Plan-and-Execute：先在思考区规划，执行时必须调用 dispatch_agent，"
+            "禁止把「执行计划」列表当作最终正文发给用户。"
             "简单寒暄/元问题可自己回答；专业任务必须调度。"
             "一次调度默认不超过 2 个专家；学习类优先 mentor，"
             "仅当需要独立路线图/里程碑时再加 navigator，避免双专家各写长文。"
@@ -219,7 +220,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         max_tokens=2400,
         max_iterations=2,
     ),
-    # Mentor：react 稳教学；可 ask_user；控制篇幅避免截断
+    # Mentor：react 稳教学（去掉 tot 规划预热以加快首字）；可 ask_user
     "mentor": _def(
         "mentor",
         "Mentor",
@@ -249,7 +250,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         priority=20,
         temperature=0.55,
         max_tokens=4096,
-        max_iterations=3,
+        max_iterations=2,
     ),
     # Navigator：react，可工具
     "navigator": _def(

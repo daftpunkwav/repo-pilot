@@ -27,6 +27,8 @@ class LLMCompleteResult:
     usage: dict[str, int] = field(default_factory=dict)
     raw_message: dict[str, Any] | None = None
     failed: bool = False
+    # 原生 reasoning_content（与正文分离，供 thinking 通道）
+    reasoning: str = ""
 
 
 @dataclass
@@ -166,7 +168,8 @@ class LLMProvider:
 
         choice = resp.choices[0]
         msg = choice.message
-        text = _extract_text(msg)
+        content_text = _coerce_content(getattr(msg, "content", None)).strip()
+        reasoning = _extract_reasoning(msg)
         tool_calls: list[dict[str, Any]] = []
         if getattr(msg, "tool_calls", None):
             for tc in msg.tool_calls:
@@ -180,6 +183,13 @@ class LLMProvider:
                         },
                     }
                 )
+        # 有工具调用时：reasoning 保持独立，勿并入 text（避免工具轮丢思考）
+        # 无工具且正文空：回落 reasoning，兼容只吐 reasoning 的模型
+        text = content_text
+        kept_reasoning = reasoning
+        if not text and reasoning and not tool_calls:
+            text = reasoning
+            kept_reasoning = ""
         usage = {}
         if getattr(resp, "usage", None):
             usage = {
@@ -191,6 +201,7 @@ class LLMProvider:
             text=text,
             tool_calls=tool_calls,
             usage=usage,
+            reasoning=kept_reasoning,
             raw_message={
                 "role": "assistant",
                 "content": text or None,
@@ -341,14 +352,8 @@ class LLMProvider:
             )
 
 
-def _extract_text(msg: Any) -> str:
-    """兼容 content 为 str / list(blocks)，以及 reasoning/thinking 回落。"""
-    content = getattr(msg, "content", None)
-    text = _coerce_content(content)
-    if text.strip():
-        return text
-
-    # MiniMax 等推理模型：正文可能仍为空，但有 reasoning_content
+def _extract_reasoning(msg: Any) -> str:
+    """提取原生 reasoning / thinking_blocks，不回落到 content。"""
     reasoning = getattr(msg, "reasoning_content", None)
     if isinstance(reasoning, str) and reasoning.strip():
         return reasoning.strip()
@@ -365,8 +370,16 @@ def _extract_text(msg: Any) -> str:
                     parts.append(str(t))
         if parts:
             return "\n".join(parts)
-
     return ""
+
+
+def _extract_text(msg: Any) -> str:
+    """兼容 content 为 str / list(blocks)，以及 reasoning/thinking 回落。"""
+    content = getattr(msg, "content", None)
+    text = _coerce_content(content)
+    if text.strip():
+        return text
+    return _extract_reasoning(msg)
 
 
 def _coerce_content(content: Any) -> str:

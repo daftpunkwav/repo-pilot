@@ -1,7 +1,10 @@
 import type { AgentMessage } from '@/api/types';
 import { useState } from 'react';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
-import { StreamRenderer } from '@/components/agent/StreamRenderer';
+import {
+  isStatusOnlyThinking,
+  StreamRenderer,
+} from '@/components/agent/StreamRenderer';
 import { formatMessageTime } from '@/utils/date';
 import { AGENT_INITIALS, AGENT_ROLE_LABELS } from '@/utils/labels';
 import {
@@ -18,6 +21,19 @@ interface MessageBubbleProps {
   agentName?: string;
 }
 
+/** 无正文且无可展示思考时视为空消息（含仅状态行） */
+function isEmptyAssistantShell(message: AgentMessage): boolean {
+  if (message.role !== 'assistant') return false;
+  if (message.agent_switch || message.question || message.question_answer) {
+    return false;
+  }
+  const body = (message.content ?? '').trim();
+  if (body) return false;
+  const think = (message.thinking ?? '').trim();
+  if (!think) return true;
+  return isStatusOnlyThinking(think);
+}
+
 export function MessageBubble({ message, agentName }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const agentId = message.agent;
@@ -25,6 +41,10 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
   const role = AGENT_ROLE_LABELS[agentId] ?? agentId;
   const initial = isUser ? 'Z' : (AGENT_INITIALS[agentId] ?? name[0]);
   const [expanded, setExpanded] = useState(false);
+
+  if (isEmptyAssistantShell(message)) {
+    return null;
+  }
 
   if (message.agent_switch) {
     const pretty = (id: string) =>

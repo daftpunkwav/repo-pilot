@@ -437,6 +437,8 @@ export type SSEEventType =
   | 'tool_result'
   | 'question'
   | 'agent_switch'
+  | 'subagent_start'
+  | 'subagent_done'
   | 'select_repos'
   | 'session_projects'
   | 'done'
@@ -471,6 +473,17 @@ export interface SSEAgentSwitch {
   from: AgentId;
   to: AgentId;
   reason: string;
+}
+
+export interface SSESubagentStart {
+  agent_id: AgentId;
+  task?: string;
+  reason?: string;
+}
+
+export interface SSESubagentDone {
+  agent_id: AgentId;
+  status?: string;
 }
 
 export interface SSEDone {

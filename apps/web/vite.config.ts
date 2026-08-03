@@ -19,10 +19,12 @@ export default defineConfig({
     dedupe: ['react', 'react-dom', '@tanstack/react-query'],
   },
   server: {
+    host: '127.0.0.1',
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:19876',
+        // 固定 IPv4，避免 Windows 上 localhost→::1 而 API 只听 127.0.0.1 导致 Failed to fetch
+        target: 'http://127.0.0.1:19876',
         changeOrigin: true,
       },
     },

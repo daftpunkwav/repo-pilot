@@ -71,8 +71,42 @@ def structure_expert_summary(agent_id: str, text: str) -> str:
     return "\n".join(parts)
 
 
+# 单专家直出；多专家走 Hub 汇总
+
+_AGENT_DISPLAY_NAMES = {
+    "hub": "Hub",
+    "scout": "Scout",
+    "mentor": "Mentor",
+    "navigator": "Navigator",
+    "curator": "Curator",
+    "scribe": "Scribe",
+    "atlas": "Atlas",
+}
+
+
+def should_skip_hub_merge(expert_results: list[tuple[str, str]]) -> bool:
+    """单专家：直出交舞台；多专家：Hub 汇总。"""
+    return len(expert_results) == 1
+
+
+def format_dispatch_announce(dispatch: dict) -> str:
+    """Hub 可见调度预告正文。"""
+    target = str(dispatch.get("target_agent") or "scout")
+    name = _AGENT_DISPLAY_NAMES.get(target, target)
+    task = (dispatch.get("task") or "").strip()
+    reason = (dispatch.get("reason") or "").strip()
+    task_short = task[:160] + ("…" if len(task) > 160 else "")
+    if reason and not reason.startswith("Hub 调度"):
+        line = f"将调度 **{name}**：{reason}"
+        if task_short:
+            line += f"\n任务：{task_short}"
+    else:
+        line = f"将调度 **{name}**：{task_short or '处理当前请求'}"
+    return line + "\n\n"
+
+
 def apply_merge_mode(agent_def):
-    """汇总轮：强制 direct 单阶段流式、无工具，避免再次 plan/dispatch。"""
+    """最终汇总轮：强制 direct 单阶段流式、无工具。"""
     from dataclasses import replace
 
     return replace(
@@ -86,6 +120,45 @@ def apply_merge_mode(agent_def):
             + "\n\n【本轮强制】你正在合并已返回的专家结果。"
             "禁止规划、禁止工具、禁止 dispatch；直接写最终用户可见正文。"
             "控制篇幅：突出关键路径与下一步，不要整段复述专家原文。"
+            "禁止编造未在专家结果中出现的事实。"
+        ),
+    )
+
+
+# 同用户回合：首批 + 最多再追加 2 批调度
+MAX_HUB_DISPATCH_ROUNDS = 3
+
+
+def _dispatch_fingerprint(dispatch: dict) -> str:
+    """去重键：target + 任务摘要。"""
+    import re
+
+    target = str(dispatch.get("target_agent") or "").strip().lower()
+    task = re.sub(r"\s+", " ", str(dispatch.get("task") or "").strip().lower())[:120]
+    return f"{target}|{task}"
+
+
+def apply_evaluate_mode(agent_def):
+    """专家返回后的评估轮：可再 dispatch 或写最终正文。"""
+    from dataclasses import replace
+
+    return replace(
+        agent_def,
+        workflow="react",
+        tools=["dispatch_agent", "ask_user"],
+        max_iterations=2,
+        max_tokens=min(
+            max(int(getattr(agent_def, "max_tokens", 2048) or 2048), 2048),
+            3200,
+        ),
+        system_prompt=(
+            (agent_def.system_prompt or "")
+            + "\n\n【本轮强制·评估】用户消息中附有已返回的专家结果摘要。"
+            "你必须真实判断是否足够回答用户："
+            "1) 足够 → 直接输出最终 Markdown 正文（可精炼，勿整段复述）；"
+            "2) 不足 → 调用 dispatch_agent 追加调度，task 写清缺口与期望产出；"
+            "禁止编造未执行专家的结论；禁止只宣布「继续调度」而不调用工具；"
+            "禁止 emoji。"
         ),
     )
 
@@ -231,8 +304,7 @@ class HubService:
                     # 反问已发出，结束
                     return
                 if item.dispatches:
-                    # Hub 触发了 dispatch（内部会写 short_memory）
-                    async for chunk in self._handle_dispatches(
+                    async for chunk in self._dispatch_evaluate_loop(
                         dispatches=item.dispatches,
                         user=user,
                         session_id=session_id,
@@ -326,7 +398,7 @@ class HubService:
                 if item.question:
                     return
                 if item.dispatches:
-                    async for chunk in self._handle_dispatches(
+                    async for chunk in self._dispatch_evaluate_loop(
                         dispatches=item.dispatches,
                         user=user,
                         session_id=session_id,
@@ -442,21 +514,58 @@ class HubService:
             "thinking",
             {"content": f"多 Agent 编排: {intent.plan_summary or 'sequential'}"},
         )
-        summaries: list[str] = []
-        for sub in intent.sub_intents:
-            if not self.registry.has(sub.agent_id):
-                continue
+        subs = [s for s in intent.sub_intents if self.registry.has(s.agent_id)]
+        if not subs:
             yield format_sse(
-                "agent_switch",
+                "done",
+                {"usage": {"tokens": 0}, "iterations": 0, "agent_id": "hub"},
+            )
+            return
+
+        direct = len(subs) == 1
+        summaries: list[str] = []
+        expert_results: list[tuple[str, str]] = []
+        expert_history = list(history[-_EXPERT_HISTORY_WINDOW :]) if history else []
+
+        # Hub 可见预告
+        for sub in subs:
+            yield format_sse(
+                "text_delta",
                 {
-                    "agent_id": sub.agent_id,
-                    "from": "hub",
-                    "to": sub.agent_id,
-                    "reason": sub.reason or "多意图编排",
+                    "content": format_dispatch_announce(
+                        {
+                            "target_agent": sub.agent_id,
+                            "task": sub.message or message,
+                            "reason": sub.reason or "多意图编排",
+                        }
+                    )
                 },
             )
+
+        for sub in subs:
             prior = "\n".join(summaries) if summaries else None
             agent_text = ""
+
+            if direct:
+                yield format_sse(
+                    "agent_switch",
+                    {
+                        "agent_id": sub.agent_id,
+                        "from": "hub",
+                        "to": sub.agent_id,
+                        "reason": sub.reason or "多意图编排",
+                    },
+                )
+            else:
+                yield format_sse(
+                    "subagent_start",
+                    {
+                        "agent_id": sub.agent_id,
+                        "task": (sub.message or message)[:200],
+                        "reason": sub.reason or "多意图编排",
+                    },
+                )
+
             async for item in self._run_agent(
                 agent_id=sub.agent_id,
                 user=user,
@@ -467,34 +576,64 @@ class HubService:
                 raw_settings=raw_settings,
                 permissions=permissions,
                 project_id=project_id,
-                history=history,
+                history=expert_history,
                 prior_summary=prior,
             ):
                 if isinstance(item, EngineResult):
                     agent_text = item.text
                     if item.question:
+                        if not direct:
+                            yield format_sse(
+                                "subagent_done",
+                                {"agent_id": sub.agent_id, "status": "question"},
+                            )
                         return
                 else:
                     if isinstance(item, str) and item.startswith("event: done"):
                         continue
-                    yield item
+                    if direct:
+                        yield item
+                    elif isinstance(item, str) and (
+                        item.startswith("event: question")
+                        or item.startswith("event: error")
+                    ):
+                        yield item
+
+            if not direct:
+                yield format_sse(
+                    "subagent_done",
+                    {"agent_id": sub.agent_id, "status": "ok"},
+                )
+
+            expert_results.append((sub.agent_id, agent_text or ""))
             summaries.append(
                 structure_expert_summary(sub.agent_id, agent_text)
             )
 
-        # Hub 合并（禁止再调度）
-        if summaries and llm.available:
-            yield format_sse(
-                "agent_switch",
+        if should_skip_hub_merge(expert_results):
+            agent_id, _ = expert_results[0]
+            await self.memory.append_short_memory(
+                user.id,
+                "hub",
                 {
-                    "agent_id": "hub",
-                    "from": intent.sub_intents[-1].agent_id
-                    if intent.sub_intents
-                    else "hub",
-                    "to": "hub",
-                    "reason": "合并多 Agent 结果",
+                    "summary": (
+                        message[:80] + f" → {agent_id} 直出（跳过汇总）"
+                    )
                 },
             )
+            yield format_sse(
+                "done",
+                {
+                    "usage": {"tokens": 0},
+                    "iterations": len(summaries),
+                    "agent_id": agent_id,
+                    "skip_merge": True,
+                },
+            )
+            return
+
+        # Hub 合并：舞台未离开 hub，无需 switch；仅状态 + 汇总正文
+        if summaries and llm.available:
             yield format_sse(
                 "thinking",
                 {"content": "[状态] Hub · 汇总中…\n"},
@@ -530,10 +669,284 @@ class HubService:
                         )
                     continue
                 yield item
-        # 多 Agent 流程结束信号（子 Agent 的中间 done 已被过滤）
         yield format_sse(
             "done",
             {"usage": {"tokens": 0}, "iterations": len(summaries), "agent_id": "hub"},
+        )
+
+    async def _dispatch_evaluate_loop(
+        self,
+        *,
+        dispatches: list[dict],
+        user: User,
+        session_id: UUID,
+        original_message: str,
+        llm: LLMProvider,
+        llm_config,
+        raw_settings: dict,
+        permissions: dict,
+        project_id: UUID | None,
+        history: list,
+        hub_preamble: str,
+    ) -> AsyncIterator[str]:
+        """专家批次 → Hub 评估（可再 dispatch）→ 上限内循环 → 收口。"""
+        seen: set[str] = set()
+        all_summaries: list[str] = []
+        pending = list(dispatches)
+        last_direct_agent: str | None = None
+        had_extra_rounds = False
+
+        for round_i in range(MAX_HUB_DISPATCH_ROUNDS):
+            fresh: list[dict] = []
+            for d in pending:
+                key = _dispatch_fingerprint(d)
+                if key in seen:
+                    logger.info("跳过重复调度: %s", key[:80])
+                    continue
+                seen.add(key)
+                fresh.append(d)
+            if not fresh:
+                break
+
+            bag: dict = {
+                "summaries": [],
+                "expert_results": [],
+                "had_question": False,
+                "direct_streamed": False,
+            }
+            async for chunk in self._handle_dispatches(
+                dispatches=fresh,
+                user=user,
+                session_id=session_id,
+                original_message=original_message,
+                llm=llm,
+                llm_config=llm_config,
+                raw_settings=raw_settings,
+                permissions=permissions,
+                project_id=project_id,
+                history=history,
+                hub_preamble=hub_preamble if round_i == 0 else "",
+                finalize=False,
+                result_bag=bag,
+                force_subagent=round_i > 0,
+            ):
+                yield chunk
+
+            if bag.get("had_question"):
+                return
+
+            summaries = list(bag.get("summaries") or [])
+            results = list(bag.get("expert_results") or [])
+            all_summaries.extend(summaries)
+            if bag.get("direct_streamed") and len(results) == 1:
+                last_direct_agent = results[0][0]
+                # 舞台回到 Hub，便于评估轮流式与后续 announce
+                yield format_sse(
+                    "agent_switch",
+                    {
+                        "agent_id": "hub",
+                        "from": last_direct_agent,
+                        "to": "hub",
+                        "reason": "评估专家结果",
+                    },
+                )
+
+            if not all_summaries:
+                break
+
+            yield format_sse(
+                "thinking",
+                {"content": "[状态] Hub · 评估专家结果…\n"},
+            )
+            eval_msg = self._evaluate_prompt(
+                all_summaries, original_message, round_i
+            )
+            eval_result: EngineResult | None = None
+            async for item in self._run_agent(
+                agent_id="hub",
+                user=user,
+                session_id=session_id,
+                message=eval_msg,
+                llm=llm,
+                llm_config=llm_config,
+                raw_settings=raw_settings,
+                permissions=permissions,
+                project_id=project_id,
+                history=[],
+                evaluate_mode=True,
+            ):
+                if isinstance(item, EngineResult):
+                    eval_result = item
+                    if item.question:
+                        await self.memory.append_short_memory(
+                            user.id,
+                            "hub",
+                            {
+                                "summary": (
+                                    original_message[:80]
+                                    + " → pending_question"
+                                )
+                            },
+                        )
+                        return
+                    continue
+                if isinstance(item, str) and item.startswith("event: done"):
+                    continue
+                yield item
+
+            if eval_result is None:
+                break
+
+            if eval_result.dispatches:
+                if round_i + 1 >= MAX_HUB_DISPATCH_ROUNDS:
+                    yield format_sse(
+                        "thinking",
+                        {
+                            "content": (
+                                "[状态] 已达调度轮次上限，改为汇总…\n"
+                            )
+                        },
+                    )
+                    break
+                had_extra_rounds = True
+                pending = list(eval_result.dispatches)
+                hub_preamble = ""
+                continue
+
+            final_text = (eval_result.text or "").strip()
+            if final_text:
+                mem = " | ".join(
+                    s.split("\n", 1)[0] for s in all_summaries[:3]
+                )
+                await self.memory.append_short_memory(
+                    user.id,
+                    "hub",
+                    {
+                        "summary": (
+                            original_message[:80] + " → " + mem[:200]
+                        )
+                    },
+                )
+                return
+
+            # 评估空转：首批单专家直出且未追加 → 接受专家正文
+            if (
+                last_direct_agent
+                and not had_extra_rounds
+                and len(all_summaries) == 1
+            ):
+                await self.memory.append_short_memory(
+                    user.id,
+                    "hub",
+                    {
+                        "summary": (
+                            original_message[:80]
+                            + f" → {last_direct_agent} 直出（评估通过）"
+                        )
+                    },
+                )
+                yield format_sse(
+                    "done",
+                    {
+                        "usage": {"tokens": 0},
+                        "iterations": 1,
+                        "agent_id": last_direct_agent,
+                        "skip_merge": True,
+                    },
+                )
+                return
+            break
+
+        # 达上限或评估空转：短汇总收口（仍由 LLM 写）
+        if all_summaries:
+            async for chunk in self._run_merge_finalize(
+                summaries=all_summaries,
+                user=user,
+                session_id=session_id,
+                original_message=original_message,
+                llm=llm,
+                llm_config=llm_config,
+                raw_settings=raw_settings,
+                permissions=permissions,
+                project_id=project_id,
+            ):
+                yield chunk
+            return
+
+        yield format_sse(
+            "done",
+            {"usage": {"tokens": 0}, "iterations": 0, "agent_id": "hub"},
+        )
+
+    async def _run_merge_finalize(
+        self,
+        *,
+        summaries: list[str],
+        user: User,
+        session_id: UUID,
+        original_message: str,
+        llm: LLMProvider,
+        llm_config,
+        raw_settings: dict,
+        permissions: dict,
+        project_id: UUID | None,
+    ) -> AsyncIterator[str]:
+        """强制短汇总收口。"""
+        yield format_sse(
+            "thinking",
+            {"content": "[状态] Hub · 汇总中…\n"},
+        )
+        merge = self._merge_prompt(summaries, original_message)
+        async for item in self._run_agent(
+            agent_id="hub",
+            user=user,
+            session_id=session_id,
+            message=merge,
+            llm=llm,
+            llm_config=llm_config,
+            raw_settings=raw_settings,
+            permissions=permissions,
+            project_id=project_id,
+            history=[],
+            merge_mode=True,
+        ):
+            if isinstance(item, EngineResult):
+                if item.dispatches:
+                    logger.warning(
+                        "merge_mode Hub 仍返回 dispatches，已忽略: %s",
+                        [d.get("target_agent") for d in item.dispatches],
+                    )
+                    yield format_sse(
+                        "thinking",
+                        {
+                            "content": (
+                                "[纠正] 汇总轮试图再次调度，已拦截；"
+                                "以上专家输出即最终依据。\n"
+                            )
+                        },
+                    )
+                continue
+            yield item
+
+        mem = " | ".join(s.split("\n", 1)[0] for s in summaries[:3])
+        await self.memory.append_short_memory(
+            user.id,
+            "hub",
+            {"summary": (original_message[:80] + " → " + mem[:200])},
+        )
+
+    @staticmethod
+    def _evaluate_prompt(
+        summaries: list[str], user_message: str, round_i: int
+    ) -> str:
+        """评估轮用户消息：附专家摘要，由 LLM 决定再调度或作答。"""
+        return (
+            f"【评估任务 · 第 {round_i + 1} 批专家已返回】"
+            "判断现有结果是否足以回答用户。"
+            "足够则直接写最终 Markdown；不足则调用 dispatch_agent 追加调度。"
+            "禁止编造未出现在摘要中的专家结论。\n\n"
+            + "\n\n".join(summaries)
+            + f"\n\n用户原话：{user_message}"
         )
 
     async def _handle_dispatches(
@@ -550,42 +963,63 @@ class HubService:
         project_id: UUID | None,
         history: list,
         hub_preamble: str,
+        finalize: bool = True,
+        result_bag: dict | None = None,
+        force_subagent: bool = False,
     ) -> AsyncIterator[str]:
-        _ = hub_preamble  # 已在引擎中 stream
-        # 学习/教学类强制串行；其余可并行（无 prior 依赖）
+        # preamble 已在引擎中以 text_delta 发出（若有）；此处再发具体调度预告
+        _ = hub_preamble
         capped = list(dispatches[:3])
-        targets = [(d.get("target_agent") or "scout") for d in capped]
-        must_serial = any(t in _SERIAL_DISPATCH_AGENTS for t in targets) or len(capped) <= 1
+        # 过滤未注册
+        valid: list[dict] = []
+        for d in capped:
+            target = d.get("target_agent") or "scout"
+            if not self.registry.has(target):
+                yield format_sse(
+                    "thinking",
+                    {
+                        "content": (
+                            f"跳过未注册 Agent: {target}"
+                            "（接口已保留，待未来接入）"
+                        )
+                    },
+                )
+                continue
+            valid.append(d)
+        if not valid:
+            return
+
+        # 追加批次强制 Subagent，最终由 Hub 收口，避免舞台乱跳
+        direct = len(valid) == 1 and not force_subagent
+        targets = [(d.get("target_agent") or "scout") for d in valid]
+        must_serial = (
+            any(t in _SERIAL_DISPATCH_AGENTS for t in targets) or len(valid) <= 1
+        )
         expert_history = list(history[-_EXPERT_HISTORY_WINDOW :]) if history else []
         summaries: list[str] = []
+        expert_results: list[tuple[str, str]] = []
 
-        async def _run_one(d: dict, prior: str | None) -> tuple[str, str, list[str], dict | None]:
-            """返回 (target, text, sse_chunks, question_or_none)。并行路径收集 SSE。"""
+        # Hub 可见：告诉用户调度谁、做什么
+        for d in valid:
+            yield format_sse(
+                "text_delta", {"content": format_dispatch_announce(d)}
+            )
+
+        async def _run_one_silent(
+            d: dict, prior: str | None
+        ) -> tuple[str, str, list[str], dict | None]:
+            """并行静默路径：只收集结果与 question/error SSE。"""
             target = d.get("target_agent") or "scout"
             task = d.get("task") or original_message
-            chunks: list[str] = []
+            passthrough: list[str] = []
             text = ""
             question = None
-            if not self.registry.has(target):
-                chunks.append(
-                    format_sse(
-                        "thinking",
-                        {
-                            "content": (
-                                f"跳过未注册 Agent: {target}"
-                                "（接口已保留，待未来接入）"
-                            )
-                        },
-                    )
-                )
-                return target, text, chunks, None
-            chunks.append(
+            passthrough.append(
                 format_sse(
-                    "agent_switch",
+                    "subagent_start",
                     {
                         "agent_id": target,
-                        "from": "hub",
-                        "to": target,
+                        "task": task[:200],
                         "reason": d.get("reason") or "Hub 调度",
                     },
                 )
@@ -607,15 +1041,100 @@ class HubService:
                     text = item.text
                     if item.question:
                         question = item.question
+                elif isinstance(item, str):
+                    if item.startswith("event: question") or item.startswith(
+                        "event: error"
+                    ):
+                        passthrough.append(item)
+            passthrough.append(
+                format_sse(
+                    "subagent_done",
+                    {
+                        "agent_id": target,
+                        "status": "question" if question else "ok",
+                    },
+                )
+            )
+            return target, text, passthrough, question
+
+        if direct:
+            d = valid[0]
+            target = d.get("target_agent") or "scout"
+            yield format_sse(
+                "agent_switch",
+                {
+                    "agent_id": target,
+                    "from": "hub",
+                    "to": target,
+                    "reason": d.get("reason") or "Hub 调度",
+                },
+            )
+            text = ""
+            async for item in self._run_agent(
+                agent_id=target,
+                user=user,
+                session_id=session_id,
+                message=d.get("task") or original_message,
+                llm=llm,
+                llm_config=llm_config,
+                raw_settings=raw_settings,
+                permissions=permissions,
+                project_id=project_id,
+                history=expert_history,
+                prior_summary=None,
+            ):
+                if isinstance(item, EngineResult):
+                    text = item.text
+                    if item.question:
+                        if result_bag is not None:
+                            result_bag["had_question"] = True
+                        await self.memory.append_short_memory(
+                            user.id,
+                            "hub",
+                            {
+                                "summary": (
+                                    original_message[:80]
+                                    + " → pending_question"
+                                )
+                            },
+                        )
+                        return
                 else:
                     if isinstance(item, str) and item.startswith("event: done"):
                         continue
-                    if isinstance(item, str):
-                        chunks.append(item)
-            return target, text, chunks, question
+                    yield item
+            expert_results.append((target, text or ""))
+            summaries.append(structure_expert_summary(target, text))
+            if result_bag is not None:
+                result_bag["expert_results"] = expert_results
+                result_bag["summaries"] = summaries
+                result_bag["direct_streamed"] = True
+            if not finalize:
+                return
+            await self.memory.append_short_memory(
+                user.id,
+                "hub",
+                {
+                    "summary": (
+                        original_message[:80]
+                        + f" → {target} 直出（跳过汇总）"
+                    )
+                },
+            )
+            yield format_sse(
+                "done",
+                {
+                    "usage": {"tokens": 0},
+                    "iterations": 1,
+                    "agent_id": target,
+                    "skip_merge": True,
+                },
+            )
+            return
 
+        # 多专家：静默 Subagent，Hub 留在舞台
         if must_serial:
-            for d in capped:
+            for d in valid:
                 target = d.get("target_agent") or "scout"
                 prior = None
                 if summaries:
@@ -623,23 +1142,11 @@ class HubService:
                         "前序专家已覆盖内容（勿重复，只补缺口）：\n"
                         + "\n\n".join(summaries)
                     )
-                if not self.registry.has(target):
-                    yield format_sse(
-                        "thinking",
-                        {
-                            "content": (
-                                f"跳过未注册 Agent: {target}"
-                                "（接口已保留，待未来接入）"
-                            )
-                        },
-                    )
-                    continue
                 yield format_sse(
-                    "agent_switch",
+                    "subagent_start",
                     {
                         "agent_id": target,
-                        "from": "hub",
-                        "to": target,
+                        "task": (d.get("task") or original_message)[:200],
                         "reason": d.get("reason") or "Hub 调度",
                     },
                 )
@@ -660,6 +1167,12 @@ class HubService:
                     if isinstance(item, EngineResult):
                         text = item.text
                         if item.question:
+                            yield format_sse(
+                                "subagent_done",
+                                {"agent_id": target, "status": "question"},
+                            )
+                            if result_bag is not None:
+                                result_bag["had_question"] = True
                             await self.memory.append_short_memory(
                                 user.id,
                                 "hub",
@@ -671,16 +1184,22 @@ class HubService:
                                 },
                             )
                             return
-                    else:
-                        if isinstance(item, str) and item.startswith("event: done"):
-                            continue
-                        yield item
+                    elif isinstance(item, str):
+                        if item.startswith("event: question") or item.startswith(
+                            "event: error"
+                        ):
+                            yield item
+                yield format_sse(
+                    "subagent_done",
+                    {"agent_id": target, "status": "ok"},
+                )
+                expert_results.append((target, text or ""))
                 summaries.append(structure_expert_summary(target, text))
         else:
             import asyncio
 
             results = await asyncio.gather(
-                *[_run_one(d, None) for d in capped],
+                *[_run_one_silent(d, None) for d in valid],
                 return_exceptions=True,
             )
             for r in results:
@@ -695,6 +1214,8 @@ class HubService:
                 for c in chunks:
                     yield c
                 if question:
+                    if result_bag is not None:
+                        result_bag["had_question"] = True
                     await self.memory.append_short_memory(
                         user.id,
                         "hub",
@@ -705,68 +1226,37 @@ class HubService:
                         },
                     )
                     return
+                expert_results.append((target, text or ""))
                 summaries.append(structure_expert_summary(target, text))
 
+        if result_bag is not None:
+            result_bag["expert_results"] = expert_results
+            result_bag["summaries"] = summaries
+
+        if not finalize:
+            return
+
         if summaries:
-            yield format_sse(
-                "agent_switch",
-                {
-                    "agent_id": "hub",
-                    "from": (capped[-1].get("target_agent", "hub") if capped else "hub"),
-                    "to": "hub",
-                    "reason": "汇总调度结果",
-                },
-            )
-            yield format_sse(
-                "thinking",
-                {"content": "[状态] Hub · 汇总中…\n"},
-            )
-            merge = self._merge_prompt(summaries, original_message)
-            async for item in self._run_agent(
-                agent_id="hub",
+            async for chunk in self._run_merge_finalize(
+                summaries=summaries,
                 user=user,
                 session_id=session_id,
-                message=merge,
+                original_message=original_message,
                 llm=llm,
                 llm_config=llm_config,
                 raw_settings=raw_settings,
                 permissions=permissions,
                 project_id=project_id,
-                history=[],
-                merge_mode=True,
             ):
-                if isinstance(item, EngineResult):
-                    if item.dispatches:
-                        logger.warning(
-                            "merge_mode Hub 仍返回 dispatches，已忽略: %s",
-                            [d.get("target_agent") for d in item.dispatches],
-                        )
-                        yield format_sse(
-                            "thinking",
-                            {
-                                "content": (
-                                    "[纠正] 汇总轮试图再次调度，已拦截；"
-                                    "以上专家输出即最终依据。\n"
-                                )
-                            },
-                        )
-                    continue
-                yield item
-
-        mem = " | ".join(s.split("\n", 1)[0] for s in summaries[:3])
-        await self.memory.append_short_memory(
-            user.id,
-            "hub",
-            {"summary": (original_message[:80] + " → " + mem[:200])},
-        )
+                yield chunk
 
     @staticmethod
     def _merge_prompt(summaries: list[str], user_message: str) -> str:
-        """专家已返回后的 Hub 汇总提示：禁止再规划/再调度。"""
+        """多专家返回后的 Hub 汇总：短合并，禁止整段复述。"""
         return (
-            "【汇总任务 · 禁止再调度】专家已完成工作，下面是结构化摘要与正文摘录。"
-            "请直接合并为面向用户的最终 Markdown 答复："
-            "突出关键路径与下一步，可适度精简重复，不要整段照抄；"
+            "【汇总任务 · 禁止再调度】多位专家已完成工作。"
+            "请写一段短合并答复（约 120–250 字 Markdown）："
+            "只提炼共识、分歧与下一步；不要整段照抄专家原文；"
             "若专家已给出分支选项，保留并引导用户选择。"
             "严禁再次调用任何工具或 dispatch_agent；"
             "严禁再输出「执行计划」或「正在调度」。\n\n"
@@ -790,6 +1280,7 @@ class HubService:
         prior_summary: str | None = None,
         disable_questions: bool = False,
         merge_mode: bool = False,
+        evaluate_mode: bool = False,
     ) -> AsyncIterator[str | EngineResult]:
         from dataclasses import replace
 
@@ -802,6 +1293,8 @@ class HubService:
         # 汇总轮：强制 direct 无工具，避免 plan_execute 再次 dispatch
         if merge_mode:
             agent_def = apply_merge_mode(agent_def)
+        elif evaluate_mode:
+            agent_def = apply_evaluate_mode(agent_def)
 
         style = get_agent_speaking_style(raw_settings, agent_id)
         ctx = await self.context_builder.build_run_context(

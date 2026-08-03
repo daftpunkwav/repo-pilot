@@ -1052,22 +1052,31 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   word-break: break-word;
 }
 
-/* 聊天气泡 / 嵌入：表格走统一深色面板 */
+/* 聊天气泡 / 嵌入：表格走统一深色面板，分隔线在暗色下可见 */
 .msg-content .markdown-table-wrap,
 .embed-msg .markdown-table-wrap {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  overflow: hidden;
 }
 .msg-content .markdown-table-wrap th,
 .embed-msg .markdown-table-wrap th {
   background: var(--md-panel-bg-elevated);
   color: var(--md-panel-fg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
 }
 .msg-content .markdown-table-wrap td,
 .embed-msg .markdown-table-wrap td {
   border: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
   color: var(--md-panel-muted);
+}
+.msg-content .markdown-table-wrap td:last-child,
+.embed-msg .markdown-table-wrap td:last-child {
+  border-right: 0;
 }
 .msg-content .markdown-table-wrap tr:last-child td,
 .embed-msg .markdown-table-wrap tr:last-child td {
@@ -1078,6 +1087,25 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   font-weight: 600;
   color: var(--md-panel-fg);
   white-space: nowrap;
+}
+
+/* Mermaid 图：聊天气泡内居中，失败时仍走代码块 */
+.md-mermaid {
+  margin: 0.75em 0;
+  padding: 12px;
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+}
+.md-mermaid svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+.md-mermaid--fallback {
+  margin: 0.75em 0;
 }
 
 /* ==========================================================================

@@ -11,6 +11,8 @@ import { getApi } from '@/api/client';
 import {
   asSSEAgentSwitch,
   asSSEError,
+  asSSESubagentDone,
+  asSSESubagentStart,
   asSSEToolCall,
   asSSEToolResult,
   asSSETextDelta,
@@ -24,12 +26,20 @@ import {
   questionTitle,
   recoverQuestionFromText,
 } from '@/utils/agentQuestion';
+import { isStatusOnlyThinking } from '@/components/agent/StreamRenderer';
 import { ensureSessionProjectsFromMessage } from '@/utils/sessionProjectBind';
 
 interface ToolCallEntry {
   name: string;
   args: Record<string, unknown>;
   result?: unknown;
+}
+
+export interface SubagentProgress {
+  agentId: AgentId;
+  task?: string;
+  reason?: string;
+  status: 'running' | 'ok' | 'question' | 'error';
 }
 
 interface AgentState {
@@ -42,6 +52,8 @@ interface AgentState {
   thinkingBuffer: string;
   pendingQuestion: AgentQuestion | null;
   toolCalls: Map<string, ToolCallEntry>;
+  /** Hub 汇总模式下的静默 Subagent 进度（不改 activeAgent） */
+  subagents: SubagentProgress[];
   error: string | null;
   streamAbortController: AbortController | null;
   loadSessions: () => Promise<void>;
@@ -68,6 +80,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   thinkingBuffer: '',
   pendingQuestion: null,
   toolCalls: new Map(),
+  subagents: [],
   error: null,
   streamAbortController: null,
 
@@ -105,6 +118,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       streamingContent: '',
       thinkingBuffer: '',
       toolCalls: new Map(),
+      subagents: [],
     });
   },
 
@@ -161,6 +175,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       thinkingBuffer: '',
       error: null,
       toolCalls: new Map(),
+      subagents: [],
     }));
 
     const api = getApi();
@@ -236,6 +251,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       streamingContent: '',
       thinkingBuffer: '',
       toolCalls: new Map(),
+      subagents: [],
       messages: [...get().messages, userMsg],
     });
 
@@ -274,6 +290,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       thinkingBuffer: '',
       pendingQuestion: null,
       toolCalls: new Map(),
+      subagents: [],
     }),
 
   cancelStream: () => {
@@ -357,6 +374,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               streamingContent: '',
               thinkingBuffer: '',
               toolCalls: new Map(),
+              subagents: [],
               messages: withFlushedPrior(
                 { ...state, currentSessionId: get().currentSessionId },
                 offerMsg
@@ -487,14 +505,17 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
             set((state) => {
               const msgs = [...state.messages];
-              if (prior || priorThink) {
+              // 仅状态行、无正文时不落气泡，避免 Hub 调度后留下空气泡
+              const keepThink =
+                Boolean(priorThink) && !isStatusOnlyThinking(priorThink);
+              if (prior || keepThink) {
                 msgs.push({
                   id: `msg_${stamp}_pre_switch`,
                   session_id: sid,
                   agent: flushAgent,
                   role: 'assistant',
                   content: prior || undefined,
-                  ...(priorThink ? { thinking: priorThink } : {}),
+                  ...(keepThink ? { thinking: priorThink } : {}),
                   created_at: new Date().toISOString(),
                 });
               }
@@ -519,8 +540,51 @@ export const useAgentStore = create<AgentState>((set, get) => ({
                 streamingContent: '',
                 thinkingBuffer: '',
                 toolCalls: new Map(),
+                subagents: [],
               };
             });
+            break;
+          }
+          case 'subagent_start': {
+            const data = asSSESubagentStart(event.data);
+            const raw = event.data as Record<string, unknown>;
+            const agentId = (data.agent_id ||
+              (typeof raw.agent_id === 'string' ? raw.agent_id : 'scout')) as AgentId;
+            set((state) => {
+              const rest = state.subagents.filter((s) => s.agentId !== agentId);
+              return {
+                subagents: [
+                  ...rest,
+                  {
+                    agentId,
+                    task: data.task || (typeof raw.task === 'string' ? raw.task : undefined),
+                    reason:
+                      data.reason ||
+                      (typeof raw.reason === 'string' ? raw.reason : undefined),
+                    status: 'running' as const,
+                  },
+                ],
+              };
+            });
+            break;
+          }
+          case 'subagent_done': {
+            const data = asSSESubagentDone(event.data);
+            const raw = event.data as Record<string, unknown>;
+            const agentId = (data.agent_id ||
+              (typeof raw.agent_id === 'string' ? raw.agent_id : '')) as AgentId;
+            const statusRaw = data.status || (typeof raw.status === 'string' ? raw.status : 'ok');
+            const status =
+              statusRaw === 'question' || statusRaw === 'error'
+                ? statusRaw
+                : 'ok';
+            set((state) => ({
+              subagents: state.subagents.map((s) =>
+                s.agentId === agentId
+                  ? { ...s, status: status as SubagentProgress['status'] }
+                  : s
+              ),
+            }));
             break;
           }
           case 'session_projects': {
@@ -588,6 +652,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
                 streamingContent: '',
                 thinkingBuffer: '',
                 toolCalls: new Map(),
+                subagents: [],
                 streamAbortController: null,
               };
             });
@@ -608,6 +673,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               streamingContent: '',
               thinkingBuffer: '',
               toolCalls: new Map(),
+              subagents: [],
               streamAbortController: null,
             }));
           }
@@ -616,6 +682,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             streaming: false,
             streamAbortController: null,
             toolCalls: new Map(),
+            subagents: [],
           });
         }
       } else {
@@ -625,6 +692,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           streamingContent: '',
           thinkingBuffer: '',
           toolCalls: new Map(),
+          subagents: [],
           streamAbortController: null,
         });
       }
@@ -658,6 +726,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             streamingContent: '',
             thinkingBuffer: '',
             toolCalls: new Map(),
+            subagents: [],
             streamAbortController: null,
           }));
         } else {

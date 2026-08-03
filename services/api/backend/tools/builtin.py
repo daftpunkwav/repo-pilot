@@ -635,6 +635,7 @@ async def get_learning_stats(context=None, **kw):
         "1) 用户目标 2) 已知约束（反问答案/技术栈/水平）"
         "3) 禁止事项 4) 期望产出形态（路径表/验收点/下一步选项）。"
         "学习类优先只派 mentor；需要独立路线图再加 navigator；默认一次≤2。"
+        "单专家：专家直出交舞台；多专家：Hub 汇总（专家作 Subagent，不单独出泡）。"
         "返回子任务描述，由 Hub 编排层实际执行。"
     ),
     parameters={

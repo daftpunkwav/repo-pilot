@@ -4,25 +4,56 @@ interface ToolCallCardProps {
   result?: unknown;
 }
 
+function previewArgs(args: Record<string, unknown>): string {
+  const entries = Object.entries(args ?? {});
+  if (entries.length === 0) return '';
+  const parts = entries.slice(0, 3).map(([k, v]) => {
+    const raw = typeof v === 'string' ? v : JSON.stringify(v);
+    const short = raw.length > 36 ? `${raw.slice(0, 34)}…` : raw;
+    return `${k}=${short}`;
+  });
+  const more = entries.length > 3 ? ` +${entries.length - 3}` : '';
+  return parts.join(' · ') + more;
+}
+
+function formatBlock(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+/** 工具调用：气泡外细行，默认收起，避免嵌套厚卡片 */
 export function ToolCallCard({ name, args, result }: ToolCallCardProps) {
   const done = result !== undefined;
+  const argPreview = previewArgs(args);
+
   return (
-    <details className={`tool-call-card ${done ? 'is-done' : 'is-running'}`}>
-      <summary>
-        <span className="tool-call-card__icon" aria-hidden>
-          {done ? '✓' : '…'}
+    <details className={`tool-call ${done ? 'is-done' : 'is-running'}`}>
+      <summary className="tool-call__summary">
+        <span className="tool-call__caret" aria-hidden>
+          ▸
         </span>
-        <span className="tool-call-card__name">{name}</span>
-        <span className="tool-call-card__status">{done ? '完成' : '调用中'}</span>
+        <span className="tool-call__dot" aria-hidden />
+        <span className="tool-call__name">{name}</span>
+        {argPreview && (
+          <span className="tool-call__preview" title={argPreview}>
+            {argPreview}
+          </span>
+        )}
+        <span className="tool-call__status">{done ? '完成' : '调用中'}</span>
       </summary>
-      <div className="tool-call-card__body">
-        <p className="tool-call-card__label">参数</p>
-        <pre>{JSON.stringify(args, null, 2)}</pre>
+      <div className="tool-call__panel">
+        <div className="tool-call__section">
+          <span className="tool-call__k">参数</span>
+          <pre className="tool-call__code">{formatBlock(args)}</pre>
+        </div>
         {done && (
-          <>
-            <p className="tool-call-card__label">结果</p>
-            <pre>{JSON.stringify(result, null, 2)}</pre>
-          </>
+          <div className="tool-call__section">
+            <span className="tool-call__k">结果</span>
+            <pre className="tool-call__code">{formatBlock(result)}</pre>
+          </div>
         )}
       </div>
     </details>

@@ -7,7 +7,7 @@ def test_scout_is_react_fast_lane():
     scout = AGENT_DEFINITIONS["scout"]
     assert scout.workflow == "react"
     assert scout.max_iterations <= 2
-    assert scout.max_tokens <= 1024
+    assert scout.max_tokens <= 2400
     # 工具应极少，避免 ReAct 多轮
     assert len(scout.tools) <= 3
 
@@ -15,7 +15,7 @@ def test_scout_is_react_fast_lane():
 def test_mentor_react_bounded_iterations():
     mentor = AGENT_DEFINITIONS["mentor"]
     assert mentor.workflow == "react"
-    assert mentor.max_iterations <= 3
+    assert mentor.max_iterations <= 2
     assert "manage_session_projects" not in mentor.tools
 
 

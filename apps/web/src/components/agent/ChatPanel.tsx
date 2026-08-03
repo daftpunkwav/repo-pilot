@@ -54,6 +54,7 @@ export function ChatPanel({
   const thinkingBuffer = useAgentStore((s) => s.thinkingBuffer);
   const pendingQuestionRaw = useAgentStore((s) => s.pendingQuestion);
   const toolCalls = useAgentStore((s) => s.toolCalls);
+  const subagents = useAgentStore((s) => s.subagents);
   const activeAgent = useAgentStore((s) => s.activeAgent);
   const error = useAgentStore((s) => s.error);
   const sendMessage = useAgentStore((s) => s.sendMessage);
@@ -201,8 +202,15 @@ export function ChatPanel({
                 <span className="streaming-indicator">
                   <span className="streaming-dot" />
                   {activeAgent === 'hub' &&
-                  /汇总|合并/.test(thinkingBuffer || '')
-                    ? '汇总中'
+                  (/汇总|合并|评估/.test(thinkingBuffer || '') ||
+                    subagents.some((s) => s.status === 'running'))
+                    ? /汇总|合并/.test(thinkingBuffer || '')
+                      ? '汇总中'
+                      : /评估/.test(thinkingBuffer || '')
+                        ? '评估中'
+                        : subagents.some((s) => s.status === 'running')
+                          ? '调度中'
+                          : '生成中'
                     : '生成中'}
                 </span>
               </div>
@@ -212,12 +220,46 @@ export function ChatPanel({
                   thinking={thinkingBuffer}
                   streaming={streaming}
                 />
-                {Array.from(toolCalls.entries())
-                  .filter(([, tc]) => tc.name !== 'ask_user')
-                  .map(([id, tc]) => (
-                    <ToolCallCard key={id} name={tc.name} args={tc.args} result={tc.result} />
-                  ))}
+                {subagents.length > 0 && (
+                  <div className="hub-subagents" aria-label="Subagent 进度">
+                    {subagents.map((sa) => (
+                      <div
+                        key={sa.agentId}
+                        className="hub-subagent"
+                        data-status={sa.status}
+                      >
+                        <span className={`hub-subagent__avatar agent-${sa.agentId}`}>
+                          {AGENT_INITIALS[sa.agentId] ?? sa.agentId[0]?.toUpperCase()}
+                        </span>
+                        <div className="hub-subagent__meta">
+                          <span className="hub-subagent__name">
+                            {sa.agentId.charAt(0).toUpperCase() + sa.agentId.slice(1)}
+                          </span>
+                          <span className="hub-subagent__status">
+                            {sa.status === 'running'
+                              ? '执行中'
+                              : sa.status === 'question'
+                                ? '等待回答'
+                                : sa.status === 'error'
+                                  ? '失败'
+                                  : '完成'}
+                          </span>
+                          {sa.reason && (
+                            <span className="hub-subagent__reason" title={sa.reason}>
+                              {sa.reason}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+              {Array.from(toolCalls.entries())
+                .filter(([, tc]) => tc.name !== 'ask_user')
+                .map(([id, tc]) => (
+                  <ToolCallCard key={id} name={tc.name} args={tc.args} result={tc.result} />
+                ))}
             </div>
           </div>
         )}

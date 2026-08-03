@@ -6,6 +6,7 @@ import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import type { Options as SanitizeOptions } from 'rehype-sanitize';
 import { cn } from '@/utils/cn';
 import { tryParseAsciiArchLayers, looksLikeMarkdownTable } from '@/utils/asciiArch';
+import { looksLikeMermaid, MermaidBlock } from '@/components/common/MermaidBlock';
 
 interface MarkdownRendererProps {
   content: string;
@@ -105,6 +106,9 @@ export function MarkdownRenderer({
             const layers = tryParseAsciiArchLayers(text);
             if (layers) return <ArchStack layers={layers} />;
             const lang = extractCodeLang(children);
+            if (looksLikeMermaid(lang, text)) {
+              return <MermaidBlock code={text} />;
+            }
             return (
               <div className="md-codeblock">
                 {lang && <div className="md-codeblock__lang">{lang}</div>}
