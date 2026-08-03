@@ -1,4 +1,10 @@
 
+> ⚠️ **历史构思草稿（非现行产品文档）**  
+> 本文写于项目早期 brainstorm，文中「6 个 Agent」等设想已过时。  
+> **现行说明请读：** [`README.md`](./README.md) · [`docs/development/PROGRESS_REPORT.md`](./docs/development/PROGRESS_REPORT.md) · [`docs/product/`](./docs/product/)  
+> 当前代码注册 **7** 个 Agent（Hub + Scout / Mentor / Navigator / Curator / Scribe / Atlas），包版本 **2.0.0**。
+
+---
 
 
 

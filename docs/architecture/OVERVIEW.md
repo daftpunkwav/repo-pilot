@@ -1,8 +1,8 @@
 # RepoPilot 系统架构总览
 
-> 版本: 2026-07-05 | 状态: 现行有效
+> 版本: 2026-08-03 | 状态: 现行有效
 >
-> 本文档描述 **运行时架构** 与 **仓库组织原则**。目录细节见 [`REPO_LAYOUT.md`](./REPO_LAYOUT.md)，路径对照见 [`PATH_MAPPING.md`](./PATH_MAPPING.md)。
+> 本文档描述 **运行时架构** 与 **仓库组织原则**。目录细节见 [`REPO_LAYOUT.md`](./REPO_LAYOUT.md)，路径对照见 [`PATH_MAPPING.md`](./PATH_MAPPING.md)，实现进度见 [`../development/PROGRESS_REPORT.md`](../development/PROGRESS_REPORT.md)。
 
 ---
 
@@ -54,9 +54,9 @@ flowchart TB
 | Registry | `agents/registry.py` | Hub/Scout/Mentor/Navigator/Curator/Scribe/Atlas |
 | LLM | `llm/provider.py` | LiteLLM BYOK 流式/非流式 |
 | Memory | `memory/` | 短期/长期记忆、画像提案合并、上下文压缩 |
-| Tools | `tools/builtin.py` | 项目/图谱/GitHub/笔记/反问/调度等工具 |
+| Tools | `tools/builtin.py` | 约 24 个内置工具：项目/图谱/GitHub/笔记落库/分类标签/进度/导入/反问/调度等 |
 
-`services/agent`、`services/mcp` 仍为未来独立进程预留。对话入口统一走 Hub，前端不再手动选择 Agent。
+`services/agent`、`services/mcp` 仍为未来独立进程预留。对话入口统一走 Hub；专家可被 Hub 派发，并支持写工具真实落库（笔记/分类/标签/进度/导入）。
 
 ---
 
@@ -85,7 +85,7 @@ packages/    → 无运行时共享库（types、ui、prompts、contracts…）
 
 ## 5. 演进路线
 
-1. **现在：** `apps/web` 正式前端 + `services/api` 后端实现；`docs/design/v1/frontend` 为设计归档
-2. **近期：** UI 持续迭代、补充 E2E 与性能优化
+1. **现在：** `apps/web` 正式前端 + `services/api` 后端（含 Multi-Agent）；`docs/design/v1/frontend` 为设计归档
+2. **近期：** 产品文档（PRD/SPEC）与代码对齐、共享包落地、E2E/覆盖率补齐
 3. **中期：** Agent 拆至 `services/agent` 独立进程
 4. **v1.4+：** `services/mcp` 对接外部 AI 生态

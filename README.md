@@ -22,8 +22,8 @@ RepoPilot/
 
 完整说明见 [`docs/architecture/REPO_LAYOUT.md`](docs/architecture/REPO_LAYOUT.md)。
 
-> **实现状态速览（与文档对齐中）：**
-> - `apps/web`、`services/api` 已实现核心页面与端点；默认前端走 Mock，设置 `VITE_USE_MOCK=false` 可连接真实后端。
+> **实现状态速览（截至 2026-08-03）：**
+> - `apps/web`、`services/api` 已实现核心页面与端点；开发环境（`.env.development`）默认 `VITE_USE_MOCK=false` 走真实后端；未设置时客户端默认 Mock。
 > - `packages/*`（types / ui / contracts / prompts / py-shared）目前多为空壳，前后端类型与契约仍分别维护在 `apps/web/src/api/types.ts` 与 `services/api/backend/schemas/`。
 > - `services/agent`、`services/mcp`、`apps/desktop` 仅为占位或规划，尚未实现。
 
@@ -37,9 +37,9 @@ RepoPilot/
 ### 启用真实后端（关闭 Mock）
 
 ```bash
-# apps/web/.env.local
+# apps/web/.env.local（或沿用 .env.development）
 VITE_USE_MOCK=false
-VITE_API_BASE_URL=http://localhost:19876
+# 开发代理目标见 apps/web/vite.config.ts（默认 127.0.0.1:19878）
 ```
 
 配置 `SECRET_KEY`（≥32 字节）后启动 API；在设置页填入 LLM API Key（BYOK）即可使用完整 Agent 能力。无 Key 时自动降级为规则/图谱模式。
@@ -57,7 +57,9 @@ pip install -e "./services/api[dev]"
 ### API
 
 ```bash
-uvicorn backend.main:app --reload --port 19876
+# 推荐：与 Vite 代理一致（部分 Windows 环境 19876 会幽灵占用）
+npm run dev:api
+# 或：uvicorn backend.main:app --reload --host 127.0.0.1 --port 19878 --app-dir services/api
 ```
 
 ### Web
@@ -79,14 +81,15 @@ npm run dev:web
 
 权威来源声明：**PRD > SPEC > MVP_SCOPE**（产品需求优先于技术规格，MVP 实施规格从属前两者）。
 
+- 文档中心：[`docs/README.md`](docs/README.md)
 - 产品需求 PRD：[`docs/product/v1/PRD/PRD.md`](docs/product/v1/PRD/PRD.md)
 - Agent 系统 PRD：[`docs/product/v1/PRD/AGENT_PRD.md`](docs/product/v1/PRD/AGENT_PRD.md)
 - 技术规范 SPEC：[`docs/product/v1/SPEC/TECHNICAL_SPEC.md`](docs/product/v1/SPEC/TECHNICAL_SPEC.md)
 - Agent 系统 SPEC：[`docs/product/v1/SPEC/AGENT_SPEC.md`](docs/product/v1/SPEC/AGENT_SPEC.md)
 - v1.0 MVP 实施范围：[`docs/product/v1/MVP/MVP_SCOPE.md`](docs/product/v1/MVP/MVP_SCOPE.md)
 - 仓库布局：[`docs/architecture/REPO_LAYOUT.md`](docs/architecture/REPO_LAYOUT.md)
-- 开发路线图：[`docs/development/DEVELOPMENT_ROADMAP.md`](docs/development/DEVELOPMENT_ROADMAP.md)
-- 当前开发进度报告：[`docs/development/PROGRESS_REPORT.md`](docs/development/PROGRESS_REPORT.md)
+- 开发路线图（历史计划草案）：[`docs/development/DEVELOPMENT_ROADMAP.md`](docs/development/DEVELOPMENT_ROADMAP.md)
+- **当前实现状态**：[`docs/development/PROGRESS_REPORT.md`](docs/development/PROGRESS_REPORT.md)
 
 ## 版本
 

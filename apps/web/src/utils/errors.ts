@@ -16,11 +16,11 @@ export function extractErrorMessage(err: unknown): string {
     return err.error.message;
   }
   if (err instanceof TypeError && /fetch|network|Failed to fetch/i.test(err.message)) {
-    return '无法连接后端，请确认 API 已启动（http://127.0.0.1:19876）且前端走 http://127.0.0.1:5173';
+    return '无法连接后端，请确认 API 已启动（http://127.0.0.1:19878）且前端走 http://127.0.0.1:5173';
   }
   if (err instanceof Error) {
     if (/Failed to fetch|NetworkError|Load failed/i.test(err.message)) {
-      return '无法连接后端，请确认 API 已启动（http://127.0.0.1:19876）且前端走 http://127.0.0.1:5173';
+      return '无法连接后端，请确认 API 已启动（http://127.0.0.1:19878）且前端走 http://127.0.0.1:5173';
     }
     return err.message;
   }

@@ -1,11 +1,13 @@
 # RepoPilot Desktop
 
-桌面端应用壳层（规划中）。
+桌面端应用壳层（**规划占位，尚未实现**）。
+
+> 当前可运行客户端仅为 `apps/web`。实现状态见 [`docs/development/PROGRESS_REPORT.md`](../../docs/development/PROGRESS_REPORT.md)。
 
 ## 技术方向
 
-- **v1.0**：pywebview 加载 `apps/web` 构建产物，内嵌 `services/api`
-- **v1.x+**：可迁移至 Tauri（Rust 壳 + WebView）
+- **近期：** pywebview 加载 `apps/web` 构建产物，内嵌或连接 `services/api`
+- **更远：** 可迁移至 Tauri（Rust 壳 + WebView）
 
 ## 目录规划
 

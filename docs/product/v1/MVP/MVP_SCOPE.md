@@ -1,6 +1,6 @@
 # RepoPilot v1.0 — MVP 实施规格
 
-> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 状态: 审核通过 - daftpunkwav（**本文档部分具体声明已随代码迭代过期，正在与代码对齐**）
+> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 差异标注复核: 2026-08-03 | 状态: 审核通过 - daftpunkwav（**本文档部分具体声明已随代码迭代过期，正在与代码对齐**）
 > 权威来源: `v1/PRD/PRD.md` (产品需求) · `v1/SPEC/TECHNICAL_SPEC.md` (技术规格)
 > 本文档定义 **v1.0 单版本发布** 的实施范围。所有设计细节以 PRD 和 SPEC 为准，本文档仅标注裁剪决策和扩展预留。
 >
@@ -484,7 +484,7 @@ ERROR_CODES = {
 |------|---------|---------|
 | **LLMProvider** | 完整实现 `complete()` 和 `test_connection()`，v1.0 启用 LiteLLM（决策 D-11：v1.0 完整实现含 `complete()`） | 单元测试覆盖 `complete()` 的 mock 调用，集成测试覆盖 `test_connection()` |
 | **AgentRegistry** | `AgentDefinition` 与 `AgentRegistry` 已在 `services/api/backend/agents/registry.py` 实现，注册 **7 个 Agent**（含 Atlas）。SPEC 中按子目录 + AGENT.md/SOUL.md/system_prompt.j2/config.yaml 组织的文件结构尚未落地 | AgentRegistry 单元测试覆盖 7 个 Agent 加载 |
-| **ToolRegistry** | `ToolDefinition` 与 `ToolRegistry` 已在 `services/api/backend/tools/registry.py` 实现。当前 `tools/builtin.py` 注册了 **15 个内置工具**，名称与 §7.4 的工具清单不完全一致（如 `fetch_github_repo`、`fetch_readme`、`select_import_repos` 等） | 单元测试覆盖注册和执行 |
+| **ToolRegistry** | `ToolDefinition` 与 `ToolRegistry` 已在 `services/api/backend/tools/registry.py` 实现。当前 `tools/builtin.py` 注册了约 **24 个内置工具**，名称与 §7.4 的工具清单不完全一致（如 `fetch_github_repo`、`fetch_readme`、`create_note`、`import_github_repos` 等） | 单元测试覆盖注册和执行 |
 | **CapabilityDetector** | SPEC §5.3 中的独立 `CapabilityDetector` 尚未实现；当前 `has_llm` 能力判断由 `backend/llm/config.py` 中的 `build_llm_config_from_user()` 完成 | 单元/集成测试覆盖有/无 Key 两种场景 |
 | **MemoryService** | 完整实现 `get_user_profile()`、`save_session()`、`recall()` 等 | 集成测试覆盖用户画像读写 |
 | **ReActEngine** | 完整实现 AGENT_SPEC §4.1 的 ReAct 执行循环（§4.4 为无 Function Calling 降级模式） | 单元测试覆盖单步推理 + 工具调用 |
@@ -515,7 +515,7 @@ ERROR_CODES = {
 
 ### 7.4 工具注册清单（v1.0 规划清单）
 
-> **当前实现：** 实际注册的工具见 `services/api/backend/tools/builtin.py`，共 15 个，命名与权限白名单与本表存在差异（例如 `read_readme` 实际为 `fetch_readme`，`search_web` 尚未实现等）。本表保留为规划参考。
+> **当前实现：** 实际注册的工具见 `services/api/backend/tools/builtin.py`，约 **24** 个，命名与权限白名单与本表存在差异（例如 `read_readme` 实际为 `fetch_readme`，`search_web` 尚未实现；另有笔记/分类/标签/进度/导入等写工具）。本表保留为规划参考。
 
 | 工具名 | 用途 | 允许 Agent |
 |--------|------|-----------|

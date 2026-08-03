@@ -30,9 +30,10 @@ RepoPilot 文档按**维度**组织：
 docs/
 ├── product/         # 产品定义层   (做什么)
 ├── architecture/    # 架构设计层   (怎么设计)
+├── design/          # UI 设计归档  (原型/规格/Mock 过程)
 ├── development/     # 开发演化系统 (核心，记录实际怎么演化)
-├── api/             # 接口层       (怎么被使用)
-└── debug/           # 临时记录层   (快速记问题)
+├── api/             # 接口层       (怎么被使用) — 待填充
+└── debug/           # 临时记录层   (快速记问题) — 待创建
 ```
 
 ### 各层职责一句话总结
@@ -41,6 +42,7 @@ docs/
 |------|--------|---------|
 | `product/` | 决定**要做什么系统** | 做什么 |
 | `architecture/` | 描述**系统如何组织运行** | 怎么设计 |
+| `design/` | 沉淀 **UI 原型与设计过程** | 长什么样（归档） |
 | `development/` | 记录**系统如何一步步变成现在** | 实际怎么演化（核心） |
 | `api/` | 说明**系统如何被外部调用** | 怎么被使用 |
 | `debug/` | **快速记问题，不结构化** | 哪里有问题（草稿） |
@@ -316,19 +318,21 @@ development/{logs, changes, issues, ...} (随时记录)
 
 ### 5.1 目录状态
 
-> 截至 2026-07-12 实际仓库结构。
+> 截至 **2026-08-03** 实际仓库结构。
 
 | 目录 | 状态 | 备注 |
 |------|------|------|
 | `product/` | ✅ 完整 | `v1/`、`v2/` 两套 PRD/SPEC/MVP；详见 `product/README.md` |
 | `architecture/` | ✅ 有内容 | `OVERVIEW.md`、`REPO_LAYOUT.md`、`PATH_MAPPING.md` |
-| `development/` | ✅ 有内容 | `DEVELOPMENT_ROADMAP.md`（路线图） + `guides/DEVELOPMENT_PROCESS.md`（流程） |
-| `superpowers/plans/` | ✅ 有内容 | 当前分支活跃工作计划（如 `2026-07-09-front-backend-review-fixes.md`），随计划完成持续更新 |
-| `api/`、`debug/`、`development/{process,logs,changes,issues,experiments,changelog}/` | ⛔ **未创建** | §3.3 描述的子目录结构尚未落地，仅为愿景 |
+| `design/` | ✅ 有内容 | `v1/` UI 原型、设计规格与 Mock 前端归档 |
+| `development/` | ✅ 有内容 | `PROGRESS_REPORT.md`（实现状态）+ `DEVELOPMENT_ROADMAP.md`（历史计划）+ `guides/` |
+| `superpowers/plans/` | ✅ 有内容 | 分支工作计划（如 `2026-07-09-front-backend-review-fixes.md`） |
+| `api/`、`debug/`、`development/{process,logs,issues,experiments,changelog}/` | ⛔ **未创建** | §3.3 描述的子目录结构尚未落地，仅为愿景 |
+| `development/changes/` | 🟡 空壳 | 仅有空 `build/` 目录，尚无变更笔记 |
 
 ### 5.2 现有文件清单
 
-> 截至 2026-07-12；仅列出有内容的文件与目录，空目录省略。
+> 截至 **2026-08-03**；仅列出有内容的文件与目录，空目录省略。
 
 ````
 docs/
@@ -337,8 +341,11 @@ docs/
 │   ├── OVERVIEW.md                          # 运行时架构
 │   ├── PATH_MAPPING.md                      # 历史路径对照
 │   └── REPO_LAYOUT.md                       # Monorepo 布局
+├── design/
+│   └── v1/                                  # UI 设计归档 + FRONTEND_SPEC + process/
 ├── development/
-│   ├── DEVELOPMENT_ROADMAP.md               # v1.0 路线图
+│   ├── DEVELOPMENT_ROADMAP.md               # v1.0 预实施路线图（历史计划）
+│   ├── PROGRESS_REPORT.md                   # ★ 当前代码实现状态（优先阅读）
 │   └── guides/
 │       └── DEVELOPMENT_PROCESS.md           # 开发流程与质量门禁
 ├── product/
@@ -359,7 +366,7 @@ docs/
         └── 2026-07-09-front-backend-review-fixes.md
 ````
 
-> `docs/product/v1/MVP/MVP_SCOPE.md` 与 `docs/development/DEVELOPMENT_ROADMAP.md` 是 v1.0 的实施范围与路线图，权威源仍是 `docs/product/v1/PRD/PRD.md` 与 `docs/product/v1/SPEC/TECHNICAL_SPEC.md`（见 §1）。
+> **实现状态以** `docs/development/PROGRESS_REPORT.md` **与代码为准。** 产品权威源仍是 `docs/product/v1/PRD/PRD.md` 与 `docs/product/v1/SPEC/TECHNICAL_SPEC.md`（见 §1）；`MVP_SCOPE.md` 已含部分与代码差异标注。
 
 ## 6. 未来扩展
 

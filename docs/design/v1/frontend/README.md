@@ -1,6 +1,7 @@
 # RepoPilot v1 前端（设计归档）
 
-> **已迁入主线：** 正式开发与构建请使用 [`apps/web/`](../../../apps/web/)。本目录保留设计规格、审查记录与 HTML 原型，供对照参考。
+> **已迁入主线：** 正式开发与构建请使用 [`apps/web/`](../../../apps/web/)。本目录保留设计规格、审查记录与 HTML 原型，供对照参考。  
+> 现行实现状态：[`docs/development/PROGRESS_REPORT.md`](../../../development/PROGRESS_REPORT.md)。
 
 React + Vite + TypeScript 实现，数据来自 `MockApiClient`（`VITE_USE_MOCK=true`）。
 
@@ -18,6 +19,7 @@ npm run dev
 # 仓库根
 npm install
 npm run dev:web
+# 真实后端：npm run dev:api（:19878）
 ```
 
 - 地址：http://localhost:5173

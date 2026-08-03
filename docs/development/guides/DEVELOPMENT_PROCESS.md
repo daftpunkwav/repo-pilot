@@ -194,15 +194,16 @@ GITHUB_CLIENT_SECRET=         # 可选
 APP_ENV=development
 APP_DEBUG=true
 APP_HOST=127.0.0.1
-APP_PORT=19876
+APP_PORT=19878
 ```
 
 ### 4.3 启动命令
 
 ```bash
 # API 服务（需 pip install -e "./services/api[dev]"）
-cd services/api
-uvicorn backend.main:app --reload --host 127.0.0.1 --port 19876
+# 开发端口 19878，与 Vite 代理 / npm run dev:api 一致
+npm run dev:api
+# 或：uvicorn backend.main:app --reload --host 127.0.0.1 --port 19878 --app-dir services/api
 
 # Web — Monorepo 正式应用（当前主流程）
 npm run dev:web   # 仓库根目录

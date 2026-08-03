@@ -1,8 +1,8 @@
 # RepoPilot Monorepo 布局
 
-> 版本: 2026-07-05 | 状态: 已落地目录骨架，服务逐步填充
+> 版本: 2026-08-03 | 状态: `apps/web` + `services/api` 核心已落地；agent/mcp/desktop/packages 仍多为占位
 >
-> **相关文档：** 运行时架构 [`OVERVIEW.md`](./OVERVIEW.md) · 路径对照 [`PATH_MAPPING.md`](./PATH_MAPPING.md)
+> **相关文档：** 运行时架构 [`OVERVIEW.md`](./OVERVIEW.md) · 路径对照 [`PATH_MAPPING.md`](./PATH_MAPPING.md) · 进度 [`../development/PROGRESS_REPORT.md`](../development/PROGRESS_REPORT.md)
 
 ## 目录总览
 
@@ -48,10 +48,10 @@ RepoPilot/
 |------|------|----------|
 | Web | ✅ 已实现核心功能 | `apps/web/`（全部 MVP 页面、路由、Mock/Real 双轨 API 客户端已就位） |
 | API | ✅ 已实现核心端点 | `services/api/backend/`（Auth/Projects/Categories/Tags/Notes/Graph/Settings/Agent 等） |
-| Agent | 🟡 运行时占位 | 核心逻辑在 `services/api/backend/agents/`，独立进程 `services/agent/` 尚未实现 |
+| Agent | 🟡 同进程已实现 | Hub + 6 专家在 `services/api/backend/agents/`；独立进程 `services/agent/` 仍为 `/health` 占位 |
 | MCP | ⬜ 占位 | `services/mcp/`（v1.4+ 规划） |
 | Desktop | ⬜ 占位 | `apps/desktop/`（规划中，尚未实现） |
-| Packages | 🟡 空壳 | `packages/types/ui/contracts/prompts/py-shared` 目录已建，实际共享代码尚未抽取 |
+| Packages | 🟡 空壳 | `packages/types/ui/contracts/prompts/py-shared/config` 目录已建，实际共享代码尚未抽取 |
 
 ## 服务拆分触发条件
 
@@ -91,9 +91,10 @@ SQLite 与本地文件默认在仓库根 `data/`，由 `services/api/backend/con
 ## 开发命令速查
 
 ```bash
-# Python（API）
+# Python（API）— 开发端口 19878，与 Vite 代理一致
 pip install -e "./services/api[dev]"
-uvicorn backend.main:app --reload --port 19876
+npm run dev:api
+# 或：uvicorn backend.main:app --reload --host 127.0.0.1 --port 19878 --app-dir services/api
 
 # Node（Web，需在根目录 npm install）
 npm install

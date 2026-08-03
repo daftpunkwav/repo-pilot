@@ -1,14 +1,25 @@
 # RepoPilot v1.0 — 开发路线图 (Development Roadmap)
 
-> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 状态: 草案
+> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | **状态复核: 2026-08-03**
 >
-> ⚠️ **与代码实际进度脱节的说明：** 本文档是 v1.0 发布前的计划草案，列出了预期的 Phase、任务清单与估算工时。实际开发已大幅推进（`apps/web`、`services/api` 及 Agent 运行时均已实现），但本文档中的任务清单未随代码更新，各 Phase 复选框仍为未勾选状态。如需了解当前实现，请参考 `docs/architecture/REPO_LAYOUT.md` 和代码本身。
+> ⚠️ **本文档是 v1.0 发布前的计划草案。** 任务清单中的复选框**未**随开发勾选；请勿当作当前进度看板。
 >
-> 权威来源: `v1/PRD/PRD.md` (产品需求) · `v1/SPEC/TECHNICAL_SPEC.md` (技术规格) · `v1/MVP/MVP_SCOPE.md` (实施范围)
+> **当前实现状态请读：** [`PROGRESS_REPORT.md`](./PROGRESS_REPORT.md) · [`../architecture/REPO_LAYOUT.md`](../architecture/REPO_LAYOUT.md)
 >
-> **仓库布局：** Monorepo。下文任务清单中的 `backend/`、`frontend/` 路径见 [`docs/architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)（API → `services/api/backend/`，正式 Web → `apps/web/`，**当前 Mock UI → `docs/design/v1/frontend/`**）。
+> ### 与代码对照（2026-08-03 摘要）
 >
-> **本文档定位:** v1.0 单版本完整发布的开发路线图，**取代已删除的 `DEVELOPMENT_STEPS.md`**。本文档与 MVP_SCOPE §10 的开发顺序保持一致，**MVP_SCOPE §10 是 v1.0 详细开发步骤，本文档提供更高的视角**（含风险评估、依赖关系、参考资源）。
+> | 阶段 | 计划内容 | 相对代码的粗粒度状态 |
+> |------|----------|----------------------|
+> | Phase 0–1 | 初始化 / Auth 骨架 | ✅ 已落地（Alembic 除外，仍用 create_all + schema_sync） |
+> | Phase 2–4 | 项目 / GitHub / 笔记 / 图谱 | ✅ 核心已落地 |
+> | Phase 5–10 | LLM / Agent / SSE / 记忆 / Scout | ✅ 核心已落地（含 Atlas；部分规划端点未做） |
+> | Phase 11 | 质量 / E2E / 性能 | 🟡 测试骨架在，覆盖与 E2E 仍在补 |
+>
+> 权威来源: `v1/PRD/PRD.md` · `v1/SPEC/TECHNICAL_SPEC.md` · `v1/MVP/MVP_SCOPE.md`
+>
+> **仓库布局：** Monorepo。路径见 [`docs/architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)（API → `services/api/backend/`，Web → `apps/web/`）。
+>
+> **本文档定位:** 历史计划视角（风险评估、依赖、参考资源）；**不替代** `PROGRESS_REPORT.md`。
 
 ---
 

@@ -1,6 +1,6 @@
 # 仓库路径对照表
 
-> 版本: 2026-07-05 | 状态: 现行有效
+> 版本: 2026-08-03 | 状态: 现行有效
 >
 > **用途：** 2026-07-05 起 RepoPilot 采用 Monorepo。历史文档中的 `frontend/`、`backend/` 等路径**按本表理解**，正文细节可逐步更新，不必一次性改完。
 
@@ -50,7 +50,7 @@ RepoPilot/
 | 轨道 | 路径 | 阶段 |
 |------|------|------|
 | **设计归档** | `docs/design/v1/frontend/` | 审查记录、规格、HTML 原型 |
-| **正式应用** | `apps/web/` | **现行**：已实现全部 MVP 页面与路由；默认 Mock，设置 `VITE_USE_MOCK=false` 可连接 `services/api` |
+| **正式应用** | `apps/web/` | **现行**：已实现全部 MVP 页面与路由；`.env.development` 默认 `VITE_USE_MOCK=false`；未设置时客户端默认 Mock |
 
 文档中出现 `frontend/` 时：
 
@@ -64,8 +64,8 @@ RepoPilot/
 | 服务 | 目录 | 典型端口 |
 |------|------|----------|
 | Web | `apps/web` | 5173 |
-| API | `services/api` | 19876 |
-| Agent | `services/agent` | 19877（规划） |
+| API | `services/api` | **19878**（开发；Vite 代理目标。历史文档常写 19876） |
+| Agent | `services/agent` | 19877（占位 `/health`） |
 | MCP | `services/mcp` | stdio / HTTP（规划） |
 
 ---
@@ -77,6 +77,6 @@ RepoPilot/
 | `cd frontend && npm run dev` | `npm run dev:web`（仓库根，`apps/web`） |
 | Mock 设计沙盒（只读参考） | `cd docs/design/v1/frontend && npm run dev` |
 | `pip install -e ".[dev]"` | `pip install -e "./services/api[dev]"` |
-| `uvicorn backend.main:app ...` | 同上（在 `services/api` 或已 editable 安装后） |
+| `uvicorn backend.main:app ...` | `npm run dev:api`（`:19878`）或 `uvicorn ... --port 19878 --app-dir services/api` |
 | `pytest backend/` | `pytest services/api/backend/` |
 | `ruff check backend/` | `ruff check services/api/backend/` |

@@ -4,7 +4,9 @@
 
 ## 当前状态
 
-占位目录，PRD 规划在 v1.4+ 实现（见 `docs/product/v1/MVP/MVP_SCOPE.md` §2.2）。
+**占位目录**，规划在 v1.4+（见产品 MVP）。Agent 工具当前在 `services/api/backend/tools/`，与 MCP 无关。
+
+实现进度总览：[`docs/development/PROGRESS_REPORT.md`](../../docs/development/PROGRESS_REPORT.md)。
 
 ## 未来职责
 
@@ -27,3 +29,4 @@ python -m mcp_server
 | 协议 | 内部 HTTP/SSE | MCP (stdio/HTTP) |
 | 消费者 | RepoPilot Web/Desktop | 外部 AI 客户端 |
 | 职责 | 推理、对话、记忆 | 标准化工具暴露 |
+| 现状 | 逻辑在 `services/api`；本目录占位 | 本目录占位 |

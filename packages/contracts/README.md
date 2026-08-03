@@ -2,6 +2,14 @@
 
 服务间与前后端的**权威 API 定义**。
 
+## 当前状态
+
+**占位。** 实际契约仍分散在：
+
+- 后端 Pydantic：`services/api/backend/schemas/`
+- 前端 TypeScript：`apps/web/src/api/types.ts`
+- OpenAPI：可从运行中的 FastAPI `/openapi.json` 导出（开发端口 `19878`）
+
 ## 内容（规划）
 
 - `openapi.yaml` — 由 `services/api` 导出或手写维护

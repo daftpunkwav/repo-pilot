@@ -7,12 +7,12 @@
 
 ## 1. 版本策略
 
-RepoPilot 采用 **v1.0 单版本完整发布** 策略。
+RepoPilot 产品文档采用 **v1.0 单版本完整发布** 策略编写；代码包版本已推进至 **2.0.0**，并另有 `v2/` 规划草稿。
 
-- **不再拆分** v0.1 ~ v0.6 等子版本，一次性交付完整产品
-- 所有产品文档（PRD / SPEC / MVP）均针对 **v1.0** 编写
-- 仅存在一份 `MVP_SCOPE.md`，定义 v1.0 的完整实施范围
-- v1.0 发布后，后续版本（v1.1、v1.2...）按需在本目录下补充增量文档
+- v1 不再拆分 v0.1 ~ v0.6 子版本交付叙事
+- 权威产品文档以 `v1/PRD` · `v1/SPEC` · `v1/MVP` 为准
+- `v2/` 为下一主版本构思（`IDEA.md` + 草案 PRD/SPEC/MVP），**尚未**取代 v1 权威链
+- **实现状态以代码与** [`../development/PROGRESS_REPORT.md`](../development/PROGRESS_REPORT.md) **为准**，勿仅依赖草案正文
 
 ---
 
@@ -21,34 +21,25 @@ RepoPilot 采用 **v1.0 单版本完整发布** 策略。
 ```
 docs/product/
 ├── README.md                                  ← 本文件（导航 + 规则）
-└── v1/
-    ├── PRD/                                   ← 产品需求文档
-    │   ├── PRD.md                             ← 主产品需求（权威来源）
-    │   └── AGENT_PRD.md                       ← Agent 系统产品需求
-    ├── SPEC/                                  ← 技术规格文档
-    │   ├── TECHNICAL_SPEC.md                  ← 完整技术规格
-    │   └── AGENT_SPEC.md                      ← Agent 系统技术规格
-    ├── MVP/                                   ← v1.0 实施范围
-    │   └── MVP_SCOPE.md                       ← v1.0 唯一范围定义
-    ├── RepoPilot-v1-审查报告-第1轮.md
-    ├── RepoPilot-v1-审查报告-第2轮.md
-    ├── RepoPilot-v1-审查报告-第3轮.md
-    ├── RepoPilot-v1-审查报告-第4轮.md
-    ├── RepoPilot-v1-审查报告-第5轮.md
-    ├── RepoPilot-v1-审查报告-第6轮.md
-    ├── RepoPilot-v1-审查报告-第7轮.md
-    ├── RepoPilot-v1-审查报告-第8轮.md
-    ├── RepoPilot-v1-修复报告-第1次.md
-    ├── RepoPilot-v1-修复报告-第2次.md
-    ├── RepoPilot-v1-修复报告-第3次.md
-    ├── RepoPilot-v1-修复报告-第4次.md
-    ├── RepoPilot-v1-修复报告-第5次.md
-    └── RepoPilot-v1-修复报告-第6次.md
+├── v1/
+│   ├── PRD/                                   ← 产品需求文档
+│   │   ├── PRD.md
+│   │   └── AGENT_PRD.md
+│   ├── SPEC/                                  ← 技术规格文档
+│   │   ├── TECHNICAL_SPEC.md
+│   │   └── AGENT_SPEC.md
+│   ├── MVP/                                   ← v1.0 实施范围
+│   │   └── MVP_SCOPE.md                       ← 含部分「与代码差异」标注
+│   ├── RepoPilot-v1-审查报告-第1~13轮.md       ← 历史记录，勿改写
+│   └── RepoPilot-v1-修复报告-第1~7次.md       ← 历史记录，勿改写
+└── v2/
+    ├── IDEA.md
+    ├── PRD/ · SPEC/ · MVP/                    ← 规划草案
 ```
 
 > **命名规范：** 目录名使用大写（`PRD/`、`SPEC/`、`MVP/`），不使用小写。
 
-**仓库布局（Monorepo）：** 自 2026-07-05 起，代码位于 `apps/`、`services/`、`packages/`。与历史文档路径对照见 [`../architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)。
+**仓库布局（Monorepo）：** 代码位于 `apps/`、`services/`、`packages/`。路径对照见 [`../architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)。
 
 ---
 
@@ -131,17 +122,21 @@ DEVELOPMENT_ROADMAP   ← 12 Phase 开发计划（Phase 0~11）
 
 ## 7. 当前状态
 
-所有文档均为 **v1.0 草案** 状态，尚未经过正式评审冻结。
+| 层 | 状态 | 说明 |
+|------|------|------|
+| 代码包 | **2.0.0** | `apps/web` + `services/api` 核心闭环已跑通 |
+| `v1` PRD/SPEC | 草案 | 部分细节（Agent 数、表结构、端点）与代码不一致 |
+| `v1` MVP_SCOPE | 草案 + 差异标注 | 优先参考文内「与代码实际」标注 |
+| `v2/` | 构思/草案 | 不覆盖 v1 权威链 |
+| 实现进度 | 活文档 | **[`../development/PROGRESS_REPORT.md`](../development/PROGRESS_REPORT.md)**（2026-08-03） |
 
-> **与代码状态的差距：** 根 `package.json` 与 `apps/web/package.json` 版本已推进至 **v2.0.0**，`docs/product/v2/` 已开始收集 v2 规划（`IDEA.md`），而 `services/api/backend/` 与 `apps/web/src/` 已实现 v1.0 大部分核心功能。产品文档层正在与代码对齐，具体实现状态以 `docs/architecture/REPO_LAYOUT.md` 和代码为准。
+> 审查/修复报告为**历史快照**，仅供追溯，不随代码改写。
 
 | 文档 | 状态 | 说明 |
 |------|------|------|
-| PRD.md | 草案 | 产品需求 + 路线图（v1.1~v1.4） |
-| AGENT_PRD.md | 草案 | Agent 系统产品需求 |
-| TECHNICAL_SPEC.md | 草案 | 技术规格 |
-| AGENT_SPEC.md | 草案 | Agent 系统技术规格 |
-| MVP_SCOPE.md | 草案 | v1.0 实施范围 + 验收标准；部分内容已随代码迭代过期，正在修正 |
+| PRD.md / AGENT_PRD.md | 草案 | 产品需求；Agent 数量等处可能仍写 6 |
+| TECHNICAL_SPEC.md / AGENT_SPEC.md | 草案 | 技术规格 |
+| MVP_SCOPE.md | 草案 | 含差异标注；工具数等仍可能滞后于代码 |
 
 ---
 
@@ -149,12 +144,13 @@ DEVELOPMENT_ROADMAP   ← 12 Phase 开发计划（Phase 0~11）
 
 | 文档 | 路径 | 关系 |
 |------|------|------|
-| 架构总览 | `../../architecture/OVERVIEW.md` | Monorepo 运行时架构 |
-| 路径对照 | `../../architecture/PATH_MAPPING.md` | 历史路径 → 现行路径 |
-| 开发进度报告 | `../development/PROGRESS_REPORT.md` | 当前代码实现状态、与文档差距、修改建议 |
-| 审查报告 | `v1/RepoPilot-v1-审查报告-第8轮.md` | 最近一次全面审查（开发者就绪性） |
-| 修复报告 | `v1/RepoPilot-v1-修复报告-第6次.md` | 第 8 轮审查问题修复记录 |
+| 架构总览 | `../architecture/OVERVIEW.md` | Monorepo 运行时架构 |
+| 路径对照 | `../architecture/PATH_MAPPING.md` | 历史路径 → 现行路径 |
+| **开发进度报告** | `../development/PROGRESS_REPORT.md` | **当前代码实现状态（优先）** |
+| 开发路线图 | `../development/DEVELOPMENT_ROADMAP.md` | 历史 Phase 计划 |
+| 审查报告 | `v1/RepoPilot-v1-审查报告-第13轮.md` 等 | 历史审查记录 |
+| 修复报告 | `v1/RepoPilot-v1-修复报告-第7次.md` 等 | 历史修复记录 |
 
 ---
 
-*本文件是产品文档的入口。新成员请先阅读 PRD，再阅读 SPEC，最后阅读 MVP。*
+*本文件是产品文档的入口。了解「代码现在能做什么」请先读 PROGRESS_REPORT；了解「产品要做什么」再读 PRD → SPEC → MVP。*
