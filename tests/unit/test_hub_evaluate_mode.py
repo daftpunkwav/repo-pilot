@@ -10,6 +10,7 @@ from backend.agents.hub import (
     apply_merge_mode,
 )
 from backend.agents.registry import AGENT_DEFINITIONS
+from tests.sse_util import join_sse
 
 
 def test_apply_evaluate_mode_keeps_dispatch_only():
@@ -125,7 +126,7 @@ async def test_dispatch_evaluate_loop_nested_expert_merges(monkeypatch):
     ):
         chunks.append(chunk)
 
-    joined = "".join(chunks)
+    joined = join_sse(chunks)
     assert eval_calls["n"] == 0
     assert merge_calls["n"] == 1
     assert "skip_merge" not in joined
@@ -187,7 +188,7 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
     ):
         chunks.append(chunk)
 
-    joined = "".join(chunks)
+    joined = join_sse(chunks)
     assert eval_calls["n"] == 0
     assert "\u8bc4\u4f30\u4e13\u5bb6\u7ed3\u679c" not in joined
     assert "skip_merge" in joined or "event: done" in joined
@@ -293,5 +294,5 @@ async def test_dispatch_evaluate_loop_can_re_dispatch_until_cap(monkeypatch):
 
     assert eval_calls["n"] >= 2
     assert merge_calls["n"] == 1
-    joined = "".join(chunks)
+    joined = join_sse(chunks)
     assert "\u8c03\u5ea6\u8f6e\u6b21\u4e0a\u9650" in joined or merge_calls["n"] == 1

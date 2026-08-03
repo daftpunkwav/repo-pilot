@@ -17,6 +17,7 @@ from backend.agents.react import EngineResult, ReActEngine
 from backend.agents.registry import AgentDefinition
 from backend.llm.provider import LLMChunk, LLMCompleteResult
 from backend.memory.context import AgentRunContext
+from tests.sse_util import join_sse
 
 
 def _agent(**overrides) -> AgentDefinition:
@@ -151,7 +152,7 @@ def test_run_single_round_no_tools_streams():
     engine = ReActEngine()
     chunks, result, _ = _collect(engine, agent_def, fake)
 
-    joined = "\n".join(chunks)
+    joined = join_sse(chunks)
     assert "event: thinking" in joined  # 生成中状态
     assert 'event: text_delta' in joined
     assert '"content": "你"' in joined and '"content": "好"' in joined
@@ -184,7 +185,7 @@ def test_run_tool_loop_multi_round():
     chunks, result, ctx = _collect(engine, agent_def, fake)
 
     assert ctx.tool_registry.executed == [("web_search", {"q": "python"})]
-    joined = "\n".join(chunks)
+    joined = join_sse(chunks)
     assert 'event: tool_call' in joined
     assert 'event: tool_result' in joined
     assert 'event: text_delta' in joined
@@ -219,7 +220,7 @@ def test_run_tool_loop_max_iter_then_closing():
     assert result is not None
     assert result.iterations == 2  # 达到上限,不再追加
     assert result.text == "收口补写正文"
-    joined = "\n".join(chunks)
+    joined = join_sse(chunks)
     assert "[收口]" in joined
     # 工具只执行了 max_iter 轮
     assert len(fake.calls) == 3  # 2 轮工具 + 1 轮收口流式
@@ -274,7 +275,7 @@ def test_run_plan_nudge_corrects_announcement():
     engine = ReActEngine()
     chunks, result, _ = _collect(engine, agent_def, fake)
 
-    joined = "\n".join(chunks)
+    joined = join_sse(chunks)
     assert "[纠正]" in joined  # 追加了纠正提示
     assert result is not None
     assert result.text == "这是最终完整答复"
@@ -391,7 +392,7 @@ def test_run_dispatch_intercept():
     assert result.dispatches == [dispatch]
     assert result.iterations == 1
     # 有 dispatch 时不触发收口补写
-    assert "[收口]" not in "\n".join(chunks)
+    assert "[收口]" not in join_sse(chunks)
 
 
 # —— CoT 两阶段 ——
@@ -409,7 +410,7 @@ def test_run_cot_two_phase_channels():
     engine = ReActEngine()
     chunks, result, _ = _collect(engine, agent_def, fake)
 
-    joined = "\n".join(chunks)
+    joined = join_sse(chunks)
     # 思路进 thinking 通道
     think_events = [c for c in chunks if "event: thinking" in c and "思路要点" in c]
     assert think_events

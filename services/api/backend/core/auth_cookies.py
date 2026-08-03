@@ -9,6 +9,8 @@ from backend.config import get_settings
 
 ACCESS_COOKIE = "rp_access"
 REFRESH_COOKIE = "rp_refresh"
+CSRF_COOKIE = "rp_csrf"
+CSRF_HEADER = "x-csrf-token"
 
 SameSite = Literal["lax", "strict", "none"]
 
@@ -89,9 +91,53 @@ def clear_auth_cookies(response: Response) -> None:
         )
 
 
+def set_csrf_cookie(response: Response) -> str:
+    """下发可读 CSRF Cookie（非 httpOnly），供前端写入 X-CSRF-Token。"""
+    import secrets
+
+    token = secrets.token_urlsafe(32)
+    secure, samesite = _cookie_flags()
+    response.set_cookie(
+        key=CSRF_COOKIE,
+        value=token,
+        max_age=max(3600, int(get_settings().refresh_token_expire_days) * 86400),
+        httponly=False,
+        secure=secure,
+        samesite=samesite,
+        path="/",
+    )
+    return token
+
+
+def clear_csrf_cookie(response: Response) -> None:
+    secure, samesite = _cookie_flags()
+    response.delete_cookie(
+        key=CSRF_COOKIE,
+        path="/",
+        secure=secure,
+        httponly=False,
+        samesite=samesite,
+    )
+
+
 def get_access_token_from_request(request) -> str | None:
     return request.cookies.get(ACCESS_COOKIE) or None
 
 
 def get_refresh_token_from_request(request) -> str | None:
     return request.cookies.get(REFRESH_COOKIE) or None
+
+
+def resolve_access_token(request) -> str | None:
+    """与 deps 鉴权同序：Authorization Bearer 优先，再回落 httpOnly Cookie。
+
+    供限流 key 等无法注入 Depends 的路径使用，避免 Bearer 客户端被按 IP 误限。
+    """
+    from fastapi.security.utils import get_authorization_scheme_param
+
+    authorization = request.headers.get("Authorization")
+    if authorization:
+        scheme, param = get_authorization_scheme_param(authorization)
+        if scheme.lower() == "bearer" and param:
+            return param
+    return get_access_token_from_request(request)

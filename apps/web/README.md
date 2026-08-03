@@ -9,7 +9,7 @@ React 19 + Vite 7 + TypeScript 前端。版本 `2.0.0`。
 | 配置 | 行为 |
 |------|------|
 | `apps/web/.env.development`（默认） | `VITE_USE_MOCK=false` → 真实后端（经 Vite 代理 → `127.0.0.1:19878`） |
-| 未设置 `VITE_USE_MOCK` | 客户端默认走 Mock（`VITE_USE_MOCK !== 'false'`） |
+| 未设置 `VITE_USE_MOCK` | 客户端走真实后端（须显式 `VITE_USE_MOCK=true` 才启用 Mock） |
 | Playwright E2E | 强制 `VITE_USE_MOCK=true` |
 
 Mock 账号（仅 Mock 模式）：`zhang.jie` / `demo1234`

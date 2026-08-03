@@ -100,14 +100,14 @@ def test_format_dispatch_announce_aliases_status():
 
 def test_prefix_expert_thinking_sse_adds_attribution():
     from backend.agents.hub import _prefix_expert_thinking_sse
-    from backend.services.sse_stream import format_sse
+    from backend.services.sse_stream import encode_stream_item, format_sse
 
-    raw = format_sse("thinking", {"content": "先列目录结构\n"})
-    out = _prefix_expert_thinking_sse(raw, "Mentor")
+    raw = format_sse("thinking", {"content": "先列目录结构\n"}).to_sse()
+    out = encode_stream_item(_prefix_expert_thinking_sse(raw, "Mentor"))
     assert "【Mentor】" in out
     assert "先列目录结构" in out
     # 幂等
-    out2 = _prefix_expert_thinking_sse(out, "Mentor")
+    out2 = encode_stream_item(_prefix_expert_thinking_sse(out, "Mentor"))
     assert out2.count("【Mentor】") == 1
 
 
@@ -115,5 +115,5 @@ def test_prefix_expert_thinking_sse_ignores_non_thinking():
     from backend.agents.hub import _prefix_expert_thinking_sse
     from backend.services.sse_stream import format_sse
 
-    raw = format_sse("text_delta", {"content": "正文"})
+    raw = format_sse("text_delta", {"content": "正文"}).to_sse()
     assert _prefix_expert_thinking_sse(raw, "Mentor") == raw

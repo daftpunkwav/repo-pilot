@@ -1,38 +1,28 @@
-"""schema 同步单元测试"""
-import sqlite3
+"""Alembic 迁移冒烟：upgrade head 可在空库建表。"""
+import os
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from alembic import command
+from alembic.config import Config
+from sqlalchemy import create_engine, inspect
 
-from backend.migrations.schema_sync import sync_sqlite_schema
 
+def test_alembic_upgrade_creates_core_tables(tmp_path: Path):
+    db_path = tmp_path / "alembic_smoke.db"
+    os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
+    # 清 Settings 缓存
+    from backend.config import get_settings
 
-def test_sync_adds_settings_json_column(tmp_path: Path):
-    db_path = tmp_path / "legacy.db"
-    conn = sqlite3.connect(db_path)
-    conn.execute(
-        """
-        CREATE TABLE users (
-            id TEXT PRIMARY KEY,
-            username TEXT NOT NULL,
-            password_hash TEXT NOT NULL,
-            email TEXT,
-            avatar_url TEXT,
-            github_accounts TEXT DEFAULT '[]',
-            agent_permissions TEXT DEFAULT '{}',
-            created_at TEXT,
-            updated_at TEXT
-        )
-        """
-    )
-    conn.commit()
-    conn.close()
+    get_settings.cache_clear()
+
+    from backend.config import REPO_ROOT
+
+    cfg = Config(str(REPO_ROOT / "alembic.ini"))
+    command.upgrade(cfg, "head")
 
     engine = create_engine(f"sqlite:///{db_path}")
-    with engine.begin() as connection:
-        sync_sqlite_schema(connection)
-
-    conn = sqlite3.connect(db_path)
-    cols = {row[1] for row in conn.execute("PRAGMA table_info(users)")}
-    conn.close()
-    assert "settings_json" in cols
+    tables = set(inspect(engine).get_table_names())
+    assert "users" in tables
+    assert "projects" in tables
+    assert "agent_sessions" in tables
+    assert "alembic_version" in tables

@@ -10,12 +10,18 @@ from typing import Any, AsyncIterator
 
 from backend.agents.question import _normalize_question
 from backend.agents.registry import AgentDefinition
+from backend.agents.stream_events import StreamEvent
 from backend.agents.types import AgentEngineConfig, Messages, Workflow
 from backend.llm.provider import LLMCompleteResult, LLMProvider
 from backend.memory.context import AgentRunContext
 from backend.services.sse_stream import format_sse
 
 logger = logging.getLogger(__name__)
+
+
+def _is_stream_frame(item: Any) -> bool:
+    """SSE 字符串或 typed StreamEvent（非 LCR / EngineResult）。"""
+    return isinstance(item, (str, StreamEvent))
 
 
 @dataclass
@@ -190,7 +196,7 @@ class ReActEngine:
             channel="thinking",
             max_tokens=min(320, agent_def.max_tokens),
         ):
-            if isinstance(item, str):
+            if _is_stream_frame(item):
                 yield item
             else:
                 think_text = (item.text or "").strip()
@@ -259,7 +265,7 @@ class ReActEngine:
             channel="text",
             max_tokens=agent_def.max_tokens,
         ):
-            if isinstance(item, str):
+            if _is_stream_frame(item):
                 yield item
             else:
                 final_text = (item.text or "").strip()
@@ -376,7 +382,7 @@ class ReActEngine:
             channel="thinking",
             max_tokens=plan_cap,
         ):
-            if isinstance(item, str):
+            if _is_stream_frame(item):
                 yield item
             else:
                 plan_text = (item.text or "").strip()
@@ -470,7 +476,7 @@ class ReActEngine:
             ):
                 if isinstance(item, list):
                     messages = item
-                elif isinstance(item, str):
+                elif _is_stream_frame(item):
                     yield item
 
         # —— 工具环 + 收口 ——
@@ -564,7 +570,7 @@ class ReActEngine:
             emit_sse=emit_sse,
             channel="text",
         ):
-            if isinstance(item, str):
+            if _is_stream_frame(item):
                 yield item
             else:
                 final_text = (item.text or "").strip()
@@ -1109,7 +1115,7 @@ class ReActEngine:
                 channel="text",
                 max_tokens=close_tokens,
             ):
-                if isinstance(item, str):
+                if _is_stream_frame(item):
                     yield item
                 else:
                     final_text = (item.text or "").strip()

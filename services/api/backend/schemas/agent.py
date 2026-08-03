@@ -4,7 +4,7 @@ Pydantic schemas —— Agent 相关请求/响应
 from typing import Any, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class AgentChatRequest(BaseModel):
@@ -37,8 +37,56 @@ class AgentQuestionAnswer(BaseModel):
 
 
 class AgentAnalyzeRequest(BaseModel):
-    depth: str = "quick"
+    depth: Literal["quick", "deep"] = "quick"
     force_refresh: bool = False
+
+
+class AnalyzeBody(BaseModel):
+    depth: Literal["quick", "deep"] = "quick"
+    force_refresh: bool = False
+    # 指定专家 Agent；缺省时 depth=quick→scout，deep→mentor
+    agent_id: str | None = None
+
+
+class ImportAssistBody(BaseModel):
+    message: str = Field(..., min_length=1, max_length=8000)
+    context: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("context")
+    @classmethod
+    def _context_size(cls, v: dict[str, Any]) -> dict[str, Any]:
+        # 防止任意大 JSON 进入 LLM 上下文
+        import json
+
+        raw = json.dumps(v, ensure_ascii=False)
+        if len(raw) > 32_000:
+            raise ValueError("context 过大（序列化后不得超过 32000 字符）")
+        return v
+
+
+class GraphGuideBody(BaseModel):
+    message: str = Field(..., min_length=1, max_length=8000)
+    selected_node_id: Optional[str] = None
+
+
+class TrendingScoutBody(BaseModel):
+    name: Optional[str] = None
+    full_name: Optional[str] = None
+    description: Optional[str] = None
+    language: Optional[str] = None
+    stars: Optional[int] = None
+    url: Optional[str] = None
+
+
+class NoteGenerateBody(BaseModel):
+    project_id: UUID
+    mode: Literal["project", "standalone"] = "project"
+    topic: Optional[str] = Field(None, max_length=500)
+
+
+class ClassifyBody(BaseModel):
+    project_id: UUID
+    user_hint: Optional[str] = Field(None, max_length=2000)
 
 
 class AgentMessageOut(BaseModel):

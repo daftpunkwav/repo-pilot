@@ -23,7 +23,7 @@ from backend.schemas.agent import (
     ContextWindowStatsOut,
 )
 from backend.services.project_service import get_project_owned_by_user
-from backend.services.sse_stream import format_sse
+from backend.services.sse_stream import StreamEvent, encode_stream_item, format_sse
 from backend.tools.builtin import ensure_tools_loaded
 
 ensure_tools_loaded()
@@ -511,6 +511,107 @@ class _AgentSegmentBuffer:
         session.active_agent = self.agent_id
 
 
+
+
+async def _apply_persistence_side_effects(
+    *,
+    buf: "_AgentSegmentBuffer",
+    db: AsyncSession,
+    session: AgentSession,
+    event: StreamEvent | str,
+    handle_question: bool = True,
+) -> bool:
+    """对 typed StreamEvent（或过渡期 SSE 字符串）做落库副作用。返回是否见到 question。"""
+    ev = StreamEvent.coerce(event)
+    if ev is None:
+        return False
+    event_kind = ev.kind
+    data = ev.data
+    saw_question = False
+    try:
+        if event_kind == "text_delta":
+            buf.append_delta(data.get("content") or "")
+        elif event_kind == "thinking":
+            buf.append_thinking(data.get("content") or "")
+        elif event_kind == "agent_switch":
+            new_agent = data.get("agent_id") or buf.agent_id
+            await buf.switch_agent(db, session, new_agent)
+        elif event_kind == "tool_call":
+            call_id = data.get("call_id") or data.get("id") or ""
+            buf.note_tool_call(
+                str(call_id),
+                str(data.get("name") or "tool"),
+                data.get("args") if isinstance(data.get("args"), dict) else {},
+            )
+        elif event_kind == "tool_result":
+            call_id = data.get("call_id") or data.get("id") or ""
+            buf.note_tool_result(
+                str(call_id),
+                data.get("result", data.get("preview")),
+                str(data.get("name") or "") or None,
+            )
+        elif event_kind == "subagent_start":
+            buf.note_subagent_start(
+                str(data.get("agent_id") or ""),
+                task=data.get("task") if isinstance(data.get("task"), str) else None,
+                reason=(
+                    data.get("reason")
+                    if isinstance(data.get("reason"), str)
+                    else None
+                ),
+            )
+        elif event_kind == "subagent_thinking":
+            buf.note_subagent_delta(
+                str(data.get("agent_id") or ""),
+                thinking=str(data.get("content") or ""),
+            )
+        elif event_kind == "subagent_text":
+            buf.note_subagent_delta(
+                str(data.get("agent_id") or ""),
+                output=str(data.get("content") or ""),
+            )
+        elif event_kind == "subagent_done":
+            buf.note_subagent_done(
+                str(data.get("agent_id") or ""),
+                str(data.get("status") or "ok"),
+                thinking=(
+                    str(data["thinking"])
+                    if isinstance(data.get("thinking"), str)
+                    else None
+                ),
+                output=(
+                    str(data["output"])
+                    if isinstance(data.get("output"), str)
+                    else None
+                ),
+            )
+        elif event_kind == "done":
+            buf.usage = data.get("usage") or {}
+        elif event_kind == "question" and handle_question:
+            session.status = "pending_question"
+            saw_question = True
+            await buf.flush(db, session)
+            intro = data.get("intro") or {}
+            title = (
+                intro.get("content")
+                if isinstance(intro, dict)
+                else None
+            ) or data.get("title") or "结构化反问"
+            title_plain = str(title).replace("**", "").strip() or "结构化反问"
+            await append_message(
+                db,
+                session,
+                role="assistant",
+                content=f"发起反问：{title_plain}（请在弹窗中选择）",
+                agent_id=buf.agent_id,
+                content_type="question",
+                metadata=data,
+            )
+    except Exception:
+        pass
+    return saw_question
+
+
 async def stream_chat(
     db: AsyncSession,
     user: User,
@@ -518,10 +619,46 @@ async def stream_chat(
     message: str,
     *,
     project_id: UUID | None = None,
+    force_local: bool = False,
 ) -> AsyncIterator[str]:
+    from backend.config import get_settings
+
+    settings = get_settings()
+    # 独立 Agent 进程：API 只做会话归属预检后代理；落库与 Hub 在 Agent 侧执行
+    if (settings.agent_base_url or "").strip() and not force_local:
+        session = await db.get(AgentSession, session_id)
+        if not session or session.user_id != user.id:
+            yield encode_stream_item(
+                format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"})
+            )
+            return
+        if not (settings.agent_internal_token or "").strip():
+            yield encode_stream_item(
+                format_sse(
+                    "error",
+                    {
+                        "code": "AGENT_MISCONFIGURED",
+                        "message": "已配置 AGENT_BASE_URL 但缺少 agent_internal_token",
+                    },
+                )
+            )
+            return
+        from backend.services.agent_proxy import proxy_agent_chat_sse
+
+        async for raw in proxy_agent_chat_sse(
+            session_id=session_id,
+            user_id=user.id,
+            message=message,
+            project_id=project_id,
+        ):
+            yield raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
+        return
+
     session = await db.get(AgentSession, session_id)
     if not session or session.user_id != user.id:
-        yield format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"})
+        yield encode_stream_item(
+            format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"})
+        )
         return
 
     # 消息级 project_id：追加到会话多项目上下文（不替换已有）
@@ -530,9 +667,11 @@ async def stream_chat(
             await add_session_project(db, session, project_id, user_id=user.id)
             await db.commit()
         except ValueError:
-            yield format_sse(
-                "error",
-                {"code": "FORBIDDEN", "message": "无权绑定该项目到会话"},
+            yield encode_stream_item(
+                format_sse(
+                    "error",
+                    {"code": "FORBIDDEN", "message": "无权绑定该项目到会话"},
+                )
             )
             return
 
@@ -557,147 +696,11 @@ async def stream_chat(
             if cancel_ev.is_set():
                 aborted = True
                 break
-            # 解析部分事件以收集回复
-            if chunk.startswith("event: text_delta"):
-                try:
-                    data_line = chunk.split("data: ", 1)[1].strip()
-                    data = json.loads(data_line)
-                    buf.append_delta(data.get("content") or "")
-                except Exception:
-                    pass
-            elif chunk.startswith("event: thinking"):
-                try:
-                    data_line = chunk.split("data: ", 1)[1].strip()
-                    data = json.loads(data_line)
-                    buf.append_thinking(data.get("content") or "")
-                except Exception:
-                    pass
-            elif chunk.startswith("event: agent_switch"):
-                try:
-                    data_line = chunk.split("data: ", 1)[1].strip()
-                    data = json.loads(data_line)
-                    new_agent = data.get("agent_id") or buf.agent_id
-                    await buf.switch_agent(db, session, new_agent)
-                except Exception:
-                    pass
-            elif chunk.startswith("event: tool_call"):
-                try:
-                    data_line = chunk.split("data: ", 1)[1].strip()
-                    data = json.loads(data_line)
-                    call_id = data.get("call_id") or data.get("id") or ""
-                    buf.note_tool_call(
-                        str(call_id),
-                        str(data.get("name") or "tool"),
-                        data.get("args") if isinstance(data.get("args"), dict) else {},
-                    )
-                except Exception:
-                    pass
-            elif chunk.startswith("event: tool_result"):
-                try:
-                    data_line = chunk.split("data: ", 1)[1].strip()
-                    data = json.loads(data_line)
-                    call_id = data.get("call_id") or data.get("id") or ""
-                    buf.note_tool_result(
-                        str(call_id),
-                        data.get("result", data.get("preview")),
-                        str(data.get("name") or "") or None,
-                    )
-                except Exception:
-                    pass
-            elif chunk.startswith("event: subagent_start"):
-                try:
-                    data_line = chunk.split("data: ", 1)[1].strip()
-                    data = json.loads(data_line)
-                    buf.note_subagent_start(
-                        str(data.get("agent_id") or ""),
-                        task=data.get("task") if isinstance(data.get("task"), str) else None,
-                        reason=(
-                            data.get("reason")
-                            if isinstance(data.get("reason"), str)
-                            else None
-                        ),
-                    )
-                except Exception:
-                    pass
-            elif chunk.startswith("event: subagent_thinking"):
-                try:
-                    data_line = chunk.split("data: ", 1)[1].strip()
-                    data = json.loads(data_line)
-                    buf.note_subagent_delta(
-                        str(data.get("agent_id") or ""),
-                        thinking=str(data.get("content") or ""),
-                    )
-                except Exception:
-                    pass
-            elif chunk.startswith("event: subagent_text"):
-                try:
-                    data_line = chunk.split("data: ", 1)[1].strip()
-                    data = json.loads(data_line)
-                    buf.note_subagent_delta(
-                        str(data.get("agent_id") or ""),
-                        output=str(data.get("content") or ""),
-                    )
-                except Exception:
-                    pass
-            elif chunk.startswith("event: subagent_done"):
-                try:
-                    data_line = chunk.split("data: ", 1)[1].strip()
-                    data = json.loads(data_line)
-                    buf.note_subagent_done(
-                        str(data.get("agent_id") or ""),
-                        str(data.get("status") or "ok"),
-                        thinking=(
-                            str(data["thinking"])
-                            if isinstance(data.get("thinking"), str)
-                            else None
-                        ),
-                        output=(
-                            str(data["output"])
-                            if isinstance(data.get("output"), str)
-                            else None
-                        ),
-                    )
-                except Exception:
-                    pass
-            elif chunk.startswith("event: done"):
-                try:
-                    data_line = chunk.split("data: ", 1)[1].strip()
-                    data = json.loads(data_line)
-                    buf.usage = data.get("usage") or {}
-                except Exception:
-                    pass
-            elif chunk.startswith("event: question"):
-                try:
-                    data_line = chunk.split("data: ", 1)[1].strip()
-                    data = json.loads(data_line)
-                    session.status = "pending_question"
-                    saw_question = True
-                    # 反问前先落库已生成的正文段
-                    await buf.flush(db, session)
-                    # 正文存可读摘要，完整结构放 metadata，避免聊天里出现原始 JSON
-                    intro = data.get("intro") or {}
-                    title = (
-                        intro.get("content")
-                        if isinstance(intro, dict)
-                        else None
-                    ) or data.get("title") or "结构化反问"
-                    # 去掉 markdown 粗体标记
-                    title_plain = (
-                        str(title).replace("**", "").strip() or "结构化反问"
-                    )
-                    await append_message(
-                        db,
-                        session,
-                        role="assistant",
-                        content=f"发起反问：{title_plain}（请在弹窗中选择）",
-                        agent_id=buf.agent_id,
-                        content_type="question",
-                        metadata=data,
-                    )
-                except Exception:
-                    pass
-            yield chunk
-
+            if await _apply_persistence_side_effects(
+                buf=buf, db=db, session=session, event=chunk
+            ):
+                saw_question = True
+            yield encode_stream_item(chunk)
         # 客户端断开或被同会话新流抢占：尽量落库已完成分段，半截当前段丢弃
         if aborted or cancel_ev.is_set():
             return
@@ -732,7 +735,7 @@ async def stream_question_answer(
 ) -> AsyncIterator[str]:
     session = await db.get(AgentSession, session_id)
     if not session or session.user_id != user.id:
-        yield format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"})
+        yield encode_stream_item(format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"}))
         return
 
     # 找回原始反问结构，便于历史卡片展示
@@ -824,141 +827,11 @@ async def stream_question_answer(
         skipped=skipped,
         project_id=session.project_id,
     ):
-        if chunk.startswith("event: text_delta"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                buf.append_delta(data.get("content") or "")
-            except Exception:
-                pass
-        elif chunk.startswith("event: thinking"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                buf.append_thinking(data.get("content") or "")
-            except Exception:
-                pass
-        elif chunk.startswith("event: agent_switch"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                await buf.switch_agent(
-                    db, session, data.get("agent_id") or buf.agent_id
-                )
-            except Exception:
-                pass
-        elif chunk.startswith("event: tool_call"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                call_id = data.get("call_id") or data.get("id") or ""
-                buf.note_tool_call(
-                    str(call_id),
-                    str(data.get("name") or "tool"),
-                    data.get("args") if isinstance(data.get("args"), dict) else {},
-                )
-            except Exception:
-                pass
-        elif chunk.startswith("event: tool_result"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                call_id = data.get("call_id") or data.get("id") or ""
-                buf.note_tool_result(
-                    str(call_id),
-                    data.get("result", data.get("preview")),
-                    str(data.get("name") or "") or None,
-                )
-            except Exception:
-                pass
-        elif chunk.startswith("event: subagent_start"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                buf.note_subagent_start(
-                    str(data.get("agent_id") or ""),
-                    task=data.get("task") if isinstance(data.get("task"), str) else None,
-                    reason=(
-                        data.get("reason")
-                        if isinstance(data.get("reason"), str)
-                        else None
-                    ),
-                )
-            except Exception:
-                pass
-        elif chunk.startswith("event: subagent_thinking"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                buf.note_subagent_delta(
-                    str(data.get("agent_id") or ""),
-                    thinking=str(data.get("content") or ""),
-                )
-            except Exception:
-                pass
-        elif chunk.startswith("event: subagent_text"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                buf.note_subagent_delta(
-                    str(data.get("agent_id") or ""),
-                    output=str(data.get("content") or ""),
-                )
-            except Exception:
-                pass
-        elif chunk.startswith("event: subagent_done"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                buf.note_subagent_done(
-                    str(data.get("agent_id") or ""),
-                    str(data.get("status") or "ok"),
-                    thinking=(
-                        str(data["thinking"])
-                        if isinstance(data.get("thinking"), str)
-                        else None
-                    ),
-                    output=(
-                        str(data["output"])
-                        if isinstance(data.get("output"), str)
-                        else None
-                    ),
-                )
-            except Exception:
-                pass
-        elif chunk.startswith("event: done"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                buf.usage = data.get("usage") or {}
-            except Exception:
-                pass
-        elif chunk.startswith("event: question"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                data = json.loads(data_line)
-                await buf.flush(db, session)
-                intro = data.get("intro") or {}
-                title = (
-                    intro.get("content")
-                    if isinstance(intro, dict)
-                    else None
-                ) or data.get("title") or "结构化反问"
-                title_plain = str(title).replace("**", "").strip() or "结构化反问"
-                session.status = "pending_question"
-                await append_message(
-                    db,
-                    session,
-                    role="assistant",
-                    content=f"发起反问：{title_plain}（请在弹窗中选择）",
-                    agent_id=buf.agent_id,
-                    content_type="question",
-                    metadata=data,
-                )
-            except Exception:
-                pass
-        yield chunk
+        await _apply_persistence_side_effects(
+            buf=buf, db=db, session=session, event=chunk
+        )
 
+        yield encode_stream_item(chunk)
     if await buf.flush(db, session, metadata={"usage": buf.usage}):
         session.active_agent = buf.agent_id
         session.status = "active"
@@ -1033,10 +906,10 @@ async def stream_analyze(
 
     project = await get_project_owned_by_user(db, project_id, user.id)
     if not project:
-        yield format_sse(
+        yield encode_stream_item(format_sse(
             "error",
             {"code": "FORBIDDEN", "message": "项目不存在或不属于当前用户"},
-        )
+        ))
         return
 
     # 解析 Agent：显式 agent_id 优先；否则 depth 兼容旧客户端
@@ -1075,7 +948,7 @@ async def stream_analyze(
     await append_message(db, session, role="user", content=prompt, agent_id="hub")
 
     # agent_switch 由 handle_direct_agent 统一发送，避免重复
-    yield format_sse(
+    yield encode_stream_item(format_sse(
         "thinking",
         {
             "content": (
@@ -1084,7 +957,7 @@ async def stream_analyze(
                 f"stars={project.stars} · 进度={project.progress}\n"
             )
         },
-    )
+    ))
 
     hub = HubService(db)
     collected: list[str] = []
@@ -1095,13 +968,10 @@ async def stream_analyze(
         message=prompt,
         project_id=project_id,
     ):
-        if chunk.startswith("event: text_delta"):
-            try:
-                data_line = chunk.split("data: ", 1)[1].strip()
-                collected.append(json.loads(data_line.split("\n")[0]).get("content") or "")
-            except Exception:
-                pass
-        yield chunk
+        ev = StreamEvent.coerce(chunk)
+        if ev is not None and ev.kind == "text_delta":
+            collected.append(str(ev.data.get("content") or ""))
+        yield encode_stream_item(chunk)
 
     reply = "".join(collected)
     if reply:
@@ -1197,7 +1067,7 @@ async def stream_import_assist(
 
     def _emit_text(text: str):
         for i in range(0, len(text), 40):
-            yield format_sse("text_delta", {"content": text[i : i + 40]})
+            yield encode_stream_item(format_sse("text_delta", {"content": text[i : i + 40]}))
 
     def _keyword_hits(limit: int = 12) -> list[str]:
         q = msg.lower()
@@ -1227,8 +1097,8 @@ async def stream_import_assist(
             "我会结合 Stars、已导入与学习进度回答，并在左侧**自动勾选**。"
         )
         for chunk in _emit_text(text):
-            yield chunk
-        yield format_sse("done", {"usage": {"tokens": len(text)}, "iterations": 0})
+            yield encode_stream_item(chunk)
+        yield encode_stream_item(format_sse("done", {"usage": {"tokens": len(text)}, "iterations": 0}))
         return
 
     # —— 无 LLM：规则降级 ——
@@ -1238,7 +1108,7 @@ async def stream_import_assist(
         if not hits and available:
             hits = available[:5]
         if hits:
-            yield format_sse(
+            yield encode_stream_item(format_sse(
                 "select_repos",
                 {
                     "repo_keys": hits,
@@ -1246,7 +1116,7 @@ async def stream_import_assist(
                     "reason": "降级模式：按关键词匹配勾选",
                     "count": len(hits),
                 },
-            )
+            ))
         text = (
             "【降级模式】未检测到可用 LLM Key（设置页测试通过后若仍出现，请重新保存 Key 再试）。\n\n"
             + (
@@ -1258,10 +1128,10 @@ async def stream_import_assist(
             )
         )
         for chunk in _emit_text(text):
-            yield chunk
-        yield format_sse(
+            yield encode_stream_item(chunk)
+        yield encode_stream_item(format_sse(
             "done", {"usage": {"tokens": len(text)}, "iterations": 0, "degraded": True}
-        )
+        ))
         return
 
     # —— LLM 路径：仅允许 select_import_repos，避免 fetch_github 超时导致空响应 ——
@@ -1353,7 +1223,7 @@ async def stream_import_assist(
         history=[],
     )
 
-    yield format_sse(
+    yield encode_stream_item(format_sse(
         "agent_switch",
         {
             "agent_id": "curator",
@@ -1361,8 +1231,8 @@ async def stream_import_assist(
             "to": "curator",
             "reason": "导入助手",
         },
-    )
-    yield format_sse(
+    ))
+    yield encode_stream_item(format_sse(
         "thinking",
         {
             "content": (
@@ -1370,7 +1240,7 @@ async def stream_import_assist(
                 f"勾选 {len(selected)} 个；进度统计 {progress_stats}…"
             )
         },
-    )
+    ))
 
     engine = ReActEngine(max_iterations=4)
     had_text = False
@@ -1390,15 +1260,15 @@ async def stream_import_assist(
         logger.exception("import assist failed")
         err = f"导入助手出错：{e}"
         for chunk in _emit_text(err):
-            yield chunk
-        yield format_sse("done", {"usage": {"tokens": 0}, "iterations": 0})
+            yield encode_stream_item(chunk)
+        yield encode_stream_item(format_sse("done", {"usage": {"tokens": 0}, "iterations": 0}))
         return
 
     if not had_text:
         # 最后兜底：规则勾选 + 说明
         hits = _keyword_hits() or available[:5]
         if hits:
-            yield format_sse(
+            yield encode_stream_item(format_sse(
                 "select_repos",
                 {
                     "repo_keys": hits,
@@ -1406,7 +1276,7 @@ async def stream_import_assist(
                     "reason": "自动兜底勾选",
                     "count": len(hits),
                 },
-            )
+            ))
         text = (
             "我在这边了。左侧候选 "
             f"**{len(available)}** 个"
@@ -1419,8 +1289,8 @@ async def stream_import_assist(
             )
         )
         for chunk in _emit_text(text):
-            yield chunk
-        yield format_sse("done", {"usage": {"tokens": len(text)}, "iterations": 0})
+            yield encode_stream_item(chunk)
+        yield encode_stream_item(format_sse("done", {"usage": {"tokens": len(text)}, "iterations": 0}))
 
 
 async def stream_graph_guide(
@@ -1464,12 +1334,12 @@ async def stream_graph_guide(
         ):
             if isinstance(chunk, str) and "event: text_delta" in chunk:
                 had_text = True
-            yield chunk
+            yield encode_stream_item(chunk)
     except Exception as e:
         err = f"图谱向导出错：{e}"
         for i in range(0, len(err), 40):
-            yield format_sse("text_delta", {"content": err[i : i + 40]})
-        yield format_sse("done", {"usage": {"tokens": 0}, "iterations": 0})
+            yield encode_stream_item(format_sse("text_delta", {"content": err[i : i + 40]}))
+        yield encode_stream_item(format_sse("done", {"usage": {"tokens": 0}, "iterations": 0}))
         return
 
     if not had_text:
@@ -1478,8 +1348,8 @@ async def stream_graph_guide(
             "若持续无回复，请到设置确认 LLM 测试通过。"
         )
         for i in range(0, len(text), 40):
-            yield format_sse("text_delta", {"content": text[i : i + 40]})
-        yield format_sse("done", {"usage": {"tokens": len(text)}, "iterations": 0})
+            yield encode_stream_item(format_sse("text_delta", {"content": text[i : i + 40]}))
+        yield encode_stream_item(format_sse("done", {"usage": {"tokens": len(text)}, "iterations": 0}))
 
 
 async def stream_trending_scout(
@@ -1511,9 +1381,82 @@ async def stream_trending_scout(
         agent_id="scout",
         message=prompt,
     ):
-        yield chunk
+        yield encode_stream_item(chunk)
+async def stream_classify_project(
+    db: AsyncSession,
+    user: User,
+    project_id: UUID,
+    *,
+    user_hint: str | None = None,
+) -> AsyncIterator[str]:
+    """Curator 分类落库入口（prompt 留在 service，路由不拼字符串）。"""
+    project = await get_project_owned_by_user(db, project_id, user.id)
+    if not project:
+        yield encode_stream_item(format_sse(
+            "error",
+            {"code": "FORBIDDEN", "message": "Project not found"},
+        ))
+        return
 
+    session = await create_session(
+        db, user.id, project_id=project_id, title=f"分类 {project.name}"
+    )
+    hint = user_hint or ""
+    prompt = (
+        f"请为项目 {project.name} ({project.url}) 完成分类并落库。"
+        f"描述: {project.description or ''} 语言: {project.language or ''}。"
+        f"用户提示: {hint}。"
+        f"project_id={project_id}。"
+        "必须调用 set_project_category（必要时 set_project_tags）真正写入，"
+        "不要只 suggest；最后用一两句话说明结果与分类名。"
+    )
+    hub = HubService(db)
+    async for chunk in hub.handle_direct_agent(
+        user=user,
+        session_id=session.id,
+        agent_id="curator",
+        message=prompt,
+        project_id=project_id,
+    ):
+        yield encode_stream_item(chunk)
+async def stream_generate_note(
+    db: AsyncSession,
+    user: User,
+    project_id: UUID,
+    *,
+    mode: str = "project",
+    topic: str | None = None,
+) -> AsyncIterator[str]:
+    """Scribe 笔记生成落库入口。"""
+    project = await get_project_owned_by_user(db, project_id, user.id)
+    if not project:
+        yield encode_stream_item(format_sse(
+            "error",
+            {"code": "FORBIDDEN", "message": "Project not found"},
+        ))
+        return
 
+    session = await create_session(
+        db, user.id, project_id=project_id, title=f"笔记 {project.name}"
+    )
+    mode_norm = mode if mode in ("project", "standalone") else "project"
+    topic_text = topic or project.name
+    prompt = (
+        f"请以 Scribe {mode_norm} 模式为项目 {project.name} 生成学习笔记并保存到系统。"
+        f"主题: {topic_text}。URL: {project.url}。project_id={project_id}。"
+        f"{'检索相似已学项目做对比（仅当相似度高时），compare_project_ids 传入对比项' if mode_norm == 'project' else '独立成文，不对比'}。"
+        "必须调用 create_note 写入数据库（title + 完整 Markdown content），"
+        "不要只输出草稿；落库后简述笔记标题与已保存。"
+    )
+    hub = HubService(db)
+    async for chunk in hub.handle_direct_agent(
+        user=user,
+        session_id=session.id,
+        agent_id="scribe",
+        message=prompt,
+        project_id=project_id,
+    ):
+        yield encode_stream_item(chunk)
 async def get_context_window(
     db: AsyncSession, user_id: UUID, session_id: UUID | None
 ) -> ContextWindowStatsOut:

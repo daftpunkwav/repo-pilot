@@ -2,10 +2,11 @@
 认证 API —— 注册/登录/刷新/登出/当前用户/修改密码
 
 凭证双通道：
-- JSON 响应仍返回 access/refresh（API 客户端、测试、兼容）
-- 同时写入 httpOnly Cookie，供浏览器前端优先使用
+- 浏览器主路径：只写 httpOnly Cookie；JSON 默认不含 token
+- API / 测试：?include_tokens=true 时在 body 返回 access/refresh
+- CSRF：登录后下发可读 Cookie rp_csrf；Cookie 鉴权的写请求须带 X-CSRF-Token
 """
-from fastapi import APIRouter, Body, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -15,8 +16,10 @@ from backend.api.deps import get_current_user, get_db
 from backend.config import get_settings
 from backend.core.auth_cookies import (
     clear_auth_cookies,
+    clear_csrf_cookie,
     get_refresh_token_from_request,
     set_auth_cookies,
+    set_csrf_cookie,
 )
 from backend.core.limiter import limiter
 from backend.core.responses import wrap_data
@@ -53,12 +56,29 @@ def _login_key(request: Request) -> str:
     return f"{ip}:{username}"
 
 
+def _token_out_for_client(tokens: TokenOut, *, include_tokens: bool) -> TokenOut:
+    if include_tokens:
+        return tokens
+    return TokenOut(user=tokens.user, token_type="bearer")
+
+
+def _access_out_for_client(
+    access: str, refresh: str, *, include_tokens: bool
+) -> AccessTokenOut:
+    if include_tokens:
+        return AccessTokenOut(access_token=access, refresh_token=refresh)
+    return AccessTokenOut()
+
+
 @router.post("/register", response_model=DataResponse[TokenOut])
 @limiter.limit(settings.rate_limit_register)
 async def register(
     request: Request,
     response: Response,
     data: UserCreate,
+    include_tokens: bool = Query(
+        False, description="为 true 时在 JSON 中返回 access/refresh（API 客户端）"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(User).where(User.username == data.username))
@@ -77,10 +97,11 @@ async def register(
     tokens = await issue_tokens(db, user)
     set_auth_cookies(
         response,
-        access_token=tokens.access_token,
-        refresh_token=tokens.refresh_token,
+        access_token=tokens.access_token or "",
+        refresh_token=tokens.refresh_token or "",
     )
-    return wrap_data(tokens)
+    set_csrf_cookie(response)
+    return wrap_data(_token_out_for_client(tokens, include_tokens=include_tokens))
 
 
 @router.post("/login", response_model=DataResponse[TokenOut])
@@ -89,6 +110,9 @@ async def login(
     request: Request,
     response: Response,
     data: UserLogin,
+    include_tokens: bool = Query(
+        False, description="为 true 时在 JSON 中返回 access/refresh（API 客户端）"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(User).where(User.username == data.username))
@@ -101,10 +125,11 @@ async def login(
     tokens = await issue_tokens(db, user)
     set_auth_cookies(
         response,
-        access_token=tokens.access_token,
-        refresh_token=tokens.refresh_token,
+        access_token=tokens.access_token or "",
+        refresh_token=tokens.refresh_token or "",
     )
-    return wrap_data(tokens)
+    set_csrf_cookie(response)
+    return wrap_data(_token_out_for_client(tokens, include_tokens=include_tokens))
 
 
 @router.post("/refresh", response_model=DataResponse[AccessTokenOut])
@@ -113,9 +138,9 @@ async def refresh(
     request: Request,
     response: Response,
     data: RefreshBody | None = Body(default=None),
+    include_tokens: bool = Query(False),
     db: AsyncSession = Depends(get_db),
 ):
-    # 优先 body，其次 Cookie（浏览器主路径）
     refresh_plain = None
     if data is not None and data.refresh_token:
         refresh_plain = data.refresh_token
@@ -129,13 +154,17 @@ async def refresh(
     rotated = await rotate_refresh_token(db, refresh_plain)
     if not rotated:
         clear_auth_cookies(response)
+        clear_csrf_cookie(response)
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             detail={"code": "AUTH_FAILED", "message": "Refresh token 无效"},
         )
     access, new_refresh, _ = rotated
     set_auth_cookies(response, access_token=access, refresh_token=new_refresh)
-    return wrap_data(AccessTokenOut(access_token=access, refresh_token=new_refresh))
+    set_csrf_cookie(response)
+    return wrap_data(
+        _access_out_for_client(access, new_refresh, include_tokens=include_tokens)
+    )
 
 
 @router.post("/logout", response_model=DataResponse[OkData])
@@ -152,6 +181,7 @@ async def logout(
         refresh_plain = get_refresh_token_from_request(request)
     await revoke_refresh_token(db, refresh_plain)
     clear_auth_cookies(response)
+    clear_csrf_cookie(response)
     return wrap_data(OkData())
 
 
@@ -188,10 +218,9 @@ async def update_password(
             detail={"code": "AUTH_FAILED", "message": "旧密码不正确"},
         )
     current_user.password_hash = hash_password(data.new_password)
-    # 提升凭证版本，使已签发 access JWT 在下次鉴权时失效
     current_user.token_version = int(getattr(current_user, "token_version", 0) or 0) + 1
     await db.commit()
-    # 密码变更后撤销该用户所有未过期 refresh token，防止旧凭证继续被使用
     await revoke_all_user_refresh_tokens(db, current_user.id)
     clear_auth_cookies(response)
+    clear_csrf_cookie(response)
     return wrap_data(OkData())

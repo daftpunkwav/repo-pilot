@@ -7,6 +7,7 @@ import pytest
 
 from backend.agents.hub import DispatchRoundOutcome, HubService
 from backend.agents.react import EngineResult
+from tests.sse_util import join_sse
 
 
 class FakeRegistry:
@@ -82,7 +83,7 @@ def test_direct_single_expert_streams_subagent(monkeypatch):
         bag=bag,
     )
 
-    joined = "\n".join(chunks)
+    joined = join_sse(chunks)
     assert "event: subagent_start" in joined
     assert '"agent_id": "mentor"' in joined
     assert "event: subagent_done" in joined
@@ -118,7 +119,7 @@ def test_direct_converts_thinking_text_to_subagent_channels(monkeypatch):
 
     chunks = run_dispatches(service, [{"target_agent": "mentor", "task": "t", "reason": "r"}])
 
-    joined = "\n".join(chunks)
+    joined = join_sse(chunks)
     assert 'event: subagent_thinking' in joined and "专家思路" in joined
     assert 'event: subagent_text' in joined and "专家正文" in joined
     # tool_call 走主通道透传
@@ -144,7 +145,7 @@ def test_serial_dispatch_sequential(monkeypatch):
 
     # mentor 属串行集合 → 严格顺序执行
     assert [c["agent_id"] for c in run_calls] == ["scout", "mentor"]
-    joined = "\n".join(chunks)
+    joined = join_sse(chunks)
     assert joined.count("event: subagent_start") == 2
     assert joined.count("event: subagent_done") == 2
     assert len(bag.expert_results) == 2
@@ -166,7 +167,7 @@ def test_parallel_dispatch_gather(monkeypatch):
 
     # scout + atlas 均非串行集合 → 并行 gather
     assert len(run_calls) == 2
-    joined = "\n".join(chunks)
+    joined = join_sse(chunks)
     assert joined.count("event: subagent_start") == 2
     assert joined.count("event: subagent_done") == 2
     assert len(bag.expert_results) == 2
@@ -193,7 +194,7 @@ def test_direct_question_intercept(monkeypatch):
         bag=bag,
     )
 
-    joined = "\n".join(chunks)
+    joined = join_sse(chunks)
     assert 'event: subagent_done' in joined and '"status": "question"' in joined
     assert bag.had_question is True
     # 反问时落短期记忆并提前返回,不进入 merge finalize
@@ -213,7 +214,7 @@ def test_unregistered_agent_skipped(monkeypatch):
         bag=bag,
     )
 
-    joined = "\n".join(chunks)
+    joined = join_sse(chunks)
     assert "跳过未注册 Agent" in joined
     assert run_calls == []
     assert bag == DispatchRoundOutcome()

@@ -35,13 +35,6 @@ const GOAL_OPTS: RadioOption[] = [
   { value: 'compare', label: '对比多个项目' },
 ];
 
-const ABCD_OPTS: RadioOption[] = [
-  { value: 'A', label: '选项 A' },
-  { value: 'B', label: '选项 B' },
-  { value: 'C', label: '选项 C' },
-  { value: 'D', label: '选项 D' },
-];
-
 /** 无意义的占位选项（解析失败时的假 ABCD） */
 export function isPlaceholderOptions(opts: RadioOption[]): boolean {
   if (opts.length < 2) return false;

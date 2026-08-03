@@ -30,8 +30,13 @@ class UserCreate(BaseModel):
 
 class UserLogin(BaseModel):
     username: str
-    password: str = Field(..., min_length=8, max_length=128)
+    password: str = Field(..., min_length=8, max_length=72)
     remember_me: bool = False
+
+    @field_validator("password")
+    @classmethod
+    def _password_bytes(cls, v: str) -> str:
+        return _validate_password_bcrypt_bytes(v)
 
 
 class UserUpdate(BaseModel):
@@ -64,8 +69,14 @@ class UserOut(BaseModel):
 
 
 class TokenOut(BaseModel):
-    access_token: str
-    refresh_token: str
+    """登录/注册响应。
+
+    浏览器主路径：凭证只在 httpOnly Cookie；body 默认不含 token。
+    API 客户端可传 include_tokens=true 取回明文 token。
+    """
+
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
     token_type: str = "bearer"
     user: UserOut
 
@@ -77,8 +88,8 @@ class RefreshBody(BaseModel):
 
 
 class AccessTokenOut(BaseModel):
-    access_token: str
-    refresh_token: str
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
     token_type: str = "bearer"
 
 

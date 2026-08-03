@@ -9,6 +9,7 @@ from backend.agents.hub import HubService
 from backend.agents.react import EngineResult
 from backend.llm.provider import LLMProvider
 from backend.services.sse_stream import format_sse
+from tests.sse_util import join_sse
 
 
 class FakeRegistry:

@@ -41,6 +41,8 @@ class AgentRunContext:
     code_of_conduct: str = ""
     agent_guideline: str = ""
     extra: dict[str, Any] = field(default_factory=dict)
+    # 工具仓储端口（优先于直接使用 db）
+    ports: Any | None = None
 
 
 STYLE_HINTS = {
@@ -103,6 +105,8 @@ class ContextBuilder:
         code_of_conduct = get_agent_code_of_conduct(raw_settings)
         agent_guideline = get_agent_guideline(raw_settings, agent_id)
 
+        from backend.ports.sqlalchemy_adapters import build_tool_ports
+
         return AgentRunContext(
             user_id=user_id,
             session_id=session_id,
@@ -122,6 +126,7 @@ class ContextBuilder:
             permissions=permissions or {},
             code_of_conduct=code_of_conduct,
             agent_guideline=agent_guideline,
+            ports=build_tool_ports(self.db),
         )
 
     def build_system_prompt(self, agent_def: Any, ctx: AgentRunContext) -> str:

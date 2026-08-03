@@ -13,7 +13,7 @@ import { categoryLabel } from '@/utils/labels';
 import type { GraphNode } from '@/api/types';
 
 export function GraphPage() {
-  const { data, isLoading } = useGraph();
+  const { data, isLoading, isError, error, refetch } = useGraph();
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 800, height: 500 });
   const [agentCollapsed, setAgentCollapsed] = useState(false);
@@ -25,6 +25,12 @@ export function GraphPage() {
   const zoomLevel = useGraphStore((s) => s.zoomLevel);
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isError) return;
+    const message = error instanceof Error ? error.message : '图谱加载失败';
+    addToast({ type: 'error', message });
+  }, [isError, error, addToast]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -64,6 +70,24 @@ export function GraphPage() {
   const similarNodes = selectedNode ? getSimilarNodes(data, selectedNode.id) : [];
 
   if (isLoading) return <LoadingSpinner fullScreen />;
+
+  if (isError) {
+    return (
+      <div className="graph-page-shell">
+        <div className="graph-content">
+          <EmptyState
+            title="图谱加载失败"
+            description="请检查网络或稍后重试"
+            action={
+              <button type="button" className="btn btn--secondary" onClick={() => void refetch()}>
+                重试
+              </button>
+            }
+          />
+        </div>
+      </div>
+    );
+  }
 
   if ((data?.nodes.length ?? 0) < 2) {
     return (

@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture review — RepoPilot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <style>
+      .seam { stroke-dasharray: 4 4; }
+      .leak { stroke: #dc2626; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .mass-iface { background: #fef3c7; border: 2px solid #d97706; }
+      .mass-impl { background: #ecfdf5; border: 2px solid #059669; }
+      .badge-strong { background: #d1fae5; color: #065f46; }
+      .badge-worth { background: #fef3c7; color: #92400e; }
+      .badge-spec { background: #e2e8f0; color: #334155; }
+      article { scroll-margin-top: 2rem; }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
+      <header class="space-y-4 border-b border-slate-200 pb-8">
+        <p class="text-xs uppercase tracking-widest text-slate-500">RepoPilot · 2026-08-03 · main@9bd682c</p>
+        <h1 class="font-serif text-4xl tracking-tight">Architecture review</h1>
+        <p class="text-slate-600 max-w-2xl text-sm leading-relaxed">
+          资深审查结论：CRUD/认证安全基线扎实；系统摩擦集中在 <strong>Agent 深实现 × 浅 interface</strong>、
+          <strong>假 seam（空 packages）</strong>、以及 <strong>SSE 字符串跨模块泄漏</strong>。
+          下表候选均用 glossary：module · interface · seam · adapter · depth · locality · leverage。
+        </p>
+        <div class="flex flex-wrap gap-4 text-xs text-slate-600">
+          <span class="inline-flex items-center gap-2"><span class="w-4 h-4 border-2 border-slate-800 bg-white"></span> module</span>
+          <span class="inline-flex items-center gap-2"><span class="w-8 border-t-2 border-dashed border-slate-500"></span> seam</span>
+          <span class="inline-flex items-center gap-2"><span class="w-8 border-t-2 border-red-600"></span> leakage</span>
+          <span class="inline-flex items-center gap-2"><span class="w-4 h-4 bg-slate-900"></span> deep module</span>
+        </div>
+
+        <!-- Scorecard -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4">
+          <div class="rounded-lg border border-slate-200 bg-white p-3">
+            <div class="text-xs uppercase tracking-wider text-slate-500">安全</div>
+            <div class="text-2xl font-serif text-emerald-700">B+</div>
+            <div class="text-[11px] text-slate-500 mt-1">JWT/加密/SSRF/限流到位；Bearer 限流与 body token 仍漏</div>
+          </div>
+          <div class="rounded-lg border border-slate-200 bg-white p-3">
+            <div class="text-xs uppercase tracking-wider text-slate-500">现代性</div>
+            <div class="text-2xl font-serif text-amber-700">B</div>
+            <div class="text-[11px] text-slate-500 mt-1">React19/FastAPI/SQLA2；无 CI、无 Alembic、空 monorepo 包</div>
+          </div>
+          <div class="rounded-lg border border-slate-200 bg-white p-3">
+            <div class="text-xs uppercase tracking-wider text-slate-500">可维护 / 内聚</div>
+            <div class="text-2xl font-serif text-red-700">C+</div>
+            <div class="text-[11px] text-slate-500 mt-1">P0-P3 已拆；hub/agent_service/builtin/agentStore 仍过重</div>
+          </div>
+          <div class="rounded-lg border border-slate-200 bg-white p-3">
+            <div class="text-xs uppercase tracking-wider text-slate-500">可拓展 / 耦合</div>
+            <div class="text-2xl font-serif text-amber-700">C</div>
+            <div class="text-[11px] text-slate-500 mt-1">假 seam 多；真实契约双写；Agent 绑死 API 进程</div>
+          </div>
+        </div>
+      </header>
+
+      <section id="candidates" class="space-y-10">
+
+        <!-- C1 -->
+        <article id="c1" class="rounded-2xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <h2 class="font-serif text-2xl">1. Deepen Agent stream persistence</h2>
+            <div class="flex gap-2">
+              <span class="badge-strong text-xs font-medium px-2.5 py-1 rounded-full">Strong</span>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">in-process</span>
+            </div>
+          </div>
+          <ul class="font-mono text-xs text-slate-600 space-y-0.5">
+            <li>services/api/backend/services/agent_service.py (~1420 LOC)</li>
+            <li>services/api/backend/agents/hub.py · react.py</li>
+            <li>services/api/backend/services/sse_stream.py</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+              <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">Before — SSE string leak</p>
+              <pre class="mermaid text-xs">
+flowchart LR
+  Hub[Hub module] -->|yield SSE str| AS[agent_service]
+  AS -.leak.-> Parse["startswith event:"]
+  Parse --> Buf[_AgentSegmentBuffer]
+  Buf --> DB[(ORM)]
+  AS --> Client[HTTP SSE]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class Parse,AS leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+              <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">After — typed event seam</p>
+              <pre class="mermaid text-xs">
+flowchart LR
+  Hub[Hub module] -->|StreamEvent| Persist[SessionPersist module]
+  Persist --> DB[(ORM)]
+  Persist --> Fmt[SSE adapter]
+  Fmt --> Client[HTTP SSE]
+  classDef deep fill:#0f172a,color:#fff,stroke:#0f172a;
+  class Persist deep
+              </pre>
+            </div>
+          </div>
+          <p class="text-sm"><span class="font-medium">Problem.</span> Persistence 通过解析 wire-format SSE 字符串做副作用；interface 与传输格式重合 → shallow + 假完成类 bug 温床。</p>
+          <p class="text-sm"><span class="font-medium">Solution.</span> Hub 产出 typed StreamEvent；一个深 SessionPersist module 落库；单独 SSE adapter 只负责序列化。</p>
+          <ul class="text-sm space-y-1 text-slate-700">
+            <li>• locality: 落库 bug 集中一处</li>
+            <li>• leverage: chat/answer/analyze 共用同一 interface</li>
+            <li>• 删除三份 startswith 副本</li>
+            <li>• 测试打 StreamEvent，不拼 SSE 文本</li>
+          </ul>
+        </article>
+
+        <!-- C2 -->
+        <article id="c2" class="rounded-2xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <h2 class="font-serif text-2xl">2. Materialize — or delete — contracts seam</h2>
+            <div class="flex gap-2">
+              <span class="badge-strong text-xs font-medium px-2.5 py-1 rounded-full">Strong</span>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">ports &amp; adapters</span>
+            </div>
+          </div>
+          <ul class="font-mono text-xs text-slate-600 space-y-0.5">
+            <li>packages/{contracts,types,ui,prompts,py-shared} — stubs</li>
+            <li>apps/web/src/api/types.ts (~615 LOC hand-written)</li>
+            <li>services/api/backend/schemas/*</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 p-4 space-y-3">
+              <p class="text-xs uppercase tracking-wider text-slate-500">Before — false seams</p>
+              <div class="flex gap-2 items-end h-28">
+                <div class="flex-1 flex flex-col justify-end gap-1">
+                  <div class="mass-iface h-16 rounded text-[10px] flex items-center justify-center px-1 text-center">packages/* interface (empty)</div>
+                  <div class="mass-impl h-4 rounded text-[10px] flex items-center justify-center opacity-40">impl = ∅</div>
+                </div>
+                <div class="flex-1 flex flex-col justify-end gap-1">
+                  <div class="mass-iface h-14 rounded text-[10px] flex items-center justify-center">FE types.ts</div>
+                  <div class="mass-impl h-14 rounded text-[10px] flex items-center justify-center">hand sync</div>
+                </div>
+                <div class="flex-1 flex flex-col justify-end gap-1">
+                  <div class="mass-iface h-14 rounded text-[10px] flex items-center justify-center">BE schemas</div>
+                  <div class="mass-impl h-14 rounded text-[10px] flex items-center justify-center">Pydantic</div>
+                </div>
+              </div>
+              <p class="text-[11px] text-red-700">Deletion test: 删空包 → 复杂度不浓缩，只少噪音 → 证明 shallow。</p>
+            </div>
+            <div class="rounded-lg border border-slate-200 p-4 space-y-3">
+              <p class="text-xs uppercase tracking-wider text-slate-500">After — one deep contracts module</p>
+              <div class="flex gap-2 items-end h-28">
+                <div class="flex-1 flex flex-col justify-end gap-1">
+                  <div class="h-8 rounded bg-slate-900 text-white text-[10px] flex items-center justify-center">OpenAPI interface</div>
+                  <div class="mass-impl h-20 rounded text-[10px] flex items-center justify-center text-center px-1">codegen → types + py-shared + SSE enums</div>
+                </div>
+                <div class="flex-1 flex flex-col justify-end gap-1 opacity-40">
+                  <div class="h-6 rounded border border-dashed text-[10px] flex items-center justify-center">FE thin re-export</div>
+                  <div class="h-6 rounded border border-dashed text-[10px] flex items-center justify-center">BE thin re-export</div>
+                </div>
+              </div>
+              <p class="text-[11px] text-emerald-800">两 adapter 成立：生成 TS · 生成 Python。未生成前勿假装 seam 已存在。</p>
+            </div>
+          </div>
+          <p class="text-sm"><span class="font-medium">Problem.</span> Monorepo 目录制造模块化错觉；真实契约双写 + SSE stringly-typed。</p>
+          <p class="text-sm"><span class="font-medium">Solution.</span> 导出 FastAPI OpenAPI → 填满 packages/types（或删 stub 并在文档标明「未就绪」）；SSE 事件枚举进共享 module。</p>
+          <ul class="text-sm space-y-1 text-slate-700">
+            <li>• leverage: 一处 schema，N 个消费者</li>
+            <li>• 契约测试成为可能</li>
+            <li>• Agent 拆进程前的真实前置 seam</li>
+          </ul>
+        </article>
+
+        <!-- C3 -->
+        <article id="c3" class="rounded-2xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <h2 class="font-serif text-2xl">3. Tool modules behind repository adapters</h2>
+            <div class="flex gap-2">
+              <span class="badge-worth text-xs font-medium px-2.5 py-1 rounded-full">Worth exploring</span>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">ports &amp; adapters</span>
+            </div>
+          </div>
+          <ul class="font-mono text-xs text-slate-600 space-y-0.5">
+            <li>services/api/backend/tools/builtin.py (~1390 LOC)</li>
+            <li>services/api/backend/tools/registry.py (相对深 — 好范例)</li>
+            <li>services/api/backend/memory/context.py — AgentRunContext 胖上下文</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+              <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">Before</p>
+              <pre class="mermaid text-xs">
+flowchart TB
+  T[builtin tools] --> Ctx[AgentRunContext]
+  Ctx -.leak.-> DB[(AsyncSession)]
+  Ctx -.leak.-> ORM[Project/Note models]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class Ctx,DB,ORM leak
+              </pre>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+              <p class="text-xs uppercase tracking-wider text-slate-500 mb-2">After</p>
+              <pre class="mermaid text-xs">
+flowchart TB
+  T[domain tool modules] --> Ports[Repo/Note/Graph ports]
+  Ports --> AdProd[SQLAlchemy adapter]
+  Ports --> AdTest[in-memory adapter]
+  classDef deep fill:#0f172a,color:#fff;
+  class Ports deep
+              </pre>
+            </div>
+          </div>
+          <p class="text-sm"><span class="font-medium">Problem.</span> 工具直接摸 ORM；AgentRunContext 携带一切 → 任意工具可越 seam。</p>
+          <p class="text-sm"><span class="font-medium">Solution.</span> 按域拆 tool modules；context 只持 ports；registry 保持现有深 interface。</p>
+          <ul class="text-sm space-y-1 text-slate-700">
+            <li>• 两 adapter 证成 seam（prod DB / test memory）</li>
+            <li>• locality: 笔记工具改动不碰 GitHub ORM</li>
+            <li>• 为 services/agent 拆分铺路</li>
+          </ul>
+        </article>
+
+        <!-- C4 -->
+        <article id="c4" class="rounded-2xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <h2 class="font-serif text-2xl">4. Unify frontend Agent SSE pipeline</h2>
+            <div class="flex gap-2">
+              <span class="badge-worth text-xs font-medium px-2.5 py-1 rounded-full">Worth exploring</span>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">local-substitutable</span>
+            </div>
+          </div>
+          <ul class="font-mono text-xs text-slate-600 space-y-0.5">
+            <li>apps/web/src/stores/agentStore.ts (~853 LOC)</li>
+            <li>apps/web/src/utils/agentSSEStream.ts</li>
+            <li>EmbedAgentChat · NotesPage.runScribe · ProjectDetailPage</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <p class="text-xs uppercase tracking-wider text-slate-500">Before — 3 parallel pipelines</p>
+              <div class="space-y-1 text-[11px]">
+                <div class="h-10 border border-amber-400 bg-amber-50 rounded flex items-center px-2">agentStore.processSSEStream</div>
+                <div class="h-10 border border-amber-400 bg-amber-50 rounded flex items-center px-2">consumeAgentSSEStream (Embed)</div>
+                <div class="h-10 border border-amber-400 bg-amber-50 rounded flex items-center px-2">NotesPage 手写 for-await</div>
+                <div class="text-red-600 pt-1">store → import StreamRenderer（反向依赖）</div>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <p class="text-xs uppercase tracking-wider text-slate-500">After — one deep stream module</p>
+              <div class="deep text-white rounded-lg p-4 space-y-2 text-[11px]">
+                <div class="border border-white/30 rounded px-2 py-1">parse SSE → DomainEvent</div>
+                <div class="border border-white/30 rounded px-2 py-1">reducer（唯一状态机）</div>
+                <div class="opacity-60 text-center">↓ adapters ↓</div>
+                <div class="grid grid-cols-3 gap-1">
+                  <div class="bg-white/10 rounded px-1 py-1 text-center">Chat</div>
+                  <div class="bg-white/10 rounded px-1 py-1 text-center">Embed</div>
+                  <div class="bg-white/10 rounded px-1 py-1 text-center">Scribe</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="text-sm"><span class="font-medium">Problem.</span> 三套 SSE 消费 + agentStore 上帝对象；Zustand 与 React Query 对同一 session 双轨。</p>
+          <p class="text-sm"><span class="font-medium">Solution.</span> consumeAgentSSEStream 为唯一解析器；store 只 reducer；切断 store→components 依赖。</p>
+          <ul class="text-sm space-y-1 text-slate-700">
+            <li>• locality: 流式 bug 一处修</li>
+            <li>• interface 缩小；页面变薄</li>
+            <li>• agentStore 单测终于可写</li>
+          </ul>
+        </article>
+
+        <!-- C5 -->
+        <article id="c5" class="rounded-2xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <h2 class="font-serif text-2xl">5. Seal route → Hub prompt leaks</h2>
+            <div class="flex gap-2">
+              <span class="badge-worth text-xs font-medium px-2.5 py-1 rounded-full">Worth exploring</span>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">in-process</span>
+            </div>
+          </div>
+          <ul class="font-mono text-xs text-slate-600 space-y-0.5">
+            <li>services/api/backend/api/agent.py — /classify · /note/generate 内联 prompt</li>
+            <li>services/api/backend/api/settings.py — 路由直构 LLMProvider</li>
+            <li>services/api/backend/api/github.py — 胖路由；projects 反向 import</li>
+          </ul>
+          <div class="rounded-lg border border-slate-200 bg-stone-50 p-3">
+            <pre class="mermaid text-xs">
+flowchart LR
+  R[Route handlers] -.leak.-> Prompt[prompt strings]
+  R -.leak.-> Hub[HubService]
+  R -.leak.-> LLM[LLMProvider]
+  R2[projects.py] -.leak.-> GH[api.github._primary_token]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class R,Prompt,Hub,LLM,R2,GH leak
+            </pre>
+          </div>
+          <p class="text-sm"><span class="font-medium">Problem.</span> HTTP seam 被 prompt 工程与 LLM 细节穿透；github 模块既是 route 又是被反向依赖的“假 service”。</p>
+          <p class="text-sm"><span class="font-medium">Solution.</span> 路由只调深 application module；prompt 进 agents 或 packages/prompts；github 下沉 service。</p>
+          <ul class="text-sm space-y-1 text-slate-700">
+            <li>• 路由 interface 变薄</li>
+            <li>• 删除 projects→api.github 反向依赖</li>
+            <li>• 启用或删除空的 core/exceptions · core/middleware</li>
+          </ul>
+        </article>
+
+        <!-- C6 -->
+        <article id="c6" class="rounded-2xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <h2 class="font-serif text-2xl">6. Replace schema_sync with real migrations</h2>
+            <div class="flex gap-2">
+              <span class="badge-worth text-xs font-medium px-2.5 py-1 rounded-full">Worth exploring</span>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">local-substitutable</span>
+            </div>
+          </div>
+          <ul class="font-mono text-xs text-slate-600 space-y-0.5">
+            <li>services/api/backend/database.py — create_all</li>
+            <li>services/api/backend/migrations/schema_sync.py — ALTER + 启动时 UPDATE LIKE</li>
+          </ul>
+          <div class="space-y-1 text-[11px]">
+            <div class="h-8 border-l-4 border-amber-400 bg-amber-50 flex items-center px-3">create_all（不改已有列）</div>
+            <div class="h-8 border-l-4 border-amber-400 bg-amber-50 flex items-center px-3">手写 ALTER 补列</div>
+            <div class="h-8 border-l-4 border-red-500 bg-red-50 flex items-center px-3">启动 UPDATE … LIKE 回填（多实例重复写）</div>
+            <div class="h-10 border-l-4 border-emerald-600 bg-emerald-50 flex items-center px-3 font-medium">→ Alembic revisions（已在 pyproject 依赖但未用）</div>
+          </div>
+          <p class="text-sm"><span class="font-medium">Problem.</span> 数据迁移藏在「轻量同步」里；alembic 声明了却不走 → 浅运维 seam。</p>
+          <p class="text-sm"><span class="font-medium">Solution.</span> 真 Alembic；启动禁止隐式数据回填。</p>
+        </article>
+
+        <!-- C7 -->
+        <article id="c7" class="rounded-2xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <h2 class="font-serif text-2xl">7. Close remaining auth / abuse seams</h2>
+            <div class="flex gap-2">
+              <span class="badge-worth text-xs font-medium px-2.5 py-1 rounded-full">Worth exploring</span>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">security</span>
+            </div>
+          </div>
+          <ul class="font-mono text-xs text-slate-600 space-y-0.5">
+            <li>api/agent.py — _agent_rate_key 只读 Cookie，鉴权认 Bearer</li>
+            <li>api/auth.py — JSON body 仍返回 access/refresh</li>
+            <li>schemas/project.py — ProjectCreate.url 无 github/https 白名单</li>
+            <li>archive/data/stash_users.json — password_hash+salt 已入库</li>
+            <li>无 .github/workflows · 无 .env.example · 无 CSRF token</li>
+          </ul>
+          <div class="grid md:grid-cols-2 gap-3 text-sm">
+            <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-3 space-y-1">
+              <p class="text-xs uppercase tracking-wider text-emerald-800">已核实优点</p>
+              <ul class="text-xs space-y-0.5 text-emerald-900">
+                <li>SECRET_KEY ≥32 强制</li>
+                <li>Fernet at-rest（LLM key / PAT）</li>
+                <li>Refresh 哈希轮换 + family revoke</li>
+                <li>LLM SSRF + DNS 二次校验</li>
+                <li>Agent message max_length + 20/min 限流（9bd682c）</li>
+                <li>FE Mermaid DOMPurify + Markdown sanitize</li>
+                <li>Real 路径 httpOnly Cookie</li>
+              </ul>
+            </div>
+            <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 space-y-1">
+              <p class="text-xs uppercase tracking-wider text-amber-800">仍开放</p>
+              <ul class="text-xs space-y-0.5 text-amber-950">
+                <li>限流 key ≠ 鉴权路径（Bearer→IP）</li>
+                <li>body token 抵消 Cookie XSS 收益</li>
+                <li>debug 默认 SameSite=None</li>
+                <li>无 CI 门禁</li>
+                <li>VITE_USE_MOCK 默认开（误配静默）</li>
+                <li>archive 凭证材料应移出或 scrub</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <!-- C8 speculative -->
+        <article id="c8" class="rounded-2xl border border-slate-200 bg-white p-6 space-y-5 shadow-sm">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <h2 class="font-serif text-2xl">8. Split Agent process — only after seams exist</h2>
+            <div class="flex gap-2">
+              <span class="badge-spec text-xs font-medium px-2.5 py-1 rounded-full">Speculative</span>
+              <span class="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">ports &amp; adapters</span>
+            </div>
+          </div>
+          <p class="text-sm text-slate-700">
+            <code class="font-mono text-xs">services/agent</code> 仅 /health。文档目标图仍画 WEB→AGENT SSE，与现行 WEB→API 不符。
+            <strong>Deletion test：</strong>现在拆进程只会把泄漏复制到网络——先完成 C1–C3。
+          </p>
+          <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            不 contradict ADR（仓库无 ADR）；与 REPO_LAYOUT「拆分触发条件」一致——条件未满足前勿为拆而拆。
+          </div>
+        </article>
+
+      </section>
+
+      <section id="top-recommendation" class="rounded-2xl border-2 border-slate-900 bg-slate-900 text-stone-50 p-8 space-y-4">
+        <p class="text-xs uppercase tracking-widest text-stone-400">Top recommendation</p>
+        <h2 class="font-serif text-3xl">
+          <a href="#c1" class="underline decoration-emerald-400/60 underline-offset-4 hover:decoration-emerald-300">Deepen Agent stream persistence</a>
+        </h2>
+        <p class="text-stone-300 text-sm max-w-2xl leading-relaxed">
+          假完成/空承诺类回归反复出现，根因是 persistence 依赖 wire SSE 字符串——locality 最差、leverage 最高。
+          与刚完成的 P0-P3（限流、run 拆分）正交且互补：结构已可测，下一步应让落库与传输分 seam。
+          并行可做 C2（填或删空包），避免假模块化继续误导导航。
+        </p>
+      </section>
+
+      <footer class="text-xs text-slate-500 pt-4 border-t border-slate-200 space-y-1">
+        <p>证据：仓库实读 + 三路 explore（api / web / packages）+ 对照 docs/review/AGENT_CODE_REVIEW.md 与 commit 9bd682c。</p>
+        <p>未运行完整测试套件于本次审查；测试数量来自目录清点与近期 commit message（231 pytest / 122 vitest 声称）。</p>
+      </footer>
+    </main>
+  </body>
+</html>

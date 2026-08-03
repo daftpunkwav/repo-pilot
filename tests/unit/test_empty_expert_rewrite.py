@@ -2,6 +2,7 @@
 import pytest
 
 from backend.agents.hub import HubService
+from tests.sse_util import join_sse
 
 
 @pytest.mark.asyncio
@@ -60,7 +61,7 @@ async def test_empty_expert_passthrough_triggers_hub_rewrite(monkeypatch):
     ):
         chunks.append(chunk)
 
-    joined = "".join(chunks)
+    joined = join_sse(chunks)
     assert "未产出可用正文" in joined
     assert eval_calls["n"] >= 1
     assert "skip_merge" not in joined

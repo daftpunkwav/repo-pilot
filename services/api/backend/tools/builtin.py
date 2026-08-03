@@ -6,11 +6,7 @@ import re
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import or_, select
-
-from backend.models.category import Category
-from backend.models.note import Note
-from backend.models.project import Project, Tag
+from backend.models.project import Project
 from backend.tools.registry import tool
 
 logger = logging.getLogger(__name__)
@@ -18,6 +14,16 @@ logger = logging.getLogger(__name__)
 
 def _uid(context) -> UUID:
     return context.user_id
+
+
+def _ports(context):
+    """优先用注入的 ToolPorts；测试兜底从 db 构建。"""
+    ports = getattr(context, "ports", None)
+    if ports is not None:
+        return ports
+    from backend.ports.sqlalchemy_adapters import build_tool_ports
+
+    return build_tool_ports(context.db)
 
 
 _GITHUB_NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
@@ -83,19 +89,13 @@ async def query_user_projects(
     limit: int = 20,
     **kw,
 ):
-    db = context.db
-    stmt = select(Project).where(Project.user_id == _uid(context))
-    if query:
-        like = f"%{query}%"
-        stmt = stmt.where(
-            or_(Project.name.ilike(like), Project.description.ilike(like))
-        )
-    if language:
-        stmt = stmt.where(Project.language == language)
-    if progress:
-        stmt = stmt.where(Project.progress == progress)
-    stmt = stmt.limit(min(limit or 20, 50))
-    rows = (await db.execute(stmt)).scalars().all()
+    rows = await _ports(context).projects.search(
+        _uid(context),
+        query=query or "",
+        language=language or "",
+        progress=progress or "",
+        limit=min(limit or 20, 50),
+    )
     return {
         "count": len(rows),
         "projects": [
@@ -152,6 +152,7 @@ async def get_project_detail(project_id: str, context=None, **kw):
     if not raw:
         return {"error": "无效 project_id"}
 
+    ports = _ports(context)
     try:
         pid = UUID(raw)
     except ValueError:
@@ -159,12 +160,7 @@ async def get_project_detail(project_id: str, context=None, **kw):
         owner, repo = _parse_owner_repo(full_name=raw)
         if owner and repo:
             full_name = f"{owner}/{repo}"
-            stmt = (
-                select(Project)
-                .where(Project.user_id == _uid(context), Project.name == full_name)
-                .limit(1)
-            )
-            p = (await context.db.execute(stmt)).scalars().first()
+            p = await ports.projects.get_by_name(_uid(context), full_name)
             if p:
                 return _project_detail_payload(p)
             return {
@@ -180,8 +176,8 @@ async def get_project_detail(project_id: str, context=None, **kw):
             "hint": "project_id 须为 UUID；库外仓库用 fetch_github_repo / fetch_readme 的 full_name",
         }
 
-    p = await context.db.get(Project, pid)
-    if not p or p.user_id != _uid(context):
+    p = await ports.projects.get_owned(pid, _uid(context))
+    if not p:
         return {"error": "项目不存在"}
     return _project_detail_payload(p)
 
@@ -300,10 +296,7 @@ async def query_knowledge_graph(
     limit: int = 20,
     **kw,
 ):
-    from backend.services.graph_service import build_graph
-
-    graph = await build_graph(
-        context.db,
+    graph = await _ports(context).graph.build(
         _uid(context),
         min_similarity=min_similarity,
         max_edges=limit or 20,
@@ -333,12 +326,7 @@ async def query_knowledge_graph(
     allowed_agents=["curator", "hub", "navigator", "scout"],
 )
 async def list_categories(context=None, **kw):
-    result = await context.db.execute(
-        select(Category).where(
-            (Category.user_id == _uid(context)) | (Category.is_preset == True)  # noqa: E712
-        )
-    )
-    cats = result.scalars().all()
+    cats = await _ports(context).categories.list_visible(_uid(context))
     return {
         "categories": [
             {"id": str(c.id), "name": c.name, "is_preset": bool(c.is_preset)}
@@ -397,14 +385,16 @@ async def suggest_category(
     allowed_agents=["scribe", "mentor", "navigator", "hub"],
 )
 async def list_notes(context=None, project_id: str = "", limit: int = 10, **kw):
-    stmt = select(Note).where(Note.user_id == _uid(context))
+    lim = min(limit or 10, 30)
+    pid: UUID | None = None
     if project_id:
         try:
-            stmt = stmt.where(Note.project_id == UUID(project_id))
+            pid = UUID(project_id)
         except ValueError:
             return {"error": "无效 project_id"}
-    stmt = stmt.order_by(Note.updated_at.desc()).limit(min(limit or 10, 30))
-    rows = (await context.db.execute(stmt)).scalars().all()
+    rows = await _ports(context).notes.list_for_user(
+        _uid(context), project_id=pid, limit=lim
+    )
     return {
         "notes": [
             {
@@ -594,14 +584,7 @@ async def manage_session_projects(
     project_ids: list | None = None,
     **kw,
 ):
-    from backend.models.agent import AgentSession
-    from backend.services.agent_service import (
-        add_session_project,
-        get_session_project_ids,
-        remove_session_project,
-        set_session_projects,
-    )
-
+    ports = _ports(context)
     raw_ids = [str(x).strip() for x in (project_ids or []) if str(x).strip()]
     parsed: list[UUID] = []
     for s in raw_ids:
@@ -610,33 +593,16 @@ async def manage_session_projects(
         except ValueError:
             return {"error": f"无效 project_id: {s}"}
 
-    session = await context.db.get(AgentSession, context.session_id)
-    if not session or session.user_id != context.user_id:
+    session = await ports.sessions.get_owned(context.session_id, context.user_id)
+    if not session:
         return {"error": "会话不存在"}
 
     act = (action or "add").strip().lower()
     try:
-        if act == "set":
-            ids = await set_session_projects(
-                context.db, session, parsed, user_id=context.user_id
-            )
-        elif act == "remove":
-            ids: list[UUID] = []
-            for pid in parsed:
-                ids = await remove_session_project(
-                    context.db, session, pid, user_id=context.user_id
-                )
-            if not parsed:
-                ids = await get_session_project_ids(context.db, session.id)
-        else:
-            ids = []
-            for pid in parsed:
-                ids = await add_session_project(
-                    context.db, session, pid, user_id=context.user_id
-                )
-            if not parsed:
-                ids = await get_session_project_ids(context.db, session.id)
-        await context.db.commit()
+        ids = await ports.sessions.mutate_projects(
+            session, context.user_id, act, parsed
+        )
+        await ports.commit()
     except ValueError:
         return {"error": "无权操作其中部分项目"}
 
@@ -716,14 +682,10 @@ async def propose_memory(
     allowed_agents=["navigator", "hub", "mentor", "atlas"],
 )
 async def get_learning_stats(context=None, **kw):
-    projects = (
-        await context.db.execute(
-            select(Project).where(Project.user_id == _uid(context))
-        )
-    ).scalars().all()
-    notes = (
-        await context.db.execute(select(Note).where(Note.user_id == _uid(context)))
-    ).scalars().all()
+    ports = _ports(context)
+    uid = _uid(context)
+    projects = await ports.projects.list_for_user(uid, limit=10_000)
+    note_count = await ports.notes.count_for_user(uid)
     progress_dist: dict[str, int] = {}
     lang_dist: dict[str, int] = {}
     for p in projects:
@@ -732,7 +694,7 @@ async def get_learning_stats(context=None, **kw):
             lang_dist[p.language] = lang_dist.get(p.language, 0) + 1
     return {
         "project_count": len(projects),
-        "note_count": len(notes),
+        "note_count": note_count,
         "progress_distribution": progress_dist,
         "language_distribution": lang_dist,
     }
@@ -896,8 +858,8 @@ async def _get_owned_project_or_error(context, project_id: str):
         pid = UUID(str(project_id).strip())
     except ValueError:
         return None, {"error": "无效 project_id"}
-    project = await context.db.get(Project, pid)
-    if not project or project.user_id != _uid(context):
+    project = await _ports(context).projects.get_owned(pid, _uid(context))
+    if not project:
         return None, {"error": "项目不存在或无权访问"}
     return project, None
 
@@ -935,6 +897,7 @@ async def create_note_tool(
     compare_project_ids: list | None = None,
     **kw,
 ):
+    ports = _ports(context)
     project, err = await _get_owned_project_or_error(context, project_id)
     if err:
         return err
@@ -954,20 +917,18 @@ async def create_note_tool(
             cid = UUID(s)
         except ValueError:
             return {"error": f"无效 compare_project_id: {s}"}
-        other = await context.db.get(Project, cid)
-        if not other or other.user_id != _uid(context):
+        other = await ports.projects.get_owned(cid, _uid(context))
+        if not other:
             return {"error": f"对比项目不存在或无权访问: {s}"}
         compare_ids.append(str(cid))
 
-    note = Note(
+    note = await ports.notes.create(
         user_id=_uid(context),
         project_id=project.id,
         title=title_s[:256],
         content=body,
     )
-    context.db.add(note)
-    await context.db.commit()
-    await context.db.refresh(note)
+    await ports.commit()
 
     href = f"/notes?note={note.id}&project={project.id}"
     return _action_result(
@@ -1014,23 +975,25 @@ async def update_note_tool(
         nid = UUID(str(note_id).strip())
     except ValueError:
         return {"error": "无效 note_id"}
-    note = await context.db.get(Note, nid)
-    if not note or note.user_id != _uid(context):
-        return {"error": "笔记不存在或无权访问"}
+    ports = _ports(context)
+    fields: dict[str, Any] = {}
     if title is not None:
         t = str(title).strip()
         if not t:
             return {"error": "标题不能为空"}
-        note.title = t[:256]
+        fields["title"] = t[:256]
     if content is not None:
         if len(content) > 100_000:
             return {"error": "正文过长"}
-        note.content = content
-    from datetime import datetime
+        fields["content"] = content
+    if fields:
+        from datetime import datetime
 
-    note.updated_at = datetime.utcnow()
-    await context.db.commit()
-    await context.db.refresh(note)
+        fields["updated_at"] = datetime.utcnow()
+    note = await ports.notes.update(nid, _uid(context), **fields)
+    if not note:
+        return {"error": "笔记不存在或无权访问"}
+    await ports.commit()
     href = f"/notes?note={note.id}&project={note.project_id}"
     return _action_result(
         "note_updated",
@@ -1070,27 +1033,15 @@ async def ensure_category(
     name_s = (name or "").strip()
     if not name_s:
         return {"error": "分类名称不能为空"}
-    uid = _uid(context)
-    result = await context.db.execute(
-        select(Category).where(
-            (Category.name == name_s)
-            & ((Category.user_id == uid) | (Category.is_preset == True))  # noqa: E712
-        )
+    ports = _ports(context)
+    cat, created = await ports.categories.ensure(
+        _uid(context),
+        name_s,
+        icon=(icon or None) or None,
+        color=(color or None) or None,
     )
-    cat = result.scalars().first()
-    created = False
-    if not cat:
-        cat = Category(
-            user_id=uid,
-            name=name_s[:64],
-            icon=(icon or None) or None,
-            color=(color or None) or None,
-            is_preset=False,
-        )
-        context.db.add(cat)
-        await context.db.commit()
-        await context.db.refresh(cat)
-        created = True
+    if created:
+        await ports.commit()
     return _action_result(
         "category_ensured",
         summary=("已创建分类" if created else "分类已存在") + f"「{cat.name}」",
@@ -1130,37 +1081,27 @@ async def set_project_category(
     category_name: str = "",
     **kw,
 ):
+    ports = _ports(context)
     project, err = await _get_owned_project_or_error(context, project_id)
     if err:
         return err
     uid = _uid(context)
-    cat: Category | None = None
+    cat = None
     if category_id:
         try:
             cid = UUID(str(category_id).strip())
         except ValueError:
             return {"error": "无效 category_id"}
-        cat = await context.db.get(Category, cid)
-        if not cat or (cat.user_id and cat.user_id != uid and not cat.is_preset):
+        cat = await ports.categories.get_visible(uid, cid)
+        if not cat:
             return {"error": "分类不存在或无权使用"}
     elif category_name:
-        name_s = category_name.strip()
-        result = await context.db.execute(
-            select(Category).where(
-                (Category.name == name_s)
-                & ((Category.user_id == uid) | (Category.is_preset == True))  # noqa: E712
-            )
-        )
-        cat = result.scalars().first()
-        if not cat:
-            cat = Category(user_id=uid, name=name_s[:64], is_preset=False)
-            context.db.add(cat)
-            await context.db.flush()
+        cat, _created = await ports.categories.ensure(uid, category_name.strip())
     else:
         return {"error": "需提供 category_id 或 category_name"}
 
-    project.category_id = cat.id
-    await context.db.commit()
+    await ports.projects.update_fields(project, category_id=cat.id)
+    await ports.commit()
     return _action_result(
         "category_applied",
         summary=f"已将「{project.name}」归入分类「{cat.name}」",
@@ -1182,9 +1123,7 @@ async def set_project_category(
     allowed_agents=["curator", "hub", "navigator", "scribe"],
 )
 async def list_tags(context=None, **kw):
-    from backend.services.tag_service import list_user_tags
-
-    tags = await list_user_tags(context.db, _uid(context))
+    tags = await _ports(context).tags.list_with_counts(_uid(context))
     return {
         "tags": [{"id": str(t.id), "name": t.name, "count": t.count} for t in tags],
         "count": len(tags),
@@ -1208,26 +1147,16 @@ async def list_tags(context=None, **kw):
     required_permission="allow_project_write",
 )
 async def ensure_tags(context=None, names: list | None = None, **kw):
-    uid = _uid(context)
+    ports = _ports(context)
     wanted = [str(n).strip() for n in (names or []) if str(n).strip()]
     if not wanted:
         return {"error": "names 不能为空"}
-    existing = (
-        await context.db.execute(select(Tag).where(Tag.user_id == uid))
-    ).scalars().all()
-    by_name = {t.name: t for t in existing}
-    created: list[str] = []
-    out: list[dict[str, str]] = []
-    for name in wanted:
-        tag = by_name.get(name)
-        if not tag:
-            tag = Tag(user_id=uid, name=name[:64])
-            context.db.add(tag)
-            await context.db.flush()
-            by_name[name] = tag
-            created.append(name)
-        out.append({"id": str(tag.id), "name": tag.name})
-    await context.db.commit()
+    existing = await ports.tags.list_for_user(_uid(context))
+    before = {t.name for t in existing}
+    tags = await ports.tags.ensure_many(_uid(context), wanted)
+    await ports.commit()
+    created = [t.name for t in tags if t.name not in before]
+    out = [{"id": str(t.id), "name": t.name} for t in tags]
     return _action_result(
         "tags_ensured",
         summary=f"已准备 {len(out)} 个标签" + (f"（新建 {len(created)}）" if created else ""),
@@ -1264,8 +1193,7 @@ async def set_project_tags_tool(
     mode: str = "replace",
     **kw,
 ):
-    from backend.services.tag_service import get_project_tag_ids, set_project_tags
-
+    ports = _ports(context)
     project, err = await _get_owned_project_or_error(context, project_id)
     if err:
         return err
@@ -1280,11 +1208,9 @@ async def set_project_tags_tool(
             return {"error": f"无效 tag_id: {raw}"}
 
     if from_ids:
-        owned = await context.db.execute(
-            select(Tag.id).where(Tag.user_id == uid, Tag.id.in_(from_ids))
-        )
-        valid_ids = {row[0] for row in owned.all()}
-        invalid = [str(tid) for tid in from_ids if tid not in valid_ids]
+        valid = await ports.tags.validate_owned_ids(uid, from_ids)
+        valid_set = set(valid)
+        invalid = [str(tid) for tid in from_ids if tid not in valid_set]
         if invalid:
             return {
                 "error": f"无效或不属于你的 tag_id（已中止，未改动标签）: {', '.join(invalid)}"
@@ -1293,41 +1219,30 @@ async def set_project_tags_tool(
 
     names = [str(n).strip() for n in (tag_names or []) if str(n).strip()]
     if names:
-        existing = (
-            await context.db.execute(select(Tag).where(Tag.user_id == uid))
-        ).scalars().all()
-        by_name = {t.name: t for t in existing}
-        for name in names:
-            tag = by_name.get(name)
-            if not tag:
-                tag = Tag(user_id=uid, name=name[:64])
-                context.db.add(tag)
-                await context.db.flush()
-                by_name[name] = tag
+        for tag in await ports.tags.ensure_many(uid, names):
             if tag.id not in resolved:
                 resolved.append(tag.id)
 
     act = (mode or "replace").strip().lower()
     if act == "add":
-        current = await get_project_tag_ids(context.db, project.id)
-        for s in current:
-            tid = UUID(s)
+        current = await ports.tags.get_project_tag_ids(project.id)
+        for tid in current:
             if tid not in resolved:
                 resolved.append(tid)
 
-    result = await set_project_tags(context.db, uid, project.id, resolved)
+    # set_on_project 内部会 commit
+    result = await ports.tags.set_on_project(uid, project.id, resolved)
     if result is None:
         return {"error": "设置标签失败"}
 
-    # 再取名称便于 UI
     tag_rows = []
     if result.tag_ids:
-        rows = (
-            await context.db.execute(
-                select(Tag).where(Tag.user_id == uid, Tag.id.in_(result.tag_ids))
-            )
-        ).scalars().all()
-        tag_rows = [{"id": str(t.id), "name": t.name} for t in rows]
+        by_id = {t.id: t for t in await ports.tags.list_for_user(uid)}
+        tag_rows = [
+            {"id": str(tid), "name": by_id[tid].name}
+            for tid in result.tag_ids
+            if tid in by_id
+        ]
 
     names_joined = "、".join(t["name"] for t in tag_rows) or "（清空）"
     return _action_result(
@@ -1371,6 +1286,7 @@ async def update_project_progress(
     progress: str = "",
     **kw,
 ):
+    ports = _ports(context)
     project, err = await _get_owned_project_or_error(context, project_id)
     if err:
         return err
@@ -1379,8 +1295,8 @@ async def update_project_progress(
     if prog not in allowed:
         return {"error": f"无效 progress，可选: {', '.join(sorted(allowed))}"}
     prev = project.progress
-    project.progress = prog
-    await context.db.commit()
+    await ports.projects.update_fields(project, progress=prog)
+    await ports.commit()
     labels = {
         "none": "未开始",
         "learning": "学习中",
@@ -1440,8 +1356,8 @@ async def import_github_repos(
     **kw,
 ):
     from backend.schemas.project import ImportRepoItem
-    from backend.services.project_service import import_repos
 
+    ports = _ports(context)
     items: list[ImportRepoItem] = []
     for raw in repos or []:
         owner = repo = url = ""
@@ -1470,7 +1386,8 @@ async def import_github_repos(
     if not items:
         return {"error": "repos 不能为空"}
 
-    result = await import_repos(context.db, _uid(context), items)
+    # import_repos 内部会 commit
+    result = await ports.projects.import_repos(_uid(context), items)
     return _action_result(
         "repos_imported",
         summary=result.summary,

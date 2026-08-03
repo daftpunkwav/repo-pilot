@@ -5,7 +5,6 @@ import json
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -26,6 +25,8 @@ from backend.api import (
 )
 from backend.config import get_settings
 from backend.core.limiter import limiter
+from backend.core.middleware import setup_middleware
+from backend.core.csrf import CsrfMiddleware
 from backend.database import get_session_factory, init_db
 from backend.services.seed_service import seed_preset_categories
 
@@ -98,14 +99,8 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(_LoginBodyCacheMiddleware)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list(),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CsrfMiddleware)
+setup_middleware(app)
 
 api = settings.api_v1_prefix
 app.include_router(auth.router, prefix=f"{api}/auth", tags=["auth"])

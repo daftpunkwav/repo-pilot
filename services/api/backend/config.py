@@ -77,8 +77,15 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
 
-    # LLM (BYOK)
-    llm_provider: str = "openai"
+    # Agent 独立进程（可选）。设置后 API 可将 SSE 转发至该基址；未设置则同进程 Hub。
+    agent_base_url: Optional[str] = Field(
+        default=None,
+        description="例如 http://127.0.0.1:19877；空则 Agent 与 API 同进程",
+    )
+    agent_internal_token: str = Field(
+        default="",
+        description="API↔Agent 内部鉴权；启用 AGENT_BASE_URL 时必填",
+    )
     llm_api_key: str = ""
     llm_api_base: Optional[str] = None
     llm_model: str = "gpt-4o-mini"

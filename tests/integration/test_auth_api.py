@@ -19,7 +19,7 @@ def rate_limit_enabled():
 @pytest.mark.asyncio
 async def test_register_login_me_flow(client: AsyncClient):
     reg = await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "flowuser", "password": "demo1234"},
     )
     assert reg.status_code == 200
@@ -39,7 +39,7 @@ async def test_register_login_me_flow(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_login_invalid_credentials(client: AsyncClient):
     res = await client.post(
-        "/api/v1/auth/login",
+        "/api/v1/auth/login?include_tokens=true",
         json={"username": "nobody", "password": "demo1234"},
     )
     assert res.status_code == 401
@@ -48,7 +48,7 @@ async def test_login_invalid_credentials(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_register_short_password_returns_422(client: AsyncClient):
     res = await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "shortpwd", "password": "1234567"},
     )
     assert res.status_code == 422
@@ -57,7 +57,7 @@ async def test_register_short_password_returns_422(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_login_short_password_returns_422(client: AsyncClient):
     res = await client.post(
-        "/api/v1/auth/login",
+        "/api/v1/auth/login?include_tokens=true",
         json={"username": "nobody", "password": "1234567"},
     )
     assert res.status_code == 422
@@ -66,11 +66,11 @@ async def test_login_short_password_returns_422(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_register_duplicate_username_message(client: AsyncClient):
     await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "dupuser", "password": "demo1234"},
     )
     res = await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "dupuser", "password": "demo1234"},
     )
     assert res.status_code == 409
@@ -80,11 +80,11 @@ async def test_register_duplicate_username_message(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_refresh_token(client: AsyncClient):
     reg = await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "refreshuser", "password": "demo1234"},
     )
     refresh = reg.json()["data"]["refresh_token"]
-    res = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
+    res = await client.post("/api/v1/auth/refresh?include_tokens=true", json={"refresh_token": refresh})
     assert res.status_code == 200
     data = res.json()["data"]
     assert data["access_token"]
@@ -99,7 +99,7 @@ async def test_refresh_token(client: AsyncClient):
     assert me.status_code == 200
 
     # 旧 refresh token 再次使用应失败（重放检测）
-    replay = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
+    replay = await client.post("/api/v1/auth/refresh?include_tokens=true", json={"refresh_token": refresh})
     assert replay.status_code == 401
 
 
@@ -107,7 +107,7 @@ async def test_refresh_token(client: AsyncClient):
 async def test_update_password_revokes_refresh_tokens(client: AsyncClient):
     # 用户注册并获取 refresh token
     reg = await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "pwdchangeuser", "password": "demo1234"},
     )
     assert reg.status_code == 200
@@ -125,7 +125,7 @@ async def test_update_password_revokes_refresh_tokens(client: AsyncClient):
 
     # 旧 refresh token 应失效，无法刷新
     refresh_res = await client.post(
-        "/api/v1/auth/refresh", json={"refresh_token": old_refresh}
+        "/api/v1/auth/refresh?include_tokens=true", json={"refresh_token": old_refresh}
     )
     assert refresh_res.status_code == 401
 
@@ -142,13 +142,13 @@ async def test_register_rate_limit(client: AsyncClient, rate_limit_enabled):
     """register 按 IP 限流 3/小时，第 4 次应返回 429。"""
     for i in range(3):
         res = await client.post(
-            "/api/v1/auth/register",
+            "/api/v1/auth/register?include_tokens=true",
             json={"username": f"ratelimit_reg_{i}", "password": "demo1234"},
         )
         assert res.status_code == 200, res.text
 
     res = await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "ratelimit_reg_blocked", "password": "demo1234"},
     )
     assert res.status_code == 429
@@ -158,20 +158,20 @@ async def test_register_rate_limit(client: AsyncClient, rate_limit_enabled):
 async def test_login_rate_limit(client: AsyncClient, rate_limit_enabled):
     """login 按 IP + 用户名限流 5/分钟，第 6 次应返回 429。"""
     reg = await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "ratelimit_login", "password": "demo1234"},
     )
     assert reg.status_code == 200
 
     for i in range(5):
         res = await client.post(
-            "/api/v1/auth/login",
+            "/api/v1/auth/login?include_tokens=true",
             json={"username": "ratelimit_login", "password": "demo1234"},
         )
         assert res.status_code == 200, f"第 {i + 1} 次登录失败: {res.text}"
 
     res = await client.post(
-        "/api/v1/auth/login",
+        "/api/v1/auth/login?include_tokens=true",
         json={"username": "ratelimit_login", "password": "demo1234"},
     )
     assert res.status_code == 429
@@ -181,7 +181,7 @@ async def test_login_rate_limit(client: AsyncClient, rate_limit_enabled):
 async def test_refresh_rate_limit(client: AsyncClient, rate_limit_enabled):
     """refresh 按 IP 限流 20/分钟，第 21 次应返回 429。"""
     reg = await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "ratelimit_refresh", "password": "demo1234"},
     )
     assert reg.status_code == 200
@@ -189,12 +189,12 @@ async def test_refresh_rate_limit(client: AsyncClient, rate_limit_enabled):
 
     for i in range(20):
         res = await client.post(
-            "/api/v1/auth/refresh", json={"refresh_token": refresh_token}
+            "/api/v1/auth/refresh?include_tokens=true", json={"refresh_token": refresh_token}
         )
         assert res.status_code == 200, f"第 {i + 1} 次刷新失败: {res.text}"
         refresh_token = res.json()["data"]["refresh_token"]
 
     res = await client.post(
-        "/api/v1/auth/refresh", json={"refresh_token": refresh_token}
+        "/api/v1/auth/refresh?include_tokens=true", json={"refresh_token": refresh_token}
     )
     assert res.status_code == 429

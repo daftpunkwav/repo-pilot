@@ -25,6 +25,7 @@ from backend.llm.provider import LLMProvider
 from backend.memory.context import ContextBuilder
 from backend.memory.service import MemoryService
 from backend.models.user import User
+from backend.agents.stream_events import StreamEvent
 from backend.services.sse_stream import format_sse
 from backend.tools.builtin import ensure_tools_loaded
 
@@ -88,48 +89,44 @@ _AGENT_ROLE_HINTS = {
 }
 
 
-def _prefix_expert_thinking_sse(chunk: str, expert_name: str) -> str:
+def _prefix_expert_thinking_sse(
+    chunk: StreamEvent | str, expert_name: str
+) -> StreamEvent | str:
     """把专家 thinking 挂到 Hub 舞台时加署名，便于嵌进 Hub 气泡。"""
-    if not chunk.startswith("event: thinking"):
+    ev = StreamEvent.coerce(chunk)
+    if ev is None or ev.kind != "thinking":
         return chunk
     try:
-        # event: thinking\ndata: {...}\n\n
-        lines = chunk.strip().split("\n")
-        data_line = next((ln for ln in lines if ln.startswith("data: ")), "")
-        if not data_line:
-            return chunk
-        payload = json.loads(data_line[6:])
+        payload = dict(ev.data)
         content = str(payload.get("content") or "")
         if not content:
-            return chunk
+            return ev
         if content.lstrip().startswith(f"【{expert_name}】") or content.lstrip().startswith(
             f"[{expert_name}]"
         ):
-            return chunk
+            return ev
         payload["content"] = f"【{expert_name}】\n{content}"
         return format_sse("thinking", payload)
     except Exception:
         return chunk
 
 
-def _sse_event_payload(chunk: str) -> tuple[str, dict] | None:
-    """解析 SSE 字符串 → (event_name, data_dict)。"""
-    if not isinstance(chunk, str) or not chunk.startswith("event: "):
+def _sse_event_payload(chunk: StreamEvent | str) -> tuple[str, dict] | None:
+    """解析 StreamEvent / SSE 字符串 → (event_name, data_dict)。"""
+    ev = StreamEvent.coerce(chunk)
+    if ev is None:
         return None
-    try:
-        first, _, rest = chunk.partition("\n")
-        event_name = first[7:].strip()
-        data_line = ""
-        for ln in rest.split("\n"):
-            if ln.startswith("data: "):
-                data_line = ln[6:].strip()
-                break
-        if not data_line:
-            return event_name, {}
-        data = json.loads(data_line)
-        return event_name, data if isinstance(data, dict) else {}
-    except Exception:
-        return None
+    return ev.kind, dict(ev.data)
+
+
+def _is_sse_kind(item: Any, *kinds: str) -> bool:
+    ev = StreamEvent.coerce(item)
+    return ev is not None and ev.kind in kinds
+
+
+def _yield_sse(item: StreamEvent | str) -> StreamEvent | str:
+    """透传领域事件；HTTP 边界再 encode_stream_item。"""
+    return item
 
 
 def should_skip_hub_merge(expert_results: list[tuple[str, str]]) -> bool:
@@ -487,7 +484,7 @@ class HubService:
                 result_text_parts.append(item.text)
             else:
                 # 单 Agent 正常结束仍需要 done；dispatch 前的 done 会在子流程里再发
-                yield item
+                yield _yield_sse(item)
 
         # 更新短期记忆
         await self.memory.append_short_memory(
@@ -577,7 +574,7 @@ class HubService:
                         yield chunk
                     return
             else:
-                yield item
+                yield _yield_sse(item)
 
     async def handle_direct_agent(
         self,
@@ -645,7 +642,7 @@ class HubService:
             if isinstance(item, EngineResult):
                 pass
             else:
-                yield item
+                yield _yield_sse(item)
 
     async def _orchestrate_multi(
         self,
@@ -746,14 +743,10 @@ class HubService:
                         )
                         return
                 else:
-                    if isinstance(item, str) and item.startswith("event: done"):
+                    if _is_sse_kind(item, "done"):
                         continue
                     if direct:
-                        parsed = (
-                            _sse_event_payload(item)
-                            if isinstance(item, str)
-                            else None
-                        )
+                        parsed = _sse_event_payload(item)
                         if parsed:
                             ev, data = parsed
                             piece = str(data.get("content") or "")
@@ -777,12 +770,9 @@ class HubService:
                                     },
                                 )
                                 continue
-                        yield item
-                    elif isinstance(item, str) and (
-                        item.startswith("event: question")
-                        or item.startswith("event: error")
-                    ):
-                        yield item
+                        yield _yield_sse(item)
+                    elif _is_sse_kind(item, "question", "error"):
+                        yield _yield_sse(item)
 
             final_out = (agent_text or "".join(text_parts)).strip()
             yield format_sse(
@@ -860,7 +850,7 @@ class HubService:
                             },
                         )
                     continue
-                yield item
+                yield _yield_sse(item)
         yield format_sse(
             "done",
             {"usage": {"tokens": 0}, "iterations": len(summaries), "agent_id": "hub"},
@@ -1047,9 +1037,9 @@ class HubService:
                         )
                         return
                     continue
-                if isinstance(item, str) and item.startswith("event: done"):
+                if _is_sse_kind(item, "done"):
                     continue
-                yield item
+                yield _yield_sse(item)
 
             if eval_result is None:
                 break
@@ -1183,7 +1173,7 @@ class HubService:
                         },
                     )
                 continue
-            yield item
+            yield _yield_sse(item)
 
         mem = " | ".join(s.split("\n", 1)[0] for s in summaries[:3])
         await self.memory.append_short_memory(
@@ -1301,8 +1291,8 @@ class HubService:
                     text = item.text or "".join(text_parts)
                     if item.question:
                         question = item.question
-                elif isinstance(item, str):
-                    if item.startswith("event: done"):
+                else:
+                    if _is_sse_kind(item, "done"):
                         continue
                     parsed = _sse_event_payload(item)
                     if parsed:
@@ -1326,10 +1316,10 @@ class HubService:
                         else:
                             # 静默路径:只收集 question/error,其余事件丢弃
                             if ev in ("question", "error"):
-                                passthrough.append(item)
+                                passthrough.append(_yield_sse(item))
                             continue
                     # tool_call / tool_result / question / error 仍走主通道
-                    yield item
+                    yield _yield_sse(item)
             yield (
                 target,
                 text,
@@ -1377,7 +1367,7 @@ class HubService:
                 if isinstance(item, tuple):
                     target, text, question, _pt, think_text, body_text = item
                     break
-                yield item
+                yield _yield_sse(item)
             if question:
                 yield format_sse(
                     "subagent_done",
@@ -1501,7 +1491,7 @@ class HubService:
                             )
                             return
                         break
-                    yield item
+                    yield _yield_sse(item)
                 yield format_sse(
                     "subagent_done",
                     {"agent_id": target, "status": "ok"},
@@ -1681,4 +1671,4 @@ class HubService:
         async for item in self.engine.run(
             agent_def=agent_def, ctx=ctx, messages=messages, emit_sse=True
         ):
-            yield item
+            yield _yield_sse(item)

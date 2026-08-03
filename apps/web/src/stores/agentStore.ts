@@ -26,7 +26,7 @@ import {
   questionTitle,
   recoverQuestionFromText,
 } from '@/utils/agentQuestion';
-import { persistableThinking } from '@/components/agent/StreamRenderer';
+import { persistableThinking } from '@/utils/agentThinking';
 import { ensureSessionProjectsFromMessage } from '@/utils/sessionProjectBind';
 import { isStreamSessionActive } from '@/utils/streamSessionGuard';
 import { displaySwitchReason } from '@/utils/agentSwitchDisplay';

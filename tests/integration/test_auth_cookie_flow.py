@@ -2,7 +2,12 @@
 import pytest
 from httpx import AsyncClient
 
-from backend.core.auth_cookies import ACCESS_COOKIE, REFRESH_COOKIE
+from backend.core.auth_cookies import ACCESS_COOKIE, CSRF_COOKIE, REFRESH_COOKIE
+
+
+def _csrf(client: AsyncClient) -> dict[str, str]:
+    tok = client.cookies.get(CSRF_COOKIE)
+    return {"X-CSRF-Token": tok} if tok else {}
 
 
 @pytest.mark.asyncio
@@ -12,12 +17,13 @@ async def test_register_sets_httponly_cookies(client: AsyncClient):
         json={"username": "cookie_reg", "password": "demo1234"},
     )
     assert res.status_code == 200
-    # httpx 会存储 cookie
     assert client.cookies.get(ACCESS_COOKIE)
     assert client.cookies.get(REFRESH_COOKIE)
-    # JSON 仍返回 token（兼容 API 客户端）
-    assert res.json()["data"]["access_token"]
-    assert res.json()["data"]["refresh_token"]
+    assert client.cookies.get(CSRF_COOKIE)
+    # 浏览器路径：JSON 默认不含 token
+    assert res.json()["data"].get("access_token") in (None, "")
+    assert res.json()["data"].get("refresh_token") in (None, "")
+    assert res.json()["data"]["user"]["username"] == "cookie_reg"
 
 
 @pytest.mark.asyncio
@@ -27,7 +33,6 @@ async def test_me_with_cookie_only_no_authorization_header(client: AsyncClient):
         json={"username": "cookie_me", "password": "demo1234"},
     )
     assert reg.status_code == 200
-    # 不传 Authorization，仅 Cookie
     me = await client.get("/api/v1/auth/me")
     assert me.status_code == 200
     assert me.json()["data"]["username"] == "cookie_me"
@@ -42,7 +47,7 @@ async def test_refresh_rotates_cookies_without_body(client: AsyncClient):
     old_refresh = client.cookies.get(REFRESH_COOKIE)
     assert old_refresh
 
-    res = await client.post("/api/v1/auth/refresh", json={})
+    res = await client.post("/api/v1/auth/refresh", json={}, headers=_csrf(client))
     assert res.status_code == 200
     new_refresh = client.cookies.get(REFRESH_COOKIE)
     assert new_refresh
@@ -60,7 +65,7 @@ async def test_logout_clears_cookies_and_revokes(client: AsyncClient):
     )
     assert client.cookies.get(ACCESS_COOKIE)
 
-    out = await client.post("/api/v1/auth/logout", json={})
+    out = await client.post("/api/v1/auth/logout", json={}, headers=_csrf(client))
     assert out.status_code == 200
 
     me = await client.get("/api/v1/auth/me")
@@ -71,11 +76,10 @@ async def test_logout_clears_cookies_and_revokes(client: AsyncClient):
 async def test_bearer_header_still_works_alongside_cookies(client: AsyncClient):
     """双通道：Bearer 仍可用（不依赖 Cookie 会话）。"""
     reg = await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "cookie_bearer", "password": "demo1234"},
     )
     token = reg.json()["data"]["access_token"]
-    # 清空客户端 cookie，仅用 Bearer
     client.cookies.clear()
     me = await client.get(
         "/api/v1/auth/me",
@@ -96,6 +100,7 @@ async def test_password_change_clears_cookies(client: AsyncClient):
     res = await client.put(
         "/api/v1/auth/password",
         json={"old_password": "demo1234", "new_password": "newpass5678"},
+        headers=_csrf(client),
     )
     assert res.status_code == 200
 
@@ -104,14 +109,27 @@ async def test_password_change_clears_cookies(client: AsyncClient):
 
 
 @pytest.mark.asyncio
+async def test_cookie_csrf_required_for_mutating_cookie_session(client: AsyncClient):
+    await client.post(
+        "/api/v1/auth/register",
+        json={"username": "csrf_chk", "password": "demo1234"},
+    )
+    # 有 Cookie 会话但无 CSRF → 业务写接口 403（auth 路径豁免）
+    res = await client.post(
+        "/api/v1/projects/",
+        json={"name": "x/y", "url": "https://github.com/x/y"},
+    )
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
 async def test_cookie_not_readable_as_non_httponly_flag_in_set_cookie(client: AsyncClient):
-    """安全：Set-Cookie 必须带 HttpOnly，避免 document.cookie 读取。"""
+    """安全：access/refresh Set-Cookie 必须带 HttpOnly。"""
     login = await client.post(
         "/api/v1/auth/register",
         json={"username": "httponly_chk", "password": "demo1234"},
     )
     assert login.status_code == 200
-    # httpx Headers 支持 get_list / multi-items
     set_cookies = []
     if hasattr(login.headers, "get_list"):
         set_cookies = login.headers.get_list("set-cookie")

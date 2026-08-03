@@ -19,6 +19,7 @@
     "useUnknownInCatchVariables": true,
     "forceConsistentCasingInFileNames": true,
     "ignoreDeprecations": "5.0",
+    // baseUrl 仅用于 paths；TS 6+ 将弃用，届时再迁 paths
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]

@@ -102,7 +102,28 @@ async function refreshAccessToken(): Promise<boolean> {
   return refreshPromise;
 }
 
+function readCsrfToken(): string | null {
+  try {
+    const match = document.cookie.match(/(?:^|;\s*)rp_csrf=([^;]*)/);
+    const raw = match?.[1];
+    return raw ? decodeURIComponent(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function attachCsrf(headers: Headers): void {
+  const csrf = readCsrfToken();
+  if (csrf && !headers.has('X-CSRF-Token')) {
+    headers.set('X-CSRF-Token', csrf);
+  }
+}
+
 function buildRequestInit(options: RequestInit, headers: Headers): RequestInit {
+  const method = (options.method || 'GET').toUpperCase();
+  if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) {
+    attachCsrf(headers);
+  }
   return {
     ...options,
     headers,
@@ -144,6 +165,7 @@ export async function apiSSE(
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
     });
+    attachCsrf(headers);
     return headers;
   };
 

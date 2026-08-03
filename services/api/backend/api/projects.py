@@ -8,7 +8,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_current_user, get_db
-from backend.api.github import _primary_token
 from backend.core.responses import wrap_data, wrap_paginated
 from backend.models.project import Project
 from backend.models.user import User
@@ -24,6 +23,7 @@ from backend.schemas.project import (
     ProjectStats,
     ProjectUpdate,
 )
+from backend.services.github_accounts import primary_token
 from backend.services.github_client import fetch_readme_text
 from backend.services.project_service import (
     build_project_from_create,
@@ -159,7 +159,7 @@ async def get_project_readme(
             )
         )
     owner, repo = coords
-    _, token = _primary_token(current_user)
+    _, token = primary_token(current_user)
     # 迁移明文 PAT 时可能改了 user，需要落库
     await db.commit()
     try:

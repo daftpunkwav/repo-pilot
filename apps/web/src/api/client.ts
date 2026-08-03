@@ -228,7 +228,7 @@ export function applyOverviewScenarioIfMock(
 }
 
 async function createApiClient(): Promise<IApiClient> {
-  const useMock = import.meta.env.VITE_USE_MOCK !== 'false';
+  const useMock = import.meta.env.VITE_USE_MOCK === 'true';
   if (useMock) {
     const { MockApiClient } = await import('./mock');
     return new MockApiClient();

@@ -45,9 +45,9 @@ async def client(tmp_path) -> AsyncIterator[AsyncClient]:
 
 @pytest.fixture
 async def auth_headers(client: AsyncClient) -> dict[str, str]:
-    """注册并返回 Bearer 头。"""
+    """注册并返回 Bearer 头（include_tokens 供测试取 JWT）。"""
     res = await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "testuser", "password": "demo1234"},
     )
     assert res.status_code == 200, res.text

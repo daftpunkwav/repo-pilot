@@ -15,10 +15,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_current_user, get_db
 from backend.core.responses import wrap_data
-from backend.core.security import decrypt_secret, encrypt_secret, ensure_encrypted_secret
+from backend.core.security import encrypt_secret, ensure_encrypted_secret
 from backend.models.project import Project
 from backend.models.user import User
 from backend.schemas.common import DataResponse
+from backend.services.github_accounts import (
+    load_accounts as _load_accounts,
+    migrate_plaintext_pats as _migrate_plaintext_pats,
+    primary_token as _primary_token,
+    save_accounts as _save_accounts,
+)
 from backend.services.github_client import list_user_stars, search_repositories
 
 router = APIRouter(prefix="/github", tags=["github"])
@@ -55,47 +61,6 @@ class StarsListOut(BaseModel):
     cached: bool = False
     fetched_at: Optional[str] = None
     cache_ttl_hours: float = 6.0
-
-
-def _load_accounts(user: User) -> list[dict]:
-    try:
-        data = json.loads(user.github_accounts or "[]")
-        return data if isinstance(data, list) else []
-    except json.JSONDecodeError:
-        return []
-
-
-def _save_accounts(user: User, accounts: list[dict]) -> None:
-    user.github_accounts = json.dumps(accounts, ensure_ascii=False)
-
-
-def _migrate_plaintext_pats(user: User) -> bool:
-    """将 github_accounts 中历史明文 PAT 升级为密文；返回是否写入。"""
-    accounts = _load_accounts(user)
-    if not accounts:
-        return False
-    dirty = False
-    for acc in accounts:
-        if not isinstance(acc, dict):
-            continue
-        pat = acc.get("pat")
-        stored, migrated = ensure_encrypted_secret(pat if isinstance(pat, str) else None)
-        if migrated:
-            acc["pat"] = stored
-            dirty = True
-    if dirty:
-        _save_accounts(user, accounts)
-    return dirty
-
-
-def _primary_token(user: User) -> tuple[str | None, str | None]:
-    # 读路径顺带迁移明文 PAT（调用方需 commit）
-    _migrate_plaintext_pats(user)
-    accounts = _load_accounts(user)
-    if not accounts:
-        return None, None
-    acc = accounts[0]
-    return acc.get("username"), decrypt_secret(acc.get("pat"))
 
 
 def _load_settings(user: User) -> dict:

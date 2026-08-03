@@ -12,7 +12,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from fastapi.security.utils import get_authorization_scheme_param
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.core.auth_cookies import get_access_token_from_request
+from backend.core.auth_cookies import resolve_access_token
 from backend.core.security import decode_token
 from backend.database import get_session
 from backend.models.user import User
@@ -51,21 +51,17 @@ async def get_db() -> AsyncSession:
         yield session
 
 
-def _resolve_access_token(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials | None,
-) -> str | None:
-    if credentials and credentials.credentials:
-        return credentials.credentials
-    return get_access_token_from_request(request)
-
-
 async def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db=Depends(get_db),
 ) -> User:
-    token = _resolve_access_token(request, credentials)
+    # credentials 已由 OptionalAuthBearer 解析；与 resolve_access_token 同序兜底 Cookie
+    token = (
+        credentials.credentials
+        if credentials and credentials.credentials
+        else resolve_access_token(request)
+    )
     if not token:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,

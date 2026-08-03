@@ -53,7 +53,7 @@ async def test_agent_analyze_accepts_agent_id(client: AsyncClient, auth_headers:
 async def test_agent_analyze_forbidden_for_other_user(client: AsyncClient):
     # 注册用户 A 并创建一个项目
     a = await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "agent_user_a", "password": "demo1234"},
     )
     assert a.status_code == 200
@@ -70,7 +70,7 @@ async def test_agent_analyze_forbidden_for_other_user(client: AsyncClient):
 
     # 注册用户 B 并尝试分析 A 的项目
     b = await client.post(
-        "/api/v1/auth/register",
+        "/api/v1/auth/register?include_tokens=true",
         json={"username": "agent_user_b", "password": "demo1234"},
     )
     assert b.status_code == 200

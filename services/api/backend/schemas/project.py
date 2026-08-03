@@ -6,11 +6,23 @@ from typing import Literal, Optional
 from urllib.parse import urlparse
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 ProjectProgress = Literal["none", "learning", "learned", "mastered"]
 ProjectSource = Literal["github", "manual"]
+
+
+def _validate_http_url(v: str) -> str:
+    """项目 URL：仅 http(s)，拒绝空 host / 危险 scheme。"""
+    raw = (v or "").strip()
+    parsed = urlparse(raw)
+    if parsed.scheme not in ("https", "http"):
+        raise ValueError("仅支持 http/https 协议")
+    host = (parsed.hostname or "").lower()
+    if not host:
+        raise ValueError("URL 必须包含有效域名")
+    return raw
 
 
 class ProjectCreate(BaseModel):
@@ -24,6 +36,20 @@ class ProjectCreate(BaseModel):
     source: ProjectSource = "manual"
     tags: list[str] = Field(default_factory=list)
 
+    @field_validator("url")
+    @classmethod
+    def _url(cls, v: str) -> str:
+        return _validate_http_url(v)
+
+    @model_validator(mode="after")
+    def _github_source_url(self) -> "ProjectCreate":
+        if self.source == "github":
+            parsed = urlparse(self.url)
+            host = (parsed.hostname or "").lower()
+            if parsed.scheme != "https" or not host.endswith("github.com"):
+                raise ValueError("source=github 时 URL 必须是 https://github.com/...")
+        return self
+
 
 class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=128)
@@ -34,6 +60,13 @@ class ProjectUpdate(BaseModel):
     language: Optional[str] = None
     progress: Optional[ProjectProgress] = None
     tags: Optional[list[str]] = None
+
+    @field_validator("url")
+    @classmethod
+    def _url(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return _validate_http_url(v)
 
 
 class ProjectOut(BaseModel):

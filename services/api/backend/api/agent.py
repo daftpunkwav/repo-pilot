@@ -1,19 +1,17 @@
 """
 Agent API —— 会话管理、对话 SSE、反问、分析、专用入口
 """
-from typing import Any, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 from backend.api.deps import get_current_user, get_db
 from backend.config import get_settings
-from backend.core.auth_cookies import get_access_token_from_request
+from backend.core.auth_cookies import resolve_access_token
 from backend.core.limiter import limiter
 from backend.core.responses import wrap_data
 from backend.core.security import decode_token
@@ -27,8 +25,14 @@ from backend.schemas.agent import (
     AgentQuestionAnswer,
     AgentSessionDetailOut,
     AgentSessionOut,
+    AnalyzeBody,
+    ClassifyBody,
     ContextWindowStatsOut,
+    GraphGuideBody,
+    ImportAssistBody,
+    NoteGenerateBody,
     SessionUpdateBody,
+    TrendingScoutBody,
 )
 from backend.schemas.common import DataResponse
 from backend.services.agent_catalog import AGENT_PROFILES
@@ -40,6 +44,8 @@ from backend.services.agent_service import (
     list_sessions,
     stream_analyze,
     stream_chat,
+    stream_classify_project,
+    stream_generate_note,
     stream_graph_guide,
     stream_import_assist,
     stream_question_answer,
@@ -55,11 +61,10 @@ settings = get_settings()
 def _agent_rate_key(request: Request) -> str:
     """Agent SSE 端点限流 key:优先按登录用户,未识别时回落 IP。
 
-    每次对话/分析都触发多轮 LLM 调用与多专家 dispatch,按用户限频
-    可防止已登录用户高频调用放大 LLM API 成本。
+    与鉴权同序解析 Bearer + Cookie，避免仅 Cookie 时 Bearer 客户端全落 IP。
     """
     try:
-        token = get_access_token_from_request(request)
+        token = resolve_access_token(request)
         if token:
             payload = decode_token(token)
             sub = (payload or {}).get("sub")
@@ -68,43 +73,6 @@ def _agent_rate_key(request: Request) -> str:
     except Exception:
         pass
     return get_remote_address(request)
-
-
-class AnalyzeBody(BaseModel):
-    depth: str = "quick"
-    force_refresh: bool = False
-    # 指定专家 Agent；缺省时 depth=quick→scout，deep→mentor
-    agent_id: str | None = None
-
-
-class ImportAssistBody(BaseModel):
-    message: str = Field(..., min_length=1, max_length=8000)
-    context: dict[str, Any] = Field(default_factory=dict)
-
-
-class GraphGuideBody(BaseModel):
-    message: str = Field(..., min_length=1, max_length=8000)
-    selected_node_id: Optional[str] = None
-
-
-class TrendingScoutBody(BaseModel):
-    name: Optional[str] = None
-    full_name: Optional[str] = None
-    description: Optional[str] = None
-    language: Optional[str] = None
-    stars: Optional[int] = None
-    url: Optional[str] = None
-
-
-class NoteGenerateBody(BaseModel):
-    project_id: UUID
-    mode: str = "project"  # project | standalone
-    topic: Optional[str] = None
-
-
-class ClassifyBody(BaseModel):
-    project_id: UUID
-    user_hint: Optional[str] = None
 
 
 @router.get("/sessions", response_model=DataResponse[list[AgentSessionOut]])
@@ -395,36 +363,12 @@ async def classify_project(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    project = await get_project_owned_by_user(db, body.project_id, current_user.id)
-    if not project:
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            detail={"code": "FORBIDDEN", "message": "Project not found"},
-        )
-    from backend.services.agent_service import create_session
-    from backend.agents.hub import HubService
-
-    session = await create_session(
-        db, current_user.id, project_id=body.project_id, title=f"分类 {project.name}"
-    )
-    hint = body.user_hint or ""
-    prompt = (
-        f"请为项目 {project.name} ({project.url}) 完成分类并落库。"
-        f"描述: {project.description or ''} 语言: {project.language or ''}。"
-        f"用户提示: {hint}。"
-        f"project_id={body.project_id}。"
-        "必须调用 set_project_category（必要时 set_project_tags）真正写入，"
-        "不要只 suggest；最后用一两句话说明结果与分类名。"
-    )
-
     async def event_gen():
-        hub = HubService(db)
-        async for chunk in hub.handle_direct_agent(
-            user=current_user,
-            session_id=session.id,
-            agent_id="curator",
-            message=prompt,
-            project_id=body.project_id,
+        async for chunk in stream_classify_project(
+            db,
+            current_user,
+            body.project_id,
+            user_hint=body.user_hint,
         ):
             yield chunk
 
@@ -440,36 +384,13 @@ async def generate_note(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    project = await get_project_owned_by_user(db, body.project_id, current_user.id)
-    if not project:
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            detail={"code": "FORBIDDEN", "message": "Project not found"},
-        )
-    from backend.services.agent_service import create_session
-    from backend.agents.hub import HubService
-
-    session = await create_session(
-        db, current_user.id, project_id=body.project_id, title=f"笔记 {project.name}"
-    )
-    mode = body.mode or "project"
-    topic = body.topic or project.name
-    prompt = (
-        f"请以 Scribe {mode} 模式为项目 {project.name} 生成学习笔记并保存到系统。"
-        f"主题: {topic}。URL: {project.url}。project_id={body.project_id}。"
-        f"{'检索相似已学项目做对比（仅当相似度高时），compare_project_ids 传入对比项' if mode == 'project' else '独立成文，不对比'}。"
-        "必须调用 create_note 写入数据库（title + 完整 Markdown content），"
-        "不要只输出草稿；落库后简述笔记标题与已保存。"
-    )
-
     async def event_gen():
-        hub = HubService(db)
-        async for chunk in hub.handle_direct_agent(
-            user=current_user,
-            session_id=session.id,
-            agent_id="scribe",
-            message=prompt,
-            project_id=body.project_id,
+        async for chunk in stream_generate_note(
+            db,
+            current_user,
+            body.project_id,
+            mode=body.mode,
+            topic=body.topic,
         ):
             yield chunk
 

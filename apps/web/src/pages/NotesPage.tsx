@@ -5,7 +5,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useNoteStore } from '@/stores/noteStore';
 import { useUIStore } from '@/stores/uiStore';
 import { getApi } from '@/api/client';
-import { asSSETextDelta } from '@/utils/sse-helpers';
+import { consumeAgentSSEStream } from '@/utils/agentSSEStream';
 import { NoteList } from '@/components/note/NoteList';
 import { NoteEditor } from '@/components/note/NoteEditor';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
@@ -117,21 +117,19 @@ export function NotesPage() {
         mode: 'project',
         topic: editorTitle || undefined,
       });
-      for await (const event of stream) {
-        if (event.event === 'text_delta') {
-          buf += asSSETextDelta(event.data).content;
-          setEditorContent(buf);
-          if (buf.startsWith('# ')) {
-            const firstLine = buf.split('\n')[0]?.replace(/^#\s*/, '').trim();
+      await consumeAgentSSEStream(stream, {
+        onTextDelta: (_piece, fullText) => {
+          buf = fullText;
+          setEditorContent(fullText);
+          if (fullText.startsWith('# ')) {
+            const firstLine = fullText.split('\n')[0]?.replace(/^#\s*/, '').trim();
             if (firstLine) setEditorTitle(firstLine.slice(0, 80));
           }
-        }
-        if (event.event === 'error') {
-          const msg =
-            (event.data as { message?: string })?.message ?? 'Scribe 生成失败';
+        },
+        onError: (msg) => {
           addToast({ type: 'error', message: msg });
-        }
-      }
+        },
+      });
       if (buf.trim()) {
         addToast({ type: 'success', message: 'Scribe 已生成笔记草稿' });
       }

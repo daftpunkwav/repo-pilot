@@ -20,6 +20,9 @@
     "typecheck:web": "npm run typecheck -w @repopilot/web",
     "test:api": "pytest tests -q",
     "test": "npm run test:api && npm run test:web",
+    "export:openapi": "python scripts/export_openapi.py",
+    "generate:types": "npm run export:openapi && npm run generate -w @repopilot/types",
+    "ci": "npm run generate:types && npm run test:api && npm run lint:web && npm run typecheck:web && npm run test:web",
     "dev:api": "uvicorn backend.main:app --reload --host 127.0.0.1 --port 19878 --app-dir services/api",
     "dev:agent": "uvicorn agent_runtime.main:app --reload --port 19877 --app-dir services/agent"
   }

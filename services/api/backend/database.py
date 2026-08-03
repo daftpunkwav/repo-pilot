@@ -71,10 +71,22 @@ async def get_session() -> AsyncSession:
 
 
 async def init_db() -> None:
-    """开发/测试环境建表（Alembic 落地前使用 create_all）。"""
-    import backend.models  # noqa: F401 — 注册全部 ORM metadata
-    from backend.migrations.schema_sync import sync_sqlite_schema
+    """应用启动时执行 Alembic upgrade 至 head（替代 create_all + schema_sync）。"""
+    import asyncio
 
-    async with get_engine().begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        await conn.run_sync(sync_sqlite_schema)
+    import backend.models  # noqa: F401 — 注册 ORM metadata 供 Alembic 环境使用
+
+    await asyncio.to_thread(_run_alembic_upgrade)
+
+
+def _run_alembic_upgrade() -> None:
+    """同步执行 alembic upgrade head（在线程中调用以免阻塞事件循环）。"""
+    from alembic import command
+    from alembic.config import Config
+
+    from backend.config import REPO_ROOT
+
+    cfg = Config(str(REPO_ROOT / "alembic.ini"))
+    # 确保使用当前 Settings 的 database_url（env.py 也会读 Settings）
+    command.upgrade(cfg, "head")
+

@@ -1,5 +1,6 @@
 /**
- * 共享 API 类型占位。
- * 后续从 services/api OpenAPI 规范自动生成，替代 apps/web 内手写 types。
+ * @repopilot/types — 由 packages/contracts/openapi.json 生成。
+ * 请运行: npm run generate:types
+ * 手写领域类型仍可放在 apps/web；生成类型从此包导入。
  */
-export {};
+export type * from './generated';
