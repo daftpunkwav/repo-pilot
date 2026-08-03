@@ -337,6 +337,8 @@ export interface AgentPermissions {
   allow_web_search: boolean;
   allow_github_api: boolean;
   allow_file_write: boolean;
+  allow_note_write: boolean;
+  allow_project_write: boolean;
   max_iterations: number;
   max_tokens_per_turn: number;
 }

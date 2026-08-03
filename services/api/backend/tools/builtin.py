@@ -298,7 +298,10 @@ async def list_categories(context=None, **kw):
 
 @tool(
     name="suggest_category",
-    description="为项目建议分类名称（不直接写入，由用户确认）。可创建候选。",
+    description=(
+        "仅作分类澄清/候选展示，不落库。"
+        "意图明确时请改用 set_project_category 直接写入。"
+    ),
     parameters={
         "type": "object",
         "properties": {
@@ -592,6 +595,14 @@ async def manage_session_projects(
         "project_ids": [str(i) for i in ids],
         "count": len(ids),
         "__session_projects__": True,
+        "__action__": "session_projects",
+        "summary": f"会话已绑定 {len(ids)} 个项目",
+        "links": [{"label": "项目库", "href": "/projects"}],
+        "resource": {
+            "type": "session",
+            "project_ids": [str(i) for i in ids],
+            "count": len(ids),
+        },
     }
 
 
@@ -641,6 +652,9 @@ async def propose_memory(
         "proposal": proposal,
         "message": "记忆提案已排队，需用户确认后才会写入画像",
         "__memory_proposal__": True,
+        "__action__": "memory_proposed",
+        "summary": "记忆提案已排队，需在侧栏确认后写入",
+        "ok": True,
     }
 
 
@@ -729,10 +743,9 @@ async def dispatch_agent(
 @tool(
     name="select_import_repos",
     description=(
-        "导入场景专用：在左侧列表中勾选/取消勾选仓库。"
-        "repo_keys 形如 owner/repo，必须来自 available_repo_keys。"
-        "action=set 替换当前勾选；add 追加；remove 取消。"
-        "勾选后向用户说明为何推荐这些项目，请用户确认后再点「导入选中」。"
+        "导入场景专用：在左侧列表中勾选/取消勾选仓库（不真正导入）。"
+        "repo_keys 形如 owner/repo。"
+        "用户已明确要求导入时，请改用 import_github_repos 真正写入项目库。"
     ),
     parameters={
         "type": "object",
@@ -770,11 +783,623 @@ async def select_import_repos(
         keys = [k for k in keys if k in avail_set]
     return {
         "__select_repos__": True,
+        "__action__": "repos_selected",
+        "ok": True,
         "repo_keys": keys,
         "action": action if action in ("set", "add", "remove") else "set",
         "reason": reason or "根据你的需求已在左侧勾选推荐仓库",
         "count": len(keys),
+        "summary": f"已勾选 {len(keys)} 个仓库（尚未导入）",
+        "links": [{"label": "打开项目库", "href": "/projects"}],
     }
+
+
+# ---------------------------------------------------------------------------
+# 真实写库工具（笔记 / 分类 / 标签 / 进度 / 导入）
+# ---------------------------------------------------------------------------
+
+
+def _action_result(
+    action: str,
+    *,
+    summary: str,
+    resource: dict[str, Any] | None = None,
+    links: list[dict[str, str]] | None = None,
+    **extra: Any,
+) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "__action__": action,
+        "ok": True,
+        "summary": summary,
+        "links": links or [],
+    }
+    if resource is not None:
+        out["resource"] = resource
+    out.update(extra)
+    return out
+
+
+async def _get_owned_project_or_error(context, project_id: str):
+    try:
+        pid = UUID(str(project_id).strip())
+    except ValueError:
+        return None, {"error": "无效 project_id"}
+    project = await context.db.get(Project, pid)
+    if not project or project.user_id != _uid(context):
+        return None, {"error": "项目不存在或无权访问"}
+    return project, None
+
+
+@tool(
+    name="create_note",
+    description=(
+        "在系统中真正创建并保存一篇笔记（写入数据库，用户可在笔记页反复查看）。"
+        "用户要求生成/保存笔记、对话总结、多项目对比笔记时必须调用本工具，"
+        "不要只输出正文而不落库。对比笔记：挂到主 project_id，"
+        "compare_project_ids 写入结果元数据，对比内容写在 content 里。"
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "project_id": {"type": "string", "description": "主项目 UUID"},
+            "title": {"type": "string"},
+            "content": {"type": "string", "description": "Markdown 正文"},
+            "compare_project_ids": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "可选，对比的其他项目 UUID",
+            },
+        },
+        "required": ["project_id", "title", "content"],
+    },
+    allowed_agents=["scribe", "hub"],
+    required_permission="allow_note_write",
+)
+async def create_note_tool(
+    context=None,
+    project_id: str = "",
+    title: str = "",
+    content: str = "",
+    compare_project_ids: list | None = None,
+    **kw,
+):
+    project, err = await _get_owned_project_or_error(context, project_id)
+    if err:
+        return err
+    title_s = (title or "").strip()
+    if not title_s:
+        return {"error": "标题不能为空"}
+    body = content if content is not None else ""
+    if len(body) > 100_000:
+        return {"error": "正文过长"}
+
+    compare_ids: list[str] = []
+    for raw in compare_project_ids or []:
+        s = str(raw).strip()
+        if not s:
+            continue
+        try:
+            cid = UUID(s)
+        except ValueError:
+            return {"error": f"无效 compare_project_id: {s}"}
+        other = await context.db.get(Project, cid)
+        if not other or other.user_id != _uid(context):
+            return {"error": f"对比项目不存在或无权访问: {s}"}
+        compare_ids.append(str(cid))
+
+    note = Note(
+        user_id=_uid(context),
+        project_id=project.id,
+        title=title_s[:256],
+        content=body,
+    )
+    context.db.add(note)
+    await context.db.commit()
+    await context.db.refresh(note)
+
+    href = f"/notes?note={note.id}&project={project.id}"
+    return _action_result(
+        "note_created",
+        summary=f"已创建笔记《{note.title}》",
+        resource={
+            "type": "note",
+            "id": str(note.id),
+            "title": note.title,
+            "project_id": str(project.id),
+            "project_name": project.name,
+            "compare_project_ids": compare_ids,
+        },
+        links=[
+            {"label": "打开笔记", "href": href},
+            {"label": "项目详情", "href": f"/projects/{project.id}"},
+        ],
+    )
+
+
+@tool(
+    name="update_note",
+    description="更新已有笔记的标题和/或正文（真实写入数据库）。",
+    parameters={
+        "type": "object",
+        "properties": {
+            "note_id": {"type": "string"},
+            "title": {"type": "string"},
+            "content": {"type": "string"},
+        },
+        "required": ["note_id"],
+    },
+    allowed_agents=["scribe", "hub"],
+    required_permission="allow_note_write",
+)
+async def update_note_tool(
+    context=None,
+    note_id: str = "",
+    title: str | None = None,
+    content: str | None = None,
+    **kw,
+):
+    try:
+        nid = UUID(str(note_id).strip())
+    except ValueError:
+        return {"error": "无效 note_id"}
+    note = await context.db.get(Note, nid)
+    if not note or note.user_id != _uid(context):
+        return {"error": "笔记不存在或无权访问"}
+    if title is not None:
+        t = str(title).strip()
+        if not t:
+            return {"error": "标题不能为空"}
+        note.title = t[:256]
+    if content is not None:
+        if len(content) > 100_000:
+            return {"error": "正文过长"}
+        note.content = content
+    from datetime import datetime
+
+    note.updated_at = datetime.utcnow()
+    await context.db.commit()
+    await context.db.refresh(note)
+    href = f"/notes?note={note.id}&project={note.project_id}"
+    return _action_result(
+        "note_updated",
+        summary=f"已更新笔记《{note.title}》",
+        resource={
+            "type": "note",
+            "id": str(note.id),
+            "title": note.title,
+            "project_id": str(note.project_id),
+        },
+        links=[{"label": "打开笔记", "href": href}],
+    )
+
+
+@tool(
+    name="ensure_category",
+    description="确保分类存在：按名称查找预设或用户分类，不存在则创建用户分类。",
+    parameters={
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "icon": {"type": "string"},
+            "color": {"type": "string"},
+        },
+        "required": ["name"],
+    },
+    allowed_agents=["curator", "hub"],
+    required_permission="allow_project_write",
+)
+async def ensure_category(
+    context=None,
+    name: str = "",
+    icon: str = "",
+    color: str = "",
+    **kw,
+):
+    name_s = (name or "").strip()
+    if not name_s:
+        return {"error": "分类名称不能为空"}
+    uid = _uid(context)
+    result = await context.db.execute(
+        select(Category).where(
+            (Category.name == name_s)
+            & ((Category.user_id == uid) | (Category.is_preset == True))  # noqa: E712
+        )
+    )
+    cat = result.scalars().first()
+    created = False
+    if not cat:
+        cat = Category(
+            user_id=uid,
+            name=name_s[:64],
+            icon=(icon or None) or None,
+            color=(color or None) or None,
+            is_preset=False,
+        )
+        context.db.add(cat)
+        await context.db.commit()
+        await context.db.refresh(cat)
+        created = True
+    return _action_result(
+        "category_ensured",
+        summary=("已创建分类" if created else "分类已存在") + f"「{cat.name}」",
+        resource={
+            "type": "category",
+            "id": str(cat.id),
+            "name": cat.name,
+            "created": created,
+        },
+        links=[{"label": "项目库", "href": "/projects"}],
+    )
+
+
+@tool(
+    name="set_project_category",
+    description=(
+        "为项目设置分类并立即写入数据库。"
+        "可传 category_id 或 category_name（名称不存在时会自动创建）。"
+        "意图明确时直接调用，不要只 suggest。"
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "project_id": {"type": "string"},
+            "category_id": {"type": "string"},
+            "category_name": {"type": "string"},
+        },
+        "required": ["project_id"],
+    },
+    allowed_agents=["curator", "hub"],
+    required_permission="allow_project_write",
+)
+async def set_project_category(
+    context=None,
+    project_id: str = "",
+    category_id: str = "",
+    category_name: str = "",
+    **kw,
+):
+    project, err = await _get_owned_project_or_error(context, project_id)
+    if err:
+        return err
+    uid = _uid(context)
+    cat: Category | None = None
+    if category_id:
+        try:
+            cid = UUID(str(category_id).strip())
+        except ValueError:
+            return {"error": "无效 category_id"}
+        cat = await context.db.get(Category, cid)
+        if not cat or (cat.user_id and cat.user_id != uid and not cat.is_preset):
+            return {"error": "分类不存在或无权使用"}
+    elif category_name:
+        name_s = category_name.strip()
+        result = await context.db.execute(
+            select(Category).where(
+                (Category.name == name_s)
+                & ((Category.user_id == uid) | (Category.is_preset == True))  # noqa: E712
+            )
+        )
+        cat = result.scalars().first()
+        if not cat:
+            cat = Category(user_id=uid, name=name_s[:64], is_preset=False)
+            context.db.add(cat)
+            await context.db.flush()
+    else:
+        return {"error": "需提供 category_id 或 category_name"}
+
+    project.category_id = cat.id
+    await context.db.commit()
+    return _action_result(
+        "category_applied",
+        summary=f"已将「{project.name}」归入分类「{cat.name}」",
+        resource={
+            "type": "project",
+            "id": str(project.id),
+            "name": project.name,
+            "category_id": str(cat.id),
+            "category_name": cat.name,
+        },
+        links=[{"label": "打开项目", "href": f"/projects/{project.id}"}],
+    )
+
+
+@tool(
+    name="list_tags",
+    description="列出当前用户的全部标签。",
+    parameters={"type": "object", "properties": {}},
+    allowed_agents=["curator", "hub", "navigator", "scribe"],
+)
+async def list_tags(context=None, **kw):
+    from backend.services.tag_service import list_user_tags
+
+    tags = await list_user_tags(context.db, _uid(context))
+    return {
+        "tags": [{"id": str(t.id), "name": t.name, "count": t.count} for t in tags],
+        "count": len(tags),
+    }
+
+
+@tool(
+    name="ensure_tags",
+    description="按名称确保标签存在，不存在则创建；返回标签 id 列表。",
+    parameters={
+        "type": "object",
+        "properties": {
+            "names": {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+        },
+        "required": ["names"],
+    },
+    allowed_agents=["curator", "hub"],
+    required_permission="allow_project_write",
+)
+async def ensure_tags(context=None, names: list | None = None, **kw):
+    uid = _uid(context)
+    wanted = [str(n).strip() for n in (names or []) if str(n).strip()]
+    if not wanted:
+        return {"error": "names 不能为空"}
+    existing = (
+        await context.db.execute(select(Tag).where(Tag.user_id == uid))
+    ).scalars().all()
+    by_name = {t.name: t for t in existing}
+    created: list[str] = []
+    out: list[dict[str, str]] = []
+    for name in wanted:
+        tag = by_name.get(name)
+        if not tag:
+            tag = Tag(user_id=uid, name=name[:64])
+            context.db.add(tag)
+            await context.db.flush()
+            by_name[name] = tag
+            created.append(name)
+        out.append({"id": str(tag.id), "name": tag.name})
+    await context.db.commit()
+    return _action_result(
+        "tags_ensured",
+        summary=f"已准备 {len(out)} 个标签" + (f"（新建 {len(created)}）" if created else ""),
+        resource={"type": "tags", "tags": out, "created_names": created},
+        links=[{"label": "项目库", "href": "/projects"}],
+    )
+
+
+@tool(
+    name="set_project_tags",
+    description=(
+        "为项目设置标签并写入数据库。"
+        "可传 tag_ids，或传 tag_names（自动 ensure）。"
+        "mode=replace 替换全部；mode=add 追加。"
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "project_id": {"type": "string"},
+            "tag_ids": {"type": "array", "items": {"type": "string"}},
+            "tag_names": {"type": "array", "items": {"type": "string"}},
+            "mode": {"type": "string", "enum": ["replace", "add"], "default": "replace"},
+        },
+        "required": ["project_id"],
+    },
+    allowed_agents=["curator", "hub"],
+    required_permission="allow_project_write",
+)
+async def set_project_tags_tool(
+    context=None,
+    project_id: str = "",
+    tag_ids: list | None = None,
+    tag_names: list | None = None,
+    mode: str = "replace",
+    **kw,
+):
+    from backend.services.tag_service import get_project_tag_ids, set_project_tags
+
+    project, err = await _get_owned_project_or_error(context, project_id)
+    if err:
+        return err
+    uid = _uid(context)
+    resolved: list[UUID] = []
+
+    for raw in tag_ids or []:
+        try:
+            resolved.append(UUID(str(raw).strip()))
+        except ValueError:
+            return {"error": f"无效 tag_id: {raw}"}
+
+    names = [str(n).strip() for n in (tag_names or []) if str(n).strip()]
+    if names:
+        existing = (
+            await context.db.execute(select(Tag).where(Tag.user_id == uid))
+        ).scalars().all()
+        by_name = {t.name: t for t in existing}
+        for name in names:
+            tag = by_name.get(name)
+            if not tag:
+                tag = Tag(user_id=uid, name=name[:64])
+                context.db.add(tag)
+                await context.db.flush()
+                by_name[name] = tag
+            if tag.id not in resolved:
+                resolved.append(tag.id)
+
+    act = (mode or "replace").strip().lower()
+    if act == "add":
+        current = await get_project_tag_ids(context.db, project.id)
+        for s in current:
+            tid = UUID(s)
+            if tid not in resolved:
+                resolved.append(tid)
+
+    result = await set_project_tags(context.db, uid, project.id, resolved)
+    if result is None:
+        return {"error": "设置标签失败"}
+
+    # 再取名称便于 UI
+    tag_rows = []
+    if result.tag_ids:
+        rows = (
+            await context.db.execute(
+                select(Tag).where(Tag.user_id == uid, Tag.id.in_(result.tag_ids))
+            )
+        ).scalars().all()
+        tag_rows = [{"id": str(t.id), "name": t.name} for t in rows]
+
+    names_joined = "、".join(t["name"] for t in tag_rows) or "（清空）"
+    return _action_result(
+        "tags_applied",
+        summary=f"已为「{project.name}」设置标签：{names_joined}",
+        resource={
+            "type": "project",
+            "id": str(project.id),
+            "name": project.name,
+            "tags": tag_rows,
+            "mode": act,
+        },
+        links=[{"label": "打开项目", "href": f"/projects/{project.id}"}],
+    )
+
+
+@tool(
+    name="update_project_progress",
+    description=(
+        "更新项目学习进度并写入数据库。"
+        "progress: none | learning | learned | mastered。"
+        "用户说已掌握/学完/开始学时调用。"
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "project_id": {"type": "string"},
+            "progress": {
+                "type": "string",
+                "enum": ["none", "learning", "learned", "mastered"],
+            },
+        },
+        "required": ["project_id", "progress"],
+    },
+    allowed_agents=["curator", "navigator", "hub", "mentor"],
+    required_permission="allow_project_write",
+)
+async def update_project_progress(
+    context=None,
+    project_id: str = "",
+    progress: str = "",
+    **kw,
+):
+    project, err = await _get_owned_project_or_error(context, project_id)
+    if err:
+        return err
+    allowed = {"none", "learning", "learned", "mastered"}
+    prog = (progress or "").strip().lower()
+    if prog not in allowed:
+        return {"error": f"无效 progress，可选: {', '.join(sorted(allowed))}"}
+    prev = project.progress
+    project.progress = prog
+    await context.db.commit()
+    labels = {
+        "none": "未开始",
+        "learning": "学习中",
+        "learned": "已学会",
+        "mastered": "已掌握",
+    }
+    return _action_result(
+        "progress_updated",
+        summary=f"已将「{project.name}」进度改为「{labels.get(prog, prog)}」",
+        resource={
+            "type": "project",
+            "id": str(project.id),
+            "name": project.name,
+            "progress": prog,
+            "previous_progress": prev,
+        },
+        links=[{"label": "打开项目", "href": f"/projects/{project.id}"}],
+    )
+
+
+@tool(
+    name="import_github_repos",
+    description=(
+        "真正将 GitHub 仓库导入用户项目库（写入数据库）。"
+        "repos 每项为 owner/repo 或 {owner,repo,url}。"
+        "用户明确要求导入时调用；仅勾选预览请用 select_import_repos。"
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "repos": {
+                "type": "array",
+                "items": {
+                    "anyOf": [
+                        {"type": "string"},
+                        {
+                            "type": "object",
+                            "properties": {
+                                "owner": {"type": "string"},
+                                "repo": {"type": "string"},
+                                "url": {"type": "string"},
+                            },
+                        },
+                    ]
+                },
+            },
+        },
+        "required": ["repos"],
+    },
+    allowed_agents=["curator", "hub"],
+    required_permission="allow_project_write",
+    timeout_ms=120_000,
+)
+async def import_github_repos(
+    context=None,
+    repos: list | None = None,
+    **kw,
+):
+    from backend.schemas.project import ImportRepoItem
+    from backend.services.project_service import import_repos
+
+    items: list[ImportRepoItem] = []
+    for raw in repos or []:
+        owner = repo = url = ""
+        if isinstance(raw, str):
+            parts = raw.strip().split("/")
+            if len(parts) == 2:
+                owner, repo = parts[0], parts[1]
+        elif isinstance(raw, dict):
+            owner = str(raw.get("owner") or "").strip()
+            repo = str(raw.get("repo") or "").strip()
+            url = str(raw.get("url") or "").strip()
+            if (not owner or not repo) and raw.get("full_name"):
+                fn = str(raw["full_name"]).strip().split("/")
+                if len(fn) == 2:
+                    owner, repo = fn[0], fn[1]
+        so, sr = _safe_github_name(owner), _safe_github_name(repo)
+        if not so or not sr:
+            return {"error": f"无效仓库标识: {raw}"}
+        if not url:
+            url = f"https://github.com/{so}/{sr}"
+        try:
+            items.append(ImportRepoItem(owner=so, repo=sr, url=url))
+        except Exception as e:
+            return {"error": f"无效导入项 {so}/{sr}: {e}"}
+
+    if not items:
+        return {"error": "repos 不能为空"}
+
+    result = await import_repos(context.db, _uid(context), items)
+    return _action_result(
+        "repos_imported",
+        summary=result.summary,
+        resource={
+            "type": "import",
+            "succeeded": result.succeeded,
+            "failed": result.failed,
+            "errors": result.errors,
+            "requested": [f"{i.owner}/{i.repo}" for i in items],
+        },
+        links=[{"label": "查看项目库", "href": "/projects"}],
+        succeeded=result.succeeded,
+        failed=result.failed,
+    )
 
 
 def ensure_tools_loaded() -> None:

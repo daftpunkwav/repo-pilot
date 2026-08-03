@@ -1,7 +1,12 @@
+import { ActionResultCard } from '@/components/agent/ActionResultCard';
+import { parseActionResult } from '@/utils/actionResult';
+
 interface ToolCallCardProps {
   name: string;
   args: Record<string, unknown>;
   result?: unknown;
+  /** 是否在工具行上方渲染 ActionResultCard（外层已汇总时可关） */
+  showAction?: boolean;
 }
 
 function previewArgs(args: Record<string, unknown>): string {
@@ -12,6 +17,9 @@ function previewArgs(args: Record<string, unknown>): string {
     'target_agent',
     'name',
     'project_id',
+    'title',
+    'category_name',
+    'progress',
     'owner',
     'repo',
     'path',
@@ -42,38 +50,53 @@ function formatBlock(value: unknown): string {
   }
 }
 
-/** 工具调用：气泡外细行，默认收起，避免嵌套厚卡片 */
-export function ToolCallCard({ name, args, result }: ToolCallCardProps) {
+/** 工具调用：成功写操作优先结果卡；技术细节默认收起 */
+export function ToolCallCard({
+  name,
+  args,
+  result,
+  showAction = true,
+}: ToolCallCardProps) {
   const done = result !== undefined;
+  const action = parseActionResult(result);
   const argPreview = previewArgs(args);
 
   return (
-    <details className={`tool-call ${done ? 'is-done' : 'is-running'}`}>
-      <summary className="tool-call__summary">
-        <span className="tool-call__caret" aria-hidden>
-          ▸
-        </span>
-        <span className="tool-call__dot" aria-hidden />
-        <span className="tool-call__name">{name}</span>
-        {argPreview && (
-          <span className="tool-call__preview" title={argPreview}>
-            {argPreview}
+    <div className={`tool-call-block ${done ? 'is-done' : 'is-running'}`}>
+      {showAction && action && <ActionResultCard result={result} toolName={name} />}
+      <details className={`tool-call ${done ? 'is-done' : 'is-running'}`}>
+        <summary className="tool-call__summary">
+          <span className="tool-call__caret" aria-hidden>
+            ▸
           </span>
-        )}
-        <span className="tool-call__status">{done ? '完成' : '调用中'}</span>
-      </summary>
-      <div className="tool-call__panel">
-        <div className="tool-call__section">
-          <span className="tool-call__k">参数</span>
-          <pre className="tool-call__code">{formatBlock(args)}</pre>
-        </div>
-        {done && (
+          <span className="tool-call__dot" aria-hidden />
+          <span className="tool-call__name">{name}</span>
+          {action ? (
+            <span className="tool-call__preview" title={action.summary}>
+              {action.summary}
+            </span>
+          ) : (
+            argPreview && (
+              <span className="tool-call__preview" title={argPreview}>
+                {argPreview}
+              </span>
+            )
+          )}
+          <span className="tool-call__status">{done ? '完成' : '调用中'}</span>
+        </summary>
+        <div className="tool-call__panel">
           <div className="tool-call__section">
-            <span className="tool-call__k">结果</span>
-            <pre className="tool-call__code">{formatBlock(result)}</pre>
+            <span className="tool-call__k">参数</span>
+            <pre className="tool-call__code">{formatBlock(args)}</pre>
           </div>
-        )}
-      </div>
-    </details>
+          {done && (
+            <div className="tool-call__section">
+              <span className="tool-call__k">结果</span>
+              <pre className="tool-call__code">{formatBlock(result)}</pre>
+            </div>
+          )}
+        </div>
+      </details>
+    </div>
   );
 }

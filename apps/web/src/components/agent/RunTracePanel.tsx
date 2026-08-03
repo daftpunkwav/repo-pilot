@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import type { AgentId, ToolCallData } from '@/api/types';
 import { ToolCallCard } from '@/components/agent/ToolCallCard';
+import { ActionResultCard } from '@/components/agent/ActionResultCard';
 import { AGENT_INITIALS, AGENT_ROLE_LABELS } from '@/utils/labels';
 import { displaySwitchReason } from '@/utils/agentSwitchDisplay';
+import { actionSummaryFromToolResult, parseActionResult } from '@/utils/actionResult';
 import {
   agentDisplayName,
   type SubagentTrace,
@@ -15,7 +17,18 @@ interface RunTracePanelProps {
   defaultOpenAgentId?: string | null;
 }
 
-/** 落盘后的调度/工具踪迹：可点击内嵌 Agent 查看其思考过程 */
+function subagentStatusLabel(
+  sa: SubagentTrace,
+  actionHint: string | null
+): string {
+  if (sa.status === 'running') return '执行中';
+  if (sa.status === 'question') return '等待回答';
+  if (sa.status === 'error') return '失败';
+  if (actionHint) return actionHint;
+  return '完成';
+}
+
+/** 落盘后的调度/工具踪迹：结果卡优先，技术细节可展开 */
 export function RunTracePanel({
   toolCalls,
   subagents,
@@ -24,10 +37,29 @@ export function RunTracePanel({
   const [openId, setOpenId] = useState<string | null>(defaultOpenAgentId);
   const tools = (toolCalls ?? []).filter((t) => t.name !== 'ask_user');
   const agents = subagents ?? [];
+  const actionTools = tools.filter((t) => parseActionResult(t.result) != null);
+  const otherTools = tools.filter((t) => parseActionResult(t.result) == null);
+  const latestActionSummary =
+    [...actionTools]
+      .reverse()
+      .map((t) => actionSummaryFromToolResult(t.result))
+      .find(Boolean) ?? null;
+
   if (tools.length === 0 && agents.length === 0) return null;
 
   return (
     <div className="run-trace" data-testid="run-trace">
+      {actionTools.length > 0 && (
+        <div className="run-trace__actions" aria-label="执行结果">
+          {actionTools.map((tc, i) => (
+            <ActionResultCard
+              key={`act_${tc.name}_${i}`}
+              result={tc.result}
+              toolName={tc.name}
+            />
+          ))}
+        </div>
+      )}
       {agents.length > 0 && (
         <div className="hub-subagents" aria-label="内嵌 Agent">
           {agents.map((sa) => {
@@ -59,13 +91,10 @@ export function RunTracePanel({
                       </span>
                     </span>
                     <span className="hub-subagent__status">
-                      {sa.status === 'running'
-                        ? '执行中'
-                        : sa.status === 'question'
-                          ? '等待回答'
-                          : sa.status === 'error'
-                            ? '失败'
-                            : '完成'}
+                      {subagentStatusLabel(
+                        sa,
+                        agents.length === 1 ? latestActionSummary : null
+                      )}
                       {hasThinking ? (open ? ' · 收起过程' : ' · 查看过程') : ''}
                     </span>
                     {sa.reason && (
@@ -85,14 +114,24 @@ export function RunTracePanel({
           })}
         </div>
       )}
-      {tools.map((tc, i) => (
-        <ToolCallCard
-          key={`${tc.name}_${i}`}
-          name={tc.name}
-          args={tc.args}
-          result={tc.result}
-        />
-      ))}
+      {(otherTools.length > 0 || actionTools.length > 0) && (
+        <details className="run-trace__tech" open={actionTools.length === 0}>
+          <summary className="run-trace__tech-summary">
+            技术详情（{tools.length} 次工具调用）
+          </summary>
+          <div className="run-trace__tech-body">
+            {tools.map((tc, i) => (
+              <ToolCallCard
+                key={`${tc.name}_${i}`}
+                name={tc.name}
+                args={tc.args}
+                result={tc.result}
+                showAction={false}
+              />
+            ))}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

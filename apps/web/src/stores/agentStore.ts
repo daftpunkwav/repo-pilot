@@ -31,6 +31,7 @@ import { ensureSessionProjectsFromMessage } from '@/utils/sessionProjectBind';
 import { isStreamSessionActive } from '@/utils/streamSessionGuard';
 import { displaySwitchReason } from '@/utils/agentSwitchDisplay';
 import { snapshotSubagents, snapshotToolCalls } from '@/utils/runTrace';
+import { parseActionResult } from '@/utils/actionResult';
 
 interface ToolCallEntry {
   name: string;
@@ -45,6 +46,13 @@ export interface SubagentProgress {
   status: 'running' | 'ok' | 'question' | 'error';
 }
 
+export interface SelectReposState {
+  repo_keys: string[];
+  action: string;
+  reason: string;
+  count: number;
+}
+
 interface AgentState {
   sessions: AgentSession[];
   currentSessionId: string | null;
@@ -57,6 +65,10 @@ interface AgentState {
   toolCalls: Map<string, ToolCallEntry>;
   /** Hub 汇总模式下的静默 Subagent 进度（不改 activeAgent） */
   subagents: SubagentProgress[];
+  /** 导入助手勾选事件（主 Chat 也可展示） */
+  lastSelectRepos: SelectReposState | null;
+  /** 写操作成功后递增，供侧栏刷新 */
+  contextRevision: number;
   error: string | null;
   streamAbortController: AbortController | null;
   loadSessions: () => Promise<void>;
@@ -84,6 +96,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   pendingQuestion: null,
   toolCalls: new Map(),
   subagents: [],
+  lastSelectRepos: null,
+  contextRevision: 0,
   error: null,
   streamAbortController: null,
 
@@ -505,6 +519,48 @@ export const useAgentStore = create<AgentState>((set, get) => ({
                 }));
               }
             }
+            // 写操作成功：刷新侧栏上下文 revision
+            const action = parseActionResult(resultPayload);
+            if (action?.ok) {
+              set((state) => ({ contextRevision: state.contextRevision + 1 }));
+            }
+            break;
+          }
+          case 'select_repos': {
+            if (!stillOnOrigin()) break;
+            const data = event.data as Record<string, unknown>;
+            const keys = Array.isArray(data.repo_keys)
+              ? data.repo_keys.map(String).filter(Boolean)
+              : [];
+            const selectState: SelectReposState = {
+              repo_keys: keys,
+              action: typeof data.action === 'string' ? data.action : 'set',
+              reason: typeof data.reason === 'string' ? data.reason : '',
+              count: typeof data.count === 'number' ? data.count : keys.length,
+            };
+            set({ lastSelectRepos: selectState });
+            // 同步进工具结果展示（无对应 call_id 时合成一条）
+            set((state) => {
+              const newMap = new Map(state.toolCalls);
+              newMap.set(`select_repos_${Date.now()}`, {
+                name: 'select_import_repos',
+                args: { repo_keys: keys, action: selectState.action },
+                result: {
+                  __action__: 'repos_selected',
+                  __select_repos__: true,
+                  ok: true,
+                  repo_keys: keys,
+                  action: selectState.action,
+                  reason: selectState.reason,
+                  count: selectState.count,
+                  summary:
+                    selectState.reason ||
+                    `已勾选 ${selectState.count} 个仓库（尚未导入）`,
+                  links: [{ label: '打开项目库', href: '/projects' }],
+                },
+              });
+              return { toolCalls: newMap };
+            });
             break;
           }
           case 'agent_switch': {

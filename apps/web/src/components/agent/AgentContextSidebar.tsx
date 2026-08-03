@@ -61,11 +61,22 @@ export function AgentContextSidebar({
   const qc = useQueryClient();
   const [projectSearch, setProjectSearch] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const contextRevision = useAgentStore((s) => s.contextRevision);
 
   const { data: profile } = useQuery({
     queryKey: ['userProfile'],
     queryFn: async () => (await getApi().getUserProfile()).data,
   });
+
+  // 写操作成功后刷新会话绑定项目与项目库
+  useEffect(() => {
+    if (contextRevision <= 0) return;
+    void qc.invalidateQueries({ queryKey: ['agentSession', sessionId] });
+    void qc.invalidateQueries({ queryKey: ['sessionBoundProjects'] });
+    void qc.invalidateQueries({ queryKey: ['projects'] });
+    void qc.invalidateQueries({ queryKey: ['userProfile'] });
+    void qc.invalidateQueries({ queryKey: ['notes'] });
+  }, [contextRevision, qc, sessionId]);
 
   // 随活跃会话拉取真实绑定项目
   const { data: sessionDetail } = useQuery({

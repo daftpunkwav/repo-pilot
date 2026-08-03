@@ -360,9 +360,12 @@ async def classify_project(
     )
     hint = body.user_hint or ""
     prompt = (
-        f"请用 Curator Reflexion 流程为项目 {project.name} ({project.url}) 建议分类。"
+        f"请为项目 {project.name} ({project.url}) 完成分类并落库。"
         f"描述: {project.description or ''} 语言: {project.language or ''}。"
-        f"用户提示: {hint}"
+        f"用户提示: {hint}。"
+        f"project_id={body.project_id}。"
+        "必须调用 set_project_category（必要时 set_project_tags）真正写入，"
+        "不要只 suggest；最后用一两句话说明结果与分类名。"
     )
 
     async def event_gen():
@@ -400,9 +403,11 @@ async def generate_note(
     mode = body.mode or "project"
     topic = body.topic or project.name
     prompt = (
-        f"请以 Scribe {mode} 模式为项目 {project.name} 生成学习笔记大纲与正文草稿。"
-        f"主题: {topic}。URL: {project.url}。"
-        f"{'检索相似已学项目做对比（仅当相似度高时）' if mode == 'project' else '独立成文，不对比'}。"
+        f"请以 Scribe {mode} 模式为项目 {project.name} 生成学习笔记并保存到系统。"
+        f"主题: {topic}。URL: {project.url}。project_id={body.project_id}。"
+        f"{'检索相似已学项目做对比（仅当相似度高时），compare_project_ids 传入对比项' if mode == 'project' else '独立成文，不对比'}。"
+        "必须调用 create_note 写入数据库（title + 完整 Markdown content），"
+        "不要只输出草稿；落库后简述笔记标题与已保存。"
     )
 
     async def event_gen():

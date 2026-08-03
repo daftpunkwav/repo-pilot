@@ -1076,6 +1076,8 @@ export class MockApiClient implements IApiClient {
       allow_web_search: true,
       allow_github_api: true,
       allow_file_write: false,
+      allow_note_write: true,
+      allow_project_write: true,
       max_iterations: 10,
       max_tokens_per_turn: 4096,
     });

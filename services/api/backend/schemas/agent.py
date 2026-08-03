@@ -86,6 +86,9 @@ class AgentPermissionsOut(BaseModel):
     allow_web_search: bool = True
     allow_github_api: bool = True
     allow_file_write: bool = False
+    # Agent 真实写库：笔记 / 项目分类标签进度导入（默认开启，可在设置关闭）
+    allow_note_write: bool = True
+    allow_project_write: bool = True
     max_iterations: int = 10
     max_tokens_per_turn: int = 4096
 
@@ -96,6 +99,8 @@ class AgentPermissionsUpdate(BaseModel):
     allow_web_search: bool | None = None
     allow_github_api: bool | None = None
     allow_file_write: bool | None = None
+    allow_note_write: bool | None = None
+    allow_project_write: bool | None = None
     max_iterations: int | None = Field(None, ge=1, le=50)
     max_tokens_per_turn: int | None = Field(None, ge=256, le=128_000)
 

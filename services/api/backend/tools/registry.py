@@ -15,6 +15,14 @@ ToolHandler = Callable[..., Awaitable[Any]]
 TOOL_PERMISSION_MAP: dict[str, str] = {
     "fetch_github_repo": "allow_github_api",
     "fetch_readme": "allow_github_api",
+    "create_note": "allow_note_write",
+    "update_note": "allow_note_write",
+    "ensure_category": "allow_project_write",
+    "set_project_category": "allow_project_write",
+    "ensure_tags": "allow_project_write",
+    "set_project_tags": "allow_project_write",
+    "update_project_progress": "allow_project_write",
+    "import_github_repos": "allow_project_write",
 }
 
 # 权限默认值（与 AgentPermissionsOut 对齐）
@@ -22,6 +30,8 @@ _PERMISSION_DEFAULTS: dict[str, bool] = {
     "allow_web_search": True,
     "allow_github_api": True,
     "allow_file_write": False,
+    "allow_note_write": True,
+    "allow_project_write": True,
 }
 
 
