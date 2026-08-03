@@ -52,3 +52,6 @@ docs/design/v1/.playwright-mcp/
 
 # Local AI / agent state
 .reasonix/
+
+# 本地临时脚本/冒烟产物（可能含密钥与截图，禁止入库）
+tmp/
