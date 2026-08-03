@@ -136,7 +136,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     set({
       currentSessionId: sessionId,
       messages,
-      activeAgent: response.data.agent,
+      activeAgent: response.data.agent as AgentId | undefined,
       pendingQuestion: pending,
       streaming: false,
       streamingContent: '',

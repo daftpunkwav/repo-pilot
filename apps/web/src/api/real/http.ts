@@ -1,5 +1,5 @@
 /** HTTP 客户端 —— 真实后端请求；凭证走 httpOnly Cookie + credentials */
-import type { ApiResponse } from '@/api/types';
+import type { ApiResponse } from '@repopilot/types';
 
 const API_PREFIX = '/api/v1';
 

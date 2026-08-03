@@ -1,134 +1,87 @@
-// ========================================
-// 统一响应
-// ========================================
+/**
+ * Web API / 领域类型。
+ *
+ * - 与后端契约对齐的类型：从 `@repopilot/types` 再导出（OpenAPI 权威源）
+ * - 前端专属（SSE、反问 UI、图谱可视化等）：本文件定义
+ */
+export type {
+  paths,
+  components,
+  operations,
+  Schemas,
+  ApiResponse,
+  ApiError,
+  PaginatedList,
+  User,
+  UserCreate,
+  UserLogin,
+  UserUpdate,
+  UserProfile,
+  UserProfileUpdate,
+  AuthTokens,
+  LoginResponse,
+  TokenOut,
+  GithubAccount,
+  GitHubAccount,
+  StarRepo,
+  StarsList,
+  ImportResult,
+  ImportRepoItem,
+  Project,
+  ProjectCreate,
+  ProjectUpdate,
+  ProjectReadme,
+  ProjectStats,
+  ProjectProgress,
+  ProjectSource,
+  Category,
+  CategoryCreate,
+  CategoryUpdate,
+  Tag,
+  TagCreate,
+  Note,
+  NoteCreate,
+  NoteUpdate,
+  ActivityItem,
+  TrendingRepo,
+  TrendingScoutBody,
+  RecommendedProject,
+  OverviewRecentNote,
+  AgentSession,
+  AgentSessionDetail,
+  AgentMessageOut,
+  AgentProfile,
+  AgentPermissions,
+  AgentPermissionsUpdate,
+  AgentLlmConfig,
+  AgentGuideline,
+  AgentChatBody,
+  AgentChatRequest,
+  AgentQuestionAnswer,
+  Settings,
+  SettingsUpdate,
+  MemoryItem,
+  MemoryProposal,
+  ContextWindowSegment,
+  ContextWindowStats,
+  Goal,
+  LlmTestResult,
+  ProgressUpdate,
+  SetProjectTagsBody,
+  SetProjectTagsResult,
+} from '@repopilot/types';
 
-export interface ApiResponse<T> {
-  data: T;
-  meta: {
-    ts: number;
-    page?: number;
-    page_size?: number;
-    total?: number;
-  };
-}
+/** @deprecated 请优先用 ProjectCreate */
+export type { ProjectCreate as CreateProjectInput } from '@repopilot/types';
 
-export interface ApiError {
-  error: {
-    code: string;
-    message: string;
-    details?: Array<{ field: string; message: string }>;
-  };
-}
-
-// ========================================
-// 分页
-// ========================================
-
-export interface PaginatedList<T> {
-  items: T[];
-  total: number;
-  page: number;
-  page_size: number;
-}
-
-// ========================================
-// User
-// ========================================
-
-export interface User {
-  id: string;
-  username: string;
-  email?: string;
-  avatar_url?: string;
-  github_login?: string;
-  github_bound: boolean;
-  created_at: string;
-}
-
-// ========================================
-// Auth
-// ========================================
-
-export interface AuthTokens {
-  access_token?: string | null;
-  refresh_token?: string | null;
-}
-
-export interface LoginResponse {
-  access_token?: string | null;
-  refresh_token?: string | null;
-  user: User;
-}
-
-// ========================================
-// GitHub
-// ========================================
-
-export interface GitHubAccount {
-  id: string;
-  username: string;
-  avatar_url?: string;
-  bound_at: string;
-}
-
-export interface StarRepo {
-  owner: string;
-  repo: string;
-  url: string;
-  description?: string;
-  language?: string;
-  stars: number;
-  already_imported: boolean;
-}
-
-export interface ImportResult {
-  succeeded: number;
-  failed: number;
-  summary: string;
-  errors?: Array<{ repo: string; reason: string }>;
-}
+/** Stars 列表查询结果（别名） */
+export type { StarsList as StarsListResult } from '@repopilot/types';
 
 // ========================================
-// Project
+// 前端查询参数 / 图谱 / Agent UI（OpenAPI 未建模或需收紧）
 // ========================================
 
-export type ProjectProgress = 'none' | 'learning' | 'learned' | 'mastered';
-export type ProjectSource = 'github' | 'manual';
-
-/** 按需拉取的项目 README */
-export interface ProjectReadme {
-  content?: string | null;
-  source: 'github' | 'empty' | 'error';
-  message?: string | null;
-  owner?: string | null;
-  repo?: string | null;
-}
-
-export interface Project {
-  id: string;
-  name: string;
-  url: string;
-  description?: string;
-  language?: string;
-  stars: number;
-  category_id?: string;
-  progress: ProjectProgress;
-  tags: string[];
-  source: ProjectSource;
-  imported_at: string;
-  updated_at?: string;
-  /** 兼容 mock；真实 API 请用 getProjectReadme */
-  readme?: string;
-  readme_fetched_at?: string;
-}
-
-export interface CreateProjectInput {
-  name: string;
-  url: string;
-  description?: string;
-  category_id?: string;
-  tags?: string[];
-}
+import type { ProjectProgress } from '@repopilot/types';
 
 export interface ProjectListParams {
   search?: string;
@@ -142,48 +95,6 @@ export interface ProjectListParams {
   page_size?: number;
 }
 
-export interface ProjectStats {
-  total: number;
-  by_progress: Record<ProjectProgress, number>;
-  by_category: Record<string, number>;
-  by_language: Record<string, number>;
-}
-
-// ========================================
-// Category & Tag
-// ========================================
-
-export interface Category {
-  id: string;
-  name: string;
-  icon?: string;
-  color?: string;
-  is_preset: boolean;
-}
-
-export interface Tag {
-  id: string;
-  name: string;
-  count: number;
-}
-
-// ========================================
-// Note
-// ========================================
-
-export interface Note {
-  id: string;
-  project_id: string;
-  title: string;
-  content: string;
-  created_at: string;
-  updated_at: string;
-}
-
-// ========================================
-// Graph
-// ========================================
-
 export interface GraphData {
   nodes: GraphNode[];
   edges: GraphEdge[];
@@ -192,9 +103,9 @@ export interface GraphData {
 export interface GraphNode {
   id: string;
   name: string;
-  language?: string;
+  language?: string | null;
   stars: number;
-  category_id?: string;
+  category_id?: string | null;
   progress?: ProjectProgress;
 }
 
@@ -204,42 +115,13 @@ export interface GraphEdge {
   similarity: number;
 }
 
-// ========================================
-// Overview 扩展
-// ========================================
-
 export type TrendingPeriod = 'daily' | 'weekly' | 'monthly';
 
-export interface TrendingRepo {
-  owner: string;
-  repo: string;
-  url: string;
-  description?: string;
-  language?: string;
-  stars: number;
-  stars_today?: number;
-  rank?: number;
-}
-
-/** Scout 总览 trending 悬停介绍（SSE 流式） */
 export interface TrendingScoutIntroParams {
   owner: string;
   repo: string;
   period?: TrendingPeriod;
 }
-
-export interface ActivityItem {
-  id: string;
-  type: 'import' | 'note' | 'agent' | 'progress';
-  title: string;
-  description: string;
-  created_at: string;
-  project_id?: string;
-}
-
-// ========================================
-// Agent
-// ========================================
 
 export type AgentId =
   | 'hub'
@@ -250,55 +132,18 @@ export type AgentId =
   | 'scribe'
   | 'atlas';
 
-/** Agent 个性化推荐项目（总览「为你推荐」） */
-export interface RecommendedProject {
-  id: string;
-  project_id: string;
-  name: string;
-  url: string;
-  description?: string;
-  language?: string;
-  stars: number;
-  /** Agent 推荐理由，悬停展示 */
-  reason: string;
-  recommended_by: AgentId;
-}
-
-/** 总览最近笔记（含项目名称，便于列表展示） */
-export interface OverviewRecentNote {
-  id: string;
-  project_id: string;
-  project_name: string;
-  title: string;
-  updated_at: string;
-}
 export type MessageRole = 'user' | 'assistant' | 'tool' | 'system';
 
-export interface AgentSession {
-  id: string;
-  title: string;
-  agent: AgentId;
-  updated_at: string;
-  unread: boolean;
-  project_id?: string | null;
-  /** 会话绑定的多项目上下文 */
-  project_ids?: string[];
-  /** chat=用户主动；analyze=详情页快速分析 */
-  source?: 'chat' | 'analyze' | string;
-}
-
+/** 前端气泡消息（比 AgentMessageOut 更结构化） */
 export interface AgentMessage {
   id: string;
   session_id: string;
   agent: AgentId;
   role: MessageRole;
   content?: string;
-  /** 本轮流式思考/阶段状态（前端落盘，便于回看） */
   thinking?: string;
   tool_call?: ToolCallData;
-  /** 本轮工具调用踪迹（落盘后仍展示） */
   tool_calls?: ToolCallData[];
-  /** 内嵌专家进度、思考与输出（默认收起，可展开） */
   subagents?: Array<{
     agentId: AgentId;
     task?: string;
@@ -307,11 +152,8 @@ export interface AgentMessage {
     thinking?: string;
     output?: string;
   }>;
-  /** 助手发起的结构化反问（历史卡片） */
   question?: AgentQuestion;
-  /** 用户对反问的回答（历史卡片） */
   question_answer?: QuestionAnswerRecord;
-  /** Agent 切换提示条 */
   agent_switch?: {
     from: string;
     to: string;
@@ -326,26 +168,8 @@ export interface ToolCallData {
   result?: unknown;
 }
 
-export interface AgentProfile {
-  id: AgentId;
-  name: string;
-  description: string;
-  avatar_emoji: string;
-  capabilities: string[];
-}
-
-export interface AgentPermissions {
-  allow_web_search: boolean;
-  allow_github_api: boolean;
-  allow_file_write: boolean;
-  allow_note_write: boolean;
-  allow_project_write: boolean;
-  max_iterations: number;
-  max_tokens_per_turn: number;
-}
-
 // ========================================
-// 反问系统
+// 反问系统（前端交互模型）
 // ========================================
 
 export interface AgentQuestion {
@@ -373,7 +197,6 @@ export interface RadioQuestion {
   type: 'radio';
   options: RadioOption[];
   allow_other?: boolean;
-  /** quiz 考试题标记，前端以考试框样式展示 */
   exam?: boolean;
 }
 
@@ -440,7 +263,7 @@ export interface QuestionAnswerRecord {
 }
 
 // ========================================
-// SSE
+// SSE（前端流式事件，非 OpenAPI schema）
 // ========================================
 
 export type SSEEventType =
@@ -524,12 +347,11 @@ export interface SSEError {
 }
 
 // ========================================
-// Settings & User Profile
+// Settings / Profile 前端收紧（与 SettingsOut 兼容的常用别名）
 // ========================================
 
 export type LlmApiFormat = 'openai' | 'anthropic' | 'google' | 'ollama' | 'custom';
 
-/** Agent 回复语气 / 人格风格 */
 export type AgentSpeakingStyle =
   | 'default'
   | 'warm'
@@ -539,48 +361,6 @@ export type AgentSpeakingStyle =
   | 'concise'
   | 'mentor'
   | 'socratic';
-
-/** 单个 Agent 的模型与风格覆盖 */
-export interface AgentLlmConfig {
-  agent_id: string;
-  /** null 表示使用全局 llm_default_model */
-  model_override: string | null;
-  speaking_style: AgentSpeakingStyle;
-}
-
-/** 单个 Agent 的专属行为准则 */
-export interface AgentGuideline {
-  agent_id: string;
-  guideline: string;
-}
-
-export interface Settings {
-  theme: 'dark' | 'light';
-  font_scale: number;
-  code_font: string;
-  /** 供应商标识（预设 id 或 custom） */
-  llm_provider: string;
-  /** 供应商展示名称（可自定义） */
-  llm_provider_display_name: string;
-  /** 全局默认模型 */
-  llm_default_model: string;
-  /** 兼容旧字段：当前生效模型，与 llm_default_model 同步 */
-  llm_model: string;
-  llm_api_base: string | null;
-  llm_api_format: LlmApiFormat;
-  /** 当前供应商下可选模型列表（用户可增删） */
-  llm_available_models: string[];
-  llm_api_key_masked?: string;
-  llm_configured: boolean;
-  llm_last_test?: string;
-  llm_latency_ms?: number;
-  /** 各 Agent 独立模型与说话风格 */
-  agent_llm_configs: AgentLlmConfig[];
-  /** 所有 Agent 必须遵守的通用行为准则 */
-  agent_code_of_conduct: string;
-  /** 各 Agent 专属行为准则 */
-  agent_guidelines: AgentGuideline[];
-}
 
 export type ProficiencyLevel = 'none' | 'basic' | 'intermediate' | 'advanced' | 'mastered';
 export type ProficiencySource = 'self_reported' | 'inferred' | 'assessed';
@@ -605,63 +385,7 @@ export interface LearningPreferences {
 
 export type GoalStatus = 'active' | 'completed' | 'paused';
 
-export interface Goal {
-  title: string;
-  deadline?: string;
-  priority: number;
-  status: GoalStatus;
-}
-
-export interface UserProfile {
-  tech_proficiency: Record<string, TechProficiencyEntry>;
-  learning_preferences: LearningPreferences;
-  goals: Goal[];
-  history_summary: string;
-  /** Agent 维护的记忆条目（摘要 / 目标 / 技术栈 / 偏好） */
-  memory_items?: MemoryItem[];
-  /** 待用户确认的 Agent 记忆提案 */
-  pending_memory_proposals?: MemoryProposal[];
-  extensions: Record<string, unknown>;
-}
-
-/** Agent 维护的用户记忆片段 */
-export interface MemoryItem {
-  id: string;
-  category: 'summary' | 'goal' | 'tech' | 'preference';
-  content: string;
-  created_at: string;
-  updated_at?: string;
-}
-
-/** 待确认记忆提案 */
-export interface MemoryProposal {
-  id: string;
-  kind: 'long_memory' | 'profile_tech' | 'preference';
-  value: string;
-  confidence: number;
-  agent_id: string;
-  evidence?: string[];
-  at?: string;
-}
-
-/** LLM 上下文窗口用量（后端按会话维护） */
-export interface ContextWindowSegment {
-  label: string;
-  tokens: number;
-  kind: 'system' | 'skill' | 'memory' | 'tools' | 'messages' | 'other';
-}
-
-export interface ContextWindowStats {
-  session_id: string | null;
-  model: string;
-  context_limit: number;
-  input_tokens: number;
-  output_tokens: number;
-  total_tokens: number;
-  segments: ContextWindowSegment[];
-}
-
-/** 导入助手候选仓库摘要 */
+/** 导入助手上下文（前端组装，非独立 schema） */
 export interface ImportAssistRepoSummary {
   key: string;
   language?: string | null;
@@ -670,7 +394,6 @@ export interface ImportAssistRepoSummary {
   description?: string | null;
 }
 
-/** 用户已导入项目摘要（供推荐对比） */
 export interface ImportAssistImportedProject {
   name: string;
   language?: string | null;
@@ -679,29 +402,17 @@ export interface ImportAssistImportedProject {
   description?: string | null;
 }
 
-/** 导入助手对话上下文 */
 export interface ImportAssistContext {
   mode: 'stars' | 'urls' | 'search';
   available_repo_keys?: string[];
   selected_repo_keys?: string[];
-  /** Stars/搜索结果摘要（语言/stars/是否已导入） */
   available_repos?: ImportAssistRepoSummary[];
-  /** 用户库内已导入项目 */
   imported_projects?: ImportAssistImportedProject[];
 }
 
-/** Agent 操控勾选事件 */
 export interface SelectReposEvent {
   repo_keys: string[];
   action: 'set' | 'add' | 'remove';
   reason?: string;
   count?: number;
-}
-
-export interface StarsListResult {
-  items: StarRepo[];
-  total: number;
-  cached: boolean;
-  fetched_at?: string | null;
-  cache_ttl_hours?: number;
 }

@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@repopilot/types': path.resolve(__dirname, '../../packages/types/src/index.ts'),
       // 保证全应用使用同一份 React（避免 monorepo hoist 到 React 18）
       react: reactDir,
       'react-dom': reactDomDir,

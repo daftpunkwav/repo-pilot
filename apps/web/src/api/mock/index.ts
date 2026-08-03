@@ -420,7 +420,7 @@ export class MockApiClient implements IApiClient {
       items = items.filter((p) => p.progress === params.progress);
     }
     if (params?.tag_id) {
-      items = items.filter((p) => p.tags.includes(params.tag_id ?? ''));
+      items = items.filter((p) => (p.tags ?? []).includes(params.tag_id ?? ''));
     }
 
     const sortBy = params?.sort_by ?? 'imported_at';
@@ -653,7 +653,7 @@ export class MockApiClient implements IApiClient {
     requireAuth();
     this.tags = this.tags.filter((t) => t.id !== id);
     for (const p of this.projects) {
-      p.tags = p.tags.filter((tid) => tid !== id);
+      p.tags = (p.tags ?? []).filter((tid) => tid !== id);
     }
     return wrapResponse({ success: true });
   }
@@ -1098,7 +1098,7 @@ export class MockApiClient implements IApiClient {
     const userMsg: AgentMessage = {
       id: newId('msg'),
       session_id: sessionId,
-      agent: session.agent,
+      agent: session.agent as AgentId,
       role: 'user',
       content: message,
       created_at: new Date().toISOString(),

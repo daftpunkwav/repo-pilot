@@ -178,7 +178,7 @@ export function ProjectTable({
                 </td>
                 <td>
                   <div className="tags">
-                    {p.tags.slice(0, 2).map((tid) => (
+                    {p.tags?.slice(0, 2).map((tid) => (
                       <span key={tid} className="tag">
                         {tagMap.get(tid) ?? tid.replace(/^tag_/, '')}
                       </span>

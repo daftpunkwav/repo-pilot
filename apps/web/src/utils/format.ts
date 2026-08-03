@@ -27,7 +27,7 @@ export const REPO_AVATAR_GRADIENTS = [
   'linear-gradient(135deg,#000,#444)',
 ] as const;
 
-export function langCssClass(language: string | undefined): string {
+export function langCssClass(language: string | null | undefined): string {
   if (!language) return 'lang-other';
   const l = language.toLowerCase();
   if (l.includes('typescript') || l === 'ts') return 'lang-ts';

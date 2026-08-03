@@ -22,7 +22,9 @@
     // baseUrl 仅用于 paths；TS 6+ 将弃用，届时再迁 paths
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@repopilot/types": ["../../packages/types/src/index.ts"],
+      "@repopilot/types/*": ["../../packages/types/src/*"]
     }
   },
   "include": ["src"]

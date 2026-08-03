@@ -79,7 +79,7 @@ export function ProfilePage() {
       <GlassCard className="profile-header glass-card--overview-outer">
         {avatarUrl || user.avatar_url ? (
           <img
-            src={avatarUrl || user.avatar_url}
+            src={(avatarUrl || user.avatar_url) ?? undefined}
             alt=""
             className="profile-header__avatar"
           />
@@ -151,7 +151,7 @@ export function ProfilePage() {
               <dd>
                 {Object.keys(learningProfile.tech_proficiency || {}).length === 0
                   ? '暂无'
-                  : Object.entries(learningProfile.tech_proficiency)
+                  : Object.entries(learningProfile.tech_proficiency ?? {})
                       .map(([k, v]) => `${k}: ${String(v)}`)
                       .join(' · ')}
               </dd>
@@ -165,7 +165,7 @@ export function ProfilePage() {
               <dd>
                 {(learningProfile.goals ?? []).length === 0
                   ? '暂无'
-                  : learningProfile.goals.map((g) => g.title).join('；')}
+                  : (learningProfile.goals ?? []).map((g) => g.title).join('；')}
               </dd>
               <dt>长期记忆</dt>
               <dd>

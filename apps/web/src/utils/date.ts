@@ -1,7 +1,8 @@
 const rtf = new Intl.RelativeTimeFormat('zh-CN', { numeric: 'auto' });
 
 /** ISO 8601 → 本地化日期时间 */
-export function formatDateTime(iso: string): string {
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '-';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString('zh-CN', {
