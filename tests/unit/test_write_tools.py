@@ -137,6 +137,35 @@ async def test_write_tools_permission_blocked(tool_ctx):
     assert "allow_note_write" in result["error"]
 
 
+@pytest.mark.asyncio
+async def test_set_project_tags_rejects_foreign_tag_id(tool_ctx):
+    ctx, project = tool_ctx
+    ctx.agent_id = "curator"
+    # 先写入真实标签
+    ok = await set_project_tags_tool(
+        context=ctx,
+        project_id=str(project.id),
+        tag_names=["保留标签"],
+        mode="replace",
+    )
+    assert ok.get("__action__") == "tags_applied"
+    assert len(ok["resource"]["tags"]) == 1
+
+    bad = await set_project_tags_tool(
+        context=ctx,
+        project_id=str(project.id),
+        tag_ids=[str(uuid4())],
+        mode="replace",
+    )
+    assert "error" in bad
+    assert "未改动" in bad["error"]
+
+    from backend.services.tag_service import get_project_tag_ids
+
+    ids = await get_project_tag_ids(ctx.db, project.id)
+    assert len(ids) == 1
+
+
 def test_scribe_curator_whitelist_includes_write_tools():
     assert "create_note" in AGENT_DEFINITIONS["scribe"].tools
     assert "update_note" in AGENT_DEFINITIONS["scribe"].tools
@@ -144,3 +173,6 @@ def test_scribe_curator_whitelist_includes_write_tools():
     assert "set_project_tags" in AGENT_DEFINITIONS["curator"].tools
     assert "import_github_repos" in AGENT_DEFINITIONS["curator"].tools
     assert "update_project_progress" in AGENT_DEFINITIONS["navigator"].tools
+    # Hub 只调度，不直接拿写工具
+    assert "create_note" not in AGENT_DEFINITIONS["hub"].tools
+    assert "set_project_category" not in AGENT_DEFINITIONS["hub"].tools

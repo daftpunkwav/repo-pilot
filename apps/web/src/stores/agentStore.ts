@@ -538,29 +538,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               reason: typeof data.reason === 'string' ? data.reason : '',
               count: typeof data.count === 'number' ? data.count : keys.length,
             };
+            // 仅同步勾选状态；结果卡由 tool_result 承载，避免双卡
             set({ lastSelectRepos: selectState });
-            // 同步进工具结果展示（无对应 call_id 时合成一条）
-            set((state) => {
-              const newMap = new Map(state.toolCalls);
-              newMap.set(`select_repos_${Date.now()}`, {
-                name: 'select_import_repos',
-                args: { repo_keys: keys, action: selectState.action },
-                result: {
-                  __action__: 'repos_selected',
-                  __select_repos__: true,
-                  ok: true,
-                  repo_keys: keys,
-                  action: selectState.action,
-                  reason: selectState.reason,
-                  count: selectState.count,
-                  summary:
-                    selectState.reason ||
-                    `已勾选 ${selectState.count} 个仓库（尚未导入）`,
-                  links: [{ label: '打开项目库', href: '/projects' }],
-                },
-              });
-              return { toolCalls: newMap };
-            });
             break;
           }
           case 'agent_switch': {

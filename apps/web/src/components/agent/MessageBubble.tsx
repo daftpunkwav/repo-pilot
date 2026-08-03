@@ -23,12 +23,14 @@ interface MessageBubbleProps {
   agentName?: string;
 }
 
-/** 无正文且无可展示思考时视为空消息（含仅状态行） */
+/** 无正文且无可展示思考/踪迹时视为空消息（含仅状态行） */
 function isEmptyAssistantShell(message: AgentMessage): boolean {
   if (message.role !== 'assistant') return false;
   if (message.agent_switch || message.question || message.question_answer) {
     return false;
   }
+  if ((message.tool_calls?.length ?? 0) > 0) return false;
+  if ((message.subagents?.length ?? 0) > 0) return false;
   const body = (message.content ?? '').trim();
   if (body) return false;
   const think = (message.thinking ?? '').trim();

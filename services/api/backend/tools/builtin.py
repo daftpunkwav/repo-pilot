@@ -312,7 +312,7 @@ async def list_categories(context=None, **kw):
         },
         "required": ["category_name"],
     },
-    allowed_agents=["curator", "hub"],
+    allowed_agents=["curator"],
 )
 async def suggest_category(
     context=None,
@@ -386,7 +386,7 @@ async def list_notes(context=None, project_id: str = "", limit: int = 10, **kw):
         },
         "required": ["title", "sections"],
     },
-    allowed_agents=["scribe", "hub"],
+    allowed_agents=["scribe"],
 )
 async def draft_note_outline(
     context=None,
@@ -852,7 +852,7 @@ async def _get_owned_project_or_error(context, project_id: str):
         },
         "required": ["project_id", "title", "content"],
     },
-    allowed_agents=["scribe", "hub"],
+    allowed_agents=["scribe"],
     required_permission="allow_note_write",
 )
 async def create_note_tool(
@@ -928,7 +928,7 @@ async def create_note_tool(
         },
         "required": ["note_id"],
     },
-    allowed_agents=["scribe", "hub"],
+    allowed_agents=["scribe"],
     required_permission="allow_note_write",
 )
 async def update_note_tool(
@@ -985,7 +985,7 @@ async def update_note_tool(
         },
         "required": ["name"],
     },
-    allowed_agents=["curator", "hub"],
+    allowed_agents=["curator"],
     required_permission="allow_project_write",
 )
 async def ensure_category(
@@ -1048,7 +1048,7 @@ async def ensure_category(
         },
         "required": ["project_id"],
     },
-    allowed_agents=["curator", "hub"],
+    allowed_agents=["curator"],
     required_permission="allow_project_write",
 )
 async def set_project_category(
@@ -1132,7 +1132,7 @@ async def list_tags(context=None, **kw):
         },
         "required": ["names"],
     },
-    allowed_agents=["curator", "hub"],
+    allowed_agents=["curator"],
     required_permission="allow_project_write",
 )
 async def ensure_tags(context=None, names: list | None = None, **kw):
@@ -1181,7 +1181,7 @@ async def ensure_tags(context=None, names: list | None = None, **kw):
         },
         "required": ["project_id"],
     },
-    allowed_agents=["curator", "hub"],
+    allowed_agents=["curator"],
     required_permission="allow_project_write",
 )
 async def set_project_tags_tool(
@@ -1199,12 +1199,25 @@ async def set_project_tags_tool(
         return err
     uid = _uid(context)
     resolved: list[UUID] = []
+    from_ids: list[UUID] = []
 
     for raw in tag_ids or []:
         try:
-            resolved.append(UUID(str(raw).strip()))
+            from_ids.append(UUID(str(raw).strip()))
         except ValueError:
             return {"error": f"无效 tag_id: {raw}"}
+
+    if from_ids:
+        owned = await context.db.execute(
+            select(Tag.id).where(Tag.user_id == uid, Tag.id.in_(from_ids))
+        )
+        valid_ids = {row[0] for row in owned.all()}
+        invalid = [str(tid) for tid in from_ids if tid not in valid_ids]
+        if invalid:
+            return {
+                "error": f"无效或不属于你的 tag_id（已中止，未改动标签）: {', '.join(invalid)}"
+            }
+        resolved.extend(from_ids)
 
     names = [str(n).strip() for n in (tag_names or []) if str(n).strip()]
     if names:
@@ -1277,7 +1290,7 @@ async def set_project_tags_tool(
         },
         "required": ["project_id", "progress"],
     },
-    allowed_agents=["curator", "navigator", "hub", "mentor"],
+    allowed_agents=["curator", "navigator", "mentor"],
     required_permission="allow_project_write",
 )
 async def update_project_progress(
@@ -1345,7 +1358,7 @@ async def update_project_progress(
         },
         "required": ["repos"],
     },
-    allowed_agents=["curator", "hub"],
+    allowed_agents=["curator"],
     required_permission="allow_project_write",
     timeout_ms=120_000,
 )

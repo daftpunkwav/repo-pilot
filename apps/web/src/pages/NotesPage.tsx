@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAllNotes, useCreateNote, useDeleteNote, useUpdateNote } from '@/hooks/useNotes';
 import { useProjects } from '@/hooks/useProjects';
@@ -13,6 +13,11 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 type NotesView = 'split' | 'list-only' | 'edit-only' | 'preview-only';
+
+/** 新建草稿 id 为 'new'；其余（UUID / mock n_*）均视为已有笔记 */
+function isPersistedNoteId(id: string | null | undefined): boolean {
+  return Boolean(id && id !== 'new');
+}
 
 export function NotesPage() {
   const [searchParams] = useSearchParams();
@@ -38,6 +43,25 @@ export function NotesPage() {
   const [view, setView] = useState<NotesView>('split');
   const [saved, setSaved] = useState(true);
   const [scribeStreaming, setScribeStreaming] = useState(false);
+
+  // Agent 结果卡深链：/notes?note=<id>&project=<id>
+  useEffect(() => {
+    const noteId = searchParams.get('note');
+    if (!noteId || isLoading) return;
+    if (editingNoteId === noteId) return;
+    const note = notes.find((n) => n.id === noteId);
+    if (!note) return;
+    startEditing(note.id, note.title, note.content ?? '');
+    setNewProjectId(note.project_id);
+    setSaved(true);
+  }, [searchParams, notes, isLoading, editingNoteId, startEditing]);
+
+  // URL 仅带 project 时预填新建关联
+  useEffect(() => {
+    const projectId = searchParams.get('project');
+    if (!projectId || searchParams.get('note')) return;
+    if (!newProjectId) setNewProjectId(projectId);
+  }, [searchParams, newProjectId]);
 
   const projectNames = useMemo(() => {
     const m = new Map<string, string>();
@@ -127,10 +151,14 @@ export function NotesPage() {
       return;
     }
     try {
-      if (editingNoteId && editingNoteId.startsWith('n_')) {
-        await updateNote.mutateAsync({ id: editingNoteId, title, content });
+      if (isPersistedNoteId(editingNoteId)) {
+        await updateNote.mutateAsync({ id: editingNoteId!, title, content });
       } else if (newProjectId) {
-        await createNote.mutateAsync({ projectId: newProjectId, title, content });
+        await createNote.mutateAsync({
+          projectId: newProjectId,
+          title,
+          content,
+        });
       } else {
         addToast({ type: 'warning', message: '请选择关联项目' });
         return;
@@ -224,7 +252,7 @@ export function NotesPage() {
             <span>{saved ? '已就绪' : '未保存'}</span>
           </div>
         )}
-        {editingNoteId?.startsWith('n_') && (
+        {isPersistedNoteId(editingNoteId) && (
           <button type="button" className="topbar-action" title="删除笔记" onClick={() => setDeleteOpen(true)}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width={16} height={16}>
               <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
@@ -247,6 +275,7 @@ export function NotesPage() {
             selectedId={selectedNoteId}
             onSelect={(n) => {
               startEditing(n.id, n.title, n.content);
+              setNewProjectId(n.project_id);
               setSaved(true);
             }}
           />
@@ -276,6 +305,8 @@ export function NotesPage() {
                 className="note-grid-card"
                 onClick={() => {
                   startEditing(n.id, n.title, n.content);
+                  setNewProjectId(n.project_id);
+                  setSaved(true);
                   setView('split');
                 }}
               >
@@ -374,8 +405,8 @@ export function NotesPage() {
         message="确定删除此笔记？"
         danger
         onConfirm={() => {
-          if (editingNoteId?.startsWith('n_')) {
-            void deleteNote.mutateAsync(editingNoteId);
+          if (isPersistedNoteId(editingNoteId)) {
+            void deleteNote.mutateAsync(editingNoteId!);
           }
           setDeleteOpen(false);
         }}
