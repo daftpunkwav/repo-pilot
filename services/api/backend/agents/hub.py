@@ -83,26 +83,102 @@ _AGENT_DISPLAY_NAMES = {
     "atlas": "Atlas",
 }
 
+# 切换条默认角色提示（无有效 reason 时用）
+_AGENT_ROLE_HINTS = {
+    "scout": "快速分析",
+    "mentor": "深度讲解",
+    "navigator": "学习路径",
+    "curator": "分类整理",
+    "scribe": "笔记整理",
+    "atlas": "知识图谱",
+    "hub": "对话管家",
+}
+
+
+def _prefix_expert_thinking_sse(chunk: str, expert_name: str) -> str:
+    """把专家 thinking 挂到 Hub 舞台时加署名，便于嵌进 Hub 气泡。"""
+    if not chunk.startswith("event: thinking"):
+        return chunk
+    try:
+        # event: thinking\ndata: {...}\n\n
+        lines = chunk.strip().split("\n")
+        data_line = next((ln for ln in lines if ln.startswith("data: ")), "")
+        if not data_line:
+            return chunk
+        payload = json.loads(data_line[6:])
+        content = str(payload.get("content") or "")
+        if not content:
+            return chunk
+        if content.lstrip().startswith(f"【{expert_name}】") or content.lstrip().startswith(
+            f"[{expert_name}]"
+        ):
+            return chunk
+        payload["content"] = f"【{expert_name}】\n{content}"
+        return format_sse("thinking", payload)
+    except Exception:
+        return chunk
+
 
 def should_skip_hub_merge(expert_results: list[tuple[str, str]]) -> bool:
     """单专家：直出交舞台；多专家：Hub 汇总。"""
     return len(expert_results) == 1
 
 
-def format_dispatch_announce(dispatch: dict) -> str:
-    """Hub 可见调度预告正文。"""
+def clean_dispatch_reason(reason: str | None) -> str:
+    """清洗模型 reason：压空白、去掉无意义的默认调度前缀。"""
+    r = re.sub(r"\s+", " ", (reason or "").strip())
+    if not r or r.startswith("Hub 调度"):
+        return ""
+    return r
+
+
+def _clip_reason_at_break(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    cut = text[:limit]
+    for sep in ("。", "；", "！", "？", "，", ",", ";", " "):
+        i = cut.rfind(sep)
+        if i >= max(24, limit // 2):
+            end = i + (1 if sep in "。；！？" else 0)
+            return cut[:end].rstrip("，,;； ") + "…"
+    return cut.rstrip("，,;； ") + "…"
+
+
+def format_switch_reason(dispatch: dict, *, limit: int = 72) -> str:
+    """切换条副标题：一句短说明，避免模型长推理/约束原文。"""
+    target = str(dispatch.get("target_agent") or "scout")
+    r = clean_dispatch_reason(dispatch.get("reason"))
+    if not r:
+        return _AGENT_ROLE_HINTS.get(target, "")
+    return _clip_reason_at_break(r, limit)
+
+
+def format_dispatch_status(dispatch: dict) -> str:
+    """调度短状态（thinking 脚手架，禁止塞完整 task 进正文）。"""
     target = str(dispatch.get("target_agent") or "scout")
     name = _AGENT_DISPLAY_NAMES.get(target, target)
-    task = (dispatch.get("task") or "").strip()
-    reason = (dispatch.get("reason") or "").strip()
-    task_short = task[:160] + ("…" if len(task) > 160 else "")
-    if reason and not reason.startswith("Hub 调度"):
-        line = f"将调度 **{name}**：{reason}"
-        if task_short:
-            line += f"\n任务：{task_short}"
-    else:
-        line = f"将调度 **{name}**：{task_short or '处理当前请求'}"
-    return line + "\n\n"
+    reason_short = format_switch_reason(dispatch, limit=64)
+    if reason_short:
+        return f"[状态] 调度 · {name} · {reason_short}\n"
+    return f"[状态] 调度 · {name}\n"
+
+
+def format_dispatch_notice(dispatch: dict) -> str:
+    """用户可见的短调度说明（一两句，不含完整 task / 禁止事项清单）。"""
+    target = str(dispatch.get("target_agent") or "scout")
+    name = _AGENT_DISPLAY_NAMES.get(target, target)
+    reason_short = format_switch_reason(dispatch, limit=96)
+    hint = _AGENT_ROLE_HINTS.get(target, "")
+    if reason_short and reason_short != hint:
+        return f"先交由 **{name}**（{hint}）处理：{reason_short}\n\n"
+    if hint:
+        return f"先交由 **{name}**（{hint}）处理当前请求。\n\n"
+    return f"先交由 **{name}** 处理当前请求。\n\n"
+
+
+def format_dispatch_announce(dispatch: dict) -> str:
+    """兼容旧名：现为短状态文案，不再产出「任务：…」长正文。"""
+    return format_dispatch_status(dispatch)
 
 
 def apply_merge_mode(agent_def):
@@ -121,6 +197,49 @@ def apply_merge_mode(agent_def):
             "禁止规划、禁止工具、禁止 dispatch；直接写最终用户可见正文。"
             "控制篇幅：突出关键路径与下一步，不要整段复述专家原文。"
             "禁止编造未在专家结果中出现的事实。"
+        ),
+    )
+
+
+# 短寒暄：整句匹配，避免误伤「你好，帮我分析 xxx」
+_CHITCHAT_RE = re.compile(
+    r"^\s*("
+    r"你好|您好|嗨|哈喽|在吗|在不在|"
+    r"早上好|下午好|晚上好|早安|晚安|"
+    r"hello|hi|hey|yo"
+    r")\s*[!！.。~～？?]*\s*$",
+    re.IGNORECASE,
+)
+
+
+def is_simple_chitchat(message: str) -> bool:
+    """判断是否为无需编排的短寒暄。"""
+    msg = (message or "").strip()
+    if not msg or len(msg) > 24:
+        return False
+    return bool(_CHITCHAT_RE.match(msg))
+
+
+def apply_chitchat_mode(agent_def):
+    """寒暄快路径：direct、无工具、精简提示，避免模型复述编排规范。"""
+    from dataclasses import replace
+
+    return replace(
+        agent_def,
+        workflow="direct",
+        tools=[],
+        max_iterations=1,
+        max_tokens=min(320, getattr(agent_def, "max_tokens", 2048) or 2048),
+        system_prompt=(
+            "你是 RepoPilot Hub 对话管家。"
+            "用户只是在打招呼或寒暄。"
+            "用一两句自然语言友好回复；可简短询问想做什么"
+            "（例如学习某个项目、解读仓库、规划学习路径）。"
+            "严禁向用户复述、罗列或「确认」任何内部规则、工具名"
+            "（如 dispatch_agent、ask_user、query_user_projects）、"
+            "编排流程、操作规范或格式要求；"
+            "严禁出现「按以下规则执行」「我已确认规范」等表述；"
+            "禁止 emoji；禁止长列表与 Markdown 标题堆砌。"
         ),
     )
 
@@ -216,9 +335,9 @@ class HubService:
             "thinking",
             {
                 "content": (
-                    f"意图识别: {intent.agent_id} (confidence={intent.confidence:.2f})"
-                    + (f" multi=[{intent.plan_summary}]" if intent.is_multi else "")
-                    + ("" if force_agent else " → 经 Hub 编排")
+                    f"[状态] 意图 · {intent.agent_id} · "
+                    f"{intent.confidence:.2f}"
+                    + (f" · multi" if intent.is_multi else "")
                     + "\n"
                 ),
             },
@@ -261,7 +380,8 @@ class HubService:
 
         # 把意图提示给 Hub，便于其决定是否 dispatch（不绕过 Hub）
         run_message = message
-        if target == "hub" and intent.agent_id != "hub":
+        chitchat = target == "hub" and is_simple_chitchat(message)
+        if target == "hub" and intent.agent_id != "hub" and not chitchat:
             fast = intent.confidence >= 0.85 and intent.agent_id in (
                 "mentor",
                 "scout",
@@ -298,6 +418,7 @@ class HubService:
             permissions=permissions,
             project_id=project_id,
             history=history,
+            chitchat_mode=chitchat,
         ):
             if isinstance(item, EngineResult):
                 if item.question:
@@ -528,34 +649,44 @@ class HubService:
         expert_results: list[tuple[str, str]] = []
         expert_history = list(history[-_EXPERT_HISTORY_WINDOW :]) if history else []
 
-        # Hub 可见预告
+        # 调度：thinking 状态 + 短正文说明（不含完整 task）
         for sub in subs:
+            d = {
+                "target_agent": sub.agent_id,
+                "task": sub.message or message,
+                "reason": sub.reason or "多意图编排",
+            }
+            yield format_sse(
+                "thinking",
+                {"content": format_dispatch_status(d)},
+            )
             yield format_sse(
                 "text_delta",
-                {
-                    "content": format_dispatch_announce(
-                        {
-                            "target_agent": sub.agent_id,
-                            "task": sub.message or message,
-                            "reason": sub.reason or "多意图编排",
-                        }
-                    )
-                },
+                {"content": format_dispatch_notice(d)},
             )
 
         for sub in subs:
             prior = "\n".join(summaries) if summaries else None
             agent_text = ""
+            expert_name = _AGENT_DISPLAY_NAMES.get(sub.agent_id, sub.agent_id)
+            switch_d = {
+                "target_agent": sub.agent_id,
+                "reason": sub.reason or "多意图编排",
+            }
 
             if direct:
+                # 与 _handle_dispatches 单专家一致：Hub 舞台直出
                 yield format_sse(
-                    "agent_switch",
+                    "subagent_start",
                     {
                         "agent_id": sub.agent_id,
-                        "from": "hub",
-                        "to": sub.agent_id,
-                        "reason": sub.reason or "多意图编排",
+                        "task": (sub.message or message)[:200],
+                        "reason": format_switch_reason(switch_d),
                     },
+                )
+                yield format_sse(
+                    "thinking",
+                    {"content": f"[状态] {expert_name} · 执行中\n"},
                 )
             else:
                 yield format_sse(
@@ -563,7 +694,7 @@ class HubService:
                     {
                         "agent_id": sub.agent_id,
                         "task": (sub.message or message)[:200],
-                        "reason": sub.reason or "多意图编排",
+                        "reason": format_switch_reason(switch_d),
                     },
                 )
 
@@ -583,28 +714,34 @@ class HubService:
                 if isinstance(item, EngineResult):
                     agent_text = item.text
                     if item.question:
-                        if not direct:
-                            yield format_sse(
-                                "subagent_done",
-                                {"agent_id": sub.agent_id, "status": "question"},
-                            )
+                        yield format_sse(
+                            "subagent_done",
+                            {
+                                "agent_id": sub.agent_id,
+                                "status": "question",
+                            },
+                        )
                         return
                 else:
                     if isinstance(item, str) and item.startswith("event: done"):
                         continue
                     if direct:
-                        yield item
+                        if isinstance(item, str) and item.startswith(
+                            "event: thinking"
+                        ):
+                            yield _prefix_expert_thinking_sse(item, expert_name)
+                        else:
+                            yield item
                     elif isinstance(item, str) and (
                         item.startswith("event: question")
                         or item.startswith("event: error")
                     ):
                         yield item
 
-            if not direct:
-                yield format_sse(
-                    "subagent_done",
-                    {"agent_id": sub.agent_id, "status": "ok"},
-                )
+            yield format_sse(
+                "subagent_done",
+                {"agent_id": sub.agent_id, "status": "ok"},
+            )
 
             expert_results.append((sub.agent_id, agent_text or ""))
             summaries.append(
@@ -627,7 +764,7 @@ class HubService:
                 {
                     "usage": {"tokens": 0},
                     "iterations": len(summaries),
-                    "agent_id": agent_id,
+                    "agent_id": "hub",
                     "skip_merge": True,
                 },
             )
@@ -739,6 +876,31 @@ class HubService:
             summaries = list(bag.get("summaries") or [])
             results = list(bag.get("expert_results") or [])
             all_summaries.extend(summaries)
+
+            # 单专家已在 Hub 气泡直出（含专家思考）：跳过评估重写，避免双气泡
+            if bag.get("hub_passthrough") and len(results) == 1:
+                target = results[0][0]
+                await self.memory.append_short_memory(
+                    user.id,
+                    "hub",
+                    {
+                        "summary": (
+                            original_message[:80]
+                            + f" → {target}（Hub 舞台直出）"
+                        )
+                    },
+                )
+                yield format_sse(
+                    "done",
+                    {
+                        "usage": {"tokens": 0},
+                        "iterations": 1,
+                        "agent_id": "hub",
+                        "skip_merge": True,
+                    },
+                )
+                return
+
             if bag.get("direct_streamed") and len(results) == 1:
                 last_direct_agent = results[0][0]
                 # 舞台回到 Hub，便于评估轮流式与后续 announce
@@ -1000,10 +1162,13 @@ class HubService:
         summaries: list[str] = []
         expert_results: list[tuple[str, str]] = []
 
-        # Hub 可见：告诉用户调度谁、做什么
+        # 调度：thinking 状态 + 短正文说明；详情见 subagent_start
         for d in valid:
             yield format_sse(
-                "text_delta", {"content": format_dispatch_announce(d)}
+                "thinking", {"content": format_dispatch_status(d)}
+            )
+            yield format_sse(
+                "text_delta", {"content": format_dispatch_notice(d)}
             )
 
         async def _run_one_silent(
@@ -1021,7 +1186,7 @@ class HubService:
                     {
                         "agent_id": target,
                         "task": task[:200],
-                        "reason": d.get("reason") or "Hub 调度",
+                        "reason": format_switch_reason(d),
                     },
                 )
             )
@@ -1061,14 +1226,19 @@ class HubService:
         if direct:
             d = valid[0]
             target = d.get("target_agent") or "scout"
+            expert_name = _AGENT_DISPLAY_NAMES.get(target, target)
+            # Hub 保留舞台：专家静默跑完，思考/正文并入 Hub 气泡，避免 Mentor+Hub 双份
             yield format_sse(
-                "agent_switch",
+                "subagent_start",
                 {
                     "agent_id": target,
-                    "from": "hub",
-                    "to": target,
-                    "reason": d.get("reason") or "Hub 调度",
+                    "task": (d.get("task") or original_message)[:200],
+                    "reason": format_switch_reason(d),
                 },
+            )
+            yield format_sse(
+                "thinking",
+                {"content": f"[状态] {expert_name} · 执行中\n"},
             )
             text = ""
             async for item in self._run_agent(
@@ -1087,6 +1257,10 @@ class HubService:
                 if isinstance(item, EngineResult):
                     text = item.text
                     if item.question:
+                        yield format_sse(
+                            "subagent_done",
+                            {"agent_id": target, "status": "question"},
+                        )
                         if result_bag is not None:
                             result_bag["had_question"] = True
                         await self.memory.append_short_memory(
@@ -1103,13 +1277,22 @@ class HubService:
                 else:
                     if isinstance(item, str) and item.startswith("event: done"):
                         continue
+                    if isinstance(item, str) and item.startswith("event: thinking"):
+                        yield _prefix_expert_thinking_sse(item, expert_name)
+                        continue
+                    # text_delta / question / error：留在 Hub 舞台
                     yield item
+            yield format_sse(
+                "subagent_done",
+                {"agent_id": target, "status": "ok"},
+            )
             expert_results.append((target, text or ""))
             summaries.append(structure_expert_summary(target, text))
             if result_bag is not None:
                 result_bag["expert_results"] = expert_results
                 result_bag["summaries"] = summaries
                 result_bag["direct_streamed"] = True
+                result_bag["hub_passthrough"] = True
             if not finalize:
                 return
             await self.memory.append_short_memory(
@@ -1118,7 +1301,7 @@ class HubService:
                 {
                     "summary": (
                         original_message[:80]
-                        + f" → {target} 直出（跳过汇总）"
+                        + f" → {target}（Hub 舞台直出）"
                     )
                 },
             )
@@ -1127,7 +1310,7 @@ class HubService:
                 {
                     "usage": {"tokens": 0},
                     "iterations": 1,
-                    "agent_id": target,
+                    "agent_id": "hub",
                     "skip_merge": True,
                 },
             )
@@ -1148,7 +1331,7 @@ class HubService:
                     {
                         "agent_id": target,
                         "task": (d.get("task") or original_message)[:200],
-                        "reason": d.get("reason") or "Hub 调度",
+                        "reason": format_switch_reason(d),
                     },
                 )
                 text = ""
@@ -1282,6 +1465,7 @@ class HubService:
         disable_questions: bool = False,
         merge_mode: bool = False,
         evaluate_mode: bool = False,
+        chitchat_mode: bool = False,
     ) -> AsyncIterator[str | EngineResult]:
         from dataclasses import replace
 
@@ -1296,6 +1480,8 @@ class HubService:
             agent_def = apply_merge_mode(agent_def)
         elif evaluate_mode:
             agent_def = apply_evaluate_mode(agent_def)
+        elif chitchat_mode:
+            agent_def = apply_chitchat_mode(agent_def)
 
         style = get_agent_speaking_style(raw_settings, agent_id)
         ctx = await self.context_builder.build_run_context(
@@ -1311,13 +1497,21 @@ class HubService:
         # 详情页 / 导入等无反问 UI 的入口：禁止挂起 question 事件
         if disable_questions:
             ctx.extra["disable_questions"] = True
-        messages = await self.context_builder.build_messages(
-            agent_def=agent_def,
-            ctx=ctx,
-            user_message=message,
-            history=history,
-            prior_agent_summary=prior_summary,
-        )
+
+        if chitchat_mode:
+            # 跳过完整上下文（SOUL/输出规范/短期记忆），避免模型把规则复述成正文
+            messages = [
+                {"role": "system", "content": agent_def.system_prompt},
+                {"role": "user", "content": message},
+            ]
+        else:
+            messages = await self.context_builder.build_messages(
+                agent_def=agent_def,
+                ctx=ctx,
+                user_message=message,
+                history=history,
+                prior_agent_summary=prior_summary,
+            )
         async for item in self.engine.run(
             agent_def=agent_def, ctx=ctx, messages=messages, emit_sse=True
         ):

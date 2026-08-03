@@ -57,11 +57,72 @@ def test_max_hub_dispatch_rounds_is_bounded():
 
 
 @pytest.mark.asyncio
-async def test_dispatch_evaluate_loop_second_batch_and_cap(monkeypatch):
-    """假引擎：首批后评估再 dispatch；达上限后走汇总且不再调度。"""
+async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch):
+    """单专家 Hub 舞台直出后，不再评估重写、不切回 Hub。"""
     from backend.agents.react import EngineResult
 
     service = HubService.__new__(HubService)
+    service.registry = type(
+        "R", (), {"has": staticmethod(lambda aid: True)}
+    )()
+    memory_calls: list = []
+
+    class Mem:
+        async def append_short_memory(self, *args, **kwargs):
+            memory_calls.append(True)
+
+    service.memory = Mem()
+    eval_calls = {"n": 0}
+
+    async def fake_handle_dispatches(**kwargs):
+        bag = kwargs.get("result_bag")
+        if bag is not None:
+            bag["summaries"] = ["[mentor] 长文"]
+            bag["expert_results"] = [("mentor", "长文")]
+            bag["direct_streamed"] = True
+            bag["hub_passthrough"] = True
+            bag["had_question"] = False
+        if False:
+            yield ""
+        return
+        yield  # pragma: no cover
+
+    async def fake_run_agent(**kwargs):
+        if kwargs.get("evaluate_mode"):
+            eval_calls["n"] += 1
+        yield EngineResult(text="不应走到", dispatches=[])
+
+    monkeypatch.setattr(service, "_handle_dispatches", fake_handle_dispatches)
+    monkeypatch.setattr(service, "_run_agent", fake_run_agent)
+
+    chunks: list[str] = []
+    async for chunk in service._dispatch_evaluate_loop(
+        dispatches=[
+            {
+                "target_agent": "mentor",
+                "task": "讲 Godot",
+                "reason": "教学",
+            }
+        ],
+        user=type("U", (), {"id": "u1"})(),
+        session_id="s1",
+        original_message="想学 Godot",
+        llm=None,
+        llm_config=None,
+        raw_settings={},
+        permissions={},
+        project_id=None,
+        history=[],
+        hub_preamble="",
+    ):
+        chunks.append(chunk)
+
+    joined = "".join(chunks)
+    assert eval_calls["n"] == 0
+    assert "评估专家结果" not in joined
+    assert "skip_merge" in joined or "event: done" in joined
+    assert memory_calls
+
     service.registry = type(
         "R",
         (),

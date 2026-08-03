@@ -7,12 +7,30 @@ interface ToolCallCardProps {
 function previewArgs(args: Record<string, unknown>): string {
   const entries = Object.entries(args ?? {});
   if (entries.length === 0) return '';
-  const parts = entries.slice(0, 3).map(([k, v]) => {
+  // 优先展示路由/定位字段，避免 description/task 长文挤占首屏
+  const priority = [
+    'target_agent',
+    'name',
+    'project_id',
+    'owner',
+    'repo',
+    'path',
+    'query',
+    'task',
+    'reason',
+    'description',
+  ];
+  const rank = (k: string) => {
+    const i = priority.indexOf(k);
+    return i === -1 ? priority.length + 1 : i;
+  };
+  const ordered = [...entries].sort(([a], [b]) => rank(a) - rank(b));
+  const parts = ordered.slice(0, 3).map(([k, v]) => {
     const raw = typeof v === 'string' ? v : JSON.stringify(v);
     const short = raw.length > 36 ? `${raw.slice(0, 34)}…` : raw;
     return `${k}=${short}`;
   });
-  const more = entries.length > 3 ? ` +${entries.length - 3}` : '';
+  const more = ordered.length > 3 ? ` +${ordered.length - 3}` : '';
   return parts.join(' · ') + more;
 }
 

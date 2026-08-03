@@ -9,9 +9,10 @@ import { ensureAgentQuestion } from '@/utils/agentQuestion';
 import { AgentSelector } from './AgentSelector';
 import { MessageBubble } from './MessageBubble';
 import { StreamRenderer } from './StreamRenderer';
-import { ToolCallCard } from './ToolCallCard';
 import { LiveQuestionModal } from './QuestionHistoryCard';
+import { RunTracePanel } from './RunTracePanel';
 import { AGENT_INITIALS, AGENT_ROLE_LABELS } from '@/utils/labels';
+import { snapshotSubagents, snapshotToolCalls } from '@/utils/runTrace';
 
 export interface ChatPanelProps {
   /** 左侧对话历史是否已收起 */
@@ -220,46 +221,11 @@ export function ChatPanel({
                   thinking={thinkingBuffer}
                   streaming={streaming}
                 />
-                {subagents.length > 0 && (
-                  <div className="hub-subagents" aria-label="Subagent 进度">
-                    {subagents.map((sa) => (
-                      <div
-                        key={sa.agentId}
-                        className="hub-subagent"
-                        data-status={sa.status}
-                      >
-                        <span className={`hub-subagent__avatar agent-${sa.agentId}`}>
-                          {AGENT_INITIALS[sa.agentId] ?? sa.agentId[0]?.toUpperCase()}
-                        </span>
-                        <div className="hub-subagent__meta">
-                          <span className="hub-subagent__name">
-                            {sa.agentId.charAt(0).toUpperCase() + sa.agentId.slice(1)}
-                          </span>
-                          <span className="hub-subagent__status">
-                            {sa.status === 'running'
-                              ? '执行中'
-                              : sa.status === 'question'
-                                ? '等待回答'
-                                : sa.status === 'error'
-                                  ? '失败'
-                                  : '完成'}
-                          </span>
-                          {sa.reason && (
-                            <span className="hub-subagent__reason" title={sa.reason}>
-                              {sa.reason}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <RunTracePanel
+                  toolCalls={snapshotToolCalls(toolCalls)}
+                  subagents={snapshotSubagents(subagents, thinkingBuffer)}
+                />
               </div>
-              {Array.from(toolCalls.entries())
-                .filter(([, tc]) => tc.name !== 'ask_user')
-                .map(([id, tc]) => (
-                  <ToolCallCard key={id} name={tc.name} args={tc.args} result={tc.result} />
-                ))}
             </div>
           </div>
         )}

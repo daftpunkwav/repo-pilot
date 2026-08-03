@@ -11,29 +11,27 @@ interface StreamRendererProps {
   collapseBody?: boolean;
 }
 
-/** 状态/脚手架行：不应单独冒充「思考过程」 */
+/** 状态/脚手架行：不应冒充「思考过程」 */
 export function isStatusLine(ln: string): boolean {
   const t = ln.trim();
   if (!t) return true;
-  if (/^\[(状态|执行|规划|规划完成|收口|纠正)\]/.test(t)) return true;
-  // 「执行 · Mentor · 1/3」或「执行 · Mentor · 第 1/3 轮」
+  if (/^\[(状态|执行|规划|规划完成|收口|纠正|阶段)\]/.test(t)) return true;
   if (/^执行\s*·/.test(t)) return true;
   if (/^意图识别:/.test(t)) return true;
   if (/^意图路由\b/.test(t)) return true;
   if (/^正在生成/.test(t)) return true;
+  if (/^（思路阶段无内容/.test(t)) return true;
   if (/^\[中间推理\]\s*$/.test(t)) return true;
-  // 兼容旧格式或模型回声：「Mentor 推理中（第 1/3 轮 · tot）」
-  if (/推理中\s*[（(]/.test(t) && /第\s*\d+\s*\/\s*\d+\s*轮/.test(t)) {
+  // 旧格式：「Hub 推理中 (第 1/4 轮 · plan_execute)」
+  if (/推理中/.test(t) && /第\s*\d+\s*\/\s*\d+\s*轮/.test(t)) return true;
+  if (/推理中/.test(t) && /plan_execute|react|tot|reflexion|direct/i.test(t) && t.length < 120) {
     return true;
   }
-  // 单独一行的轮次脚手架
   if (/^第\s*\d+\s*\/\s*\d+\s*轮\b/.test(t)) return true;
-  if (/第\s*\d+\s*\/\s*\d+\s*轮\s*·\s*(tot|react|cot|plan_execute|reflexion|direct)\b/i.test(t)
-    && t.length < 80) {
-    return true;
-  }
-  // 「Hub 推理中 (第 1/4 轮 · plan_execute)」整行脚手架
-  if (/推理中/.test(t) && /plan_execute|react|tot|reflexion/.test(t) && t.length < 100) {
+  if (
+    /第\s*\d+\s*\/\s*\d+\s*轮\s*·\s*(tot|react|cot|plan_execute|reflexion|direct)\b/i.test(t) &&
+    t.length < 80
+  ) {
     return true;
   }
   return false;
@@ -41,7 +39,6 @@ export function isStatusLine(ln: string): boolean {
 
 /**
  * 拆分 thinking：状态脚手架 vs 实质推理。
- * 仅含脚手架时视为 status-only。
  */
 export function partitionThinking(text: string): {
   statusLines: string[];
@@ -58,7 +55,6 @@ export function partitionThinking(text: string): {
     if (isStatusLine(ln)) {
       statusLines.push(ln.trim());
     } else if (/^\[中间推理\]/.test(ln.trim())) {
-      // 「[中间推理]」标题行后的正文算真思考
       const rest = ln.replace(/^\[中间推理\]\s*/, '').trim();
       if (rest) realParts.push(rest);
       else statusLines.push('[中间推理]');
@@ -66,25 +62,21 @@ export function partitionThinking(text: string): {
       realParts.push(ln);
     }
   }
-  const realThinking = realParts.join('\n').trim();
-  return { statusLines, realThinking };
+  return { statusLines, realThinking: realParts.join('\n').trim() };
 }
 
-/** 仅含执行/状态标记、无实质推理时，不渲染成「思考过程」大面板 */
+/** 仅含执行/状态标记、无实质推理 */
 export function isStatusOnlyThinking(text: string): boolean {
-  const { realThinking } = partitionThinking(text);
-  return !realThinking;
+  return !partitionThinking(text).realThinking;
 }
 
-function statusLineLabel(ln: string): string {
-  // 「[状态] Hub · 汇总中…」→「状态 · Hub · 汇总中…」
-  if (/^\[([^\]]+)\]/.test(ln)) {
-    return ln.replace(/^\[([^\]]+)\]\s*/u, '$1 · ').replace(/\s+/g, ' ').trim();
-  }
-  return ln.replace(/\s+/g, ' ').trim();
+/** 落库用：只保留真实思考，丢弃脚手架 */
+export function persistableThinking(text: string | undefined | null): string {
+  const real = partitionThinking((text ?? '').trim()).realThinking;
+  return real;
 }
 
-/** 流式 Markdown；真思考可展开，纯状态行用紧凑条，避免「思考过程」名不副实 */
+/** 流式 Markdown；真实思考默认收起，脚手架不进思考面板 */
 export function StreamRenderer({
   content,
   thinking,
@@ -105,48 +97,34 @@ export function StreamRenderer({
   }, [content, streaming]);
 
   const thinkingTrim = (thinking ?? '').trim();
-  const { statusLines, realThinking } = partitionThinking(thinkingTrim);
+  const { realThinking } = partitionThinking(thinkingTrim);
   const hasRealThinking = Boolean(realThinking);
-  const hasStatus = statusLines.length > 0;
   const hasBody = Boolean(rendered && rendered.trim());
   const thinkingLines = hasRealThinking
     ? realThinking.split('\n').filter(Boolean).length
     : 0;
 
-  // 流式出现真思考 → 展开；一旦有正文 → 收起；仅脚手架 → 不展开面板
+  // 有正文时强制收起；绝不因流式自动展开（默认收起）
   useEffect(() => {
     if (hasBody && hasRealThinking) {
       setThinkingExpanded(false);
-      return;
     }
-    if (streaming && hasRealThinking && !hasBody) {
-      setThinkingExpanded(true);
-      return;
-    }
-    if (streaming && !hasRealThinking) {
-      setThinkingExpanded(thinkingOpen);
-    }
-  }, [streaming, hasRealThinking, hasBody, thinkingOpen]);
+  }, [hasBody, hasRealThinking]);
 
-  // 仅脚手架：流式中显示 chip；落库/非流式不展示，避免历史假思考
-  const showStatusChips = hasStatus && streaming && !hasRealThinking;
+  // 外部显式要求展开时同步一次
+  useEffect(() => {
+    if (thinkingOpen) setThinkingExpanded(true);
+  }, [thinkingOpen]);
+
   const showThinkingPanel = hasRealThinking;
 
   return (
     <div className="stream-renderer" data-testid="stream-renderer">
-      {showStatusChips && (
-        <div className="stream-renderer__status" aria-label="执行状态">
-          {statusLines.map((ln, i) => (
-            <span key={`${i}-${ln.slice(0, 24)}`} className="stream-renderer__status-line">
-              {statusLineLabel(ln)}
-            </span>
-          ))}
-        </div>
-      )}
       {showThinkingPanel && (
         <div
           className="stream-renderer__thinking"
           data-open={thinkingExpanded ? '1' : '0'}
+          data-testid="thinking-panel"
         >
           <button
             type="button"
@@ -158,12 +136,13 @@ export function StreamRenderer({
               {thinkingExpanded ? '▾' : '▸'}
             </span>
             <span className="stream-renderer__thinking-title">思考过程</span>
-            {!thinkingExpanded && streaming && !hasBody && (
-              <span className="stream-renderer__thinking-hint">生成中 · 点击展开</span>
-            )}
-            {!thinkingExpanded && (!streaming || hasBody) && thinkingLines > 0 && (
+            {!thinkingExpanded && (
               <span className="stream-renderer__thinking-hint">
-                {thinkingLines} 行 · 点击展开
+                {streaming && !hasBody
+                  ? '生成中 · 点击展开'
+                  : thinkingLines > 0
+                    ? `${thinkingLines} 行 · 点击展开`
+                    : '点击展开'}
               </span>
             )}
             {thinkingExpanded && (
@@ -171,7 +150,9 @@ export function StreamRenderer({
             )}
           </button>
           {thinkingExpanded && (
-            <pre className="stream-renderer__thinking-body">{realThinking}</pre>
+            <pre className="stream-renderer__thinking-body" data-testid="thinking-body">
+              {realThinking}
+            </pre>
           )}
         </div>
       )}
@@ -185,12 +166,12 @@ export function StreamRenderer({
         ) : streaming ? (
           <p className="stream-renderer__placeholder muted">
             {hasRealThinking
-              ? '推理中，等待正文…'
+              ? '正在组织回答…'
               : /汇总|合并/.test(thinkingTrim)
                 ? '汇总中…'
-                : hasStatus || thinkingTrim
-                  ? '执行中…'
-                  : '正在输出…'}
+                : /评估/.test(thinkingTrim)
+                  ? '评估中…'
+                  : '执行中…'}
           </p>
         ) : null}
         {streaming && hasBody && (

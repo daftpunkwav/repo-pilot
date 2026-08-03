@@ -23,8 +23,8 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        // 固定 IPv4，避免 Windows 上 localhost→::1 而 API 只听 127.0.0.1 导致 Failed to fetch
-        target: 'http://127.0.0.1:19876',
+        // 19876 在部分 Windows 环境会出现幽灵 LISTENING；开发暂用 19878
+        target: 'http://127.0.0.1:19878',
         changeOrigin: true,
       },
     },

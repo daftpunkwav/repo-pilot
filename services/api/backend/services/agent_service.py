@@ -166,6 +166,12 @@ def message_to_out(msg: AgentMessage) -> AgentMessageOut:
         if isinstance(thinking_raw, str) and thinking_raw.strip()
         else None
     )
+    tool_calls = meta.get("tool_calls")
+    if not isinstance(tool_calls, list):
+        tool_calls = None
+    subagents = meta.get("subagents")
+    if not isinstance(subagents, list):
+        subagents = None
 
     return AgentMessageOut(
         id=msg.id,
@@ -175,6 +181,8 @@ def message_to_out(msg: AgentMessage) -> AgentMessageOut:
         content=msg.content,
         content_type=msg.content_type or "text",
         thinking=thinking,
+        tool_calls=tool_calls,
+        subagents=subagents,
         question=question,
         question_answer=question_answer,
         created_at=msg.created_at.isoformat() + "Z",
@@ -335,6 +343,8 @@ class _AgentSegmentBuffer:
         self.agent_id = agent_id
         self.usage: dict[str, Any] = {}
         self.flushed = False
+        self.tool_calls: dict[str, dict[str, Any]] = {}
+        self.subagents: dict[str, dict[str, Any]] = {}
 
     def append_delta(self, content: str) -> None:
         if content:
@@ -343,6 +353,75 @@ class _AgentSegmentBuffer:
     def append_thinking(self, content: str) -> None:
         if content:
             self.think_parts.append(content)
+
+    def note_tool_call(
+        self, call_id: str, name: str, args: dict[str, Any] | None = None
+    ) -> None:
+        if not call_id or name == "ask_user":
+            return
+        prev = self.tool_calls.get(call_id) or {}
+        self.tool_calls[call_id] = {
+            "name": name or prev.get("name") or "tool",
+            "args": args if isinstance(args, dict) else (prev.get("args") or {}),
+            **(
+                {"result": prev["result"]}
+                if "result" in prev
+                else {}
+            ),
+        }
+
+    def note_tool_result(self, call_id: str, result: Any, name: str | None = None) -> None:
+        if not call_id:
+            return
+        prev = self.tool_calls.get(call_id) or {
+            "name": name or "tool",
+            "args": {},
+        }
+        if name:
+            prev["name"] = name
+        if prev.get("name") == "ask_user":
+            return
+        prev["result"] = result
+        self.tool_calls[call_id] = prev
+
+    def note_subagent_start(
+        self, agent_id: str, *, task: str | None = None, reason: str | None = None
+    ) -> None:
+        if not agent_id:
+            return
+        prev = self.subagents.get(agent_id) or {}
+        self.subagents[agent_id] = {
+            "agentId": agent_id,
+            "task": task if task is not None else prev.get("task"),
+            "reason": reason if reason is not None else prev.get("reason"),
+            "status": "running",
+        }
+
+    def note_subagent_done(self, agent_id: str, status: str = "ok") -> None:
+        if not agent_id:
+            return
+        prev = self.subagents.get(agent_id) or {"agentId": agent_id}
+        st = status if status in ("ok", "question", "error") else "ok"
+        prev["status"] = st
+        self.subagents[agent_id] = prev
+
+    def _extract_expert_thinking(self, full: str, agent_id: str) -> str:
+        import re
+
+        name = {
+            "scout": "Scout",
+            "mentor": "Mentor",
+            "navigator": "Navigator",
+            "curator": "Curator",
+            "scribe": "Scribe",
+            "atlas": "Atlas",
+            "hub": "Hub",
+        }.get(agent_id, agent_id[:1].upper() + agent_id[1:])
+        m = re.search(
+            rf"【{re.escape(name)}】\s*\n?([\s\S]*?)(?=\n【[^】]+】|$)",
+            full,
+        )
+        return (m.group(1) if m else "").strip()
 
     async def flush(
         self,
@@ -353,13 +432,31 @@ class _AgentSegmentBuffer:
     ) -> bool:
         text = "".join(self.parts).strip()
         thinking = "".join(self.think_parts).strip()
+        tools = list(self.tool_calls.values())
+        subs = []
+        for sa in self.subagents.values():
+            item = dict(sa)
+            if item.get("status") == "running":
+                item["status"] = "ok"
+            expert_think = self._extract_expert_thinking(
+                thinking, str(item.get("agentId") or "")
+            )
+            if expert_think:
+                item["thinking"] = expert_think
+            subs.append(item)
         self.parts.clear()
         self.think_parts.clear()
-        if not text and not thinking:
+        self.tool_calls.clear()
+        self.subagents.clear()
+        if not text and not thinking and not tools and not subs:
             return False
         meta = dict(metadata or {})
         if thinking:
             meta["thinking"] = thinking[:_THINKING_META_MAX]
+        if tools:
+            meta["tool_calls"] = tools
+        if subs:
+            meta["subagents"] = subs
         if self.usage:
             meta.setdefault("usage", self.usage)
         await append_message(
@@ -451,6 +548,55 @@ async def stream_chat(
                     data = json.loads(data_line)
                     new_agent = data.get("agent_id") or buf.agent_id
                     await buf.switch_agent(db, session, new_agent)
+                except Exception:
+                    pass
+            elif chunk.startswith("event: tool_call"):
+                try:
+                    data_line = chunk.split("data: ", 1)[1].strip()
+                    data = json.loads(data_line)
+                    call_id = data.get("call_id") or data.get("id") or ""
+                    buf.note_tool_call(
+                        str(call_id),
+                        str(data.get("name") or "tool"),
+                        data.get("args") if isinstance(data.get("args"), dict) else {},
+                    )
+                except Exception:
+                    pass
+            elif chunk.startswith("event: tool_result"):
+                try:
+                    data_line = chunk.split("data: ", 1)[1].strip()
+                    data = json.loads(data_line)
+                    call_id = data.get("call_id") or data.get("id") or ""
+                    buf.note_tool_result(
+                        str(call_id),
+                        data.get("result", data.get("preview")),
+                        str(data.get("name") or "") or None,
+                    )
+                except Exception:
+                    pass
+            elif chunk.startswith("event: subagent_start"):
+                try:
+                    data_line = chunk.split("data: ", 1)[1].strip()
+                    data = json.loads(data_line)
+                    buf.note_subagent_start(
+                        str(data.get("agent_id") or ""),
+                        task=data.get("task") if isinstance(data.get("task"), str) else None,
+                        reason=(
+                            data.get("reason")
+                            if isinstance(data.get("reason"), str)
+                            else None
+                        ),
+                    )
+                except Exception:
+                    pass
+            elif chunk.startswith("event: subagent_done"):
+                try:
+                    data_line = chunk.split("data: ", 1)[1].strip()
+                    data = json.loads(data_line)
+                    buf.note_subagent_done(
+                        str(data.get("agent_id") or ""),
+                        str(data.get("status") or "ok"),
+                    )
                 except Exception:
                     pass
             elif chunk.startswith("event: done"):
@@ -638,6 +784,55 @@ async def stream_question_answer(
                 data = json.loads(data_line)
                 await buf.switch_agent(
                     db, session, data.get("agent_id") or buf.agent_id
+                )
+            except Exception:
+                pass
+        elif chunk.startswith("event: tool_call"):
+            try:
+                data_line = chunk.split("data: ", 1)[1].strip()
+                data = json.loads(data_line)
+                call_id = data.get("call_id") or data.get("id") or ""
+                buf.note_tool_call(
+                    str(call_id),
+                    str(data.get("name") or "tool"),
+                    data.get("args") if isinstance(data.get("args"), dict) else {},
+                )
+            except Exception:
+                pass
+        elif chunk.startswith("event: tool_result"):
+            try:
+                data_line = chunk.split("data: ", 1)[1].strip()
+                data = json.loads(data_line)
+                call_id = data.get("call_id") or data.get("id") or ""
+                buf.note_tool_result(
+                    str(call_id),
+                    data.get("result", data.get("preview")),
+                    str(data.get("name") or "") or None,
+                )
+            except Exception:
+                pass
+        elif chunk.startswith("event: subagent_start"):
+            try:
+                data_line = chunk.split("data: ", 1)[1].strip()
+                data = json.loads(data_line)
+                buf.note_subagent_start(
+                    str(data.get("agent_id") or ""),
+                    task=data.get("task") if isinstance(data.get("task"), str) else None,
+                    reason=(
+                        data.get("reason")
+                        if isinstance(data.get("reason"), str)
+                        else None
+                    ),
+                )
+            except Exception:
+                pass
+        elif chunk.startswith("event: subagent_done"):
+            try:
+                data_line = chunk.split("data: ", 1)[1].strip()
+                data = json.loads(data_line)
+                buf.note_subagent_done(
+                    str(data.get("agent_id") or ""),
+                    str(data.get("status") or "ok"),
                 )
             except Exception:
                 pass

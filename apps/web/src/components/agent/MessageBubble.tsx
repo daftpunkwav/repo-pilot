@@ -12,7 +12,9 @@ import {
   recoverQuestionFromText,
   tryParseAnswerDump,
 } from '@/utils/agentQuestion';
+import { displaySwitchReason } from '@/utils/agentSwitchDisplay';
 import { QuestionAnswerCard, QuestionOfferCard } from './QuestionHistoryCard';
+import { RunTracePanel } from './RunTracePanel';
 
 const LONG_MSG_CHARS = 2800;
 
@@ -57,9 +59,14 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
         scribe: 'Scribe',
         atlas: 'Atlas',
       }[id] ?? id);
-    const from = pretty(message.agent_switch.from);
-    const to = pretty(message.agent_switch.to);
-    const reason = message.agent_switch.reason?.trim();
+    const fromId = message.agent_switch.from;
+    const toId = message.agent_switch.to;
+    const from = pretty(fromId);
+    const to = pretty(toId);
+    const role = AGENT_ROLE_LABELS[toId] ?? '';
+    const rawReason = message.agent_switch.reason?.trim();
+    const reason = displaySwitchReason(rawReason, toId, 96);
+    const showReason = Boolean(reason) && reason !== role;
     return (
       <div className="msg msg--switch" data-testid="agent-switch-notice">
         <div className="agent-switch" role="status" aria-label={`切换 ${from} 到 ${to}`}>
@@ -70,14 +77,11 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
               →
             </span>
             <span className="agent-switch__to">{to}</span>
+            {role ? <span className="agent-switch__role">{role}</span> : null}
           </div>
           <span className="agent-switch__line" aria-hidden />
         </div>
-        {reason && (
-          <p className="agent-switch__reason" title={reason}>
-            {reason}
-          </p>
-        )}
+        {showReason && <p className="agent-switch__reason">{reason}</p>}
       </div>
     );
   }
@@ -174,6 +178,12 @@ export function MessageBubble({ message, agentName }: MessageBubbleProps) {
             />
           ) : (
             message.content && <MarkdownRenderer content={message.content} />
+          )}
+          {!isUser && (
+            <RunTracePanel
+              toolCalls={message.tool_calls}
+              subagents={message.subagents}
+            />
           )}
         </div>
         {isLong && (

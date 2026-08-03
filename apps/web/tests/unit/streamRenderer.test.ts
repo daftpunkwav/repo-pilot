@@ -3,6 +3,7 @@ import {
   isStatusLine,
   isStatusOnlyThinking,
   partitionThinking,
+  persistableThinking,
 } from '@/components/agent/StreamRenderer';
 
 describe('partitionThinking', () => {
@@ -64,5 +65,18 @@ describe('partitionThinking', () => {
     expect(isStatusOnlyThinking(raw)).toBe(true);
     const { realThinking } = partitionThinking(raw);
     expect(realThinking).toBe('');
+  });
+
+  it('意图识别脚手架不落库', () => {
+    const raw =
+      '[状态] 意图 · hub · 0.95\nHub 推理中 (第 1/4 轮 · plan_execute)\n';
+    expect(persistableThinking(raw)).toBe('');
+    expect(isStatusOnlyThinking(raw)).toBe(true);
+  });
+
+  it('真实规划正文可落库', () => {
+    const raw = '[规划] Hub · plan_execute\n正在生成行动计划…\n\n先寒暄再问需求\n';
+    expect(persistableThinking(raw)).toContain('先寒暄');
+    expect(persistableThinking(raw)).not.toContain('[规划]');
   });
 });

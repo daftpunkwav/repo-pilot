@@ -296,6 +296,16 @@ export interface AgentMessage {
   /** 本轮流式思考/阶段状态（前端落盘，便于回看） */
   thinking?: string;
   tool_call?: ToolCallData;
+  /** 本轮工具调用踪迹（落盘后仍展示） */
+  tool_calls?: ToolCallData[];
+  /** 内嵌专家进度与思考（Hub 舞台直出时） */
+  subagents?: Array<{
+    agentId: AgentId;
+    task?: string;
+    reason?: string;
+    status: 'running' | 'ok' | 'question' | 'error';
+    thinking?: string;
+  }>;
   /** 助手发起的结构化反问（历史卡片） */
   question?: AgentQuestion;
   /** 用户对反问的回答（历史卡片） */

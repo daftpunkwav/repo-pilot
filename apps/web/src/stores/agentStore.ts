@@ -26,8 +26,11 @@ import {
   questionTitle,
   recoverQuestionFromText,
 } from '@/utils/agentQuestion';
-import { isStatusOnlyThinking } from '@/components/agent/StreamRenderer';
+import { persistableThinking } from '@/components/agent/StreamRenderer';
 import { ensureSessionProjectsFromMessage } from '@/utils/sessionProjectBind';
+import { isStreamSessionActive } from '@/utils/streamSessionGuard';
+import { displaySwitchReason } from '@/utils/agentSwitchDisplay';
+import { snapshotSubagents, snapshotToolCalls } from '@/utils/runTrace';
 
 interface ToolCallEntry {
   name: string;
@@ -97,6 +100,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       return;
     }
 
+    // 切走正在生成的会话：先中断旧流，避免尾巴写入新会话
+    if (prev.streaming && prev.currentSessionId !== sessionId) {
+      get().cancelStream();
+    }
+
     const api = getApi();
     const response = await api.getAgentSession(sessionId);
     const messages = hydrateAgentMessages(response.data.messages ?? []);
@@ -123,6 +131,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   },
 
   createSession: async () => {
+    if (get().streaming) {
+      get().cancelStream();
+    }
     const api = getApi();
     const response = await api.createAgentSession();
     const newSession = response.data;
@@ -132,6 +143,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       messages: [],
       activeAgent: 'hub',
       pendingQuestion: null,
+      streaming: false,
+      streamingContent: '',
+      thinkingBuffer: '',
+      toolCalls: new Map(),
+      subagents: [],
     }));
   },
 
@@ -304,10 +320,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   processSSEStream: async (stream) => {
     // 多 Agent 编排会多次发出 done；正文只在流结束时落盘一次，避免重复气泡
     let sawQuestion = false;
+    const originSessionId = get().currentSessionId;
+    const stillOnOrigin = () =>
+      isStreamSessionActive(originSessionId, get().currentSessionId);
 
     const buildOffer = (normalized: AgentQuestion): AgentMessage => ({
       id: `msg_q_${normalized.question_id}`,
-      session_id: get().currentSessionId ?? '',
+      session_id: originSessionId ?? '',
       agent: get().activeAgent,
       role: 'assistant',
       content: `发起反问：${questionTitle(normalized)}`,
@@ -328,11 +347,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     ): AgentMessage[] => {
       const base = state.messages.filter((m) => m.id !== offer.id);
       const prior = state.streamingContent.trim();
-      const priorThink = state.thinkingBuffer.trim();
+      const priorThink = persistableThinking(state.thinkingBuffer);
       if ((prior && !isAskUserShapedText(prior)) || priorThink) {
         base.push({
           id: `msg_pre_${Date.now()}`,
-          session_id: state.currentSessionId ?? '',
+          session_id: originSessionId ?? '',
           agent: state.activeAgent,
           role: 'assistant',
           content: prior && !isAskUserShapedText(prior) ? prior : undefined,
@@ -346,6 +365,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
     try {
       for await (const event of stream) {
+        if (!stillOnOrigin()) {
+          break;
+        }
         switch (event.event) {
           case 'text_delta': {
             const delta = asSSETextDelta(event.data);
@@ -364,6 +386,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             break;
           }
           case 'question': {
+            if (!stillOnOrigin()) break;
             const normalized = ensureAgentQuestion(event.data, get().activeAgent);
             if (!normalized) break;
             sawQuestion = true;
@@ -376,7 +399,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               toolCalls: new Map(),
               subagents: [],
               messages: withFlushedPrior(
-                { ...state, currentSessionId: get().currentSessionId },
+                { ...state, currentSessionId: originSessionId },
                 offerMsg
               ),
             }));
@@ -400,15 +423,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
                 get().activeAgent
               );
               if (normalized) {
+                if (!stillOnOrigin()) break;
                 sawQuestion = true;
                 set((state) => {
                   const msgs = [...state.messages];
                   const prior = state.streamingContent.trim();
-                  const priorThink = state.thinkingBuffer.trim();
+                  const priorThink = persistableThinking(state.thinkingBuffer);
                   if ((prior && !isAskUserShapedText(prior)) || priorThink) {
                     msgs.push({
                       id: `msg_pre_${Date.now()}`,
-                      session_id: get().currentSessionId ?? '',
+                      session_id: originSessionId ?? '',
                       agent: state.activeAgent,
                       role: 'assistant',
                       content: prior && !isAskUserShapedText(prior) ? prior : undefined,
@@ -437,6 +461,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             break;
           }
           case 'tool_result': {
+            if (!stillOnOrigin()) break;
             const toolResult = asSSEToolResult(event.data);
             const raw = event.data as Record<string, unknown>;
             const callId =
@@ -466,11 +491,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
                 : null;
             if (resultObj?.__session_projects__ && Array.isArray(resultObj.project_ids)) {
               const ids = resultObj.project_ids.map(String);
-              const sid = get().currentSessionId;
-              if (sid) {
+              if (originSessionId) {
                 set((state) => ({
                   sessions: state.sessions.map((s) =>
-                    s.id === sid
+                    s.id === originSessionId
                       ? {
                           ...s,
                           project_ids: ids,
@@ -484,6 +508,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             break;
           }
           case 'agent_switch': {
+            if (!stillOnOrigin()) break;
             const switchData = asSSEAgentSwitch(event.data);
             const raw = event.data as Record<string, unknown>;
             const next = (switchData.to ||
@@ -495,26 +520,31 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             const reason =
               switchData.reason ||
               (typeof raw.reason === 'string' ? raw.reason : undefined);
-            const sid = get().currentSessionId ?? '';
+            const sid = originSessionId ?? '';
             // 在 set 外读取缓冲，切换归属用 from（正在结束的 Agent），避免 activeAgent 不同步
             const snap = get();
             const prior = snap.streamingContent.trim();
-            const priorThink = snap.thinkingBuffer.trim();
+            const priorThink = persistableThinking(snap.thinkingBuffer);
             const flushAgent = (from || snap.activeAgent) as AgentId;
             const stamp = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
             set((state) => {
               const msgs = [...state.messages];
               // 仅状态行、无正文时不落气泡，避免 Hub 调度后留下空气泡
-              const keepThink =
-                Boolean(priorThink) && !isStatusOnlyThinking(priorThink);
-              if (prior || keepThink) {
+              const keepThink = Boolean(priorThink);
+              // 有思考无正文时，用短切换说明作正文，避免「只有思考过程」空壳
+              const body =
+                prior ||
+                (keepThink && reason?.trim()
+                  ? displaySwitchReason(reason, next, 96)
+                  : '');
+              if (body || keepThink) {
                 msgs.push({
                   id: `msg_${stamp}_pre_switch`,
                   session_id: sid,
                   agent: flushAgent,
                   role: 'assistant',
-                  content: prior || undefined,
+                  content: body || undefined,
                   ...(keepThink ? { thinking: priorThink } : {}),
                   created_at: new Date().toISOString(),
                 });
@@ -546,6 +576,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             break;
           }
           case 'subagent_start': {
+            if (!stillOnOrigin()) break;
             const data = asSSESubagentStart(event.data);
             const raw = event.data as Record<string, unknown>;
             const agentId = (data.agent_id ||
@@ -569,6 +600,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             break;
           }
           case 'subagent_done': {
+            if (!stillOnOrigin()) break;
             const data = asSSESubagentDone(event.data);
             const raw = event.data as Record<string, unknown>;
             const agentId = (data.agent_id ||
@@ -588,15 +620,15 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             break;
           }
           case 'session_projects': {
+            if (!stillOnOrigin()) break;
             const raw = event.data as Record<string, unknown>;
             const ids = Array.isArray(raw.project_ids)
               ? raw.project_ids.map(String)
               : [];
-            const sid = get().currentSessionId;
-            if (sid) {
+            if (originSessionId) {
               set((state) => ({
                 sessions: state.sessions.map((s) =>
-                  s.id === sid
+                  s.id === originSessionId
                     ? { ...s, project_ids: ids, project_id: ids[0] ?? null }
                     : s
                 ),
@@ -609,6 +641,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             break;
           }
           case 'error': {
+            if (!stillOnOrigin()) break;
             const errData = asSSEError(event.data);
             set({ error: errData.message, streaming: false });
             break;
@@ -618,10 +651,27 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         }
       }
 
+      // 已切走会话：不写消息，只清本流控制器（避免污染新会话）
+      if (!stillOnOrigin()) {
+        set((state) => ({
+          streamAbortController: null,
+          ...(state.currentSessionId === originSessionId
+            ? {
+                streaming: false,
+                streamingContent: '',
+                thinkingBuffer: '',
+                toolCalls: new Map(),
+                subagents: [],
+              }
+            : {}),
+        }));
+        return;
+      }
+
       // 流自然结束后统一落一条 assistant 消息
       if (!sawQuestion) {
-        const { streamingContent, currentSessionId, activeAgent, error } = get();
-        if (currentSessionId && streamingContent.trim() && !error) {
+        const { streamingContent, activeAgent, error } = get();
+        if (originSessionId && streamingContent.trim() && !error) {
           // 模型把 ask_user 写成正文 JSON，或直接 Markdown 出题时，转成弹窗
           const recovered = recoverQuestionFromText(streamingContent);
           if (recovered) {
@@ -637,7 +687,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               if (preamble && !isAskUserShapedText(preamble)) {
                 msgs.push({
                   id: `msg_pre_${Date.now()}`,
-                  session_id: currentSessionId,
+                  session_id: originSessionId,
                   agent: activeAgent,
                   role: 'assistant',
                   content: preamble,
@@ -657,14 +707,19 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               };
             });
           } else {
-            const thinking = get().thinkingBuffer.trim();
+            const snap = get();
+            const thinking = persistableThinking(snap.thinkingBuffer);
+            const tool_calls = snapshotToolCalls(snap.toolCalls);
+            const subagents = snapshotSubagents(snap.subagents, snap.thinkingBuffer);
             const assistantMsg: AgentMessage = {
               id: `msg_${Date.now()}`,
-              session_id: currentSessionId,
+              session_id: originSessionId,
               agent: activeAgent,
               role: 'assistant',
               content: streamingContent,
               ...(thinking ? { thinking } : {}),
+              ...(tool_calls.length ? { tool_calls } : {}),
+              ...(subagents.length ? { subagents } : {}),
               created_at: new Date().toISOString(),
             };
             set((state) => ({
@@ -698,26 +753,35 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
+        // 已切走会话：不把半截正文写进新会话
+        if (!stillOnOrigin()) {
+          set({ streamAbortController: null });
+          return;
+        }
         // 中断时把半截正文落成气泡，避免「生成中」消失后内容全丢
         const {
           streamingContent,
           thinkingBuffer,
-          currentSessionId,
           activeAgent,
           pendingQuestion,
         } = get();
         const prior = streamingContent.trim();
-        const priorThink = thinkingBuffer.trim();
-        if (currentSessionId && (prior || priorThink) && !pendingQuestion) {
+        const priorThink = persistableThinking(thinkingBuffer);
+        if (originSessionId && (prior || priorThink) && !pendingQuestion) {
+          const snap = get();
+          const tool_calls = snapshotToolCalls(snap.toolCalls);
+          const subagents = snapshotSubagents(snap.subagents, thinkingBuffer);
           const assistantMsg: AgentMessage = {
             id: `msg_${Date.now()}_aborted`,
-            session_id: currentSessionId,
+            session_id: originSessionId,
             agent: activeAgent,
             role: 'assistant',
             content: prior
               ? `${prior}\n\n*(已中断)*`
               : '*(已中断)*',
             ...(priorThink ? { thinking: priorThink } : {}),
+            ...(tool_calls.length ? { tool_calls } : {}),
+            ...(subagents.length ? { subagents } : {}),
             created_at: new Date().toISOString(),
           };
           set((state) => ({
@@ -733,6 +797,10 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           // 被新流抢占且无半截正文：只停 streaming，保留 pendingQuestion
           set({ streaming: false, streamAbortController: null });
         }
+        return;
+      }
+      if (!stillOnOrigin()) {
+        set({ streamAbortController: null });
         return;
       }
       set({

@@ -435,6 +435,14 @@ export class RealApiClient implements IApiClient {
           ...(typeof m.thinking === 'string' && m.thinking.trim()
             ? { thinking: m.thinking }
             : {}),
+          ...(Array.isArray((m as AgentMessage).tool_calls) &&
+          (m as AgentMessage).tool_calls!.length
+            ? { tool_calls: (m as AgentMessage).tool_calls }
+            : {}),
+          ...(Array.isArray((m as AgentMessage).subagents) &&
+          (m as AgentMessage).subagents!.length
+            ? { subagents: (m as AgentMessage).subagents }
+            : {}),
         })),
       },
       meta: res.meta,

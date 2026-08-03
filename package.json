@@ -20,7 +20,7 @@
     "typecheck:web": "npm run typecheck -w @repopilot/web",
     "test:api": "pytest tests -q",
     "test": "npm run test:api && npm run test:web",
-    "dev:api": "uvicorn backend.main:app --reload --host 127.0.0.1 --port 19876 --app-dir services/api",
+    "dev:api": "uvicorn backend.main:app --reload --host 127.0.0.1 --port 19878 --app-dir services/api",
     "dev:agent": "uvicorn agent_runtime.main:app --reload --port 19877 --app-dir services/agent"
   }
 }

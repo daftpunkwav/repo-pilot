@@ -49,6 +49,9 @@ class AgentMessageOut(BaseModel):
     content_type: Optional[str] = "text"
     # 本段思考过程（存于 message metadata.thinking）
     thinking: Optional[str] = None
+    # 工具调用 / 内嵌专家踪迹（metadata.tool_calls / subagents）
+    tool_calls: Optional[list[dict[str, Any]]] = None
+    subagents: Optional[list[dict[str, Any]]] = None
     # 反问结构 / 答题详情等（由 message_meta 解析）
     question: Optional[dict[str, Any]] = None
     question_answer: Optional[dict[str, Any]] = None
