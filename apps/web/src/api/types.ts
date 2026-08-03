@@ -592,6 +592,8 @@ export interface UserProfile {
   history_summary: string;
   /** Agent 维护的记忆条目（摘要 / 目标 / 技术栈 / 偏好） */
   memory_items?: MemoryItem[];
+  /** 待用户确认的 Agent 记忆提案 */
+  pending_memory_proposals?: MemoryProposal[];
   extensions: Record<string, unknown>;
 }
 
@@ -602,6 +604,17 @@ export interface MemoryItem {
   content: string;
   created_at: string;
   updated_at?: string;
+}
+
+/** 待确认记忆提案 */
+export interface MemoryProposal {
+  id: string;
+  kind: 'long_memory' | 'profile_tech' | 'preference';
+  value: string;
+  confidence: number;
+  agent_id: string;
+  evidence?: string[];
+  at?: string;
 }
 
 /** LLM 上下文窗口用量（后端按会话维护） */

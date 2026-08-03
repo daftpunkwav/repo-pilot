@@ -19,12 +19,25 @@ class MemoryItemOut(BaseModel):
     updated_at: Optional[str] = None
 
 
+class MemoryProposalOut(BaseModel):
+    """待用户确认的 Agent 记忆提案"""
+
+    id: str
+    kind: Literal["long_memory", "profile_tech", "preference"] = "long_memory"
+    value: str
+    confidence: float = 0.7
+    agent_id: str = "hub"
+    evidence: list[str] = Field(default_factory=list)
+    at: str = ""
+
+
 class UserProfileOut(BaseModel):
     tech_proficiency: dict[str, Any] = Field(default_factory=dict)
     learning_preferences: dict[str, Any] = Field(default_factory=dict)
     goals: list[GoalOut] = Field(default_factory=list)
     history_summary: str = ""
     memory_items: list[MemoryItemOut] = Field(default_factory=list)
+    pending_memory_proposals: list[MemoryProposalOut] = Field(default_factory=list)
     extensions: dict[str, Any] = Field(default_factory=dict)
 
 

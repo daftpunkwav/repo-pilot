@@ -149,6 +149,17 @@ export function AgentContextSidebar({
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['userProfile'] }),
   });
 
+  const resolveProposal = useMutation({
+    mutationFn: async (args: { id: string; action: 'accept' | 'reject' }) => {
+      const api = getApi();
+      if (args.action === 'accept') {
+        return (await api.acceptMemoryProposal(args.id)).data;
+      }
+      return (await api.rejectMemoryProposal(args.id)).data;
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['userProfile'] }),
+  });
+
   const [editingCategory, setEditingCategory] = useState<MemoryItem['category'] | 'goal' | null>(
     null
   );
@@ -156,6 +167,7 @@ export function AgentContextSidebar({
   const [editError, setEditError] = useState<string | null>(null);
 
   const memoryItems = profile?.memory_items ?? [];
+  const pendingProposals = profile?.pending_memory_proposals ?? [];
   const goals = profile?.goals ?? [];
 
   // 技术栈：优先 memory_items tech；若空则从 tech_proficiency 派生
@@ -341,6 +353,45 @@ export function AgentContextSidebar({
       </div>
 
       <div className="context-panel-scroll">
+        {pendingProposals.length > 0 && (
+          <div className="context-section context-section--memory">
+            <div className="context-title">
+              <span>待确认记忆</span>
+            </div>
+            <div className="context-memory-scroll">
+              {pendingProposals.map((p) => (
+                <div key={p.id} className="memory-chip memory-chip--pending" title={p.value}>
+                  <span>
+                    [{p.agent_id}/{p.kind}] {p.value.slice(0, 80)}
+                    {p.value.length > 80 ? '…' : ''}
+                  </span>
+                  <div className="ctx-edit-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      disabled={resolveProposal.isPending}
+                      onClick={() =>
+                        resolveProposal.mutate({ id: p.id, action: 'accept' })
+                      }
+                    >
+                      确认
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      disabled={resolveProposal.isPending}
+                      onClick={() =>
+                        resolveProposal.mutate({ id: p.id, action: 'reject' })
+                      }
+                    >
+                      拒绝
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {(['summary', 'goal', 'tech', 'preference'] as const).map((cat) => {
           const meta = MEMORY_SECTION_META[cat];
           const isEditing = editingCategory === cat;

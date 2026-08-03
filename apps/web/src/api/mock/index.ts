@@ -1032,6 +1032,39 @@ export class MockApiClient implements IApiClient {
       goals: [],
       history_summary: '',
       memory_items: [],
+      pending_memory_proposals: [],
+    };
+    return wrapResponse(deepClone(this.userProfile));
+  }
+
+  async acceptMemoryProposal(proposalId: string): Promise<ApiResponse<UserProfile>> {
+    await delay();
+    requireAuth();
+    const pending = this.userProfile.pending_memory_proposals ?? [];
+    const found = pending.find((p) => p.id === proposalId);
+    if (!found) throw new Error('提案不存在');
+    const items = [...(this.userProfile.memory_items ?? [])];
+    items.push({
+      id: `mem_${Date.now()}`,
+      category: found.kind === 'profile_tech' ? 'tech' : found.kind === 'preference' ? 'preference' : 'summary',
+      content: found.value,
+      created_at: new Date().toISOString(),
+    });
+    this.userProfile = {
+      ...this.userProfile,
+      memory_items: items,
+      pending_memory_proposals: pending.filter((p) => p.id !== proposalId),
+    };
+    return wrapResponse(deepClone(this.userProfile));
+  }
+
+  async rejectMemoryProposal(proposalId: string): Promise<ApiResponse<UserProfile>> {
+    await delay();
+    requireAuth();
+    const pending = this.userProfile.pending_memory_proposals ?? [];
+    this.userProfile = {
+      ...this.userProfile,
+      pending_memory_proposals: pending.filter((p) => p.id !== proposalId),
     };
     return wrapResponse(deepClone(this.userProfile));
   }

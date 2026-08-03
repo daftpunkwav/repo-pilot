@@ -153,6 +153,10 @@ export interface IApiClient {
   updateUserProfile(data: Partial<UserProfile>): Promise<ApiResponse<UserProfile>>;
   /** 清除 Agent 关于用户的画像记忆（不删除对话） */
   clearUserMemory(): Promise<ApiResponse<UserProfile>>;
+  /** 确认待处理记忆提案 */
+  acceptMemoryProposal(proposalId: string): Promise<ApiResponse<UserProfile>>;
+  /** 拒绝待处理记忆提案 */
+  rejectMemoryProposal(proposalId: string): Promise<ApiResponse<UserProfile>>;
   getPermissions(): Promise<ApiResponse<AgentPermissions>>;
 
   chatAgent(sessionId: string, message: string, signal?: AbortSignal): AsyncGenerator<SSEEvent>;

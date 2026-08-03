@@ -88,26 +88,109 @@ class MemoryService:
         confidence: float,
         evidence: list[str] | None = None,
         kind: str = "long_memory",
+        apply: bool = False,
     ) -> dict[str, Any]:
         """
-        Agent 提交记忆提案，Hub 做证据加权合并。
-        kind: long_memory | profile_tech | preference
+        Agent 提交记忆提案。
+
+        - apply=False（默认，工具路径）：仅写入 pending，需用户确认后才合并。
+        - apply=True（用户显式反问答案等）：立即合并。
         """
+        import uuid as _uuid
+
+        raw_value = str(value or "").strip()[:2000]
         proposal = {
-            "value": value,
+            "id": f"prop_{_uuid.uuid4().hex[:12]}",
+            "value": raw_value,
             "confidence": max(0.0, min(1.0, confidence)),
-            "evidence": evidence or [],
+            "evidence": (evidence or [])[:8],
             "agent_id": agent_id,
             "kind": kind,
             "at": datetime.utcnow().isoformat() + "Z",
         }
+        if not raw_value:
+            return {**proposal, "status": "rejected", "applied": False, "error": "empty"}
+
+        if not apply:
+            await self._enqueue_pending_proposal(user_id, proposal)
+            return {**proposal, "status": "pending", "applied": False}
+
+        await self._apply_proposal(user_id, proposal)
+        return {**proposal, "status": "applied", "applied": True}
+
+    async def _enqueue_pending_proposal(
+        self, user_id: UUID, proposal: dict[str, Any]
+    ) -> None:
+        row = await get_or_create_profile(self.db, user_id)
+        prefs = self._parse(row.agent_prefs, {})
+        if not isinstance(prefs, dict):
+            prefs = {}
+        pending: list[dict] = list(prefs.get("pending_memory_proposals") or [])
+        # 同内容去重：保留最新
+        value = proposal["value"]
+        pending = [
+            p
+            for p in pending
+            if not (isinstance(p, dict) and str(p.get("value") or "") == value)
+        ]
+        pending.append(proposal)
+        prefs["pending_memory_proposals"] = pending[-20:]
+        row.agent_prefs = json.dumps(prefs, ensure_ascii=False)
+        await self.db.commit()
+
+    async def accept_memory_proposal(
+        self, user_id: UUID, proposal_id: str
+    ) -> dict[str, Any]:
+        """用户确认后合并提案。"""
+        row = await get_or_create_profile(self.db, user_id)
+        prefs = self._parse(row.agent_prefs, {})
+        if not isinstance(prefs, dict):
+            prefs = {}
+        pending: list[dict] = list(prefs.get("pending_memory_proposals") or [])
+        found: dict | None = None
+        rest: list[dict] = []
+        for p in pending:
+            if isinstance(p, dict) and str(p.get("id")) == proposal_id:
+                found = p
+            elif isinstance(p, dict):
+                rest.append(p)
+        if not found:
+            return {"ok": False, "error": "提案不存在或已处理"}
+        prefs["pending_memory_proposals"] = rest
+        row.agent_prefs = json.dumps(prefs, ensure_ascii=False)
+        await self.db.commit()
+        await self._apply_proposal(user_id, found)
+        return {"ok": True, "applied": True, "proposal": found}
+
+    async def reject_memory_proposal(
+        self, user_id: UUID, proposal_id: str
+    ) -> dict[str, Any]:
+        """用户拒绝提案。"""
+        row = await get_or_create_profile(self.db, user_id)
+        prefs = self._parse(row.agent_prefs, {})
+        if not isinstance(prefs, dict):
+            prefs = {}
+        pending: list[dict] = list(prefs.get("pending_memory_proposals") or [])
+        new_pending = [
+            p
+            for p in pending
+            if not (isinstance(p, dict) and str(p.get("id")) == proposal_id)
+        ]
+        if len(new_pending) == len(pending):
+            return {"ok": False, "error": "提案不存在或已处理"}
+        prefs["pending_memory_proposals"] = new_pending
+        row.agent_prefs = json.dumps(prefs, ensure_ascii=False)
+        await self.db.commit()
+        return {"ok": True, "applied": False}
+
+    async def _apply_proposal(self, user_id: UUID, proposal: dict[str, Any]) -> None:
+        kind = str(proposal.get("kind") or "long_memory")
         if kind == "long_memory":
             await self._merge_long_memory(user_id, proposal)
         elif kind == "profile_tech":
             await self._merge_tech_profile(user_id, proposal)
         elif kind == "preference":
             await self._merge_preference(user_id, proposal)
-        return proposal
 
     async def _merge_long_memory(self, user_id: UUID, proposal: dict) -> None:
         row = await get_or_create_profile(self.db, user_id)

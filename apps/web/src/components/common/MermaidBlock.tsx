@@ -1,20 +1,25 @@
 import { useEffect, useId, useState } from 'react';
+import DOMPurify from 'dompurify';
+import type { Config as DompurifyConfig } from 'dompurify';
 
-/** 显式 mermaid fence，或内容以常见图语法开头 */
-export function looksLikeMermaid(lang: string | null | undefined, code: string): boolean {
-  if ((lang || '').toLowerCase() === 'mermaid') return true;
-  const head = code.trimStart().slice(0, 48);
-  return /^(graph\s|flowchart\s|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie\b|mindmap|timeline)/i.test(
-    head,
-  );
+/** 仅显式 ```mermaid fence，避免把普通代码误送入 SVG 注入路径 */
+export function looksLikeMermaid(lang: string | null | undefined, _code?: string): boolean {
+  return (lang || '').toLowerCase() === 'mermaid';
 }
 
 interface MermaidBlockProps {
   code: string;
 }
 
+const SVG_PURIFY: DompurifyConfig = {
+  USE_PROFILES: { svg: true, svgFilters: true },
+  ADD_TAGS: ['use'],
+  FORBID_TAGS: ['script', 'foreignObject', 'iframe', 'object', 'embed', 'a'],
+  FORBID_ATTR: ['onclick', 'onload', 'onerror', 'onmouseover', 'href', 'xlink:href'],
+};
+
 /**
- * 客户端 Mermaid → SVG；流式未闭合或语法错误时降级为代码块，避免白屏。
+ * 客户端 Mermaid → 消毒后的 SVG；失败或未通过消毒时降级为代码块。
  */
 export function MermaidBlock({ code }: MermaidBlockProps) {
   const reactId = useId().replace(/:/g, '');
@@ -36,7 +41,11 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
           fontFamily: 'inherit',
         });
         const { svg: rendered } = await mermaid.render(`mmd-${reactId}`, code);
-        if (!cancelled) setSvg(rendered);
+        const clean = DOMPurify.sanitize(rendered, SVG_PURIFY);
+        if (!clean || !clean.includes('<svg')) {
+          throw new Error('svg sanitized empty');
+        }
+        if (!cancelled) setSvg(clean);
       } catch {
         if (!cancelled) {
           setFailed(true);
@@ -65,7 +74,6 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
     <div
       className="md-mermaid"
       data-testid="mermaid-svg"
-      // Mermaid 输出受 securityLevel=strict 约束
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );

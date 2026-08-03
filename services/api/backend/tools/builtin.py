@@ -18,6 +18,43 @@ def _uid(context) -> UUID:
     return context.user_id
 
 
+_GITHUB_NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
+
+
+def _safe_github_name(value: str) -> str | None:
+    """拒绝路径穿越与异常字符，降低 GitHub API path 注入风险。"""
+    s = (value or "").strip().removesuffix(".git")
+    if not s or "/" in s or "\\" in s or ".." in s:
+        return None
+    if not _GITHUB_NAME_RE.fullmatch(s):
+        return None
+    return s
+
+
+def _parse_owner_repo(
+    *,
+    owner: str = "",
+    repo: str = "",
+    full_name: str = "",
+    fallback_url: str | None = None,
+) -> tuple[str | None, str | None]:
+    o, r = owner, repo
+    if full_name and "/" in full_name:
+        parts = full_name.split("/")
+        if len(parts) == 2:
+            o, r = parts[0], parts[1]
+        else:
+            return None, None
+    if (not o or not r) and fallback_url:
+        m = re.search(r"github\.com/([^/]+)/([^/#?]+)", fallback_url)
+        if m:
+            o, r = m.group(1), m.group(2).removesuffix(".git")
+    so, sr = _safe_github_name(o or ""), _safe_github_name(r or "")
+    if not so or not sr:
+        return None, None
+    return so, sr
+
+
 @tool(
     name="query_user_projects",
     description="查询用户项目库。支持按名称、分类、语言、学习进度筛选。",
@@ -131,16 +168,16 @@ async def fetch_github_repo(
     full_name: str = "",
     **kw,
 ):
-    if full_name and "/" in full_name:
-        owner, repo = full_name.split("/", 1)
+    fallback = (
+        context.project.url
+        if context and getattr(context, "project", None) and context.project.url
+        else None
+    )
+    owner, repo = _parse_owner_repo(
+        owner=owner, repo=repo, full_name=full_name, fallback_url=fallback
+    )
     if not owner or not repo:
-        # 尝试从当前项目 URL 解析
-        if context.project and context.project.url:
-            m = re.search(r"github\.com/([^/]+)/([^/#?]+)", context.project.url)
-            if m:
-                owner, repo = m.group(1), m.group(2).removesuffix(".git")
-    if not owner or not repo:
-        return {"error": "需要 owner/repo"}
+        return {"error": "需要合法的 owner/repo"}
     from backend.services.github_client import fetch_repo_info
 
     return await fetch_repo_info(owner, repo)
@@ -169,14 +206,16 @@ async def fetch_readme(
     max_chars: int = 6000,
     **kw,
 ):
-    if full_name and "/" in full_name:
-        owner, repo = full_name.split("/", 1)
-    if (not owner or not repo) and context.project and context.project.url:
-        m = re.search(r"github\.com/([^/]+)/([^/#?]+)", context.project.url)
-        if m:
-            owner, repo = m.group(1), m.group(2).removesuffix(".git")
+    fallback = (
+        context.project.url
+        if context and getattr(context, "project", None) and context.project.url
+        else None
+    )
+    owner, repo = _parse_owner_repo(
+        owner=owner, repo=repo, full_name=full_name, fallback_url=fallback
+    )
     if not owner or not repo:
-        return {"error": "需要 owner/repo"}
+        return {"error": "需要合法的 owner/repo"}
     from backend.services.github_client import fetch_readme_text
 
     text = await fetch_readme_text(owner, repo)
@@ -559,7 +598,7 @@ async def manage_session_projects(
 @tool(
     name="propose_memory",
     description=(
-        "向 Hub 提交记忆/画像更新提案。"
+        "向 Hub 提交记忆/画像更新提案（不会立即写入；需用户在侧栏确认）。"
         "kind: long_memory | profile_tech | preference。"
         "profile_tech 的 value 格式如 'Python:75' 或 JSON。"
     ),
@@ -593,8 +632,16 @@ async def propose_memory(
         confidence=confidence,
         evidence=evidence or [],
         kind=kind,
+        apply=False,
     )
-    return {"accepted": True, "proposal": proposal}
+    return {
+        "accepted": False,
+        "pending": True,
+        "applied": False,
+        "proposal": proposal,
+        "message": "记忆提案已排队，需用户确认后才会写入画像",
+        "__memory_proposal__": True,
+    }
 
 
 @tool(

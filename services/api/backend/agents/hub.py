@@ -125,8 +125,8 @@ def apply_merge_mode(agent_def):
     )
 
 
-# 同用户回合：首批 + 最多再追加 2 批调度
-MAX_HUB_DISPATCH_ROUNDS = 3
+# 同用户回合：首批 + 最多再追加 1 批（防提示词放大费用）
+MAX_HUB_DISPATCH_ROUNDS = 2
 
 
 def _dispatch_fingerprint(dispatch: dict) -> str:
@@ -365,6 +365,7 @@ class HubService:
                 confidence=0.75,
                 evidence=[f"question:{question_id}"],
                 kind="preference",
+                apply=True,  # 用户显式作答，可立即写入
             )
 
         followup = (

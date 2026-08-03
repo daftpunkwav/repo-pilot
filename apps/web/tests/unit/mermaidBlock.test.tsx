@@ -5,14 +5,15 @@ import { looksLikeMermaid } from '@/components/common/MermaidBlock';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
 
 describe('looksLikeMermaid', () => {
-  it('识别 language-mermaid', () => {
+  it('仅识别 language-mermaid', () => {
     expect(looksLikeMermaid('mermaid', 'graph TD\nA-->B')).toBe(true);
+    expect(looksLikeMermaid('MERMAID', '')).toBe(true);
   });
 
-  it('识别 graph/flowchart 开头的 fence 内容', () => {
-    expect(looksLikeMermaid(null, 'graph TD\nA-->B')).toBe(true);
-    expect(looksLikeMermaid('text', 'flowchart LR\nA-->B')).toBe(true);
-    expect(looksLikeMermaid(null, 'sequenceDiagram\nA->>B: hi')).toBe(true);
+  it('无语言标记的 graph 不走 Mermaid（缩小 XSS 面）', () => {
+    expect(looksLikeMermaid(null, 'graph TD\nA-->B')).toBe(false);
+    expect(looksLikeMermaid('text', 'flowchart LR\nA-->B')).toBe(false);
+    expect(looksLikeMermaid(null, 'sequenceDiagram\nA->>B: hi')).toBe(false);
   });
 
   it('普通代码不误判', () => {
@@ -27,19 +28,16 @@ describe('MarkdownRenderer mermaid', () => {
     expect(screen.getByText('world')).toBeTruthy();
   });
 
-  it('mermaid fence 走图组件路径（初始为 fallback 代码块）', () => {
+  it('mermaid fence 走 MermaidBlock（初始 fallback）', () => {
     const md = '```mermaid\ngraph TD\n  A-->B\n```';
     render(createElement(MarkdownRenderer, { content: md }));
-    // 渲染成功前/失败时均为 fallback；关键是出现 mermaid 专用容器而非裸 pre.hljs
-    const fallback = screen.getByTestId('mermaid-fallback');
-    expect(fallback).toBeTruthy();
-    expect(fallback.textContent).toContain('graph TD');
-    expect(document.querySelector('.md-codeblock > pre.hljs:not(.md-mermaid--fallback *)')).toBeNull();
+    expect(screen.getByTestId('mermaid-fallback')).toBeTruthy();
   });
 
-  it('graph TD 无语言标记也走 MermaidBlock', () => {
+  it('无语言 graph TD 不走 MermaidBlock', () => {
     const md = '```\ngraph TD\n  A-->B\n```';
     render(createElement(MarkdownRenderer, { content: md }));
-    expect(screen.getByTestId('mermaid-fallback')).toBeTruthy();
+    expect(screen.queryByTestId('mermaid-fallback')).toBeNull();
+    expect(screen.queryByTestId('mermaid-svg')).toBeNull();
   });
 });

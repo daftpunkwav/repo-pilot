@@ -5,7 +5,13 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.agent import UserProfile
-from backend.schemas.profile import GoalOut, MemoryItemOut, UserProfileOut, UserProfileUpdate
+from backend.schemas.profile import (
+    GoalOut,
+    MemoryItemOut,
+    MemoryProposalOut,
+    UserProfileOut,
+    UserProfileUpdate,
+)
 
 DEFAULT_PROFILE = UserProfileOut()
 
@@ -22,6 +28,11 @@ def profile_to_out(row: UserProfile) -> UserProfileOut:
     memory_raw = _parse_json(row.agent_prefs, {})
     memory_items = memory_raw.get("memory_items", []) if isinstance(memory_raw, dict) else []
     extensions = memory_raw.get("extensions", {}) if isinstance(memory_raw, dict) else {}
+    pending_raw = (
+        memory_raw.get("pending_memory_proposals", [])
+        if isinstance(memory_raw, dict)
+        else []
+    )
     goals = [GoalOut.model_validate(g) for g in _parse_json(row.goals, [])]
     memory: list[MemoryItemOut] = []
     for m in memory_items:
@@ -41,12 +52,33 @@ def profile_to_out(row: UserProfile) -> UserProfileOut:
             memory.append(MemoryItemOut.model_validate(normalized))
         except Exception:
             continue
+    pending: list[MemoryProposalOut] = []
+    for p in pending_raw if isinstance(pending_raw, list) else []:
+        if not isinstance(p, dict):
+            continue
+        try:
+            pending.append(
+                MemoryProposalOut.model_validate(
+                    {
+                        "id": p.get("id") or f"prop_{len(pending)}",
+                        "kind": p.get("kind") or "long_memory",
+                        "value": str(p.get("value") or "")[:2000],
+                        "confidence": float(p.get("confidence") or 0.7),
+                        "agent_id": p.get("agent_id") or "hub",
+                        "evidence": list(p.get("evidence") or [])[:8],
+                        "at": p.get("at") or "",
+                    }
+                )
+            )
+        except Exception:
+            continue
     return UserProfileOut(
         tech_proficiency=_parse_json(row.tech_profile, {}),
         learning_preferences=_parse_json(row.preferences, {}),
         goals=goals,
         history_summary=row.history_summary or "",
         memory_items=memory,
+        pending_memory_proposals=pending,
         extensions=extensions if isinstance(extensions, dict) else {},
     )
 
@@ -109,6 +141,7 @@ async def clear_user_memory(db: AsyncSession, user_id: UUID) -> UserProfileOut:
     row.agent_prefs = json.dumps(
         {
             "memory_items": [],
+            "pending_memory_proposals": [],
             "short_memory": {},
             "extensions": extensions,
         },

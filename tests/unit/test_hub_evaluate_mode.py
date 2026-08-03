@@ -53,7 +53,7 @@ def test_evaluate_prompt_includes_summaries():
 
 
 def test_max_hub_dispatch_rounds_is_bounded():
-    assert MAX_HUB_DISPATCH_ROUNDS == 3
+    assert MAX_HUB_DISPATCH_ROUNDS == 2
 
 
 @pytest.mark.asyncio

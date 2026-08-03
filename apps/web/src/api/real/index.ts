@@ -508,6 +508,20 @@ export class RealApiClient implements IApiClient {
     });
   }
 
+  async acceptMemoryProposal(proposalId: string): Promise<ApiResponse<UserProfile>> {
+    return apiRequest<UserProfile>(
+      `/user/profile/memory-proposals/${encodeURIComponent(proposalId)}/accept`,
+      { method: 'POST' }
+    );
+  }
+
+  async rejectMemoryProposal(proposalId: string): Promise<ApiResponse<UserProfile>> {
+    return apiRequest<UserProfile>(
+      `/user/profile/memory-proposals/${encodeURIComponent(proposalId)}/reject`,
+      { method: 'POST' }
+    );
+  }
+
   async getPermissions(): Promise<ApiResponse<AgentPermissions>> {
     return apiRequest<AgentPermissions>('/agent/permissions');
   }
