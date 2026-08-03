@@ -6,9 +6,12 @@ from backend.agents.hub import HubService
 
 @pytest.mark.asyncio
 async def test_empty_expert_passthrough_triggers_hub_rewrite(monkeypatch):
+    from backend.agents.hub import DispatchRoundOutcome
     from backend.agents.react import EngineResult
 
     service = HubService.__new__(HubService)
+    from backend.agents.types import AgentEngineConfig
+    service.config = AgentEngineConfig()
     service.registry = type("R", (), {"has": staticmethod(lambda aid: True)})()
 
     class Mem:
@@ -21,11 +24,11 @@ async def test_empty_expert_passthrough_triggers_hub_rewrite(monkeypatch):
     async def fake_handle_dispatches(**kwargs):
         bag = kwargs.get("result_bag")
         if bag is not None:
-            bag["summaries"] = ["[mentor] empty"]
-            bag["expert_results"] = [("mentor", "")]
-            bag["direct_streamed"] = True
-            bag["hub_passthrough"] = True
-            bag["had_question"] = False
+            bag.summaries = ["[mentor] empty"]
+            bag.expert_results = [("mentor", "")]
+            bag.direct_streamed = True
+            bag.hub_passthrough = True
+            bag.had_question = False
         if False:
             yield ""
         return

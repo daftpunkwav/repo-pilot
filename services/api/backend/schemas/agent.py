@@ -9,13 +9,13 @@ from pydantic import BaseModel, Field
 
 class AgentChatRequest(BaseModel):
     session_id: Optional[UUID] = None
-    message: str
+    message: str = Field(..., min_length=1, max_length=8000)
     project_id: Optional[UUID] = None
     preferred_agent: Optional[str] = None
 
 
 class AgentChatBody(BaseModel):
-    message: str = Field(..., min_length=1)
+    message: str = Field(..., min_length=1, max_length=8000)
     project_id: Optional[UUID] = None
 
 
@@ -29,8 +29,9 @@ class SessionUpdateBody(BaseModel):
 
 
 class AgentQuestionAnswer(BaseModel):
-    question_id: str
-    answers: Any = Field(default_factory=dict)  # dict 或 QuestionAnswer[]
+    question_id: str = Field(..., min_length=1, max_length=200)
+    # dict 或 QuestionAnswer[]（前端按数组提交，路由统一转 dict）
+    answers: dict[str, Any] | list[dict[str, Any]] = Field(default_factory=dict)
     skipped: bool = False
     session_id: Optional[UUID] = None
 

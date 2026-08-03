@@ -273,7 +273,12 @@ class LLMProvider:
             start = text.find("{")
             end = text.rfind("}")
             if start >= 0 and end > start:
-                return json.loads(text[start : end + 1])
+                try:
+                    return json.loads(text[start : end + 1])
+                except json.JSONDecodeError:
+                    pass
+            # 保持空 dict 契约，但必须留痕，便于排查「LLM 返回被静默降级」
+            logger.warning("complete_json parse failed: %s", text[:200])
             return {}
 
     async def test_connection(self, *, model_override: str | None = None) -> LLMTestResult:

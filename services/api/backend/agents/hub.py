@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 from uuid import UUID
 
@@ -13,9 +14,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.agents.intent import IntentClassifier, IntentResult
 from backend.agents.react import EngineResult, ReActEngine
-from backend.agents.registry import get_registry
+from backend.agents.registry import AgentDefinition, get_registry
+from backend.agents.types import AgentEngineConfig, Messages
 from backend.llm.config import (
-    build_llm_config_from_user,
+    LLMConfig,
     get_agent_model_override,
     get_agent_speaking_style,
 )
@@ -31,12 +33,16 @@ logger = logging.getLogger(__name__)
 # 确保工具注册
 ensure_tools_loaded()
 
+# 引擎阈值默认值（AgentEngineConfig 单一来源；实例可注入覆盖）
+_DEFAULT_AGENT_CONFIG = AgentEngineConfig()
 # 汇总时传给 Hub 的专家正文上限（过短会导致 Hub 误判「专家没写完」而再次 dispatch）
-_EXPERT_SUMMARY_CHARS = 6000
+_EXPERT_SUMMARY_CHARS = _DEFAULT_AGENT_CONFIG.expert_summary_chars
 # 专家 run 只带最近若干条历史，避免 Hub 长规划污染
-_EXPERT_HISTORY_WINDOW = 6
-# 学习/教学类串行；其余可并行
-_SERIAL_DISPATCH_AGENTS = frozenset({"mentor", "navigator", "scribe"})
+_EXPERT_HISTORY_WINDOW = _DEFAULT_AGENT_CONFIG.expert_history_window
+# 学习/教学类串行；其余可并行 —— 从 AgentDefinition.serial 派生（单一来源）
+_SERIAL_DISPATCH_AGENTS = frozenset(
+    d.id for d in get_registry().list_all() if d.serial
+)
 
 
 def _clip_expert_text(text: str, limit: int = _EXPERT_SUMMARY_CHARS) -> str:
@@ -73,25 +79,12 @@ def structure_expert_summary(agent_id: str, text: str) -> str:
 
 # 单专家直出；多专家走 Hub 汇总
 
-_AGENT_DISPLAY_NAMES = {
-    "hub": "Hub",
-    "scout": "Scout",
-    "mentor": "Mentor",
-    "navigator": "Navigator",
-    "curator": "Curator",
-    "scribe": "Scribe",
-    "atlas": "Atlas",
-}
+# 展示名/角色提示由注册表派生（新增 Agent 无需再改此处）
+_AGENT_DISPLAY_NAMES = {d.id: d.display_name for d in get_registry().list_all()}
 
 # 切换条默认角色提示（无有效 reason 时用）
 _AGENT_ROLE_HINTS = {
-    "scout": "快速分析",
-    "mentor": "深度讲解",
-    "navigator": "学习路径",
-    "curator": "分类整理",
-    "scribe": "笔记整理",
-    "atlas": "知识图谱",
-    "hub": "对话管家",
+    d.id: d.role_hint for d in get_registry().list_all() if d.role_hint
 }
 
 
@@ -202,7 +195,7 @@ def format_dispatch_announce(dispatch: dict) -> str:
     return format_dispatch_status(dispatch)
 
 
-def apply_merge_mode(agent_def):
+def apply_merge_mode(agent_def: AgentDefinition) -> AgentDefinition:
     """最终汇总轮：强制 direct 单阶段流式、无工具。"""
     from dataclasses import replace
 
@@ -241,7 +234,7 @@ def is_simple_chitchat(message: str) -> bool:
     return bool(_CHITCHAT_RE.match(msg))
 
 
-def apply_chitchat_mode(agent_def):
+def apply_chitchat_mode(agent_def: AgentDefinition) -> AgentDefinition:
     """寒暄快路径：direct、无工具、精简提示，避免模型复述编排规范。"""
     from dataclasses import replace
 
@@ -266,19 +259,35 @@ def apply_chitchat_mode(agent_def):
 
 
 # 同用户回合：首批 + 最多再追加 1 批（防提示词放大费用）
-MAX_HUB_DISPATCH_ROUNDS = 2
+MAX_HUB_DISPATCH_ROUNDS = _DEFAULT_AGENT_CONFIG.max_hub_dispatch_rounds
+
+
+@dataclass
+class DispatchRoundOutcome:
+    """一轮专家调度结果：替代 result_bag 字符串 key，字段显式、key 拼错即报错。"""
+
+    expert_results: list[tuple[str, str]] = field(default_factory=list)
+    summaries: list[str] = field(default_factory=list)
+    had_question: bool = False
+    direct_streamed: bool = False
+    hub_passthrough: bool = False
+    nested_expert: bool = False
 
 
 def _dispatch_fingerprint(dispatch: dict) -> str:
-    """去重键：target + 任务摘要。"""
-    import re
+    """去重键：target + 任务全文 hash。
+
+    早期按 task 前 120 字截断，内容前 120 字相同但任务不同的调度会被误杀；
+    改为全文归一化后 sha1（空白差异仍归一）。
+    """
+    import hashlib
 
     target = str(dispatch.get("target_agent") or "").strip().lower()
-    task = re.sub(r"\s+", " ", str(dispatch.get("task") or "").strip().lower())[:120]
-    return f"{target}|{task}"
+    task = re.sub(r"\s+", " ", str(dispatch.get("task") or "").strip().lower())
+    return f"{target}|{hashlib.sha1(task.encode()).hexdigest()[:16]}"
 
 
-def apply_evaluate_mode(agent_def):
+def apply_evaluate_mode(agent_def: AgentDefinition) -> AgentDefinition:
     """专家返回后的评估轮：可再 dispatch 或写最终正文。"""
     from dataclasses import replace
 
@@ -303,21 +312,47 @@ def apply_evaluate_mode(agent_def):
     )
 
 
-async def route_message(message: str, session_id: str | None = None) -> str:
-    """兼容旧测试的占位接口。"""
-    _ = session_id
-    return f"Agent 服务已接入 Hub，请通过 SSE 对话接口使用。消息摘要：{message[:200]}"
-
-
 class HubService:
     """对话管家。"""
 
-    def __init__(self, db: AsyncSession):
+    async def _load_user_bundle(
+        self, user: User
+    ) -> tuple[LLMProvider, LLMConfig | None, str, dict[str, Any], dict[str, Any]]:
+        """一次加载 LLM 配置 + key 状态 + settings + permissions（统一三个入口）。
+
+        build_llm_bundle_from_user 一次查库拿 config/key_status/settings；
+        permissions 尽量 refresh 后解析，解析失败记日志回落空 dict。
+        """
+        from backend.llm.config import build_llm_bundle_from_user
+
+        llm_config, key_status, raw_settings = await build_llm_bundle_from_user(
+            self.db, user.id
+        )
+        llm = LLMProvider(llm_config)
+        permissions = {}
+        try:
+            # permissions 也尽量刷新
+            await self.db.refresh(user, attribute_names=["agent_permissions"])
+            permissions = json.loads(user.agent_permissions or "{}")
+        except Exception:
+            try:
+                permissions = json.loads(user.agent_permissions or "{}")
+            except json.JSONDecodeError:
+                logger.warning(
+                    "user agent_permissions parse failed: user=%s", user.id
+                )
+                permissions = {}
+        return llm, llm_config, key_status, raw_settings, permissions
+
+    def __init__(
+        self, db: AsyncSession, *, config: AgentEngineConfig | None = None
+    ):
         self.db = db
+        self.config = config or AgentEngineConfig()
         self.registry = get_registry()
         self.memory = MemoryService(db)
         self.context_builder = ContextBuilder(db, self.memory)
-        self.engine = ReActEngine()
+        self.engine = ReActEngine(config=self.config)
 
     async def handle_chat(
         self,
@@ -329,22 +364,10 @@ class HubService:
         force_agent: str | None = None,
     ) -> AsyncIterator[str]:
         """主对话入口，yield SSE 字符串。"""
-        llm_config = await build_llm_config_from_user(self.db, user.id)
-        llm = LLMProvider(llm_config)
+        llm, llm_config, _key_status, raw_settings, permissions = (
+            await self._load_user_bundle(user)
+        )
         classifier = IntentClassifier(llm if llm.available else None)
-
-        # 用户 settings 中的风格
-        raw_settings = {}
-        try:
-            raw_settings = json.loads(user.settings_json or "{}")
-        except json.JSONDecodeError:
-            pass
-
-        permissions = {}
-        try:
-            permissions = json.loads(user.agent_permissions or "{}")
-        except json.JSONDecodeError:
-            pass
 
         # 意图：force_agent 才直达专家；普通会话一律经 Hub 编排（hub→专家→hub）
         if force_agent and self.registry.has(force_agent):
@@ -358,7 +381,7 @@ class HubService:
                 "content": (
                     f"[状态] 意图 · {intent.agent_id} · "
                     f"{intent.confidence:.2f}"
-                    + (f" · multi" if intent.is_multi else "")
+                    + (" · multi" if intent.is_multi else "")
                     + "\n"
                 ),
             },
@@ -484,26 +507,23 @@ class HubService:
         project_id: UUID | None = None,
     ) -> AsyncIterator[str]:
         """用户回答反问后继续对话。"""
-        llm_config = await build_llm_config_from_user(self.db, user.id)
-        llm = LLMProvider(llm_config)
-        raw_settings = {}
-        try:
-            raw_settings = json.loads(user.settings_json or "{}")
-        except json.JSONDecodeError:
-            pass
-        permissions = {}
-        try:
-            permissions = json.loads(user.agent_permissions or "{}")
-        except json.JSONDecodeError:
-            pass
+        llm, llm_config, _key_status, raw_settings, permissions = (
+            await self._load_user_bundle(user)
+        )
 
         summary = "用户跳过了反问" if skipped else f"用户反问回答: {json.dumps(answers, ensure_ascii=False)}"
-        # 写入画像提案
+        # 写入画像提案：只提取结构化值（如选项 value），不整体 dump 原始 answers，
+        # 避免任意 key/嵌套结构被合并进偏好画像（service._merge_preference 还有白名单兜底）
         if not skipped and answers:
+            extracted = {
+                k: v.get("value", v) if isinstance(v, dict) else v
+                for k, v in answers.items()
+                if isinstance(k, str)
+            }
             await self.memory.propose_memory(
                 user.id,
                 agent_id="hub",
-                value=json.dumps(answers, ensure_ascii=False)[:500],
+                value=json.dumps(extracted, ensure_ascii=False)[:500],
                 confidence=0.75,
                 evidence=[f"question:{question_id}"],
                 kind="preference",
@@ -575,23 +595,11 @@ class HubService:
                 {"code": "AGENT_NOT_FOUND", "message": f"未知 Agent: {agent_id}"},
             )
             return
-        from backend.llm.config import build_llm_bundle_from_user
 
         # 配置/诊断/override 同源：一次查库
-        llm_config, key_status, raw_settings = await build_llm_bundle_from_user(
-            self.db, user.id
+        llm, llm_config, key_status, raw_settings, permissions = (
+            await self._load_user_bundle(user)
         )
-        llm = LLMProvider(llm_config)
-        permissions = {}
-        try:
-            # permissions 也尽量刷新
-            await self.db.refresh(user, attribute_names=["agent_permissions"])
-            permissions = json.loads(user.agent_permissions or "{}")
-        except Exception:
-            try:
-                permissions = json.loads(user.agent_permissions or "{}")
-            except json.JSONDecodeError:
-                permissions = {}
 
         if not llm.available:
             if key_status == "decrypt_failed":
@@ -647,11 +655,11 @@ class HubService:
         message: str,
         intent: IntentResult,
         llm: LLMProvider,
-        llm_config,
-        raw_settings: dict,
-        permissions: dict,
+        llm_config: LLMConfig | None,
+        raw_settings: dict[str, Any],
+        permissions: dict[str, Any],
         project_id: UUID | None,
-        history: list,
+        history: Messages,
     ) -> AsyncIterator[str]:
         yield format_sse(
             "thinking",
@@ -668,7 +676,7 @@ class HubService:
         direct = len(subs) == 1
         summaries: list[str] = []
         expert_results: list[tuple[str, str]] = []
-        expert_history = list(history[-_EXPERT_HISTORY_WINDOW :]) if history else []
+        expert_history = list(history[-self.config.expert_history_window :]) if history else []
 
         # 调度：thinking 状态 + 短正文说明（不含完整 task）
         for sub in subs:
@@ -732,8 +740,8 @@ class HubService:
                             {
                                 "agent_id": sub.agent_id,
                                 "status": "question",
-                                "thinking": "".join(think_parts).strip()[:24000],
-                                "output": (agent_text or "").strip()[:100_000],
+                                "thinking": "".join(think_parts).strip()[: self.config.subagent_thinking_limit],
+                                "output": (agent_text or "").strip()[: self.config.subagent_output_limit],
                             },
                         )
                         return
@@ -782,8 +790,8 @@ class HubService:
                 {
                     "agent_id": sub.agent_id,
                     "status": "ok",
-                    "thinking": "".join(think_parts).strip()[:24000],
-                    "output": final_out[:100_000],
+                    "thinking": "".join(think_parts).strip()[: self.config.subagent_thinking_limit],
+                    "output": final_out[: self.config.subagent_output_limit],
                 },
             )
 
@@ -861,16 +869,16 @@ class HubService:
     async def _dispatch_evaluate_loop(
         self,
         *,
-        dispatches: list[dict],
+        dispatches: list[dict[str, Any]],
         user: User,
         session_id: UUID,
         original_message: str,
         llm: LLMProvider,
-        llm_config,
-        raw_settings: dict,
-        permissions: dict,
+        llm_config: LLMConfig | None,
+        raw_settings: dict[str, Any],
+        permissions: dict[str, Any],
         project_id: UUID | None,
-        history: list,
+        history: Messages,
         hub_preamble: str,
     ) -> AsyncIterator[str]:
         """专家批次 → Hub 评估（可再 dispatch）→ 上限内循环 → 收口。"""
@@ -880,7 +888,7 @@ class HubService:
         last_direct_agent: str | None = None
         had_extra_rounds = False
 
-        for round_i in range(MAX_HUB_DISPATCH_ROUNDS):
+        for round_i in range(self.config.max_hub_dispatch_rounds):
             fresh: list[dict] = []
             for d in pending:
                 key = _dispatch_fingerprint(d)
@@ -892,12 +900,7 @@ class HubService:
             if not fresh:
                 break
 
-            bag: dict = {
-                "summaries": [],
-                "expert_results": [],
-                "had_question": False,
-                "direct_streamed": False,
-            }
+            bag = DispatchRoundOutcome()
             async for chunk in self._handle_dispatches(
                 dispatches=fresh,
                 user=user,
@@ -916,15 +919,15 @@ class HubService:
             ):
                 yield chunk
 
-            if bag.get("had_question"):
+            if bag.had_question:
                 return
 
-            summaries = list(bag.get("summaries") or [])
-            results = list(bag.get("expert_results") or [])
+            summaries = list(bag.summaries or [])
+            results = list(bag.expert_results or [])
             all_summaries.extend(summaries)
 
             # 嵌套专家：思考/正文进 subagent 卡片；Hub 必须汇总（不再 skip_merge 直出）
-            if bag.get("nested_expert") and len(results) == 1:
+            if bag.nested_expert and len(results) == 1:
                 target = results[0][0]
                 expert_text = (results[0][1] or "").strip()
                 await self.memory.append_short_memory(
@@ -954,14 +957,14 @@ class HubService:
                         yield chunk
                     return
                 # 专家空正文：继续走评估/收口
-                bag["nested_expert"] = False
+                bag.nested_expert = False
 
             # 单专家旧 passthrough：仅当仍标记且有正文时直出（兼容）
-            if bag.get("hub_passthrough") and len(results) == 1:
+            if bag.hub_passthrough and len(results) == 1:
                 target = results[0][0]
                 expert_text = (results[0][1] or "").strip()
                 if not expert_text:
-                    bag["hub_passthrough"] = False
+                    bag.hub_passthrough = False
                     yield format_sse(
                         "thinking",
                         {
@@ -992,7 +995,7 @@ class HubService:
                     )
                     return
 
-            if bag.get("direct_streamed") and len(results) == 1:
+            if bag.direct_streamed and len(results) == 1:
                 last_direct_agent = results[0][0]
                 # 舞台回到 Hub，便于评估轮流式与后续 announce
                 yield format_sse(
@@ -1052,7 +1055,7 @@ class HubService:
                 break
 
             if eval_result.dispatches:
-                if round_i + 1 >= MAX_HUB_DISPATCH_ROUNDS:
+                if round_i + 1 >= self.config.max_hub_dispatch_rounds:
                     yield format_sse(
                         "thinking",
                         {
@@ -1140,9 +1143,9 @@ class HubService:
         session_id: UUID,
         original_message: str,
         llm: LLMProvider,
-        llm_config,
-        raw_settings: dict,
-        permissions: dict,
+        llm_config: LLMConfig | None,
+        raw_settings: dict[str, Any],
+        permissions: dict[str, Any],
         project_id: UUID | None,
     ) -> AsyncIterator[str]:
         """强制短汇总收口。"""
@@ -1206,19 +1209,19 @@ class HubService:
     async def _handle_dispatches(
         self,
         *,
-        dispatches: list[dict],
+        dispatches: list[dict[str, Any]],
         user: User,
         session_id: UUID,
         original_message: str,
         llm: LLMProvider,
-        llm_config,
-        raw_settings: dict,
-        permissions: dict,
+        llm_config: LLMConfig | None,
+        raw_settings: dict[str, Any],
+        permissions: dict[str, Any],
         project_id: UUID | None,
-        history: list,
+        history: Messages,
         hub_preamble: str,
         finalize: bool = True,
-        result_bag: dict | None = None,
+        result_bag: DispatchRoundOutcome | None = None,
         force_subagent: bool = False,
     ) -> AsyncIterator[str]:
         # preamble 已在引擎中以 text_delta 发出（若有）；此处再发具体调度预告
@@ -1249,7 +1252,7 @@ class HubService:
         must_serial = (
             any(t in _SERIAL_DISPATCH_AGENTS for t in targets) or len(valid) <= 1
         )
-        expert_history = list(history[-_EXPERT_HISTORY_WINDOW :]) if history else []
+        expert_history = list(history[-self.config.expert_history_window :]) if history else []
         summaries: list[str] = []
         expert_results: list[tuple[str, str]] = []
 
@@ -1262,25 +1265,25 @@ class HubService:
                 "text_delta", {"content": format_dispatch_notice(d)}
             )
 
-        async def _run_one_silent(
-            d: dict, prior: str | None
-        ) -> tuple[str, str, list[str], dict | None]:
-            """并行静默路径：只收集结果与 question/error SSE。"""
+        async def _dispatch_one(
+            *, d, user, session_id, original_message, llm, llm_config,
+            raw_settings, permissions, project_id, history, prior_summary,
+            stream_to_subagent: bool,
+        ) -> AsyncIterator[tuple | str]:
+            """执行单个专家调度,收尾 yield (target, text, question, passthrough, think, body)。
+
+            stream_to_subagent=True(direct 嵌套专家)时把 thinking/text_delta
+            转成 subagent_thinking/subagent_text 实时 yield,tool_call/question/error
+            仍走主通道;False(串行/并行静默)时只收集 question/error 到 passthrough,
+            其余事件丢弃,由调用方统一重放。
+            """
             target = d.get("target_agent") or "scout"
             task = d.get("task") or original_message
             passthrough: list[str] = []
             text = ""
             question = None
-            passthrough.append(
-                format_sse(
-                    "subagent_start",
-                    {
-                        "agent_id": target,
-                        "task": task[:200],
-                        "reason": format_switch_reason(d),
-                    },
-                )
-            )
+            think_parts: list[str] = []
+            text_parts: list[str] = []
             async for item in self._run_agent(
                 agent_id=target,
                 user=user,
@@ -1291,28 +1294,50 @@ class HubService:
                 raw_settings=raw_settings,
                 permissions=permissions,
                 project_id=project_id,
-                history=expert_history,
-                prior_summary=prior,
+                history=history,
+                prior_summary=prior_summary,
             ):
                 if isinstance(item, EngineResult):
-                    text = item.text
+                    text = item.text or "".join(text_parts)
                     if item.question:
                         question = item.question
                 elif isinstance(item, str):
-                    if item.startswith("event: question") or item.startswith(
-                        "event: error"
-                    ):
-                        passthrough.append(item)
-            passthrough.append(
-                format_sse(
-                    "subagent_done",
-                    {
-                        "agent_id": target,
-                        "status": "question" if question else "ok",
-                    },
-                )
+                    if item.startswith("event: done"):
+                        continue
+                    parsed = _sse_event_payload(item)
+                    if parsed:
+                        ev, data = parsed
+                        piece = str(data.get("content") or "")
+                        if stream_to_subagent:
+                            if ev == "thinking" and piece:
+                                think_parts.append(piece)
+                                yield format_sse(
+                                    "subagent_thinking",
+                                    {"agent_id": target, "content": piece},
+                                )
+                                continue
+                            if ev == "text_delta" and piece:
+                                text_parts.append(piece)
+                                yield format_sse(
+                                    "subagent_text",
+                                    {"agent_id": target, "content": piece},
+                                )
+                                continue
+                        else:
+                            # 静默路径:只收集 question/error,其余事件丢弃
+                            if ev in ("question", "error"):
+                                passthrough.append(item)
+                            continue
+                    # tool_call / tool_result / question / error 仍走主通道
+                    yield item
+            yield (
+                target,
+                text,
+                question,
+                passthrough,
+                "".join(think_parts).strip(),
+                "".join(text_parts).strip(),
             )
-            return target, text, passthrough, question
 
         if direct:
             d = valid[0]
@@ -1332,13 +1357,14 @@ class HubService:
                 {"content": f"[状态] {expert_name} · 执行中\n"},
             )
             text = ""
-            think_parts: list[str] = []
-            text_parts: list[str] = []
-            async for item in self._run_agent(
-                agent_id=target,
+            think_text = ""
+            body_text = ""
+            question = None
+            async for item in _dispatch_one(
+                d=d,
                 user=user,
                 session_id=session_id,
-                message=d.get("task") or original_message,
+                original_message=original_message,
                 llm=llm,
                 llm_config=llm_config,
                 raw_settings=raw_settings,
@@ -1346,73 +1372,53 @@ class HubService:
                 project_id=project_id,
                 history=expert_history,
                 prior_summary=None,
+                stream_to_subagent=True,
             ):
-                if isinstance(item, EngineResult):
-                    text = item.text or "".join(text_parts)
-                    if item.question:
-                        yield format_sse(
-                            "subagent_done",
-                            {
-                                "agent_id": target,
-                                "status": "question",
-                                "thinking": "".join(think_parts).strip()[:24000],
-                                "output": (text or "").strip()[:100_000],
-                            },
+                if isinstance(item, tuple):
+                    target, text, question, _pt, think_text, body_text = item
+                    break
+                yield item
+            if question:
+                yield format_sse(
+                    "subagent_done",
+                    {
+                        "agent_id": target,
+                        "status": "question",
+                        "thinking": think_text[: self.config.subagent_thinking_limit],
+                        "output": (text or "").strip()[: self.config.subagent_output_limit],
+                    },
+                )
+                if result_bag is not None:
+                    result_bag.had_question = True
+                await self.memory.append_short_memory(
+                    user.id,
+                    "hub",
+                    {
+                        "summary": (
+                            original_message[:80]
+                            + " → pending_question"
                         )
-                        if result_bag is not None:
-                            result_bag["had_question"] = True
-                        await self.memory.append_short_memory(
-                            user.id,
-                            "hub",
-                            {
-                                "summary": (
-                                    original_message[:80]
-                                    + " → pending_question"
-                                )
-                            },
-                        )
-                        return
-                else:
-                    if isinstance(item, str) and item.startswith("event: done"):
-                        continue
-                    parsed = _sse_event_payload(item) if isinstance(item, str) else None
-                    if parsed:
-                        ev, data = parsed
-                        piece = str(data.get("content") or "")
-                        if ev == "thinking" and piece:
-                            think_parts.append(piece)
-                            yield format_sse(
-                                "subagent_thinking",
-                                {"agent_id": target, "content": piece},
-                            )
-                            continue
-                        if ev == "text_delta" and piece:
-                            text_parts.append(piece)
-                            yield format_sse(
-                                "subagent_text",
-                                {"agent_id": target, "content": piece},
-                            )
-                            continue
-                    # tool_call / tool_result / question / error 仍走主通道
-                    yield item
-            final_out = (text or "".join(text_parts)).strip()
+                    },
+                )
+                return
+            final_out = (text or body_text).strip()
             yield format_sse(
                 "subagent_done",
                 {
                     "agent_id": target,
                     "status": "ok",
-                    "thinking": "".join(think_parts).strip()[:24000],
-                    "output": final_out[:100_000],
+                    "thinking": think_text[: self.config.subagent_thinking_limit],
+                    "output": final_out[: self.config.subagent_output_limit],
                 },
             )
             expert_results.append((target, final_out))
             summaries.append(structure_expert_summary(target, final_out))
             if result_bag is not None:
-                result_bag["expert_results"] = expert_results
-                result_bag["summaries"] = summaries
-                result_bag["direct_streamed"] = False
-                result_bag["hub_passthrough"] = False
-                result_bag["nested_expert"] = True
+                result_bag.expert_results = expert_results
+                result_bag.summaries = summaries
+                result_bag.direct_streamed = False
+                result_bag.hub_passthrough = False
+                result_bag.nested_expert = True
             if not finalize:
                 return
             await self.memory.append_short_memory(
@@ -1458,11 +1464,11 @@ class HubService:
                     },
                 )
                 text = ""
-                async for item in self._run_agent(
-                    agent_id=target,
+                async for item in _dispatch_one(
+                    d=d,
                     user=user,
                     session_id=session_id,
-                    message=d.get("task") or original_message,
+                    original_message=original_message,
                     llm=llm,
                     llm_config=llm_config,
                     raw_settings=raw_settings,
@@ -1470,16 +1476,19 @@ class HubService:
                     project_id=project_id,
                     history=expert_history,
                     prior_summary=prior,
+                    stream_to_subagent=False,
                 ):
-                    if isinstance(item, EngineResult):
-                        text = item.text
-                        if item.question:
+                    if isinstance(item, tuple):
+                        target, text, question, passthrough, _think, _body = item
+                        for c in passthrough:
+                            yield c
+                        if question:
                             yield format_sse(
                                 "subagent_done",
                                 {"agent_id": target, "status": "question"},
                             )
                             if result_bag is not None:
-                                result_bag["had_question"] = True
+                                result_bag.had_question = True
                             await self.memory.append_short_memory(
                                 user.id,
                                 "hub",
@@ -1491,11 +1500,8 @@ class HubService:
                                 },
                             )
                             return
-                    elif isinstance(item, str):
-                        if item.startswith("event: question") or item.startswith(
-                            "event: error"
-                        ):
-                            yield item
+                        break
+                    yield item
                 yield format_sse(
                     "subagent_done",
                     {"agent_id": target, "status": "ok"},
@@ -1505,11 +1511,43 @@ class HubService:
         else:
             import asyncio
 
+            async def _dispatch_silent(d: dict) -> tuple:
+                """并行静默路径:收集单个专家结果(stream_to_subagent=False 时
+                _dispatch_one 仅产出收尾 tuple,question/error 已进 passthrough)。"""
+                outcome: tuple | None = None
+                async for item in _dispatch_one(
+                    d=d,
+                    user=user,
+                    session_id=session_id,
+                    original_message=original_message,
+                    llm=llm,
+                    llm_config=llm_config,
+                    raw_settings=raw_settings,
+                    permissions=permissions,
+                    project_id=project_id,
+                    history=expert_history,
+                    prior_summary=None,
+                    stream_to_subagent=False,
+                ):
+                    if isinstance(item, tuple):
+                        outcome = item
+                assert outcome is not None
+                return outcome
+
             results = await asyncio.gather(
-                *[_run_one_silent(d, None) for d in valid],
+                *[_dispatch_silent(d) for d in valid],
                 return_exceptions=True,
             )
-            for r in results:
+            for d, r in zip(valid, results):
+                target = d.get("target_agent") or "scout"
+                yield format_sse(
+                    "subagent_start",
+                    {
+                        "agent_id": target,
+                        "task": (d.get("task") or original_message)[:200],
+                        "reason": format_switch_reason(d),
+                    },
+                )
                 if isinstance(r, Exception):
                     logger.exception("并行调度失败: %s", r)
                     yield format_sse(
@@ -1517,12 +1555,16 @@ class HubService:
                         {"code": "DISPATCH_ERROR", "message": str(r)},
                     )
                     continue
-                target, text, chunks, question = r
+                target, text, question, chunks, _think, _body = r
                 for c in chunks:
                     yield c
+                yield format_sse(
+                    "subagent_done",
+                    {"agent_id": target, "status": "question" if question else "ok"},
+                )
                 if question:
                     if result_bag is not None:
-                        result_bag["had_question"] = True
+                        result_bag.had_question = True
                     await self.memory.append_short_memory(
                         user.id,
                         "hub",
@@ -1537,8 +1579,8 @@ class HubService:
                 summaries.append(structure_expert_summary(target, text))
 
         if result_bag is not None:
-            result_bag["expert_results"] = expert_results
-            result_bag["summaries"] = summaries
+            result_bag.expert_results = expert_results
+            result_bag.summaries = summaries
 
         if not finalize:
             return
@@ -1580,11 +1622,11 @@ class HubService:
         session_id: UUID,
         message: str,
         llm: LLMProvider,
-        llm_config,
-        raw_settings: dict,
-        permissions: dict,
+        llm_config: LLMConfig | None,
+        raw_settings: dict[str, Any],
+        permissions: dict[str, Any],
         project_id: UUID | None,
-        history: list,
+        history: Messages,
         prior_summary: str | None = None,
         disable_questions: bool = False,
         merge_mode: bool = False,

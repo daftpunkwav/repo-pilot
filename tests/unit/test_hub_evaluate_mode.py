@@ -43,6 +43,15 @@ def test_dispatch_fingerprint_dedupes_similar_tasks():
     assert _dispatch_fingerprint(a) != _dispatch_fingerprint(c)
 
 
+def test_dispatch_fingerprint_full_text_not_truncated():
+    # 前 120 字相同但后半不同的任务不得被误杀（全文 hash）
+    prefix = "explain " * 30  # 前 120 字相同
+    a = {"target_agent": "mentor", "task": prefix + "A 部分"}
+    b = {"target_agent": "mentor", "task": prefix + "B 部分"}
+    assert len(prefix) > 120
+    assert _dispatch_fingerprint(a) != _dispatch_fingerprint(b)
+
+
 def test_evaluate_prompt_includes_summaries():
     prompt = HubService._evaluate_prompt(["[mentor] done"], "Godot deps", 0)
     assert "\u8bc4\u4f30\u4efb\u52a1" in prompt
@@ -60,6 +69,8 @@ async def test_dispatch_evaluate_loop_nested_expert_merges(monkeypatch):
     from backend.agents.react import EngineResult
 
     service = HubService.__new__(HubService)
+    from backend.agents.types import AgentEngineConfig
+    service.config = AgentEngineConfig()
     service.registry = type("R", (), {"has": staticmethod(lambda aid: True)})()
     memory_calls = []
 
@@ -74,12 +85,12 @@ async def test_dispatch_evaluate_loop_nested_expert_merges(monkeypatch):
     async def fake_handle_dispatches(**kwargs):
         bag = kwargs.get("result_bag")
         if bag is not None:
-            bag["summaries"] = ["[mentor] long"]
-            bag["expert_results"] = [("mentor", "long")]
-            bag["direct_streamed"] = False
-            bag["hub_passthrough"] = False
-            bag["nested_expert"] = True
-            bag["had_question"] = False
+            bag.summaries = ["[mentor] long"]
+            bag.expert_results = [("mentor", "long")]
+            bag.direct_streamed = False
+            bag.hub_passthrough = False
+            bag.nested_expert = True
+            bag.had_question = False
         if False:
             yield ""
         return
@@ -127,6 +138,8 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
     from backend.agents.react import EngineResult
 
     service = HubService.__new__(HubService)
+    from backend.agents.types import AgentEngineConfig
+    service.config = AgentEngineConfig()
     service.registry = type("R", (), {"has": staticmethod(lambda aid: True)})()
     memory_calls = []
 
@@ -140,11 +153,11 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
     async def fake_handle_dispatches(**kwargs):
         bag = kwargs.get("result_bag")
         if bag is not None:
-            bag["summaries"] = ["[mentor] long"]
-            bag["expert_results"] = [("mentor", "long")]
-            bag["direct_streamed"] = True
-            bag["hub_passthrough"] = True
-            bag["had_question"] = False
+            bag.summaries = ["[mentor] long"]
+            bag.expert_results = [("mentor", "long")]
+            bag.direct_streamed = True
+            bag.hub_passthrough = True
+            bag.had_question = False
         if False:
             yield ""
         return
@@ -186,6 +199,8 @@ async def test_dispatch_evaluate_loop_can_re_dispatch_until_cap(monkeypatch):
     from backend.agents.react import EngineResult
 
     service = HubService.__new__(HubService)
+    from backend.agents.types import AgentEngineConfig
+    service.config = AgentEngineConfig()
     service.registry = type(
         "R",
         (),
@@ -209,12 +224,12 @@ async def test_dispatch_evaluate_loop_can_re_dispatch_until_cap(monkeypatch):
                 t = d["target_agent"]
                 summaries.append(f"[{t}] ok")
                 results.append((t, "ok"))
-            bag["summaries"] = summaries
-            bag["expert_results"] = results
-            bag["direct_streamed"] = (
+            bag.summaries = summaries
+            bag.expert_results = results
+            bag.direct_streamed = (
                 len(dispatches) == 1 and not kwargs.get("force_subagent")
             )
-            bag["had_question"] = False
+            bag.had_question = False
         if False:
             yield ""
         return

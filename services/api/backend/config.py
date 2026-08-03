@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     rate_limit_login: str = "5/minute"
     rate_limit_register: str = "3/hour"
     rate_limit_refresh: str = "20/minute"
+    # Agent SSE 端点(chat/analyze/classify 等)每次触发多轮 LLM 调用,按用户限频
+    rate_limit_agent: str = "20/minute"
 
     # CORS：逗号分隔源列表；生产请通过 CORS_ALLOW_ORIGINS 显式配置
     # 含 Vite 端口回退（5173 被占用时会落到 5174/5175）与 127.0.0.1 同源写法

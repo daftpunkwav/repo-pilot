@@ -3,10 +3,9 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.llm.config import LLMConfig
@@ -254,7 +253,9 @@ class ContextBuilder:
         for m in msgs:
             if m.role in ("user", "assistant", "system", "tool"):
                 item: dict[str, Any] = {"role": m.role, "content": m.content or ""}
-                # tool 消息可能需要 tool_call_id，简化：只保留 user/assistant
+                # 设计取舍：tool 消息缺 tool_call_id 无法安全重放，跨会话只保留
+                # user/assistant，工具调用上下文依赖 short_memory 摘要补偿（上限 12 条）。
+                # 若摘要质量不足，模型可能丢失「上一轮调过什么工具」，导致重复调用。
                 if m.role in ("user", "assistant"):
                     out.append(item)
         return out

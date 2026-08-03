@@ -1,8 +1,11 @@
 """Agent 注册表与灵魂定义"""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
+
+from backend.agents.types import Workflow
 
 
 @dataclass
@@ -15,7 +18,7 @@ class AgentDefinition:
     system_prompt: str
     soul: dict[str, str]
     # cot=直接链式思考+真流式; react=工具循环; plan_execute/reflexion/tot=多步
-    workflow: str = "react"  # cot | react | plan_execute | reflexion | tot
+    workflow: Workflow = Workflow.REACT
     temperature: float = 0.7
     max_tokens: int = 4096
     max_iterations: int = 6
@@ -23,6 +26,16 @@ class AgentDefinition:
     auto_trigger: bool = False
     priority: int = 0
     model_override: str | None = None
+    # —— 展示/调度元数据（Agent 单一来源，hub.py/intent.py 由此派生）——
+    display_name: str = ""
+    role_hint: str = ""
+    serial: bool = False  # 调度该 Agent 时强制串行（占舞台型）
+    intent_patterns: list[re.Pattern[str]] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        # display_name 冗余字段：默认取 name（Hub 展示名与 Agent 名一致）
+        if not self.display_name:
+            self.display_name = self.name
 
 
 SOULS: dict[str, dict[str, str]] = {
@@ -143,9 +156,10 @@ def _def(
     description: str,
     tools: list[str],
     system_prompt: str,
-    workflow: str = "react",
+    workflow: str | Workflow = "react",
     **kwargs: Any,
 ) -> AgentDefinition:
+    wf = Workflow(workflow) if isinstance(workflow, str) else workflow
     return AgentDefinition(
         id=id,
         name=name,
@@ -154,7 +168,7 @@ def _def(
         capabilities=["tools", "streaming"],
         system_prompt=system_prompt,
         soul=SOULS[id],
-        workflow=workflow,
+        workflow=wf,
         **kwargs,
     )
 
@@ -211,6 +225,7 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         temperature=0.5,
         max_tokens=4096,
         max_iterations=4,
+        role_hint="对话管家",
     ),
     # Scout：轻量 react，可 0–1 次工具；收口正文需够写完速览，避免半截截断
     "scout": _def(
@@ -241,6 +256,11 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         temperature=0.3,
         max_tokens=2400,
         max_iterations=2,
+        role_hint="快速分析",
+        intent_patterns=[
+            re.compile(r"(快速)?(分析|扫一眼|速览|overview|scout)", re.I),
+            re.compile(r"(对比|比较|区别|差异|\bvs\b)", re.I),
+        ],
     ),
     # Mentor：react 稳教学（去掉 tot 规划预热以加快首字）；可 ask_user
     "mentor": _def(
@@ -274,6 +294,14 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         temperature=0.55,
         max_tokens=4096,
         max_iterations=2,
+        role_hint="深度讲解",
+        serial=True,
+        intent_patterns=[
+            re.compile(
+                r"(想学习|想学|学习\S*|入门|教我|讲解|深入|怎么理解|怎么学|讲讲|mentor)",
+                re.I,
+            ),
+        ],
     ),
     # Navigator：react，可工具
     "navigator": _def(
@@ -300,6 +328,11 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         temperature=0.45,
         max_tokens=3200,
         max_iterations=2,
+        role_hint="学习路径",
+        serial=True,
+        intent_patterns=[
+            re.compile(r"(规划|路线|学习路径|roadmap|navigator)", re.I),
+        ],
     ),
     # Curator：轻量 Reflexion（2 轮），偏分类决策并落库
     "curator": _def(
@@ -336,6 +369,10 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         temperature=0.3,
         max_tokens=1600,
         max_iterations=4,
+        role_hint="分类整理",
+        intent_patterns=[
+            re.compile(r"(分类|整理|标签|归类|curator)", re.I),
+        ],
     ),
     # Scribe：CoT 结构化写作并落库
     "scribe": _def(
@@ -365,6 +402,11 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         temperature=0.45,
         max_tokens=3200,
         max_iterations=4,
+        role_hint="笔记整理",
+        serial=True,
+        intent_patterns=[
+            re.compile(r"(笔记|总结|摘要|outline|scribe)", re.I),
+        ],
     ),
     # Atlas：react + 图谱工具
     "atlas": _def(
@@ -387,6 +429,10 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         temperature=0.45,
         max_tokens=1600,
         max_iterations=2,
+        role_hint="知识图谱",
+        intent_patterns=[
+            re.compile(r"(图谱|关联|相似项目|知识图|atlas)", re.I),
+        ],
     ),
 }
 
@@ -411,11 +457,10 @@ class AgentRegistry:
         self._agents[definition.id] = definition
 
 
-_registry: AgentRegistry | None = None
+# 模块级单例：导入即创建（AGENT_DEFINITIONS 已在本模块定义），
+# 避免异步环境下懒加载的双实例竞态
+_registry = AgentRegistry()
 
 
 def get_registry() -> AgentRegistry:
-    global _registry
-    if _registry is None:
-        _registry = AgentRegistry()
     return _registry

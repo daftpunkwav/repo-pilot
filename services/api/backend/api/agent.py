@@ -4,13 +4,19 @@ Agent API —— 会话管理、对话 SSE、反问、分析、专用入口
 from typing import Any, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
 from backend.api.deps import get_current_user, get_db
+from backend.config import get_settings
+from backend.core.auth_cookies import get_access_token_from_request
+from backend.core.limiter import limiter
 from backend.core.responses import wrap_data
+from backend.core.security import decode_token
 from backend.models.user import User
 from backend.schemas.agent import (
     AgentChatBody,
@@ -43,6 +49,25 @@ from backend.services.agent_service import (
 from backend.services.project_service import get_project_owned_by_user
 
 router = APIRouter(prefix="/agent", tags=["agent"])
+settings = get_settings()
+
+
+def _agent_rate_key(request: Request) -> str:
+    """Agent SSE 端点限流 key:优先按登录用户,未识别时回落 IP。
+
+    每次对话/分析都触发多轮 LLM 调用与多专家 dispatch,按用户限频
+    可防止已登录用户高频调用放大 LLM API 成本。
+    """
+    try:
+        token = get_access_token_from_request(request)
+        if token:
+            payload = decode_token(token)
+            sub = (payload or {}).get("sub")
+            if sub:
+                return f"user:{sub}"
+    except Exception:
+        pass
+    return get_remote_address(request)
 
 
 class AnalyzeBody(BaseModel):
@@ -53,12 +78,12 @@ class AnalyzeBody(BaseModel):
 
 
 class ImportAssistBody(BaseModel):
-    message: str = Field(..., min_length=1)
+    message: str = Field(..., min_length=1, max_length=8000)
     context: dict[str, Any] = Field(default_factory=dict)
 
 
 class GraphGuideBody(BaseModel):
-    message: str = Field(..., min_length=1)
+    message: str = Field(..., min_length=1, max_length=8000)
     selected_node_id: Optional[str] = None
 
 
@@ -178,7 +203,10 @@ async def patch_agent_session(
 
 
 @router.post("/sessions/{session_id}/chat")
+@limiter.limit(settings.rate_limit_agent, key_func=_agent_rate_key)
 async def chat_in_session(
+    request: Request,
+    response: Response,
     session_id: UUID,
     body: AgentChatBody,
     current_user: User = Depends(get_current_user),
@@ -198,7 +226,10 @@ async def chat_in_session(
 
 
 @router.post("/chat")
+@limiter.limit(settings.rate_limit_agent, key_func=_agent_rate_key)
 async def chat_legacy(
+    request: Request,
+    response: Response,
     body: AgentChatRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -223,7 +254,10 @@ async def chat_legacy(
 
 
 @router.post("/question")
+@limiter.limit(settings.rate_limit_agent, key_func=_agent_rate_key)
 async def answer_question(
+    request: Request,
+    response: Response,
     body: AgentQuestionAnswer,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -264,7 +298,10 @@ async def answer_question(
 
 
 @router.post("/analyze/{project_id}")
+@limiter.limit(settings.rate_limit_agent, key_func=_agent_rate_key)
 async def analyze_project(
+    request: Request,
+    response: Response,
     project_id: UUID,
     body: AnalyzeBody | None = None,
     current_user: User = Depends(get_current_user),
@@ -293,7 +330,10 @@ async def analyze_project(
 
 
 @router.post("/import-assist")
+@limiter.limit(settings.rate_limit_agent, key_func=_agent_rate_key)
 async def import_assist(
+    request: Request,
+    response: Response,
     body: ImportAssistBody,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -308,7 +348,10 @@ async def import_assist(
 
 
 @router.post("/graph-guide")
+@limiter.limit(settings.rate_limit_agent, key_func=_agent_rate_key)
 async def graph_guide(
+    request: Request,
+    response: Response,
     body: GraphGuideBody,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -326,7 +369,10 @@ async def graph_guide(
 
 
 @router.post("/trending-scout")
+@limiter.limit(settings.rate_limit_agent, key_func=_agent_rate_key)
 async def trending_scout(
+    request: Request,
+    response: Response,
     body: TrendingScoutBody,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -341,7 +387,10 @@ async def trending_scout(
 
 
 @router.post("/classify")
+@limiter.limit(settings.rate_limit_agent, key_func=_agent_rate_key)
 async def classify_project(
+    request: Request,
+    response: Response,
     body: ClassifyBody,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -383,7 +432,10 @@ async def classify_project(
 
 
 @router.post("/note/generate")
+@limiter.limit(settings.rate_limit_agent, key_func=_agent_rate_key)
 async def generate_note(
+    request: Request,
+    response: Response,
     body: NoteGenerateBody,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

@@ -1,7 +1,7 @@
 """内置 Agent 工具实现"""
 from __future__ import annotations
 
-import json
+import logging
 import re
 from typing import Any
 from uuid import UUID
@@ -12,6 +12,8 @@ from backend.models.category import Category
 from backend.models.note import Note
 from backend.models.project import Project, Tag
 from backend.tools.registry import tool
+
+logger = logging.getLogger(__name__)
 
 
 def _uid(context) -> UUID:
@@ -781,6 +783,27 @@ async def dispatch_agent(
     reason: str = "",
     **kw,
 ):
+    from backend.agents.registry import get_registry
+
+    # 运行时以注册表为准（工具 schema 的 enum 是静态白名单，加 Agent 后可能滞后）
+    if not get_registry().has(target_agent):
+        logger.warning("dispatch_agent to unregistered target: %s", target_agent)
+        return {
+            "error": f"目标 Agent 未注册: {target_agent}",
+            "registered": sorted(d.id for d in get_registry().list_all()),
+        }
+    # task 来自 LLM 生成的 tool_call arguments：无长度限制会污染专家上下文，
+    # 且超长/异常的模型输出可能放大 prompt 注入；入口处统一截断并记录。
+    MAX_TASK_LEN = 4000
+    if len(task or "") > MAX_TASK_LEN:
+        logger.warning(
+            "dispatch task truncated: target=%s len=%d -> %d",
+            target_agent,
+            len(task or ""),
+            MAX_TASK_LEN,
+        )
+        task = (task or "")[:MAX_TASK_LEN]
+    reason = (reason or "")[:500]
     return {
         "__dispatch__": True,
         "target_agent": target_agent,

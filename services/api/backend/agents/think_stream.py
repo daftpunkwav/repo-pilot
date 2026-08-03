@@ -18,6 +18,17 @@ THINK_START = "<<<THINK>>>"
 THINK_END = "<<<END_THINK>>>"
 
 
+def _is_partial_marker(buf: str) -> bool:
+    """缓冲是否可能为 THINK_START 的未完成前缀（继续等待更多 token 再判定）。"""
+    s = buf.lstrip()
+    if not s:
+        return True  # 纯空白：仍需等待
+    if len(s) >= len(THINK_START):
+        return False
+    # s 以 THINK_START 的某个前缀开头（例如只收到 "<"）→ 可能是标记开头
+    return any(THINK_START.startswith(s[:i]) for i in range(1, len(s) + 1))
+
+
 @dataclass
 class ThinkStreamSplitter:
     """增量喂入 token，产出 (channel, text) 片段。channel: thinking | text"""
@@ -37,10 +48,7 @@ class ThinkStreamSplitter:
             if self._mode == "detect":
                 # 跳过开头空白，判断是否以 THINK 开头
                 stripped_l = self._buf.lstrip()
-                lead = len(self._buf) - len(stripped_l)
-                if THINK_START.startswith(stripped_l) and len(stripped_l) < len(
-                    THINK_START
-                ):
+                if _is_partial_marker(stripped_l):
                     # 可能仍在匹配起始标记，继续缓冲
                     break
                 if stripped_l.startswith(THINK_START):
@@ -52,10 +60,7 @@ class ThinkStreamSplitter:
                 # 无标记：整段当正文
                 if self._buf:
                     # 若缓冲可能是标记前缀的一部分（例如 "<"），再等等
-                    if any(
-                        THINK_START.startswith(self._buf.lstrip()[:i])
-                        for i in range(1, min(len(self._buf.lstrip()) + 1, len(THINK_START)))
-                    ) and len(self._buf.lstrip()) < len(THINK_START):
+                    if _is_partial_marker(self._buf):
                         break
                     out.append(("text", self._buf))
                     self._emitted_any_text = True

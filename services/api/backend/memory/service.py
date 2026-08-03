@@ -10,10 +10,13 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models.agent import AgentMessage, AgentSession, UserProfile
+from backend.models.agent import AgentMessage, AgentSession
 from backend.services.profile_service import get_or_create_profile, profile_to_out
 
 logger = logging.getLogger(__name__)
+
+# 允许写入偏好画像的键白名单：拒绝 LLM/用户输入中的任意 key 合并（如 {"admin": true}）
+ALLOWED_PREF_KEYS = {"tech_stack", "level", "language", "goal", "speaking_style"}
 
 
 class MemoryService:
@@ -311,12 +314,21 @@ class MemoryService:
             if value.startswith("{") and '"type"' not in value[:80]:
                 parsed = json.loads(value)
                 if isinstance(parsed, dict) and not self._looks_like_answer_dump(parsed):
-                    prefs_data.update(parsed)
+                    # 白名单合并：拒绝任意 key 写进偏好画像
+                    for k, v in parsed.items():
+                        if k in ALLOWED_PREF_KEYS:
+                            prefs_data[k] = v
+                        else:
+                            logger.warning("rejected unknown pref key: %s", k)
                 else:
                     prefs_data["note"] = readable
             elif ":" in value and not value.startswith("{"):
                 k, v = value.split(":", 1)
-                prefs_data[k.strip()] = v.strip()
+                k = k.strip()
+                if k in ALLOWED_PREF_KEYS:
+                    prefs_data[k] = v.strip()
+                else:
+                    logger.warning("rejected unknown pref key: %s", k)
             else:
                 prefs_data["note"] = readable
         except json.JSONDecodeError:
