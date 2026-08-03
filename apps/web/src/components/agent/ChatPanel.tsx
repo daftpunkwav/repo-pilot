@@ -223,7 +223,9 @@ export function ChatPanel({
                 />
                 <RunTracePanel
                   toolCalls={snapshotToolCalls(toolCalls)}
-                  subagents={snapshotSubagents(subagents, thinkingBuffer)}
+                  subagents={snapshotSubagents(subagents, thinkingBuffer, {
+                    finalizeRunning: false,
+                  })}
                 />
               </div>
             </div>

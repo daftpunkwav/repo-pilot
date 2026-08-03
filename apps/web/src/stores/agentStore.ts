@@ -44,6 +44,8 @@ export interface SubagentProgress {
   task?: string;
   reason?: string;
   status: 'running' | 'ok' | 'question' | 'error';
+  thinking?: string;
+  output?: string;
 }
 
 export interface SelectReposState {
@@ -628,10 +630,46 @@ export const useAgentStore = create<AgentState>((set, get) => ({
                       data.reason ||
                       (typeof raw.reason === 'string' ? raw.reason : undefined),
                     status: 'running' as const,
+                    thinking: '',
+                    output: '',
                   },
                 ],
               };
             });
+            break;
+          }
+          case 'subagent_thinking': {
+            if (!stillOnOrigin()) break;
+            const raw = event.data as Record<string, unknown>;
+            const agentId = (
+              typeof raw.agent_id === 'string' ? raw.agent_id : ''
+            ) as AgentId;
+            const content = typeof raw.content === 'string' ? raw.content : '';
+            if (!agentId || !content) break;
+            set((state) => ({
+              subagents: state.subagents.map((s) =>
+                s.agentId === agentId
+                  ? { ...s, thinking: (s.thinking || '') + content }
+                  : s
+              ),
+            }));
+            break;
+          }
+          case 'subagent_text': {
+            if (!stillOnOrigin()) break;
+            const raw = event.data as Record<string, unknown>;
+            const agentId = (
+              typeof raw.agent_id === 'string' ? raw.agent_id : ''
+            ) as AgentId;
+            const content = typeof raw.content === 'string' ? raw.content : '';
+            if (!agentId || !content) break;
+            set((state) => ({
+              subagents: state.subagents.map((s) =>
+                s.agentId === agentId
+                  ? { ...s, output: (s.output || '') + content }
+                  : s
+              ),
+            }));
             break;
           }
           case 'subagent_done': {
@@ -645,10 +683,29 @@ export const useAgentStore = create<AgentState>((set, get) => ({
               statusRaw === 'question' || statusRaw === 'error'
                 ? statusRaw
                 : 'ok';
+            const thinking =
+              typeof data.thinking === 'string'
+                ? data.thinking
+                : typeof raw.thinking === 'string'
+                  ? raw.thinking
+                  : undefined;
+            const output =
+              typeof data.output === 'string'
+                ? data.output
+                : typeof raw.output === 'string'
+                  ? raw.output
+                  : undefined;
             set((state) => ({
               subagents: state.subagents.map((s) =>
                 s.agentId === agentId
-                  ? { ...s, status: status as SubagentProgress['status'] }
+                  ? {
+                      ...s,
+                      status: status as SubagentProgress['status'],
+                      ...(thinking?.trim()
+                        ? { thinking: thinking.trim() }
+                        : {}),
+                      ...(output?.trim() ? { output: output.trim() } : {}),
+                    }
                   : s
               ),
             }));

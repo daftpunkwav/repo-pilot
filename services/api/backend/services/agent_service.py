@@ -397,12 +397,40 @@ class _AgentSegmentBuffer:
             "status": "running",
         }
 
-    def note_subagent_done(self, agent_id: str, status: str = "ok") -> None:
+    def note_subagent_done(
+        self,
+        agent_id: str,
+        status: str = "ok",
+        *,
+        thinking: str | None = None,
+        output: str | None = None,
+    ) -> None:
         if not agent_id:
             return
         prev = self.subagents.get(agent_id) or {"agentId": agent_id}
         st = status if status in ("ok", "question", "error") else "ok"
         prev["status"] = st
+        if thinking is not None and str(thinking).strip():
+            prev["thinking"] = str(thinking).strip()[:_THINKING_META_MAX]
+        if output is not None and str(output).strip():
+            prev["output"] = str(output).strip()[:100_000]
+        self.subagents[agent_id] = prev
+
+    def note_subagent_delta(
+        self, agent_id: str, *, thinking: str = "", output: str = ""
+    ) -> None:
+        if not agent_id:
+            return
+        prev = self.subagents.get(agent_id) or {
+            "agentId": agent_id,
+            "status": "running",
+        }
+        if thinking:
+            prev["thinking"] = (str(prev.get("thinking") or "") + thinking)[
+                :_THINKING_META_MAX
+            ]
+        if output:
+            prev["output"] = (str(prev.get("output") or "") + output)[:100_000]
         self.subagents[agent_id] = prev
 
     def _extract_expert_thinking(self, full: str, agent_id: str) -> str:
@@ -438,11 +466,13 @@ class _AgentSegmentBuffer:
             item = dict(sa)
             if item.get("status") == "running":
                 item["status"] = "ok"
-            expert_think = self._extract_expert_thinking(
-                thinking, str(item.get("agentId") or "")
-            )
-            if expert_think:
-                item["thinking"] = expert_think
+            # 已有嵌套 thinking 则保留；否则从 Hub 合流思考拆署名片段
+            if not str(item.get("thinking") or "").strip():
+                expert_think = self._extract_expert_thinking(
+                    thinking, str(item.get("agentId") or "")
+                )
+                if expert_think:
+                    item["thinking"] = expert_think
             subs.append(item)
         self.parts.clear()
         self.think_parts.clear()
@@ -589,6 +619,26 @@ async def stream_chat(
                     )
                 except Exception:
                     pass
+            elif chunk.startswith("event: subagent_thinking"):
+                try:
+                    data_line = chunk.split("data: ", 1)[1].strip()
+                    data = json.loads(data_line)
+                    buf.note_subagent_delta(
+                        str(data.get("agent_id") or ""),
+                        thinking=str(data.get("content") or ""),
+                    )
+                except Exception:
+                    pass
+            elif chunk.startswith("event: subagent_text"):
+                try:
+                    data_line = chunk.split("data: ", 1)[1].strip()
+                    data = json.loads(data_line)
+                    buf.note_subagent_delta(
+                        str(data.get("agent_id") or ""),
+                        output=str(data.get("content") or ""),
+                    )
+                except Exception:
+                    pass
             elif chunk.startswith("event: subagent_done"):
                 try:
                     data_line = chunk.split("data: ", 1)[1].strip()
@@ -596,6 +646,16 @@ async def stream_chat(
                     buf.note_subagent_done(
                         str(data.get("agent_id") or ""),
                         str(data.get("status") or "ok"),
+                        thinking=(
+                            str(data["thinking"])
+                            if isinstance(data.get("thinking"), str)
+                            else None
+                        ),
+                        output=(
+                            str(data["output"])
+                            if isinstance(data.get("output"), str)
+                            else None
+                        ),
                     )
                 except Exception:
                     pass
@@ -826,6 +886,26 @@ async def stream_question_answer(
                 )
             except Exception:
                 pass
+        elif chunk.startswith("event: subagent_thinking"):
+            try:
+                data_line = chunk.split("data: ", 1)[1].strip()
+                data = json.loads(data_line)
+                buf.note_subagent_delta(
+                    str(data.get("agent_id") or ""),
+                    thinking=str(data.get("content") or ""),
+                )
+            except Exception:
+                pass
+        elif chunk.startswith("event: subagent_text"):
+            try:
+                data_line = chunk.split("data: ", 1)[1].strip()
+                data = json.loads(data_line)
+                buf.note_subagent_delta(
+                    str(data.get("agent_id") or ""),
+                    output=str(data.get("content") or ""),
+                )
+            except Exception:
+                pass
         elif chunk.startswith("event: subagent_done"):
             try:
                 data_line = chunk.split("data: ", 1)[1].strip()
@@ -833,6 +913,16 @@ async def stream_question_answer(
                 buf.note_subagent_done(
                     str(data.get("agent_id") or ""),
                     str(data.get("status") or "ok"),
+                    thinking=(
+                        str(data["thinking"])
+                        if isinstance(data.get("thinking"), str)
+                        else None
+                    ),
+                    output=(
+                        str(data["output"])
+                        if isinstance(data.get("output"), str)
+                        else None
+                    ),
                 )
             except Exception:
                 pass

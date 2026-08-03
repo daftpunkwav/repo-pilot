@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  coalesceEmptyBodyWithThinking,
   isStatusLine,
   isStatusOnlyThinking,
   partitionThinking,
@@ -78,5 +79,18 @@ describe('partitionThinking', () => {
     const raw = '[规划] Hub · plan_execute\n正在生成行动计划…\n\n先寒暄再问需求\n';
     expect(persistableThinking(raw)).toContain('先寒暄');
     expect(persistableThinking(raw)).not.toContain('[规划]');
+  });
+
+  it('调度说明 + 长思考 → 提升为正文', () => {
+    const notice =
+      '先交由 **Mentor**（深度讲解）处理：用户意图=学习 LangChain; 高置信匹配 mentor。\n\n';
+    const think = Array.from(
+      { length: 20 },
+      (_, i) => `要点 ${i + 1}：LangChain 讲解`
+    ).join('\n');
+    const out = coalesceEmptyBodyWithThinking(notice, think);
+    expect(out.content).toContain('要点 1');
+    expect(out.content).toContain('先交由');
+    expect(out.thinking).toBe('');
   });
 });

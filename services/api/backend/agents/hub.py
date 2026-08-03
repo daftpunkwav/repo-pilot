@@ -119,9 +119,30 @@ def _prefix_expert_thinking_sse(chunk: str, expert_name: str) -> str:
         return chunk
 
 
+def _sse_event_payload(chunk: str) -> tuple[str, dict] | None:
+    """解析 SSE 字符串 → (event_name, data_dict)。"""
+    if not isinstance(chunk, str) or not chunk.startswith("event: "):
+        return None
+    try:
+        first, _, rest = chunk.partition("\n")
+        event_name = first[7:].strip()
+        data_line = ""
+        for ln in rest.split("\n"):
+            if ln.startswith("data: "):
+                data_line = ln[6:].strip()
+                break
+        if not data_line:
+            return event_name, {}
+        data = json.loads(data_line)
+        return event_name, data if isinstance(data, dict) else {}
+    except Exception:
+        return None
+
+
 def should_skip_hub_merge(expert_results: list[tuple[str, str]]) -> bool:
-    """单专家：直出交舞台；多专家：Hub 汇总。"""
-    return len(expert_results) == 1
+    """嵌套专家模型下始终由 Hub 汇总为主文，不再单专家直出跳过。"""
+    _ = expert_results
+    return False
 
 
 def clean_dispatch_reason(reason: str | None) -> str:
@@ -674,30 +695,22 @@ class HubService:
                 "reason": sub.reason or "多意图编排",
             }
 
+            yield format_sse(
+                "subagent_start",
+                {
+                    "agent_id": sub.agent_id,
+                    "task": (sub.message or message)[:200],
+                    "reason": format_switch_reason(switch_d),
+                },
+            )
             if direct:
-                # 与 _handle_dispatches 单专家一致：Hub 舞台直出
-                yield format_sse(
-                    "subagent_start",
-                    {
-                        "agent_id": sub.agent_id,
-                        "task": (sub.message or message)[:200],
-                        "reason": format_switch_reason(switch_d),
-                    },
-                )
                 yield format_sse(
                     "thinking",
                     {"content": f"[状态] {expert_name} · 执行中\n"},
                 )
-            else:
-                yield format_sse(
-                    "subagent_start",
-                    {
-                        "agent_id": sub.agent_id,
-                        "task": (sub.message or message)[:200],
-                        "reason": format_switch_reason(switch_d),
-                    },
-                )
 
+            think_parts: list[str] = []
+            text_parts: list[str] = []
             async for item in self._run_agent(
                 agent_id=sub.agent_id,
                 user=user,
@@ -712,13 +725,15 @@ class HubService:
                 prior_summary=prior,
             ):
                 if isinstance(item, EngineResult):
-                    agent_text = item.text
+                    agent_text = item.text or "".join(text_parts)
                     if item.question:
                         yield format_sse(
                             "subagent_done",
                             {
                                 "agent_id": sub.agent_id,
                                 "status": "question",
+                                "thinking": "".join(think_parts).strip()[:24000],
+                                "output": (agent_text or "").strip()[:100_000],
                             },
                         )
                         return
@@ -726,29 +741,60 @@ class HubService:
                     if isinstance(item, str) and item.startswith("event: done"):
                         continue
                     if direct:
-                        if isinstance(item, str) and item.startswith(
-                            "event: thinking"
-                        ):
-                            yield _prefix_expert_thinking_sse(item, expert_name)
-                        else:
-                            yield item
+                        parsed = (
+                            _sse_event_payload(item)
+                            if isinstance(item, str)
+                            else None
+                        )
+                        if parsed:
+                            ev, data = parsed
+                            piece = str(data.get("content") or "")
+                            if ev == "thinking" and piece:
+                                think_parts.append(piece)
+                                yield format_sse(
+                                    "subagent_thinking",
+                                    {
+                                        "agent_id": sub.agent_id,
+                                        "content": piece,
+                                    },
+                                )
+                                continue
+                            if ev == "text_delta" and piece:
+                                text_parts.append(piece)
+                                yield format_sse(
+                                    "subagent_text",
+                                    {
+                                        "agent_id": sub.agent_id,
+                                        "content": piece,
+                                    },
+                                )
+                                continue
+                        yield item
                     elif isinstance(item, str) and (
                         item.startswith("event: question")
                         or item.startswith("event: error")
                     ):
                         yield item
 
+            final_out = (agent_text or "".join(text_parts)).strip()
             yield format_sse(
                 "subagent_done",
-                {"agent_id": sub.agent_id, "status": "ok"},
+                {
+                    "agent_id": sub.agent_id,
+                    "status": "ok",
+                    "thinking": "".join(think_parts).strip()[:24000],
+                    "output": final_out[:100_000],
+                },
             )
 
-            expert_results.append((sub.agent_id, agent_text or ""))
+            expert_results.append((sub.agent_id, final_out))
             summaries.append(
-                structure_expert_summary(sub.agent_id, agent_text)
+                structure_expert_summary(sub.agent_id, final_out)
             )
 
+        # 嵌套专家：始终由 Hub 汇总为主文（专家详情在内嵌卡）
         if should_skip_hub_merge(expert_results):
+            # 兼容保留：当前恒为 False
             agent_id, _ = expert_results[0]
             await self.memory.append_short_memory(
                 user.id,
@@ -877,29 +923,74 @@ class HubService:
             results = list(bag.get("expert_results") or [])
             all_summaries.extend(summaries)
 
-            # 单专家已在 Hub 气泡直出（含专家思考）：跳过评估重写，避免双气泡
-            if bag.get("hub_passthrough") and len(results) == 1:
+            # 嵌套专家：思考/正文进 subagent 卡片；Hub 必须汇总（不再 skip_merge 直出）
+            if bag.get("nested_expert") and len(results) == 1:
                 target = results[0][0]
+                expert_text = (results[0][1] or "").strip()
                 await self.memory.append_short_memory(
                     user.id,
                     "hub",
                     {
                         "summary": (
                             original_message[:80]
-                            + f" → {target}（Hub 舞台直出）"
+                            + f" → {target}（嵌套）→ Hub 汇总"
                         )
                     },
                 )
-                yield format_sse(
-                    "done",
-                    {
-                        "usage": {"tokens": 0},
-                        "iterations": 1,
-                        "agent_id": "hub",
-                        "skip_merge": True,
-                    },
-                )
-                return
+                if expert_text or all_summaries:
+                    async for chunk in self._run_merge_finalize(
+                        summaries=all_summaries or [
+                            structure_expert_summary(target, expert_text)
+                        ],
+                        user=user,
+                        session_id=session_id,
+                        original_message=original_message,
+                        llm=llm,
+                        llm_config=llm_config,
+                        raw_settings=raw_settings,
+                        permissions=permissions,
+                        project_id=project_id,
+                    ):
+                        yield chunk
+                    return
+                # 专家空正文：继续走评估/收口
+                bag["nested_expert"] = False
+
+            # 单专家旧 passthrough：仅当仍标记且有正文时直出（兼容）
+            if bag.get("hub_passthrough") and len(results) == 1:
+                target = results[0][0]
+                expert_text = (results[0][1] or "").strip()
+                if not expert_text:
+                    bag["hub_passthrough"] = False
+                    yield format_sse(
+                        "thinking",
+                        {
+                            "content": (
+                                f"[状态] Hub · {target} 未产出可用正文，改为收口补写…\n"
+                            )
+                        },
+                    )
+                else:
+                    await self.memory.append_short_memory(
+                        user.id,
+                        "hub",
+                        {
+                            "summary": (
+                                original_message[:80]
+                                + f" → {target}（Hub 舞台直出）"
+                            )
+                        },
+                    )
+                    yield format_sse(
+                        "done",
+                        {
+                            "usage": {"tokens": 0},
+                            "iterations": 1,
+                            "agent_id": "hub",
+                            "skip_merge": True,
+                        },
+                    )
+                    return
 
             if bag.get("direct_streamed") and len(results) == 1:
                 last_direct_agent = results[0][0]
@@ -1227,7 +1318,7 @@ class HubService:
             d = valid[0]
             target = d.get("target_agent") or "scout"
             expert_name = _AGENT_DISPLAY_NAMES.get(target, target)
-            # Hub 保留舞台：专家静默跑完，思考/正文并入 Hub 气泡，避免 Mentor+Hub 双份
+            # 嵌套专家：思考/正文进 subagent 卡片（默认收起），Hub 再汇总成主文
             yield format_sse(
                 "subagent_start",
                 {
@@ -1241,6 +1332,8 @@ class HubService:
                 {"content": f"[状态] {expert_name} · 执行中\n"},
             )
             text = ""
+            think_parts: list[str] = []
+            text_parts: list[str] = []
             async for item in self._run_agent(
                 agent_id=target,
                 user=user,
@@ -1255,11 +1348,16 @@ class HubService:
                 prior_summary=None,
             ):
                 if isinstance(item, EngineResult):
-                    text = item.text
+                    text = item.text or "".join(text_parts)
                     if item.question:
                         yield format_sse(
                             "subagent_done",
-                            {"agent_id": target, "status": "question"},
+                            {
+                                "agent_id": target,
+                                "status": "question",
+                                "thinking": "".join(think_parts).strip()[:24000],
+                                "output": (text or "").strip()[:100_000],
+                            },
                         )
                         if result_bag is not None:
                             result_bag["had_question"] = True
@@ -1277,22 +1375,44 @@ class HubService:
                 else:
                     if isinstance(item, str) and item.startswith("event: done"):
                         continue
-                    if isinstance(item, str) and item.startswith("event: thinking"):
-                        yield _prefix_expert_thinking_sse(item, expert_name)
-                        continue
-                    # text_delta / question / error：留在 Hub 舞台
+                    parsed = _sse_event_payload(item) if isinstance(item, str) else None
+                    if parsed:
+                        ev, data = parsed
+                        piece = str(data.get("content") or "")
+                        if ev == "thinking" and piece:
+                            think_parts.append(piece)
+                            yield format_sse(
+                                "subagent_thinking",
+                                {"agent_id": target, "content": piece},
+                            )
+                            continue
+                        if ev == "text_delta" and piece:
+                            text_parts.append(piece)
+                            yield format_sse(
+                                "subagent_text",
+                                {"agent_id": target, "content": piece},
+                            )
+                            continue
+                    # tool_call / tool_result / question / error 仍走主通道
                     yield item
+            final_out = (text or "".join(text_parts)).strip()
             yield format_sse(
                 "subagent_done",
-                {"agent_id": target, "status": "ok"},
+                {
+                    "agent_id": target,
+                    "status": "ok",
+                    "thinking": "".join(think_parts).strip()[:24000],
+                    "output": final_out[:100_000],
+                },
             )
-            expert_results.append((target, text or ""))
-            summaries.append(structure_expert_summary(target, text))
+            expert_results.append((target, final_out))
+            summaries.append(structure_expert_summary(target, final_out))
             if result_bag is not None:
                 result_bag["expert_results"] = expert_results
                 result_bag["summaries"] = summaries
-                result_bag["direct_streamed"] = True
-                result_bag["hub_passthrough"] = True
+                result_bag["direct_streamed"] = False
+                result_bag["hub_passthrough"] = False
+                result_bag["nested_expert"] = True
             if not finalize:
                 return
             await self.memory.append_short_memory(
@@ -1301,19 +1421,22 @@ class HubService:
                 {
                     "summary": (
                         original_message[:80]
-                        + f" → {target}（Hub 舞台直出）"
+                        + f" → {target}（嵌套）→ Hub 汇总"
                     )
                 },
             )
-            yield format_sse(
-                "done",
-                {
-                    "usage": {"tokens": 0},
-                    "iterations": 1,
-                    "agent_id": "hub",
-                    "skip_merge": True,
-                },
-            )
+            async for chunk in self._run_merge_finalize(
+                summaries=summaries,
+                user=user,
+                session_id=session_id,
+                original_message=original_message,
+                llm=llm,
+                llm_config=llm_config,
+                raw_settings=raw_settings,
+                permissions=permissions,
+                project_id=project_id,
+            ):
+                yield chunk
             return
 
         # 多专家：静默 Subagent，Hub 留在舞台
@@ -1436,11 +1559,12 @@ class HubService:
 
     @staticmethod
     def _merge_prompt(summaries: list[str], user_message: str) -> str:
-        """多专家返回后的 Hub 汇总：短合并，禁止整段复述。"""
+        """专家完成后的 Hub 汇总：短合并为主文；细节已在内嵌专家卡。"""
         return (
-            "【汇总任务 · 禁止再调度】多位专家已完成工作。"
-            "请写一段短合并答复（约 120–250 字 Markdown）："
-            "只提炼共识、分歧与下一步；不要整段照抄专家原文；"
+            "【汇总任务 · 禁止再调度】专家已完成工作；"
+            "详细思考与全文已在内嵌专家卡片中，用户可展开查看。"
+            "请写一段面向用户的短答复（约 120–250 字 Markdown）作为主文："
+            "提炼要点、结构提纲与下一步；不要整段照抄专家原文；"
             "若专家已给出分支选项，保留并引导用户选择。"
             "严禁再次调用任何工具或 dispatch_agent；"
             "严禁再输出「执行计划」或「正在调度」。\n\n"

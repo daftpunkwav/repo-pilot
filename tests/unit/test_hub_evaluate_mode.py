@@ -1,4 +1,5 @@
-"""Hub 评估轮：可再调度、去重与上限"""
+﻿# -*- coding: utf-8 -*-
+"""Hub evaluate loop: re-dispatch, dedupe, cap."""
 import pytest
 
 from backend.agents.hub import (
@@ -18,9 +19,9 @@ def test_apply_evaluate_mode_keeps_dispatch_only():
     assert evaluated.tools == ["dispatch_agent", "ask_user"]
     assert evaluated.max_iterations == 2
     assert evaluated.max_tokens <= 3200
-    assert "评估" in (evaluated.system_prompt or "")
-    assert "禁止编造" in (evaluated.system_prompt or "")
-    # 原定义不被就地修改
+    prompt = evaluated.system_prompt or ""
+    assert "\u8bc4\u4f30" in prompt
+    assert "\u7981\u6b62\u7f16\u9020" in prompt
     assert hub.workflow == "plan_execute"
     assert "query_user_projects" in hub.tools
 
@@ -35,20 +36,18 @@ def test_evaluate_and_merge_modes_are_distinct():
 
 
 def test_dispatch_fingerprint_dedupes_similar_tasks():
-    a = {"target_agent": "Mentor", "task": "解释  Godot  场景树"}
-    b = {"target_agent": "mentor", "task": "解释 Godot 场景树"}
-    c = {"target_agent": "scout", "task": "解释 Godot 场景树"}
+    a = {"target_agent": "Mentor", "task": "explain  Godot  tree"}
+    b = {"target_agent": "mentor", "task": "explain Godot tree"}
+    c = {"target_agent": "scout", "task": "explain Godot tree"}
     assert _dispatch_fingerprint(a) == _dispatch_fingerprint(b)
     assert _dispatch_fingerprint(a) != _dispatch_fingerprint(c)
 
 
 def test_evaluate_prompt_includes_summaries():
-    prompt = HubService._evaluate_prompt(
-        ["[mentor] 已讲场景树"], "Godot 依赖关系", 0
-    )
-    assert "评估任务" in prompt
-    assert "[mentor] 已讲场景树" in prompt
-    assert "Godot 依赖关系" in prompt
+    prompt = HubService._evaluate_prompt(["[mentor] done"], "Godot deps", 0)
+    assert "\u8bc4\u4f30\u4efb\u52a1" in prompt
+    assert "[mentor] done" in prompt
+    assert "Godot deps" in prompt
     assert "dispatch_agent" in prompt
 
 
@@ -57,15 +56,12 @@ def test_max_hub_dispatch_rounds_is_bounded():
 
 
 @pytest.mark.asyncio
-async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch):
-    """单专家 Hub 舞台直出后，不再评估重写、不切回 Hub。"""
+async def test_dispatch_evaluate_loop_nested_expert_merges(monkeypatch):
     from backend.agents.react import EngineResult
 
     service = HubService.__new__(HubService)
-    service.registry = type(
-        "R", (), {"has": staticmethod(lambda aid: True)}
-    )()
-    memory_calls: list = []
+    service.registry = type("R", (), {"has": staticmethod(lambda aid: True)})()
+    memory_calls = []
 
     class Mem:
         async def append_short_memory(self, *args, **kwargs):
@@ -73,14 +69,16 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
 
     service.memory = Mem()
     eval_calls = {"n": 0}
+    merge_calls = {"n": 0}
 
     async def fake_handle_dispatches(**kwargs):
         bag = kwargs.get("result_bag")
         if bag is not None:
-            bag["summaries"] = ["[mentor] 长文"]
-            bag["expert_results"] = [("mentor", "长文")]
-            bag["direct_streamed"] = True
-            bag["hub_passthrough"] = True
+            bag["summaries"] = ["[mentor] long"]
+            bag["expert_results"] = [("mentor", "long")]
+            bag["direct_streamed"] = False
+            bag["hub_passthrough"] = False
+            bag["nested_expert"] = True
             bag["had_question"] = False
         if False:
             yield ""
@@ -90,23 +88,22 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
     async def fake_run_agent(**kwargs):
         if kwargs.get("evaluate_mode"):
             eval_calls["n"] += 1
-        yield EngineResult(text="不应走到", dispatches=[])
+        if kwargs.get("merge_mode"):
+            merge_calls["n"] += 1
+            yield 'event: text_delta\ndata: {"content":"Hub summary"}\n\n'
+            yield EngineResult(text="Hub summary", dispatches=[])
+            return
+        yield EngineResult(text="should-not-run", dispatches=[])
 
     monkeypatch.setattr(service, "_handle_dispatches", fake_handle_dispatches)
     monkeypatch.setattr(service, "_run_agent", fake_run_agent)
 
-    chunks: list[str] = []
+    chunks = []
     async for chunk in service._dispatch_evaluate_loop(
-        dispatches=[
-            {
-                "target_agent": "mentor",
-                "task": "讲 Godot",
-                "reason": "教学",
-            }
-        ],
+        dispatches=[{"target_agent": "mentor", "task": "x", "reason": "y"}],
         user=type("U", (), {"id": "u1"})(),
         session_id="s1",
-        original_message="想学 Godot",
+        original_message="learn",
         llm=None,
         llm_config=None,
         raw_settings={},
@@ -119,18 +116,82 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
 
     joined = "".join(chunks)
     assert eval_calls["n"] == 0
-    assert "评估专家结果" not in joined
+    assert merge_calls["n"] == 1
+    assert "skip_merge" not in joined
+    assert "Hub summary" in joined
+    assert memory_calls
+
+
+@pytest.mark.asyncio
+async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch):
+    from backend.agents.react import EngineResult
+
+    service = HubService.__new__(HubService)
+    service.registry = type("R", (), {"has": staticmethod(lambda aid: True)})()
+    memory_calls = []
+
+    class Mem:
+        async def append_short_memory(self, *args, **kwargs):
+            memory_calls.append(True)
+
+    service.memory = Mem()
+    eval_calls = {"n": 0}
+
+    async def fake_handle_dispatches(**kwargs):
+        bag = kwargs.get("result_bag")
+        if bag is not None:
+            bag["summaries"] = ["[mentor] long"]
+            bag["expert_results"] = [("mentor", "long")]
+            bag["direct_streamed"] = True
+            bag["hub_passthrough"] = True
+            bag["had_question"] = False
+        if False:
+            yield ""
+        return
+        yield  # pragma: no cover
+
+    async def fake_run_agent(**kwargs):
+        if kwargs.get("evaluate_mode"):
+            eval_calls["n"] += 1
+        yield EngineResult(text="should-not-run", dispatches=[])
+
+    monkeypatch.setattr(service, "_handle_dispatches", fake_handle_dispatches)
+    monkeypatch.setattr(service, "_run_agent", fake_run_agent)
+
+    chunks = []
+    async for chunk in service._dispatch_evaluate_loop(
+        dispatches=[{"target_agent": "mentor", "task": "x", "reason": "y"}],
+        user=type("U", (), {"id": "u1"})(),
+        session_id="s1",
+        original_message="learn",
+        llm=None,
+        llm_config=None,
+        raw_settings={},
+        permissions={},
+        project_id=None,
+        history=[],
+        hub_preamble="",
+    ):
+        chunks.append(chunk)
+
+    joined = "".join(chunks)
+    assert eval_calls["n"] == 0
+    assert "\u8bc4\u4f30\u4e13\u5bb6\u7ed3\u679c" not in joined
     assert "skip_merge" in joined or "event: done" in joined
     assert memory_calls
 
+
+@pytest.mark.asyncio
+async def test_dispatch_evaluate_loop_can_re_dispatch_until_cap(monkeypatch):
+    from backend.agents.react import EngineResult
+
+    service = HubService.__new__(HubService)
     service.registry = type(
         "R",
         (),
-        {
-            "has": staticmethod(lambda aid: aid in {"mentor", "scout", "atlas"}),
-        },
+        {"has": staticmethod(lambda aid: aid in {"mentor", "scout", "atlas"})},
     )()
-    memory_calls: list[dict] = []
+    memory_calls = []
 
     class Mem:
         async def append_short_memory(self, *args, **kwargs):
@@ -138,7 +199,6 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
 
     service.memory = Mem()
 
-    # 专家批次：只填充 bag，不 finalize
     async def fake_handle_dispatches(**kwargs):
         bag = kwargs.get("result_bag")
         dispatches = kwargs["dispatches"]
@@ -155,7 +215,7 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
                 len(dispatches) == 1 and not kwargs.get("force_subagent")
             )
             bag["had_question"] = False
-        if False:  # 保持 async generator
+        if False:
             yield ""
         return
         yield  # pragma: no cover
@@ -168,26 +228,20 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
             eval_calls["n"] += 1
             n = eval_calls["n"]
             if n == 1:
-                # 第一批后：再调 atlas
                 yield EngineResult(
                     text="",
                     dispatches=[
-                        {
-                            "target_agent": "atlas",
-                            "task": "补依赖图",
-                            "reason": "缺口",
-                        }
+                        {"target_agent": "atlas", "task": "deps", "reason": "gap"}
                     ],
                 )
             elif n < MAX_HUB_DISPATCH_ROUNDS:
-                # 继续尝试再调度（测上限）
                 yield EngineResult(
                     text="",
                     dispatches=[
                         {
                             "target_agent": "scout",
-                            "task": f"再扫一轮 {n}",
-                            "reason": "仍不足",
+                            "task": f"more {n}",
+                            "reason": "more",
                         }
                     ],
                 )
@@ -196,22 +250,22 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
             return
         if kwargs.get("merge_mode"):
             merge_calls["n"] += 1
-            yield "event: text_delta\ndata: {\"content\":\"合并答复\"}\n\n"
-            yield EngineResult(text="合并答复", dispatches=[])
+            yield 'event: text_delta\ndata: {"content":"merged"}\n\n'
+            yield EngineResult(text="merged", dispatches=[])
             return
-        yield EngineResult(text="专家", dispatches=[])
+        yield EngineResult(text="expert", dispatches=[])
 
     monkeypatch.setattr(service, "_handle_dispatches", fake_handle_dispatches)
     monkeypatch.setattr(service, "_run_agent", fake_run_agent)
 
-    chunks: list[str] = []
+    chunks = []
     async for chunk in service._dispatch_evaluate_loop(
         dispatches=[
-            {"target_agent": "mentor", "task": "教场景树", "reason": "学习"}
+            {"target_agent": "mentor", "task": "teach", "reason": "learn"}
         ],
         user=type("U", (), {"id": "u1"})(),
         session_id="s1",
-        original_message="学 Godot",
+        original_message="Godot",
         llm=None,
         llm_config=None,
         raw_settings={},
@@ -225,4 +279,4 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
     assert eval_calls["n"] >= 2
     assert merge_calls["n"] == 1
     joined = "".join(chunks)
-    assert "调度轮次上限" in joined or merge_calls["n"] == 1
+    assert "\u8c03\u5ea6\u8f6e\u6b21\u4e0a\u9650" in joined or merge_calls["n"] == 1

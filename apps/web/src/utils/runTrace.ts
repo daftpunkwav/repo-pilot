@@ -5,8 +5,10 @@ export interface SubagentTrace {
   task?: string;
   reason?: string;
   status: 'running' | 'ok' | 'question' | 'error';
-  /** 从 Hub 合流思考中拆出的该专家片段 */
+  /** 专家思考过程（嵌套 SSE 或从 Hub 合流思考拆出） */
   thinking?: string;
+  /** 专家正文输出（嵌套 SSE） */
+  output?: string;
 }
 
 const AGENT_TITLE: Record<string, string> = {
@@ -56,17 +58,27 @@ export function snapshotSubagents(
     task?: string;
     reason?: string;
     status: SubagentTrace['status'];
+    thinking?: string;
+    output?: string;
   }>,
-  fullThinking: string | undefined | null
+  fullThinking: string | undefined | null,
+  opts?: { finalizeRunning?: boolean }
 ): SubagentTrace[] {
+  const finalizeRunning = opts?.finalizeRunning !== false;
   return subagents.map((sa) => {
-    const thinking = extractExpertThinking(fullThinking, sa.agentId);
+    const nestedThink = (sa.thinking ?? '').trim();
+    const fallbackThink = nestedThink
+      ? nestedThink
+      : extractExpertThinking(fullThinking, sa.agentId);
+    const output = (sa.output ?? '').trim();
     return {
       agentId: sa.agentId,
       task: sa.task,
       reason: sa.reason,
-      status: sa.status === 'running' ? 'ok' : sa.status,
-      ...(thinking ? { thinking } : {}),
+      status:
+        finalizeRunning && sa.status === 'running' ? 'ok' : sa.status,
+      ...(fallbackThink ? { thinking: fallbackThink } : {}),
+      ...(output ? { output } : {}),
     };
   });
 }

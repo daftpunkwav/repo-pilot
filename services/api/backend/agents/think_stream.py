@@ -118,7 +118,8 @@ def split_complete_text(text: str) -> tuple[str, str]:
     rest = s[len(THINK_START) :]
     end = rest.find(THINK_END)
     if end < 0:
-        return rest.strip(), ""
+        # 未闭合 THINK：整段当正文，避免「思考有货、气泡空白」
+        return "", rest.strip()
     thinking = rest[:end].strip()
     body = rest[end + len(THINK_END) :].lstrip("\r\n")
     return thinking, body

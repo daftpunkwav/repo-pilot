@@ -10,8 +10,9 @@ from backend.agents.registry import AGENT_DEFINITIONS
 
 
 def test_skip_merge_single_expert_any_length():
-    assert should_skip_hub_merge([("scout", "短")]) is True
-    assert should_skip_hub_merge([("scout", "x" * 300)]) is True
+    # 嵌套专家：始终 Hub 汇总，不再单专家直出
+    assert should_skip_hub_merge([("scout", "短")]) is False
+    assert should_skip_hub_merge([("scout", "x" * 300)]) is False
 
 
 def test_keep_merge_for_multi_experts():

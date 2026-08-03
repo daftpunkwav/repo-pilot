@@ -2785,6 +2785,43 @@
   max-height: 14rem;
   overflow: auto;
 }
+.hub-subagent__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 2px 36px;
+}
+.hub-subagent__section-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-400);
+  margin-bottom: 4px;
+}
+.hub-subagent__detail .hub-subagent__thinking,
+.hub-subagent__output {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.22);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-500);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 18rem;
+  overflow: auto;
+}
+.hub-subagent__output {
+  color: var(--text-300);
+}
+[data-theme='light'] .hub-subagent__thinking,
+[data-theme='light'] .hub-subagent__detail .hub-subagent__thinking,
+[data-theme='light'] .hub-subagent__output {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.03);
+}
 [data-theme='light'] .hub-subagent__thinking {
   border-color: rgba(0, 0, 0, 0.08);
   background: rgba(0, 0, 0, 0.03);

@@ -10,6 +10,17 @@ def test_scout_is_react_fast_lane():
     assert scout.max_tokens <= 2400
     # 工具应极少，避免 ReAct 多轮
     assert len(scout.tools) <= 3
+    assert "fetch_github_repo" in scout.tools
+    assert "fetch_readme" in scout.tools
+    assert "get_project_detail" in scout.tools
+    assert "full_name=owner/repo" in scout.system_prompt
+    assert "禁止把 owner/repo 当作 project_id" in scout.system_prompt
+
+
+def test_hub_routes_external_github_without_fake_project_id():
+    hub = AGENT_DEFINITIONS["hub"]
+    assert "full_name=owner/repo" in hub.system_prompt
+    assert "严禁把 owner/repo 当作 project_id" in hub.system_prompt
 
 
 def test_mentor_react_bounded_iterations():

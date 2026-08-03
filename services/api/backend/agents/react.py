@@ -27,6 +27,15 @@ class EngineResult:
     pending_status: str | None = None
 
 
+def _strip_think_markers(text: str) -> str:
+    """去掉 THINK 标记，保留内部与正文。"""
+    from backend.agents.think_stream import THINK_END, THINK_START
+
+    s = text or ""
+    s = s.replace(THINK_START, "").replace(THINK_END, "")
+    return s.strip()
+
+
 class ReActEngine:
     MAX_ITERATIONS = 8
 
@@ -89,12 +98,17 @@ class ReActEngine:
                     if emit_sse:
                         yield format_sse(event_name, {"content": chunk.text})
                 elif chunk.type == "thinking" and chunk.text:
-                    # 原生 reasoning：始终进 thinking 通道；
-                    # 当本段目标就是 thinking 时，一并计入 full（供规划注入后续消息）
+                    # 原生 reasoning：
+                    # - channel=thinking：计入 full（规划注入）并进 thinking SSE
+                    # - channel=text：推理模型常把全文放 reasoning；提升为正文，避免气泡空白
                     if channel == "thinking":
                         full += chunk.text
-                    if emit_sse:
-                        yield format_sse("thinking", {"content": chunk.text})
+                        if emit_sse:
+                            yield format_sse("thinking", {"content": chunk.text})
+                    else:
+                        full += chunk.text
+                        if emit_sse:
+                            yield format_sse("text_delta", {"content": chunk.text})
                 elif chunk.type == "done":
                     usage = chunk.usage or {}
                 elif chunk.type == "error":
@@ -294,7 +308,8 @@ class ReActEngine:
                 "请按上述计划立刻执行，不要再复述或改写「执行计划」列表。"
                 "需要调度专家时必须调用 dispatch_agent（可一次多个，默认≤2）；"
                 "可直接回答则输出用户可见的完整正文（Markdown）。"
-                "禁止只宣布计划、禁止 emoji。"
+                "禁止只宣布计划；禁止输出「收到，这就调度…」之类空承诺正文"
+                "（不调工具、不写完整答复就结束）；禁止 emoji。"
             )
         elif workflow == "tot":
             plan_prompt = (
@@ -574,11 +589,32 @@ class ReActEngine:
                     {"content": f"[中间推理]\n{(result.text or '').strip()}\n"},
                 )
 
+            # 推理模型常见：长文在 reasoning、text 为空且无工具 → 直接提升为正文
+            if (
+                not result.tool_calls
+                and not (result.text or "").strip()
+                and native_reason
+            ):
+                final_text = native_reason
+                if emit_sse:
+                    step = 24
+                    for i in range(0, len(final_text), step):
+                        yield format_sse(
+                            "text_delta", {"content": final_text[i : i + step]}
+                        )
+                break
+
             if result.text and not result.tool_calls:
                 from backend.agents.think_stream import split_complete_text
 
                 think, body = split_complete_text(result.text)
-                candidate = (body or result.text or "").strip()
+                # 未闭合 THINK 时 split 会把全文当 thinking、body 为空；
+                # 此时仍应用全文作正文，避免「思考区有货、气泡空白」
+                if think and not (body or "").strip():
+                    candidate = _strip_think_markers(result.text).strip() or result.text.strip()
+                    think = ""
+                else:
+                    candidate = (body or result.text or "").strip()
                 # Hub/plan_execute：只宣布「执行计划」而未调工具 → 纠正后继续，避免假完成
                 if (
                     wf == "plan_execute"
@@ -602,18 +638,56 @@ class ReActEngine:
                         {
                             "role": "user",
                             "content": (
-                                "上一段只是在复述/宣布计划，对用户没有完成交付。"
+                                "上一段只是在复述/宣布计划或空承诺调度，对用户没有完成交付。"
                                 "请立刻执行：要么调用 dispatch_agent（可一次多个）"
                                 "调度计划中的专家；要么直接输出完整可用的 Markdown 答复。"
-                                "禁止再只输出「执行计划」列表或「开始分派」之类宣告。"
+                                "禁止再只输出「执行计划」列表，"
+                                "禁止「收到，这就调度…」这类不调工具的空承诺。"
                             ),
                         }
                     )
                     continue
+                # 纠正次数用尽仍是空承诺：勿当作最终正文发出（避免前端假完成）
+                if (
+                    wf == "plan_execute"
+                    and is_plan_announcement(candidate, agent_id=agent_def.id)
+                ):
+                    if emit_sse:
+                        yield format_sse(
+                            "thinking",
+                            {
+                                "content": (
+                                    "[纠正] 空承诺调度仍未执行，丢弃该段正文并继续重试…\n"
+                                )
+                            },
+                        )
+                    if iteration < max_iter:
+                        messages.append(
+                            {
+                                "role": "user",
+                                "content": (
+                                    "最后一次机会：必须调用 dispatch_agent 或写出完整 Markdown。"
+                                    "禁止任何调度宣告句。"
+                                ),
+                            }
+                        )
+                        continue
+                    final_text = (
+                        "编排未完成：Hub 未能真正调度专家。"
+                        "请重试，或换一种更具体的问法（例如「用 Mentor 讲解 CrewAI 入门路径」）。"
+                    )
+                    if emit_sse and final_text:
+                        step = 24
+                        for i in range(0, len(final_text), step):
+                            yield format_sse(
+                                "text_delta",
+                                {"content": final_text[i : i + step]},
+                            )
+                    break
                 if think and emit_sse:
                     yield format_sse("thinking", {"content": think + "\n"})
                 final_text = candidate or result.text
-                if emit_sse:
+                if emit_sse and final_text:
                     step = 24
                     for i in range(0, len(final_text), step):
                         yield format_sse(
@@ -979,8 +1053,9 @@ class ReActEngine:
             return (
                 "工作流: Plan-and-Execute。规划只在思考区；执行阶段必须真正行动："
                 "需要专家时调用 dispatch_agent，可直接答则写完整 Markdown 正文。"
-                "禁止把「执行计划」列表当作最终答复。不要一次调度超过 3 个 Agent。"
-                "禁止 emoji。"
+                "禁止把「执行计划」列表当作最终答复；"
+                "禁止「收到/好的，这就调度某某」这类不调工具的空承诺。"
+                "不要一次调度超过 3 个 Agent。禁止 emoji。"
             )
         if wf == "reflexion":
             return (
@@ -1018,18 +1093,27 @@ _DISPATCH_HINT_RE = re.compile(
     re.IGNORECASE,
 )
 _PLAN_ANNOUNCE_RE = re.compile(
-    r"(开始分派|开始执行|现开始|接下来将调度|正在调度专业|待\s*\d+\s*位专家)",
+    r"(开始分派|开始执行|现开始|接下来将调度|正在调度|这就调度|这就分派|"
+    r"马上调度|立即调度|我来调度|先调度|待\s*\d+\s*位专家)",
+)
+# 「无需再调度 mentor」等收口句，不是空承诺
+_DISPATCH_NEGATION_RE = re.compile(
+    r"(无需|不用|不必|不再|无须).{0,8}(调度|分派)",
+)
+# 有实质交付结构时，不因提到「调度」就当空承诺
+_DELIVERY_STRUCTURE_RE = re.compile(
+    r"(?m)^#{1,3}\s|\n[-*]\s+\S|```|\|.+\|",
 )
 
 
 def is_plan_announcement(text: str, *, agent_id: str = "") -> bool:
     """判断正文是否像「宣布执行计划」而非用户可见的完整交付。
 
-    Hub 在 plan_execute 下常输出「执行计划：1.调度 mentor…」后直接结束，
-    前端会停在第 1 轮，看起来像卡住。
+    Hub 在 plan_execute 下常输出「执行计划：1.调度 mentor…」或
+    「收到，这就调度 Mentor…」后直接结束，前端会停在第 1 轮，看起来像卡住。
     """
     t = (text or "").strip()
-    if len(t) < 20:
+    if len(t) < 12:
         return False
     has_header = bool(_PLAN_HEADER_RE.search(t)) or t.startswith(
         ("执行计划", "行动计划", "计划步骤")
@@ -1041,6 +1125,15 @@ def is_plan_announcement(text: str, *, agent_id: str = "") -> bool:
     if agent_id == "hub" and dispatch_hits >= 2 and len(t) < 1200:
         return True
     if announce and dispatch_hits >= 1 and len(t) < 800:
+        return True
+    # Hub 短空承诺：提到要调度专家，但几乎无交付结构（用户可见的「卡住」主因）
+    if (
+        agent_id == "hub"
+        and dispatch_hits >= 1
+        and len(t) < 280
+        and not _DISPATCH_NEGATION_RE.search(t)
+        and not _DELIVERY_STRUCTURE_RE.search(t)
+    ):
         return True
     return False
 

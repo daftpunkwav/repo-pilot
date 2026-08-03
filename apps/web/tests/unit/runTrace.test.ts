@@ -43,4 +43,30 @@ describe('snapshotSubagents', () => {
     expect(out[0].status).toBe('ok');
     expect(out[0].thinking).toContain('分析中');
   });
+
+  it('prefers nested thinking/output over hub extract', () => {
+    const full = '【Mentor】\n合流碎片\n';
+    const out = snapshotSubagents(
+      [
+        {
+          agentId: 'mentor',
+          status: 'ok',
+          thinking: '真实思考',
+          output: '完整讲解正文',
+        },
+      ],
+      full
+    );
+    expect(out[0].thinking).toBe('真实思考');
+    expect(out[0].output).toBe('完整讲解正文');
+  });
+
+  it('can preserve running status for live stream', () => {
+    const out = snapshotSubagents(
+      [{ agentId: 'mentor', status: 'running', thinking: '…' }],
+      '',
+      { finalizeRunning: false }
+    );
+    expect(out[0].status).toBe('running');
+  });
 });

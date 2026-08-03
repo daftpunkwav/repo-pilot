@@ -298,13 +298,14 @@ export interface AgentMessage {
   tool_call?: ToolCallData;
   /** 本轮工具调用踪迹（落盘后仍展示） */
   tool_calls?: ToolCallData[];
-  /** 内嵌专家进度与思考（Hub 舞台直出时） */
+  /** 内嵌专家进度、思考与输出（默认收起，可展开） */
   subagents?: Array<{
     agentId: AgentId;
     task?: string;
     reason?: string;
     status: 'running' | 'ok' | 'question' | 'error';
     thinking?: string;
+    output?: string;
   }>;
   /** 助手发起的结构化反问（历史卡片） */
   question?: AgentQuestion;
@@ -450,6 +451,8 @@ export type SSEEventType =
   | 'question'
   | 'agent_switch'
   | 'subagent_start'
+  | 'subagent_thinking'
+  | 'subagent_text'
   | 'subagent_done'
   | 'select_repos'
   | 'session_projects'
@@ -493,9 +496,21 @@ export interface SSESubagentStart {
   reason?: string;
 }
 
+export interface SSESubagentThinking {
+  agent_id: AgentId;
+  content: string;
+}
+
+export interface SSESubagentText {
+  agent_id: AgentId;
+  content: string;
+}
+
 export interface SSESubagentDone {
   agent_id: AgentId;
   status?: string;
+  thinking?: string;
+  output?: string;
 }
 
 export interface SSEDone {

@@ -76,6 +76,32 @@ export function persistableThinking(text: string | undefined | null): string {
   return real;
 }
 
+/** 仅调度说明、无实质正文时，把长思考提升为可见正文（防 Mentor 空泡） */
+export function isDispatchNoticeOnly(content: string): boolean {
+  const t = (content ?? '').trim();
+  if (!t || t.length > 280) return false;
+  if (/^#{1,3}\s/m.test(t)) return false;
+  return (
+    /^先交由\s*\*{0,2}[A-Za-z\u4e00-\u9fff]+/.test(t) ||
+    /^交由\s*\*{0,2}[A-Za-z\u4e00-\u9fff]+/.test(t)
+  );
+}
+
+export function coalesceEmptyBodyWithThinking(
+  content: string,
+  thinking: string | undefined | null
+): { content: string; thinking: string } {
+  const body = (content ?? '').trim();
+  const { realThinking } = partitionThinking((thinking ?? '').trim());
+  if (!isDispatchNoticeOnly(body) || realThinking.length < 80) {
+    return { content: content ?? '', thinking: thinking ?? '' };
+  }
+  return {
+    content: `${body}\n\n${realThinking}`.trim(),
+    thinking: '',
+  };
+}
+
 /** 流式 Markdown；真实思考默认收起，脚手架不进思考面板 */
 export function StreamRenderer({
   content,
@@ -84,19 +110,23 @@ export function StreamRenderer({
   thinkingOpen = false,
   collapseBody = false,
 }: StreamRendererProps) {
-  const [rendered, setRendered] = useState(content);
+  const coalesced = coalesceEmptyBodyWithThinking(content, thinking);
+  const displayContent = coalesced.content;
+  const displayThinking = coalesced.thinking;
+
+  const [rendered, setRendered] = useState(displayContent);
   const [thinkingExpanded, setThinkingExpanded] = useState(thinkingOpen);
 
   useEffect(() => {
     if (!streaming) {
-      setRendered(content);
+      setRendered(displayContent);
       return;
     }
-    const t = setTimeout(() => setRendered(content), 32);
+    const t = setTimeout(() => setRendered(displayContent), 32);
     return () => clearTimeout(t);
-  }, [content, streaming]);
+  }, [displayContent, streaming]);
 
-  const thinkingTrim = (thinking ?? '').trim();
+  const thinkingTrim = displayThinking.trim();
   const { realThinking } = partitionThinking(thinkingTrim);
   const hasRealThinking = Boolean(realThinking);
   const hasBody = Boolean(rendered && rendered.trim());

@@ -112,24 +112,7 @@ async def query_user_projects(
     }
 
 
-@tool(
-    name="get_project_detail",
-    description="获取单个项目的详细信息。",
-    parameters={
-        "type": "object",
-        "properties": {"project_id": {"type": "string"}},
-        "required": ["project_id"],
-    },
-    allowed_agents=["scout", "mentor", "navigator", "curator", "scribe", "hub", "atlas"],
-)
-async def get_project_detail(project_id: str, context=None, **kw):
-    try:
-        pid = UUID(project_id)
-    except ValueError:
-        return {"error": "无效 project_id"}
-    p = await context.db.get(Project, pid)
-    if not p or p.user_id != _uid(context):
-        return {"error": "项目不存在"}
+def _project_detail_payload(p: Project) -> dict[str, Any]:
     return {
         "id": str(p.id),
         "name": p.name,
@@ -145,8 +128,68 @@ async def get_project_detail(project_id: str, context=None, **kw):
 
 
 @tool(
+    name="get_project_detail",
+    description=(
+        "获取用户项目库中单个项目的详细信息。"
+        "project_id 必须是 UUID；若只有 owner/repo，请改用 fetch_github_repo / fetch_readme。"
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "project_id": {
+                "type": "string",
+                "description": "项目 UUID（勿传 owner/repo）",
+            }
+        },
+        "required": ["project_id"],
+    },
+    allowed_agents=["scout", "mentor", "navigator", "curator", "scribe", "hub", "atlas"],
+)
+async def get_project_detail(project_id: str, context=None, **kw):
+    raw = str(project_id or "").strip()
+    if not raw:
+        return {"error": "无效 project_id"}
+
+    try:
+        pid = UUID(raw)
+    except ValueError:
+        # 兼容误把 owner/repo 当 id：仅在用户库内按 name 回退
+        owner, repo = _parse_owner_repo(full_name=raw)
+        if owner and repo:
+            full_name = f"{owner}/{repo}"
+            stmt = (
+                select(Project)
+                .where(Project.user_id == _uid(context), Project.name == full_name)
+                .limit(1)
+            )
+            p = (await context.db.execute(stmt)).scalars().first()
+            if p:
+                return _project_detail_payload(p)
+            return {
+                "error": "无效 project_id",
+                "hint": (
+                    "project_id 须为 UUID；库外仓库请改用 fetch_github_repo / fetch_readme，"
+                    f"参数 full_name={full_name}"
+                ),
+                "full_name": full_name,
+            }
+        return {
+            "error": "无效 project_id",
+            "hint": "project_id 须为 UUID；库外仓库用 fetch_github_repo / fetch_readme 的 full_name",
+        }
+
+    p = await context.db.get(Project, pid)
+    if not p or p.user_id != _uid(context):
+        return {"error": "项目不存在"}
+    return _project_detail_payload(p)
+
+
+@tool(
     name="fetch_github_repo",
-    description="通过 GitHub API 获取公开仓库元数据（owner/repo）。",
+    description=(
+        "通过 GitHub API 获取公开仓库元数据。"
+        "库外速览请用本工具；勿把 owner/repo 传给 get_project_detail。"
+    ),
     parameters={
         "type": "object",
         "properties": {
@@ -185,13 +228,19 @@ async def fetch_github_repo(
 
 @tool(
     name="fetch_readme",
-    description="获取 GitHub 仓库 README 文本（截断）。",
+    description=(
+        "获取 GitHub 仓库 README 文本（截断）。"
+        "用 full_name=owner/repo 或 owner+repo；不要用 project_id。"
+    ),
     parameters={
         "type": "object",
         "properties": {
             "owner": {"type": "string"},
             "repo": {"type": "string"},
-            "full_name": {"type": "string"},
+            "full_name": {
+                "type": "string",
+                "description": "形如 owner/repo",
+            },
             "max_chars": {"type": "integer", "default": 6000},
         },
     },

@@ -65,6 +65,8 @@ export function RunTracePanel({
           {agents.map((sa) => {
             const open = openId === sa.agentId;
             const hasThinking = Boolean(sa.thinking?.trim());
+            const hasOutput = Boolean(sa.output?.trim());
+            const hasDetail = hasThinking || hasOutput;
             return (
               <div key={sa.agentId} className="hub-subagent-wrap">
                 <button
@@ -72,10 +74,10 @@ export function RunTracePanel({
                   className="hub-subagent hub-subagent--btn"
                   data-status={sa.status}
                   data-open={open ? '1' : '0'}
-                  aria-expanded={hasThinking ? open : undefined}
-                  disabled={!hasThinking}
+                  aria-expanded={hasDetail ? open : undefined}
+                  disabled={!hasDetail}
                   onClick={() => {
-                    if (!hasThinking) return;
+                    if (!hasDetail) return;
                     setOpenId((cur) => (cur === sa.agentId ? null : sa.agentId));
                   }}
                 >
@@ -95,7 +97,7 @@ export function RunTracePanel({
                         sa,
                         agents.length === 1 ? latestActionSummary : null
                       )}
-                      {hasThinking ? (open ? ' · 收起过程' : ' · 查看过程') : ''}
+                      {hasDetail ? (open ? ' · 收起过程' : ' · 查看过程') : ''}
                     </span>
                     {sa.reason && (
                       <span className="hub-subagent__reason" title={sa.reason}>
@@ -104,10 +106,31 @@ export function RunTracePanel({
                     )}
                   </div>
                 </button>
-                {open && hasThinking && (
-                  <pre className="hub-subagent__thinking" data-testid="subagent-thinking">
-                    {sa.thinking}
-                  </pre>
+                {open && hasDetail && (
+                  <div className="hub-subagent__detail" data-testid="subagent-detail">
+                    {hasThinking && (
+                      <div className="hub-subagent__section">
+                        <div className="hub-subagent__section-label">思考过程</div>
+                        <pre
+                          className="hub-subagent__thinking"
+                          data-testid="subagent-thinking"
+                        >
+                          {sa.thinking}
+                        </pre>
+                      </div>
+                    )}
+                    {hasOutput && (
+                      <div className="hub-subagent__section">
+                        <div className="hub-subagent__section-label">专家输出</div>
+                        <pre
+                          className="hub-subagent__output"
+                          data-testid="subagent-output"
+                        >
+                          {sa.output}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             );

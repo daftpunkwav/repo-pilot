@@ -14,6 +14,21 @@ def test_detects_hub_execution_plan_list():
     assert is_plan_announcement(text, agent_id="hub") is True
 
 
+def test_detects_short_hub_dispatch_promise():
+    """用户可见卡住点：只承诺调度、不调工具、不写正文。"""
+    text = "收到，这就调度 Mentor 给你出一份 CrewAI 的讲解 + 系统学习方案。"
+    assert is_plan_announcement(text, agent_id="hub") is True
+
+
+def test_detects_im_dispatching_now():
+    assert is_plan_announcement("好的，正在调度 scout 做速览。", agent_id="hub") is True
+
+
+def test_rejects_no_further_dispatch_closing():
+    text = "专家结果已足够，无需再调度 mentor。"
+    assert is_plan_announcement(text, agent_id="hub") is False
+
+
 def test_rejects_real_learning_answer():
     text = (
         "## LangChain.js 入门路径\n\n"
