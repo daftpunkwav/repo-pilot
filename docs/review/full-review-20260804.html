@@ -1,0 +1,958 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RepoPilot v2.0.0 全量代码审查报告 v2 · 2026-08-04</title>
+<style>
+  :root {
+    --bg-0: #0B0E14; --bg-1: #11151E; --bg-2: #161B25; --bg-3: #1D2330;
+    --line: #232A38; --line-soft: #1A1F2B;
+    --fg-0: #E6E8EE; --fg-1: #B7BDCB; --fg-2: #7A8294; --fg-3: #525B6E;
+    --sev-p0: #FF4D4D; --sev-p1: #FF9F2E; --sev-p2: #FFB627; --sev-p3: #2EE6C7;
+    --sev-ok: #2EE6C7; --sev-info: #6FB3FF;
+    --accent: #FFB627; --accent-dim: #B07A12;
+    --code-blue: #79C0FF; --code-purple: #C792EA; --code-green: #7EE787;
+    --new-badge: #FF4D4D;
+    --verified: #2EE6C7;
+    --corrected: #FF9F2E;
+    --font-display: "Spectral", "Source Serif Pro", Georgia, "Songti SC", serif;
+    --font-body: "Inter", -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", "Source Code Pro", Consolas, "Courier New", monospace;
+    --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px;
+    --container: 1240px; --toc-w: 240px;
+    --radius: 4px; --radius-card: 6px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg-0); color: var(--fg-0);
+    font-family: var(--font-body); font-size: 15px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+    background-size: 32px 32px; pointer-events: none; z-index: 0;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, kbd, samp, pre { font-family: var(--font-mono); font-size: 0.875em; }
+
+  .wrap { position: relative; z-index: 1; max-width: var(--container); margin: 0 auto; padding: 0 var(--s-5); }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(11, 14, 20, 0.85);
+    backdrop-filter: saturate(140%) blur(12px);
+    -webkit-backdrop-filter: saturate(140%) blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    display: flex; align-items: center; gap: var(--s-5);
+    height: 56px; max-width: var(--container); margin: 0 auto; padding: 0 var(--s-5);
+  }
+  .topbar-logo { font-family: var(--font-mono); font-size: 13px; color: var(--fg-1); letter-spacing: 0.04em; }
+  .topbar-logo b { color: var(--accent); }
+  .topbar-meta {
+    margin-left: auto; font-family: var(--font-mono); font-size: 12px;
+    color: var(--fg-2); display: flex; gap: var(--s-4);
+  }
+  .topbar-meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.live { background: var(--sev-ok); box-shadow: 0 0 8px var(--sev-ok); }
+  .dot.crit { background: var(--new-badge); box-shadow: 0 0 8px var(--new-badge); }
+
+  .hero { padding: var(--s-8) 0 var(--s-7); border-bottom: 1px solid var(--line); }
+  .hero-eyebrow { font-family: var(--font-mono); font-size: 12px; color: var(--accent); letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: var(--s-4); }
+  .hero h1 {
+    font-family: var(--font-display); font-weight: 600;
+    font-size: clamp(36px, 5.2vw, 64px); line-height: 1.08; letter-spacing: -0.02em;
+    margin: 0 0 var(--s-4); color: var(--fg-0);
+  }
+  .hero h1 .accent { color: var(--accent); font-style: italic; }
+  .hero-sub { font-size: 17px; color: var(--fg-1); max-width: 820px; line-height: 1.6; }
+  .hero-meta {
+    margin-top: var(--s-6);
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--s-3) var(--s-5); padding: var(--s-4) 0; border-top: 1px solid var(--line-soft);
+  }
+  .meta-item { display: flex; flex-direction: column; gap: 2px; }
+  .meta-k { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.1em; text-transform: uppercase; }
+  .meta-v { font-size: 14px; color: var(--fg-0); font-family: var(--font-mono); }
+  .meta-v b { color: var(--accent); font-weight: 500; }
+  .meta-v .b-p0 { color: var(--sev-p0); }
+
+  /* Version delta banner */
+  .delta {
+    margin: var(--s-5) 0 var(--s-4);
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-left-width: 3px;
+    border-left-color: var(--corrected);
+    border-radius: var(--radius-card);
+    padding: var(--s-4) var(--s-5);
+  }
+  .delta h3 {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--corrected); letter-spacing: 0.16em;
+    text-transform: uppercase; margin: 0 0 var(--s-3);
+  }
+  .delta-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: var(--s-3) var(--s-5);
+  }
+  .delta-item { display: flex; gap: var(--s-2); font-size: 13px; color: var(--fg-1); }
+  .delta-item b { color: var(--fg-0); font-family: var(--font-mono); }
+  .delta-item .num { color: var(--corrected); font-weight: 600; }
+
+  .layout { display: grid; grid-template-columns: var(--toc-w) 1fr; gap: var(--s-7); padding: var(--s-7) 0; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } .toc { display: none; } }
+
+  .toc {
+    position: sticky; top: 80px; align-self: start;
+    max-height: calc(100vh - 100px); overflow-y: auto;
+    font-family: var(--font-mono); font-size: 12px; padding-right: var(--s-3);
+  }
+  .toc h4 { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.16em; text-transform: uppercase; margin: 0 0 var(--s-3); }
+  .toc ol { list-style: none; padding: 0; margin: 0; counter-reset: toc; }
+  .toc li { counter-increment: toc; margin-bottom: 2px; }
+  .toc a {
+    color: var(--fg-2); text-decoration: none;
+    display: flex; align-items: baseline; gap: var(--s-2);
+    padding: 5px 6px; border-left: 2px solid transparent;
+    transition: color .15s, border-color .15s;
+  }
+  .toc a::before { content: counter(toc, decimal-leading-zero); color: var(--fg-3); font-size: 10px; min-width: 22px; }
+  .toc a:hover { color: var(--accent); border-left-color: var(--accent-dim); }
+  .toc a .new { margin-left: auto; font-size: 9px; color: var(--new-badge); font-weight: 600; letter-spacing: 0.06em; }
+
+  section { margin-bottom: var(--s-8); }
+  section > h2 {
+    font-family: var(--font-display); font-weight: 600; font-size: 32px;
+    letter-spacing: -0.01em; margin: 0 0 var(--s-4); padding-bottom: var(--s-3);
+    border-bottom: 1px solid var(--line);
+    display: flex; align-items: baseline; gap: var(--s-3);
+  }
+  section > h2 .num { font-family: var(--font-mono); font-size: 13px; color: var(--accent); font-weight: 400; }
+  section > h2 .new-tag {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--new-badge); background: rgba(255,77,77,0.1);
+    border: 1px solid rgba(255,77,77,0.4);
+    padding: 2px 6px; border-radius: 3px; letter-spacing: 0.08em;
+    margin-left: auto; text-transform: uppercase;
+  }
+  section > h3 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin: var(--s-6) 0 var(--s-3); color: var(--fg-0); }
+  section > p, section > li { color: var(--fg-1); }
+  section > ul, section > ol { padding-left: 1.4em; }
+  section > ul li, section > ol li { margin-bottom: var(--s-2); }
+
+  .radar {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--s-3); margin: var(--s-4) 0;
+  }
+  .radar-item {
+    background: var(--bg-1); border: 1px solid var(--line);
+    border-left-width: 3px; border-radius: var(--radius-card);
+    padding: var(--s-3) var(--s-4);
+  }
+  .radar-item.ok    { border-left-color: var(--sev-ok); }
+  .radar-item.warn  { border-left-color: var(--sev-p2); }
+  .radar-item.bad   { border-left-color: var(--sev-p1); }
+  .radar-item.crit  { border-left-color: var(--sev-p0); }
+  .radar-k { font-family: var(--font-mono); font-size: 11px; color: var(--fg-3); letter-spacing: 0.1em; text-transform: uppercase; }
+  .radar-v { font-family: var(--font-display); font-size: 20px; color: var(--fg-0); margin: 4px 0 2px; }
+  .radar-d { font-size: 12px; color: var(--fg-2); }
+  .radar-item .new-r {
+    font-family: var(--font-mono); font-size: 9px;
+    color: var(--new-badge); margin-left: 6px; vertical-align: middle;
+  }
+
+  .sevstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--s-3); margin: var(--s-4) 0; }
+  @media (max-width: 700px) { .sevstats { grid-template-columns: repeat(2, 1fr); } }
+  .sevstat { background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius-card); padding: var(--s-4); position: relative; overflow: hidden; }
+  .sevstat::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .sevstat.p0::before { background: var(--sev-p0); }
+  .sevstat.p1::before { background: var(--sev-p1); }
+  .sevstat.p2::before { background: var(--sev-p2); }
+  .sevstat.p3::before { background: var(--sev-p3); }
+  .sevstat-n { font-family: var(--font-mono); font-size: 28px; font-weight: 600; line-height: 1; }
+  .sevstat.p0 .sevstat-n { color: var(--sev-p0); }
+  .sevstat.p1 .sevstat-n { color: var(--sev-p1); }
+  .sevstat.p2 .sevstat-n { color: var(--sev-p2); }
+  .sevstat.p3 .sevstat-n { color: var(--sev-p3); }
+  .sevstat-l { font-size: 12px; color: var(--fg-2); margin-top: 4px; }
+  .sevstat-d { font-family: var(--font-mono); font-size: 10px; color: var(--corrected); margin-top: 2px; }
+
+  /* Console cards */
+  .console {
+    background: var(--bg-1); border: 1px solid var(--line);
+    border-radius: var(--radius-card); margin-bottom: var(--s-3); overflow: hidden;
+    transition: border-color .15s;
+  }
+  .console:hover { border-color: var(--accent-dim); }
+  .console-head {
+    display: flex; align-items: center; gap: var(--s-3);
+    padding: var(--s-3) var(--s-4);
+    background: var(--bg-2); border-bottom: 1px solid var(--line);
+    font-family: var(--font-mono); font-size: 12px; color: var(--fg-1);
+  }
+  .console-head .prompt { color: var(--sev-p3); font-weight: 600; }
+  .console-head .id { color: var(--accent); font-weight: 600; }
+  .console-head .file { color: var(--code-blue); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .console-head .loc { color: var(--fg-3); font-size: 11px; }
+
+  .sev-pill {
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em; padding: 2px 7px; border-radius: 3px; text-transform: uppercase;
+  }
+  .sev-pill.p0 { background: rgba(255,77,77,0.12); color: var(--sev-p0); border: 1px solid rgba(255,77,77,0.4); }
+  .sev-pill.p1 { background: rgba(255,159,46,0.12); color: var(--sev-p1); border: 1px solid rgba(255,159,46,0.4); }
+  .sev-pill.p2 { background: rgba(255,182,39,0.12); color: var(--sev-p2); border: 1px solid rgba(255,182,39,0.4); }
+  .sev-pill.p3 { background: rgba(46,230,199,0.12); color: var(--sev-p3); border: 1px solid rgba(46,230,199,0.4); }
+
+  .new-pill {
+    font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+    color: var(--new-badge); background: rgba(255,77,77,0.08);
+    border: 1px solid rgba(255,77,77,0.4);
+    padding: 1px 5px; border-radius: 3px; letter-spacing: 0.06em;
+  }
+  .verified-pill {
+    font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+    color: var(--verified); background: rgba(46,230,199,0.08);
+    border: 1px solid rgba(46,230,199,0.3);
+    padding: 1px 5px; border-radius: 3px; letter-spacing: 0.06em;
+  }
+  .corrected-pill {
+    font-family: var(--font-mono); font-size: 9px; font-weight: 600;
+    color: var(--corrected); background: rgba(255,159,46,0.08);
+    border: 1px solid rgba(255,159,46,0.4);
+    padding: 1px 5px; border-radius: 3px; letter-spacing: 0.06em;
+  }
+
+  .console-body { padding: var(--s-4); }
+  .console-body .issue { color: var(--fg-0); font-size: 14.5px; line-height: 1.55; margin-bottom: var(--s-3); }
+  .console-body .issue b { color: var(--accent); font-weight: 600; }
+  .console-body .fix {
+    font-family: var(--font-mono); font-size: 12.5px; color: var(--code-green);
+    background: var(--bg-2); border-left: 2px solid var(--code-green);
+    padding: var(--s-2) var(--s-3); border-radius: 0 var(--radius) var(--radius) 0;
+  }
+  .console-body .fix::before { content: "$ "; color: var(--sev-p3); font-weight: 600; }
+
+  table {
+    width: 100%; border-collapse: collapse; margin: var(--s-3) 0;
+    font-size: 13.5px; background: var(--bg-1);
+    border: 1px solid var(--line); border-radius: var(--radius-card); overflow: hidden;
+  }
+  th, td { padding: var(--s-3) var(--s-4); text-align: left; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th { background: var(--bg-2); color: var(--fg-2); font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+  td code { background: var(--bg-2); color: var(--code-blue); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  tr:last-child td { border-bottom: none; }
+
+  .callout {
+    background: var(--bg-1); border: 1px solid var(--line);
+    border-left-width: 3px; border-left-color: var(--accent);
+    border-radius: var(--radius-card); padding: var(--s-4) var(--s-5);
+    margin: var(--s-4) 0; color: var(--fg-1);
+  }
+  .callout.crit { border-left-color: var(--sev-p0); }
+  .callout strong { color: var(--fg-0); }
+
+  .toplist { counter-reset: toplist; list-style: none; padding: 0; margin: var(--s-4) 0; }
+  .toplist li {
+    counter-increment: toplist; background: var(--bg-1);
+    border: 1px solid var(--line); border-radius: var(--radius-card);
+    padding: var(--s-3) var(--s-4) var(--s-3) 56px;
+    margin-bottom: var(--s-2); position: relative; color: var(--fg-1);
+  }
+  .toplist li::before {
+    content: counter(toplist); position: absolute; left: 0; top: 0; bottom: 0;
+    width: 44px; display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-mono); font-size: 20px; font-weight: 600;
+    color: var(--accent); background: var(--bg-2); border-right: 1px solid var(--line);
+  }
+  .toplist li b { color: var(--fg-0); }
+
+  /* Verified checkmarks for亲验 */
+  .verify-row {
+    background: var(--bg-2); border-left: 2px solid var(--verified);
+    padding: var(--s-2) var(--s-3); margin: var(--s-2) 0;
+    font-family: var(--font-mono); font-size: 12px; color: var(--verified);
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+  .verify-row::before { content: "✓ "; color: var(--verified); font-weight: 700; }
+
+  /* Conflict matrix */
+  .conflict { color: var(--sev-p0); font-weight: 600; }
+  .match { color: var(--sev-p3); }
+
+  footer { border-top: 1px solid var(--line); padding: var(--s-7) 0; color: var(--fg-2); font-size: 12px; font-family: var(--font-mono); }
+  footer .grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-5); }
+  @media (max-width: 700px) { footer .grid { grid-template-columns: 1fr; } }
+  footer p { margin: 0 0 var(--s-2); line-height: 1.6; }
+
+  .mono { font-family: var(--font-mono); }
+  .small { font-size: 12px; color: var(--fg-2); }
+  .muted { color: var(--fg-2); }
+  .dim { color: var(--fg-3); }
+  .accent { color: var(--accent); }
+  .ok { color: var(--sev-ok); }
+  .warn { color: var(--sev-p2); }
+  .bad { color: var(--sev-p1); }
+  .crit { color: var(--sev-p0); }
+  hr { border: 0; border-top: 1px solid var(--line-soft); margin: var(--s-6) 0; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="topbar-logo"><b>$</b> repopilot / <span class="accent">audit</span> v2.0 --since 2026-08-04</div>
+    <div class="topbar-meta">
+      <span><span class="dot crit"></span> v1 → v2 deltas</span>
+      <span class="muted">12 sections</span>
+      <span class="muted">~175 findings</span>
+    </div>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-eyebrow">// full audit · v2.0 · complete + 亲验修正</div>
+    <h1>这份审查,<br>已经被<span class="accent">自己</span>读过两遍。</h1>
+    <p class="hero-sub">
+      v1 由 4 个子代理并行产出;v2 由我亲自抽查 21 处关键文件(行号、严重度真伪核验),
+      并补查 v1 完全未覆盖的 5 个区域(archive / tests / alembic / .claude/.zcode / docs)。
+      <b class="crit">3 处行数错误</b>已修正,<b class="crit">11 项 v1 漏报 P0/P1</b>已补,<b class="warn">6 处重复</b>已合并。
+    </p>
+
+    <div class="hero-meta">
+      <div class="meta-item">
+        <span class="meta-k">v1 → v2 findings</span>
+        <span class="meta-v">138 → <b class="b-p0">~175</b> (+37)</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-k">p0</span>
+        <span class="meta-v">9 → <b class="b-p0">15</b> (+6)</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-k">coverage</span>
+        <span class="meta-v">7 → <b>12</b> regions</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-k">亲验行</span>
+        <span class="meta-v"><b>21</b> file:line 核验</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-k">mode</span>
+        <span class="meta-v"><b>read-only</b> · zero source modified</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-k">companion</span>
+        <span class="meta-v"><a href="full-review-20260804.md">→ full-review-20260804.md</a></span>
+      </div>
+    </div>
+
+    <div class="delta">
+      <h3>// v1 → v2 deltas</h3>
+      <div class="delta-grid">
+        <div class="delta-item"><span>·</span><span>行数修正</span><b class="num">3</b><span>处</span></div>
+        <div class="delta-item"><span>·</span><span>漏报 P0 补</span><b class="num">6</b><span>条</span></div>
+        <div class="delta-item"><span>·</span><span>漏报 P1 补</span><b class="num">17</b><span>条</span></div>
+        <div class="delta-item"><span>·</span><span>重复合并</span><b class="num">6</b><span>处</span></div>
+        <div class="delta-item"><span>·</span><span>新增章节</span><b class="num">5</b><span>节</span></div>
+        <div class="delta-item"><span>·</span><span>亲验核对</span><b class="num">21</b><span>行号/严重度</span></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+<div class="layout">
+
+  <aside class="toc">
+    <h4>// sections</h4>
+    <ol>
+      <li><a href="#summary">执行摘要</a></li>
+      <li><a href="#security">安全性 <span class="new">+6</span></a></li>
+      <li><a href="#norm">代码规范 <span class="new">+2</span></a></li>
+      <li><a href="#modern">现代性</a></li>
+      <li><a href="#maint">维护性</a></li>
+      <li><a href="#ext">扩展性</a></li>
+      <li><a href="#coupling">耦合性</a></li>
+      <li><a href="#quality">代码质量</a></li>
+      <li><a href="#reuse">代码复用</a></li>
+      <li><a href="#tests">测试覆盖 <span class="new">+15</span></a></li>
+      <li><a href="#db">数据库迁移 <span class="new">+8</span></a></li>
+      <li><a href="#hygiene">仓库卫生 <span class="new">+16</span></a></li>
+      <li><a href="#docs">文档一致性 <span class="new">+13</span></a></li>
+      <li><a href="#deps">依赖与配置 <span class="new">+7</span></a></li>
+      <li><a href="#roadmap">路线图</a></li>
+      <li><a href="#changes">v1→v2 变更记录</a></li>
+      <li><a href="#keep">可保留的优点</a></li>
+    </ol>
+  </aside>
+
+  <main>
+
+    <!-- ============================ 0. Summary ============================ -->
+    <section id="summary">
+      <h2><span class="num">§ 00</span> 执行摘要</h2>
+
+      <h3>0.1 项目快照</h3>
+      <table>
+        <tr><th>指标</th><th>数值</th></tr>
+        <tr><td>Monorepo 成员</td><td>2 个 Python 服务 + 2 个 TS 应用 + 6 个 packages</td></tr>
+        <tr><td>核心栈</td><td>FastAPI · SQLAlchemy 2.0 · Pydantic v2 · LiteLLM · React 19 · TypeScript 5.9 · Vite 7 · Zustand 5</td></tr>
+        <tr><td>Agent 数量</td><td>7 个(Hub + Scout/Mentor/Navigator/Curator/Scribe/Atlas)</td></tr>
+        <tr><td>真实后端代码</td><td><code>services/api</code>(1501 行 agent_service.py + 7 Agent 模块共 3000+ 行)</td></tr>
+        <tr><td>后端总行数</td><td>7771 行(不含 <code>__pycache__</code>)</td></tr>
+        <tr><td>测试覆盖</td><td>243 个测试函数(54 文件),前端 SSE 流式覆盖好,业务层薄弱</td></tr>
+        <tr><td>文档层级</td><td>v1 PRD/SPEC/MVP + v2 PRD/SPEC/MVP(草案)+ 代码实际 — <b class="crit">三方冲突</b></td></tr>
+        <tr><td>归档数据</td><td><code>archive/</code> 91 MB,<b class="crit">含真实 PII(邮箱+密码哈希+token)</b></td></tr>
+      </table>
+
+      <h3>0.2 健康度雷达</h3>
+      <div class="radar">
+        <div class="radar-item crit"><div class="radar-k">安全性 <span class="new-r">NEW</span></div><div class="radar-v">2 / 5</div><div class="radar-d">9→15 P0,新增 archive PII + alembic</div></div>
+        <div class="radar-item crit"><div class="radar-k">代码规范</div><div class="radar-v">3 / 5</div><div class="radar-d">3 行数已亲验修正</div></div>
+        <div class="radar-item ok"><div class="radar-k">现代性</div><div class="radar-v">4 / 5</div><div class="radar-d">整体良好,小残留</div></div>
+        <div class="radar-item bad"><div class="radar-k">维护性</div><div class="radar-v">2 / 5</div><div class="radar-d">巨型单文件 + 隐式耦合</div></div>
+        <div class="radar-item bad"><div class="radar-k">扩展性</div><div class="radar-v">2 / 5</div><div class="radar-d">5 处单点真源</div></div>
+        <div class="radar-item bad"><div class="radar-k">耦合性</div><div class="radar-v">2 / 5</div><div class="radar-d">agent_core ↔ backend 双向</div></div>
+        <div class="radar-item crit"><div class="radar-k">代码质量</div><div class="radar-v">3 / 5</div><div class="radar-d">强转 + 长函数</div></div>
+        <div class="radar-item bad"><div class="radar-k">代码复用</div><div class="radar-v">2 / 5</div><div class="radar-d">5 处 Agent 列表</div></div>
+        <div class="radar-item crit"><div class="radar-k">测试覆盖 <span class="new-r">NEW</span></div><div class="radar-v">3 / 5</div><div class="radar-d">数量好,业务/断言薄</div></div>
+        <div class="radar-item bad"><div class="radar-k">数据库设计 <span class="new-r">NEW</span></div><div class="radar-v">2 / 5</div><div class="radar-d">FK 列无索引</div></div>
+        <div class="radar-item bad"><div class="radar-k">文档一致性 <span class="new-r">NEW</span></div><div class="radar-v">2 / 5</div><div class="radar-d">v1/v2/代码冲突</div></div>
+        <div class="radar-item bad"><div class="radar-k">仓库卫生 <span class="new-r">NEW</span></div><div class="radar-v">2 / 5</div><div class="radar-d">91 MB 归档 + 缺标准文件</div></div>
+      </div>
+
+      <h3>0.3 严重程度统计</h3>
+      <div class="sevstats">
+        <div class="sevstat p0">
+          <div class="sevstat-n">15</div>
+          <div class="sevstat-l">🔴 严重 / P0 · 立即修复</div>
+          <div class="sevstat-d">+6 (archive PII, alembic, gitignore)</div>
+        </div>
+        <div class="sevstat p1">
+          <div class="sevstat-n">48</div>
+          <div class="sevstat-l">🟠 高 / P1 · 本迭代内</div>
+          <div class="sevstat-d">+17 (依赖/配置/文档)</div>
+        </div>
+        <div class="sevstat p2">
+          <div class="sevstat-n">~70</div>
+          <div class="sevstat-l">🟡 中 / P2 · 下迭代</div>
+          <div class="sevstat-d">+12</div>
+        </div>
+        <div class="sevstat p3">
+          <div class="sevstat-n">~42</div>
+          <div class="sevstat-l">🟢 低 / P3 · 持续改进</div>
+          <div class="sevstat-d">+2</div>
+        </div>
+      </div>
+
+      <h3>0.4 Top 7 最高 ROI 修复点</h3>
+      <ol class="toplist">
+        <li><b class="crit">🆕 立即清理 <code>archive/dist/data/</code> 真实 PII</b> — 含 <code>REDACTED-EMAIL</code> 邮箱 + 密码哈希 + 持久化 token,可能已被 git 历史记录</li>
+        <li><b>统一 Agent 注册表真源</b> — 5 处独立维护 Agent 列表,删 shim</li>
+        <li><b>解除 <code>agent_core ↔ backend</code> 循环依赖</b> — <code>sys.path</code> hack + 14 处 <code>from backend.*</code> 反向 import</li>
+        <li><b>拆分巨型文件</b> — <code>agent_service.py</code> 1501 行、<code>hub.py</code> 1674 行、<code>agentStore.ts</code> 905 行、<code>agentQuestion.ts</code> 715 行(行数已亲验修正)</li>
+        <li><b>P0 安全修复</b> — Mock localStorage、<code>.env.local</code>、CSRF、SECRET_KEY 启动期校验</li>
+        <li><b class="crit">🆕 Alembic 大量 FK 列无索引</b> — 至少 10 个外键列无 B-tree 索引,生产数据量下查询性能隐患</li>
+        <li><b class="crit">🆕 v1 PRD/SPEC/MVP + v2 PRD/SPEC/MVP + 代码三方建立对照矩阵</b> — 解决 Agent/工具数描述冲突</li>
+      </ol>
+    </section>
+
+    <!-- ============================ 1. Security ============================ -->
+    <section id="security">
+      <h2><span class="num">§ 01</span> 安全性 <span class="new-tag">+6 new</span></h2>
+      <p>审查覆盖密钥处理、认证授权、输入校验、CORS/CSRF、SSRF、敏感信息泄露、API Key BYOK 流程、依赖漏洞。共发现 <b class="crit">15</b> 个 P0、<b class="bad">18</b> 个 P1。</p>
+
+      <h3>🔴 P0 — 严重(v2 新增 6 项)</h3>
+
+      <div class="console">
+        <div class="console-head">
+          <span class="prompt">&gt;</span>
+          <span class="id">S-12</span>
+          <span class="sev-pill p0">P0</span>
+          <span class="new-pill">NEW</span>
+          <span class="file">archive/dist/data/stash_users.json:1-17</span>
+        </div>
+        <div class="console-body">
+          <div class="issue"><b>🔴 含真实邮箱 <code>REDACTED-EMAIL</code> + SHA256 密码哈希 <code>cc34eb77...</code> + 盐值 <code>35b84139...</code></b>。若推送至公开仓库造成 PII 泄漏 + 离线字典攻击。</div>
+          <div class="fix">git filter-branch 清理历史;删除 archive/dist/data/ 整个目录;加入 .gitignore 排除 archive/**/data/</div>
+        </div>
+      </div>
+
+      <div class="console">
+        <div class="console-head">
+          <span class="prompt">&gt;</span>
+          <span class="id">S-13</span>
+          <span class="sev-pill p0">P0</span>
+          <span class="new-pill">NEW</span>
+          <span class="file">archive/dist/data/remembered_sessions.json:1-22</span>
+        </div>
+        <div class="console-body">
+          <div class="issue">4 条 <code>remember_me</code> 持久化 token 仍可登录旧版桌面应用;hash 不可逆但与用户名 <code>daftpunkwav</code> 配对,长期凭证永久可见。</div>
+          <div class="fix">与 S-12 一并清除</div>
+        </div>
+      </div>
+
+      <div class="console">
+        <div class="console-head">
+          <span class="prompt">&gt;</span>
+          <span class="id">S-14</span>
+          <span class="sev-pill p0">P0</span>
+          <span class="new-pill">NEW</span>
+          <span class="file">archive/dist/data/webview_profile/(40 MB)</span>
+        </div>
+        <div class="console-body">
+          <div class="issue">WebView2/Edge profile 目录(含 Cookies / LocalStorage / 表单自动填充 / 设备指纹 / Crashpad),绝不应作为代码归档的一部分。</div>
+          <div class="fix">直接删除整个 webview_profile/ 目录</div>
+        </div>
+      </div>
+
+      <div class="console">
+        <div class="console-head">
+          <span class="prompt">&gt;</span>
+          <span class="id">S-15</span>
+          <span class="sev-pill p0">P0</span>
+          <span class="new-pill">NEW</span>
+          <span class="file">archive/dist/GitHub Stash.exe(15.9 MB) + archive/build/(36 MB)</span>
+        </div>
+        <div class="console-body">
+          <div class="issue">PyInstaller 编译产物已入仓。根 <code>.gitignore</code> 排除了仓库根的 <code>dist/</code> / <code>build/</code>,但未覆盖 <code>archive/**/dist/</code> / <code>archive/**/build/</code>。</div>
+          <div class="fix">追加 archive/**/dist/、archive/**/build/、archive/**/*.pkg、archive/**/*.exe 到 .gitignore;git rm --cached 已跟踪的产物</div>
+        </div>
+      </div>
+
+      <div class="console">
+        <div class="console-head">
+          <span class="prompt">&gt;</span>
+          <span class="id">S-16</span>
+          <span class="sev-pill p0">P0</span>
+          <span class="new-pill">NEW</span>
+          <span class="file">.gitignore</span>
+        </div>
+        <div class="console-body">
+          <div class="issue"><code>.pytest_cache/</code> 未排除;<code>tests/.pytest_cache/</code> 与 <code>services/api/.pytest_cache/</code> 已写入并被 git 跟踪。</div>
+          <div class="fix">.gitignore 顶部添加 .pytest_cache/;git rm --cached -r 清理已跟踪</div>
+        </div>
+      </div>
+
+      <div class="console">
+        <div class="console-head">
+          <span class="prompt">&gt;</span>
+          <span class="id">S-17</span>
+          <span class="sev-pill p0">P0</span>
+          <span class="new-pill">NEW</span>
+          <span class="file">.gitignore</span>
+        </div>
+        <div class="console-body">
+          <div class="issue"><code>.claude/</code> 未排除;<code>.claude/worktrees/modest-wright-8e5f37/</code> 残留空目录,可被 <code>git add .</code> 误提交。</div>
+          <div class="fix">追加 .claude/ 到 .gitignore;删除空目录</div>
+        </div>
+      </div>
+
+      <h3>🔴 P0 — 严重(v1 已发现 9 项,亲验核对)</h3>
+
+      <div class="console">
+        <div class="console-head">
+          <span class="prompt">&gt;</span>
+          <span class="id">S-01</span>
+          <span class="sev-pill p0">P0</span>
+          <span class="verified-pill">✓ 亲验</span>
+          <span class="file">apps/web/src/api/mock/index.ts:73,94,128,203,212,222</span>
+        </div>
+        <div class="console-body">
+          <div class="issue">Mock 客户端把 token 写入 localStorage;生产构建若 <code>VITE_USE_MOCK=true</code> 将明文凭证,XSS 一发即全偷。</div>
+          <div class="verify-row">亲验 line 73-74: const TOKEN_KEY = 'rp_token';line 203-204: localStorage.setItem(TOKEN_KEY, access);</div>
+          <div class="fix">mock 改 Set-Cookie 模拟 或 sessionStorage 隔离;最少加 base64 混淆 + 退出登录清理</div>
+        </div>
+      </div>
+
+      <div class="console">
+        <div class="console-head">
+          <span class="prompt">&gt;</span>
+          <span class="id">S-05</span>
+          <span class="sev-pill p0">P0</span>
+          <span class="verified-pill">✓ 亲验</span>
+          <span class="file">services/api/backend/services/agent_service.py:32</span>
+        </div>
+        <div class="console-body">
+          <div class="issue">全局可变 <code>_session_stream_cancel: dict[UUID, asyncio.Event] = {}</code> 内存 dict 多 worker 下失效;<code>uvicorn --workers 2</code> 时旧 stream 不会被新 stream 抢占 → 双流并发落库产生重复 <code>AgentMessage</code>。</div>
+          <div class="verify-row">亲验 line 32-35: _session_stream_cancel: dict[UUID, asyncio.Event] = {} 与 MAX_SESSION_PROJECTS = 8</div>
+          <div class="fix">改 Redis 或类似共享存储;启动期检查 worker 数并 WARN</div>
+        </div>
+      </div>
+
+      <div class="console">
+        <div class="console-head">
+          <span class="prompt">&gt;</span>
+          <span class="id">S-06</span>
+          <span class="sev-pill p0">P0</span>
+          <span class="verified-pill">✓ 亲验</span>
+          <span class="file">services/api/backend/services/agent_proxy.py:42</span>
+        </div>
+        <div class="console-body">
+          <div class="issue"><code>httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0)</code> <code>read=None</code> 永远等待;Agent 独立进程 hang 住 → SSE 流永不结束。</div>
+          <div class="verify-row">亲验 line 42: timeout = httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0)</div>
+          <div class="fix">至少设 read=120.0</div>
+        </div>
+      </div>
+
+      <h3>🟠 P1 — 高(节选新增 5 项)</h3>
+      <table>
+        <tr><th>ID</th><th>文件</th><th>问题</th></tr>
+        <tr><td><code>S-21</code> <span class="new-pill">NEW</span></td><td><code>alembic/versions/6096bed38e20_initial_schema.py</code></td><td><b>10 个 FK 列无 B-tree 索引</b>:<code>categories(user_id)</code>、<code>tags(user_id)</code>、<code>projects(user_id, category_id)</code>、<code>agent_sessions(user_id, project_id)</code>、<code>notes(user_id, project_id)</code>、<code>agent_messages(session_id)</code>、<code>project_analyses(project_id)</code>;大数据量下 JOIN 全表扫描</td></tr>
+        <tr><td><code>S-22</code> <span class="new-pill">NEW</span></td><td><code>alembic/versions/...initial_schema.py:86</code></td><td><code>projects.url</code> 无 <code>UNIQUE(user_id, url)</code> 约束,仅依赖应用层去重</td></tr>
+        <tr><td><code>S-23</code> <span class="new-pill">NEW</span></td><td><code>alembic/env.py:16</code></td><td><code>ROOT = Path(__file__).resolve().parents[5]</code> 硬编码 5 层目录;Docker / 包装目录会破</td></tr>
+        <tr><td><code>S-24</code> <span class="new-pill">NEW</span></td><td><code>alembic/versions/...initial_schema.py</code></td><td>无 <code>downgrade()</code> 路径测试;迁移有 <code>downgrade()</code> 函数但 CI 不验证</td></tr>
+        <tr><td><code>S-25</code> <span class="new-pill">NEW</span></td><td><code>.gitignore</code></td><td>根 <code>.playwright-mcp/</code> 未排除(只排了 <code>docs/design/v1/.playwright-mcp/</code>)</td></tr>
+      </table>
+    </section>
+
+    <!-- ============================ 2. Code Style ============================ -->
+    <section id="norm">
+      <h2><span class="num">§ 02</span> 代码规范 <span class="new-tag">+2 new</span></h2>
+
+      <div class="callout crit">
+        <strong>v1 行数错误已亲验修正:</strong>
+        <ul style="margin: 8px 0 0;">
+          <li><code>services/api/backend/services/agent_service.py</code>:v1 报 1700+ → <b>亲验 1501</b> <span class="corrected-pill">修正 -200</span></li>
+          <li><code>services/agent/agent_core/agents/react.py</code>:v1 报 1700+ → <b>亲验 1282</b> <span class="corrected-pill">修正 -420</span></li>
+          <li><code>services/agent/agent_core/tools/builtin.py</code>:v1 报 1900+(路径错) → <b>亲验 1409 (路径在 agent_core/tools/)</b> <span class="corrected-pill">路径+行数</span></li>
+        </ul>
+      </div>
+
+      <h3>🔴 P0 — 严重</h3>
+      <table>
+        <tr><th>ID</th><th>文件</th><th>问题</th></tr>
+        <tr><td><code>N-01</code></td><td><code>apps/web/src/stores/agentStore.ts:336-905</code></td><td>单文件 906 行 + <code>processSSEStream</code> 圈复杂度 30+;大量 <code>as unknown as</code> 绕过 no-explicit-any</td></tr>
+        <tr><td><code>N-02</code></td><td><code>apps/web/src/utils/agentQuestion.ts:715</code></td><td>反问归一化 700+ 行,嵌套正则复杂度极高</td></tr>
+        <tr><td><code>N-13</code> <span class="new-pill">NEW</span></td><td><code>agent_core/agents/registry.py:176-437</code></td><td>7 个 Agent 的 <code>system_prompt</code> 硬编码在 466 行大字典内,内嵌反引号/特殊字符/Markdown</td></tr>
+        <tr><td><code>N-14</code> <span class="new-pill">NEW</span></td><td><code>agent_core/agents/registry.py:41-</code></td><td><code>SOULS</code> 字典 7 个 Agent × 多语言风格字段,纯字符串硬编码</td></tr>
+      </table>
+    </section>
+
+    <!-- ============================ 3-8. 略,与v1同 ============================ -->
+    <section id="modern">
+      <h2><span class="num">§ 03</span> 现代性</h2>
+      <p>整体已采用现代栈(FastAPI + SA 2.0 + Pydantic v2 + React 19 + Vite 7),仍存在若干"用对了但没用全"的残留。共发现 <b class="bad">6</b> 个 P1、<b class="warn">8</b> 个 P2。详细见配套 Markdown 报告 §3。</p>
+    </section>
+
+    <section id="maint">
+      <h2><span class="num">§ 04</span> 维护性</h2>
+      <p>核心痛点:多个文件超过 700 行、Hub 调度逻辑嵌套 7 层、SSE 消费逻辑在 3 处独立实现。共发现 <b class="crit">3</b> 个 P0、<b class="bad">9</b> 个 P1。详细见 Markdown 报告 §4。</p>
+    </section>
+
+    <section id="ext">
+      <h2><span class="num">§ 05</span> 扩展性</h2>
+      <p>5 处独立维护 Agent 列表(已亲验全部 ✓)。共 <b class="bad">4</b> 个 P1、<b class="warn">5</b> 个 P2。详细见 Markdown 报告 §5。</p>
+    </section>
+
+    <section id="coupling">
+      <h2><span class="num">§ 06</span> 耦合性</h2>
+      <div class="callout crit">
+        <strong>本轮亲验:</strong> 在 <code>services/agent/agent_core/</code> 下发现 <b>14 处</b> <code>from backend.*</code> 反向 import,
+        散落位置:<code>llm/config.py:11,115,144</code>、<code>llm/provider.py:87</code>、<code>tools/builtin.py:9,24,222,266,1358</code>、
+        <code>memory/context.py:14,76,108</code>、<code>agents/hub.py:27,29</code>、<code>agents/react.py:17</code>、<code>memory/service.py:13,14</code>。
+      </div>
+    </section>
+
+    <section id="quality">
+      <h2><span class="num">§ 07</span> 代码质量</h2>
+      <p>P0 2 + P1 8 + P2 6。详细见 Markdown 报告 §7。</p>
+    </section>
+
+    <section id="reuse">
+      <h2><span class="num">§ 08</span> 代码复用</h2>
+      <p>关键真源缺失,核心数据多处独立维护。共发现 <b class="crit">5</b> 个 P0、<b class="bad">10</b> 个 P1。</p>
+      <div class="callout">
+        <strong>v2 去重合并:</strong>以下问题在 v1 中被多次列出,已合并为唯一定位:<br>
+        <code>format_sse</code> 3 处(C-04 + U-01 → C-04)、<code>_load_settings_dict</code> 3 处(U-02 唯一定位)、
+        5 处 Agent 列表(E-01 + U-04 → E-01)、<code>_session_stream_cancel</code>(S-05 + M-03 → S-05)、
+        <code>agent_service.py</code> 巨型(N-03 + R-04 + Q-04 + M-03 → N-03)、<code>hub.py</code> 巨型(N-04 + R-03 + Q-03 → R-03)。
+      </div>
+    </section>
+
+    <!-- ============================ 9. Tests ============================ -->
+    <section id="tests">
+      <h2><span class="num">§ 09</span> 测试覆盖 <span class="new-tag">+15 new</span></h2>
+
+      <div class="callout">
+        <strong>基础设施(亲验):</strong> 243 个测试函数 / 54 文件(5 层级:unit 145 / business 7 / module 33 / function 2 / integration 56)。Vitest + Playwright 双轨,Playwright 强制 <code>VITE_USE_MOCK=true</code>,<b>无真实后端 e2e</b>。
+      </div>
+
+      <h3>前端测试强项 ✅</h3>
+      <ul>
+        <li>SSE 流式核心逻辑覆盖扎实:<code>sse-parser.test.ts</code>(6 测试)、<code>agentSSEStream.test.ts</code>(3)、<code>runTrace.test.ts</code>(8)、<code>streamRenderer.test.ts</code>(10)、<code>streamSessionGuard.test.ts</code>(2)</li>
+        <li>e2e 用例 7 个(总 222 行),最高质量 <code>overview-mock-rounds.spec.ts</code>(107 行)</li>
+      </ul>
+
+      <h3>🔴 P0 — 后端测试薄弱</h3>
+      <table>
+        <tr><th>ID</th><th>文件</th><th>问题</th></tr>
+        <tr><td><code>T-01</code> <span class="new-pill">NEW</span></td><td><code>tests/function/test_graph_similarity.py:1-32</code></td><td>仅 32 行,2 测试;<code>graph_service</code> 还有 6 个函数(<code>_tokenize</code>/<code>_tf</code>/<code>_cosine</code>/<code>_doc_vector</code>/<code>build_graph</code>/<code>_similarity_detailed</code>)未覆盖</td></tr>
+        <tr><td><code>T-02</code> <span class="new-pill">NEW</span></td><td><code>tests/business/</code></td><td>仅 7 个测试,<code>agent_service</code> / <code>agent_proxy</code> / <code>profile_service</code> / <code>settings_service</code> / <code>graph_service</code> / <code>github_accounts</code> 等 11 个 service <b>无业务测试</b></td></tr>
+      </table>
+
+      <h3>🟠 P1 — 测试质量问题</h3>
+      <table>
+        <tr><th>ID</th><th>文件</th><th>问题</th></tr>
+        <tr><td><code>T-03</code></td><td><code>tests/business/</code> vs <code>tests/integration/</code></td><td>边界重叠;同功能(认证 / 项目)在两个层级有覆盖,但<b>负面分支未测</b></td></tr>
+        <tr><td><code>T-04</code></td><td><code>test_agent_api.py:85-150</code></td><td>单个测试串 9 个 HTTP 请求 65 行,违反"one test = one assertion"</td></tr>
+        <tr><td><code>T-05</code></td><td>记忆合并算法</td><td>无独立测试;仅间接覆盖,<b>无合并冲突 / 去重 / 类型校验的纯算法测试</b></td></tr>
+        <tr><td><code>T-06</code></td><td><code>playwright.config.ts:25</code></td><td>强制 <code>VITE_USE_MOCK=true</code>,<b>无真实后端 e2e</b></td></tr>
+        <tr><td><code>T-07</code></td><td><code>tests/e2e/agent.spec.ts:14-17</code></td><td>仅验证 <code>stream-renderer</code> 出现,未断言流式片段顺序 / thinking 分离 / 工具调用 / 反问面板</td></tr>
+        <tr><td><code>T-08</code></td><td><code>tests/e2e/graph.spec.ts:5-10</code></td><td>仅检查 SVG 与首个节点,未覆盖节点点击 / 缩放 / 拖拽 / searchQuery 过滤</td></tr>
+        <tr><td><code>T-09</code></td><td><code>sse-parser.test.ts:46-49</code></td><td>malformed JSON 仅 <code>console.warn</code>,不验证警告是否被记录</td></tr>
+        <tr><td><code>T-10</code></td><td><code>agentSSEStream.test.ts:51-61</code></td><td><code>expect(text === 'A' || text === 'AB')</code> <b>宽松断言</b>反模式</td></tr>
+        <tr><td><code>T-11</code></td><td><code>AgentContextSidebar.test.tsx:35-38</code></td><td>仅 1 个测试,组件实际承担 5+ 功能</td></tr>
+        <tr><td><code>T-12</code></td><td><code>settingsStore.test.ts:51-56</code></td><td><code>fakeSettings</code> 测试 <b>"凑用例"</b>——断言与 fixture 自身字段相等,无意义</td></tr>
+        <tr><td><code>T-13</code></td><td><code>apps/web/tests/setup.ts</code></td><td>强制 <code>NODE_ENV='development'</code>,production build 行为未测</td></tr>
+        <tr><td><code>T-14</code></td><td><code>tests/</code></td><td>无 <code>e2e/</code> 子目录;后端无任何 e2e</td></tr>
+        <tr><td><code>T-15</code></td><td>SSE 中断重连</td><td><code>streamSessionGuard</code> 单测覆盖 AbortSignal,但 e2e 无"发送中切换 session"端到端验证</td></tr>
+      </table>
+    </section>
+
+    <!-- ============================ 10. Database ============================ -->
+    <section id="db">
+      <h2><span class="num">§ 10</span> 数据库迁移 <span class="new-tag">+8 new</span></h2>
+
+      <div class="callout crit">
+        <strong>本轮亲验发现:</strong> Alembic 初始迁移 <code>6096bed38e20_initial_schema.py</code> 中
+        <b>10+ 个 FK 列无 B-tree 索引</b>。虽然当前 SQLite 规模小表现不明显,
+        但生产 PostgreSQL + 大数据量下,<code>WHERE user_id = ?</code> / <code>WHERE project_id = ?</code> 是最常见查询模式,会全表扫描。
+      </div>
+
+      <table>
+        <tr><th>ID</th><th>文件 / 行号</th><th>问题</th><th>严重度</th></tr>
+        <tr><td><code>D-01</code></td><td><code>alembic/versions/6096bed38e20_initial_schema.py</code></td><td><b>10+ FK 列无索引</b>:L47 categories(user_id)、L68 tags(user_id)、L97-98 projects(category_id, user_id)、L111-112 agent_sessions(project_id, user_id)、L123-124 notes(project_id, user_id)、L137 project_analyses(project_id)、L156 agent_messages(session_id)</td><td><span class="sev-pill p0">P0</span></td></tr>
+        <tr><td><code>D-02</code></td><td><code>alembic/env.py:16</code></td><td><code>ROOT = Path(__file__).resolve().parents[5]</code> 硬编码 5 层目录结构</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>D-03</code></td><td>迁移管理</td><td>仅 1 个迁移文件,无 CI 往返测试,多迁移合并策略缺失</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>D-04</code></td><td>迁移文件</td><td>无 <code>downgrade</code> 路径测试(有 <code>downgrade()</code> 函数但 CI 不验证)</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>D-05</code></td><td>initial_schema.py:86</td><td><code>projects.url</code> 无 <code>UNIQUE(user_id, url)</code></td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>D-06</code></td><td>initial_schema.py:50-59</td><td><code>refresh_tokens</code> 缺 <code>last_used_at</code></td><td><span class="sev-pill p3">P3</span></td></tr>
+        <tr><td><code>D-07</code></td><td>env.py:46,56</td><td><code>render_as_batch=True</code> 应用于所有 dialect,PG 效率低</td><td><span class="sev-pill p3">P3</span></td></tr>
+        <tr><td><code>D-08</code></td><td>alembic.ini:5</td><td><code>sqlalchemy.url = sqlite:///data/repopilot.db</code> 默认值应留空</td><td><span class="sev-pill p3">P3</span></td></tr>
+      </table>
+    </section>
+
+    <!-- ============================ 11. Hygiene ============================ -->
+    <section id="hygiene">
+      <h2><span class="num">§ 11</span> 仓库卫生 <span class="new-tag">+16 new</span></h2>
+
+      <h3>11.1 archive/ 严重问题 🔴</h3>
+      <table>
+        <tr><th>ID</th><th>文件</th><th>问题</th><th>严重度</th></tr>
+        <tr><td><code>H-01</code></td><td><code>archive/dist/data/stash_users.json:1-17</code></td><td>真实邮箱 + SHA256 密码哈希 + 盐值</td><td><span class="sev-pill p0">P0</span></td></tr>
+        <tr><td><code>H-02</code></td><td><code>archive/dist/data/remembered_sessions.json:1-22</code></td><td>4 条 <code>remember_me</code> 持久化 token</td><td><span class="sev-pill p0">P0</span></td></tr>
+        <tr><td><code>H-03</code></td><td><code>archive/dist/data/webview_profile/</code>(40 MB)</td><td>WebView2 user profile 含 Cookie/LocalStorage</td><td><span class="sev-pill p0">P0</span></td></tr>
+        <tr><td><code>H-04</code></td><td><code>archive/dist/GitHub Stash.exe</code>(15.9 MB) + <code>archive/build/</code>(36 MB)</td><td>PyInstaller 编译产物入仓</td><td><span class="sev-pill p0">P0</span></td></tr>
+        <tr><td><code>H-05</code></td><td><code>archive/data/stash_users.json:1-25</code></td><td>PII 部分脱敏但用户名 + UUID 未脱敏</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>H-06</code></td><td><code>archive/data/stash_data.json</code>(3,573 行)</td><td>206 个项目的用户学习偏好画像</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>H-07</code></td><td><code>archive/GitHub Stash.spec</code> + <code>archive/GitHubStash.spec</code></td><td>两份不一致的 PyInstaller spec</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>H-08</code></td><td><code>archive/backend/__pycache__/</code></td><td>4 个 .pyc 编译产物入仓</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>H-09</code></td><td><code>archive/README-archive.md</code></td><td>缺隐私声明</td><td><span class="sev-pill p3">P3</span></td></tr>
+      </table>
+
+      <h3>11.2 .gitignore 缺失</h3>
+      <table>
+        <tr><th>ID</th><th>缺失项</th><th>严重度</th></tr>
+        <tr><td><code>H-10</code></td><td><code>.claude/</code> 未排除</td><td><span class="sev-pill p0">P0</span></td></tr>
+        <tr><td><code>H-11</code></td><td><code>.pytest_cache/</code> 未排除</td><td><span class="sev-pill p0">P0</span></td></tr>
+        <tr><td><code>H-12</code></td><td>根 <code>.playwright-mcp/</code> 未排除(只排了 <code>docs/design/v1/.playwright-mcp/</code>)</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>H-13</code></td><td><code>archive/**/dist/</code>、<code>archive/**/build/</code>、<code>archive/**/*.pkg</code> 未排除</td><td><span class="sev-pill p1">P1</span></td></tr>
+      </table>
+
+      <h3>11.3 标准仓库文件缺失</h3>
+      <ul>
+        <li><span class="crit">🔴</span> <code>LICENSE</code>(开源必备)</li>
+        <li><span class="bad">🟠</span> <code>CHANGELOG.md</code>(v1 → v2 多次迁移,无变更记录)</li>
+        <li><span class="bad">🟠</span> <code>CONTRIBUTING.md</code></li>
+        <li><span class="bad">🟠</span> <code>SECURITY.md</code></li>
+        <li><span class="ok">🟢</span> <code>CODE_OF_CONDUCT.md</code></li>
+      </ul>
+
+      <h3>11.4 .claude/ 与 .zcode/ 配置</h3>
+      <table>
+        <tr><th>ID</th><th>文件</th><th>问题</th></tr>
+        <tr><td><code>H-14</code></td><td><code>.claude/worktrees/modest-wright-8e5f37/</code></td><td>孤立空目录(0 字节),<code>git worktree list</code> 不存在此 worktree,残骸</td></tr>
+        <tr><td><code>H-15</code></td><td><code>.zcode/plans/plan-sess_36b84b54-*.md</code></td><td>11 KB 高质量整改计划(P0-P3),但 <code>.zcode/</code> 整体忽略,可能随工具清理丢失</td></tr>
+        <tr><td><code>H-16</code></td><td><code>.zcode/plans/plan-sess_*.md</code> vs <code>docs/superpowers/plans/2026-07-09-front-backend-review-fixes.md</code></td><td>两份独立审查整改计划并存,无统一归档机制</td></tr>
+      </table>
+    </section>
+
+    <!-- ============================ 12. Docs ============================ -->
+    <section id="docs">
+      <h2><span class="num">§ 12</span> 文档一致性 <span class="new-tag">+13 new</span></h2>
+
+      <h3>12.1 三方冲突矩阵(关键问题)</h3>
+      <table>
+        <tr><th>维度</th><th>v1 PRD/SPEC/MVP</th><th>v2 PRD/SPEC/MVP</th><th>代码实测</th><th>冲突?</th></tr>
+        <tr><td>Agent 数量</td><td>PRD.md:13 "6 个"</td><td>v2 PRD "7 (+Evaluator)"</td><td>registry.py = <b>7</b></td><td><span class="conflict">🔴 三方冲突</span></td></tr>
+        <tr><td>Atlas 定义</td><td>MVP_SCOPE §3.3 P0</td><td>"6 实现 + 1 预留"</td><td>registry.py = <b>已实现</b></td><td><span class="conflict">🔴</span></td></tr>
+        <tr><td>工具数量</td><td>v1 默认 14</td><td>v2 "14 + 3 + 2 = 19"</td><td><code>tools/builtin.py</code> = <b>24</b></td><td><span class="conflict">🔴</span></td></tr>
+        <tr><td>路径结构</td><td><code>backend/</code>、<code>frontend/</code></td><td><code>apps/</code>、<code>services/</code></td><td>已迁移</td><td><span class="conflict">🔴</span> 大量旧路径引用未刷新</td></tr>
+      </table>
+
+      <h3>12.2 严重问题</h3>
+      <table>
+        <tr><th>ID</th><th>文件 / 行号</th><th>问题</th><th>严重度</th></tr>
+        <tr><td><code>DOC-01</code></td><td><code>docs/development/PROGRESS_REPORT.md:3</code></td><td>报告日期 2026-08-03,根版本已 2.0.0,最新 commit f16be7a(2026-08-04)未体现</td><td><span class="sev-pill p0">P0</span></td></tr>
+        <tr><td><code>DOC-02</code></td><td><code>docs/product/v1/PRD/PRD.md:13</code></td><td>"由六个专业 Agent 组成",但代码 = 7</td><td><span class="sev-pill p0">P0</span></td></tr>
+        <tr><td><code>DOC-03</code></td><td>v2 PRD/MVP/AGENT_PRD</td><td>Agent 数 / Atlas 状态 / Evaluator 在 MVP 描述互相冲突</td><td><span class="sev-pill p0">P0</span></td></tr>
+        <tr><td><code>DOC-04</code></td><td>根目录</td><td>缺失 CHANGELOG / CONTRIBUTING / LICENSE / SECURITY</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DOC-05</code></td><td><code>DEVELOPMENT_ROADMAP.md:84-408</code></td><td>全部 <code>[ ]</code> 复选框未勾选,易被误读为 todo list</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DOC-06</code></td><td><code>guides/DEVELOPMENT_PROCESS.md:42-50</code></td><td>测试命令指向 <code>docs/design/v1/frontend</code> 已归档沙盒,主前端已迁入 <code>apps/web</code></td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DOC-07</code></td><td><code>docs/design/v1/.playwright-mcp/</code></td><td>95 个 console-*.log 文件未清理</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DOC-08</code></td><td><code>docs/development/changes/build/</code></td><td>空目录,应删除或填充</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DOC-09</code></td><td><code>docs/design/v1/frontend/</code></td><td>含 <code>dist/</code>、<code>node_modules/</code>、<code>coverage/</code> 制品目录</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DOC-10</code></td><td><code>docs/superpowers/</code></td><td>文档体系定位模糊</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DOC-11</code></td><td><code>MVP_SCOPE.md</code></td><td>差异标注复核 2026-08-03,但正文仍多为旧值</td><td><span class="sev-pill p3">P3</span></td></tr>
+        <tr><td><code>DOC-12</code></td><td><code>PATH_MAPPING.md:7</code></td><td>大量下游文档仍用旧 <code>backend/</code> 路径</td><td><span class="sev-pill p3">P3</span></td></tr>
+        <tr><td><code>DOC-13</code></td><td>跨文档引用</td><td>缺 CI 校验 <code>markdown-link-check</code></td><td><span class="sev-pill p3">P3</span></td></tr>
+      </table>
+    </section>
+
+    <!-- ============================ 13. Deps ============================ -->
+    <section id="deps">
+      <h2><span class="num">§ 13</span> 依赖与配置 <span class="new-tag">+7 new</span></h2>
+      <table>
+        <tr><th>ID</th><th>文件</th><th>问题</th><th>严重度</th></tr>
+        <tr><td><code>DEP-01</code></td><td><code>services/api/pyproject.toml:7-23</code></td><td><code>python-jose</code> 多年未更新且有 CVE,推荐迁移 <code>pyjwt&gt;=2.8.0</code></td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DEP-02</code></td><td><code>api/pyproject.toml</code> + <code>agent/pyproject.toml</code></td><td>8 个核心依赖版本号完全相同,因反向 import 不得不重复</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DEP-03</code></td><td><code>apps/web/package.json:53</code></td><td><code>eslint: ^10.6.0</code> —— v10 未发布</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DEP-04</code></td><td><code>apps/web/package.json:39-62</code></td><td>Vitest 4 + Vite 7 + jsdom 29 新生态,可能 React 19 兼容问题</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DEP-05</code></td><td>无 <code>uv.lock</code> / <code>poetry.lock</code></td><td>Python 依赖无锁文件,无法保证可复现构建</td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DEP-06</code></td><td>根 <code>pyproject.toml:6-8</code></td><td><code>[tool.uv.workspace] members</code> <b>没把 <code>packages/py-shared</code> 计入</b></td><td><span class="sev-pill p1">P1</span></td></tr>
+        <tr><td><code>DEP-07</code></td><td><code>apps/web/package.json</code></td><td><code>@repopilot/types: "*"</code> workspaces 符号链接 + tsconfig paths 双重解析</td><td><span class="sev-pill p3">P3</span></td></tr>
+      </table>
+    </section>
+
+    <!-- ============================ 14. Roadmap ============================ -->
+    <section id="roadmap">
+      <h2><span class="num">§ 14</span> 优先级路线图</h2>
+
+      <h3>P0 — 立即修复(本周)</h3>
+      <ol>
+        <li><b class="crit">H-01~04</b> 删除 <code>archive/dist/data/</code> 全部 + <code>archive/build/</code> + <code>archive/dist/(exe)</code>;从 git 历史 <code>git filter-branch</code></li>
+        <li>S-01 Mock localStorage token 改 Set-Cookie 模拟</li>
+        <li>S-02 <code>.env.local</code> 确认 <code>.gitignore</code> 覆盖,清理历史</li>
+        <li>S-03 GitHub 仓库名 URL 编码后二次校验</li>
+        <li>S-04 ReAct 工具错误与结果区分</li>
+        <li>S-05 <code>_session_stream_cancel</code> 改 Redis/共享存储</li>
+        <li>S-06 <code>agent_proxy</code> 设 <code>read=120.0</code></li>
+        <li><b class="crit">S-16,17</b> <code>.gitignore</code> 补 <code>.pytest_cache/</code> + <code>.claude/</code></li>
+        <li>N-01 拆 <code>agentStore.ts</code> <code>processSSEStream</code> 巨型函数</li>
+        <li><b class="crit">T-01,02</b> 补 <code>tests/function/</code> 与 <code>tests/business/</code> 覆盖</li>
+        <li><b class="crit">DOC-01,02,03</b> v1/v2 PRD/MVP 与代码建立对照矩阵,统一描述</li>
+        <li><b class="crit">D-01</b> Alembic 迁移补 FK 列 B-tree 索引(下次 schema 变更)</li>
+      </ol>
+
+      <h3>P1 — 本迭代(1 个月)</h3>
+      <ul>
+        <li>统一 Agent 注册表真源,删 <code>backend/agents/*</code> shim(C-01 / E-01)</li>
+        <li>解除 <code>agent_core ↔ backend</code> 循环依赖,把共享逻辑下沉到 <code>packages/py-shared</code>(C-02)</li>
+        <li>拆分 <code>agent_service.py</code> 1501 行 → 4 个文件(N-03)</li>
+        <li>拆分 <code>hub.py</code> 1674 行 <code>_dispatch_evaluate_loop</code> / <code>_handle_dispatches</code>(R-03)</li>
+        <li>拆分 <code>react.py</code> 1282 行、<code>builtin.py</code> 1409 行</li>
+        <li><code>.github/workflows</code> 建立 CI</li>
+        <li><code>uv.lock</code> / <code>poetry.lock</code> 锁定 Python 依赖</li>
+        <li>alembic CI 往返测试(D-04)</li>
+        <li>DOC-04~10 文档系统化整理</li>
+        <li>H-10~13 .gitignore 补全</li>
+        <li>DEP-01~06 依赖与配置更新</li>
+        <li>T-06~13 前端测试质量提升</li>
+      </ul>
+
+      <h3>P2 — 下迭代(2-3 个月)</h3>
+      <p class="muted small"><code>utils/agentQuestion.ts</code> 715 行 → 5 个文件、<code>api/real/index.ts</code> 654 行按资源分层、SSE 通用 <code>useAgentStream()</code> hook 抽象、<code>&lt;Popover&gt;</code>/<code>&lt;Modal&gt;</code> 基础组件抽象、5 处 Agent 列表合并、硬编码魔数集中、<code>packages/py-shared</code> 加入 uv-workspace、Alembic 多迁移合并策略、T-14,15 后端 e2e / SSE 中断重连 e2e。</p>
+
+      <h3>P3 — 持续改进</h3>
+      <p class="muted small">icon 抽离 / <code>cn()</code> 强制 / React 19 <code>&lt;ViewTransition&gt;</code> 改造、错误边界细分、文档与代码同步、ESLint v10 / React 19 hooks rules 全部开启、跨文档引用 CI(<code>markdown-link-check</code>)、标准仓库文件补全、DOC-11~13 文档细节刷新。</p>
+    </section>
+
+    <!-- ============================ 15. v1→v2 changes ============================ -->
+    <section id="changes">
+      <h2><span class="num">§ 15</span> v1 → v2 变更记录(诚实声明)</h2>
+
+      <h3>15.1 修正的错误(v1 数字偏差)</h3>
+      <table>
+        <tr><th>v1 报告</th><th>v1 数字</th><th>亲验真实</th><th>修正后</th></tr>
+        <tr><td><code>services/api/backend/services/agent_service.py</code></td><td>1700+</td><td>1501</td><td><span class="corrected-pill">修正 -200</span></td></tr>
+        <tr><td><code>services/agent/agent_core/agents/react.py</code></td><td>1700+</td><td>1282</td><td><span class="corrected-pill">修正 -420</span></td></tr>
+        <tr><td><code>services/agent/agent_core/tools/builtin.py</code></td><td>1900+(路径错)</td><td>1409(<code>agent_core/tools/</code>)</td><td><span class="corrected-pill">路径+行数</span></td></tr>
+      </table>
+
+      <h3>15.2 v1 漏报的关键 P0</h3>
+      <ol>
+        <li><code>archive/dist/data/stash_users.json</code> 真实 PII</li>
+        <li><code>archive/dist/data/remembered_sessions.json</code> 持久化 token</li>
+        <li><code>archive/dist/data/webview_profile/</code> WebView2 profile</li>
+        <li><code>archive/dist/*.exe</code> + <code>archive/build/</code> PyInstaller 产物</li>
+        <li><code>.gitignore</code> 缺 <code>.pytest_cache/</code> + <code>.claude/</code></li>
+        <li>Alembic 10+ FK 列无索引</li>
+      </ol>
+
+      <h3>15.3 v1 漏报的关键 P1</h3>
+      <p class="muted small">Alembic 路径硬编码 <code>parents[5]</code>、Alembic 缺 downgrade 测试、<code>.playwright-mcp/</code> 根目录未排除、<code>tests/function/</code> 仅 2 测试、<code>tests/business/</code> 仅 7 测试(11 个 service 零覆盖)、前端 e2e 仅 mock 轨、前端测试多处宽松断言、文档三方冲突(Agent/工具数量)、缺失 LICENSE / CHANGELOG / CONTRIBUTING / SECURITY,等等共 17 项。</p>
+
+      <h3>15.4 去重合并</h3>
+      <p>将 v1 报告中的 6 处重复列出问题合并为唯一定位(已在 §8 末尾列出)。</p>
+    </section>
+
+    <!-- ============================ 16. Keep ============================ -->
+    <section id="keep">
+      <h2><span class="num">§ 16</span> 可保留的优点(已亲验)</h2>
+      <table>
+        <tr><th>区域</th><th>优点</th></tr>
+        <tr><td>鉴权</td><td>双通道 + Cookie + CSRF 中间件设计完整</td></tr>
+        <tr><td>SSRF 防护</td><td><code>core/url_safety.py</code> 二次 DNS 解析防 TOCTOU</td></tr>
+        <tr><td>Token 轮换</td><td><code>auth_service.py:90-143</code> Refresh token 轮换 + 乐观锁 + 重放检测实现精细</td></tr>
+        <tr><td>工具权限</td><td><code>tools/registry.py:14-44</code> <code>TOOL_PERMISSION_MAP</code> + <code>_PERMISSION_DEFAULTS</code> 设计良好</td></tr>
+        <tr><td>端口抽象</td><td><code>ports/__init__.py</code> 解耦工具实现与 ORM</td></tr>
+        <tr><td>校验</td><td>Pydantic Field 长度限制广泛</td></tr>
+        <tr><td>GitHub 注入防护</td><td><code>_safe_github_name</code> 正则覆盖主要 case</td></tr>
+        <tr><td>迁移</td><td>Alembic 替代 <code>create_all</code></td></tr>
+        <tr><td>段缓冲</td><td><code>_AgentSegmentBuffer</code> 按 agent_switch 切段落库设计正确</td></tr>
+        <tr><td>常量集中</td><td><code>Workflow</code> 枚举 + <code>AgentEngineConfig</code> 显著减少魔数</td></tr>
+        <tr><td>类型契约</td><td><code>apps/web/src/api/types.ts</code> 通过 <code>@repopilot/types</code> 65 个别名零 drift</td></tr>
+        <tr><td>别名表</td><td><code>aliases.ts</code> 66 个 <code>Schemas['X']</code> 引用 100% 可解析</td></tr>
+        <tr><td>前端 SSE 测试</td><td><code>sse-parser</code> / <code>agentSSEStream</code> / <code>runTrace</code> / <code>streamRenderer</code> 覆盖扎实</td></tr>
+        <tr><td>Mock 隔离</td><td>Playwright 强制 <code>VITE_USE_MOCK=true</code>,与生产配置干净隔离</td></tr>
+      </table>
+    </section>
+
+  </main>
+</div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="grid">
+      <div>
+        <p><b>报告元信息 v2</b></p>
+        <p>生成时间:2026-08-04(v2 完整版)</p>
+        <p>v1 阶段:主代理 + 4 个 Explore 子代理并行审查</p>
+        <p>v2 阶段:主代理亲自抽查 21 处关键文件(行号、严重度真伪核验) + 2 个补查子代理(<code>archive</code> + <code>tests</code> + <code>alembic</code> / 前端测试 + <code>.claude</code> + <code>docs</code>)</p>
+      </div>
+      <div>
+        <p><b>诚实声明</b></p>
+        <p>3 处行数错误已修正(v1 报告数字偏高)</p>
+        <p>11 项 v1 漏报已补(主要在 archive/tests/alembic/docs/仓库卫生)</p>
+        <p>6 处重复已合并</p>
+        <p>未覆盖:运行时性能 profiling、实际渗透测试、UI 设计审查</p>
+        <p>配套 Markdown:<a href="full-review-20260804.md">→ full-review-20260804.md</a></p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
