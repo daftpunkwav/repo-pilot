@@ -1045,13 +1045,23 @@ class ReActEngine:
                             else {"preview": preview},
                         },
                     )
+                # §4.2.4: 回灌给 LLM 的 tool 消息显式标注 ok/error，
+                # 让 LLM 能区分成功 / 失败（之前 SSE 已 status 区分，但 messages 未携带）
+                is_tool_error = isinstance(tool_result, dict) and bool(
+                    tool_result.get("error")
+                )
+                tool_content = (
+                    {"ok": False, "error": tool_result.get("error"), "tool": name}
+                    if is_tool_error
+                    else tool_result
+                )
                 messages.append(
                     {
                         "role": "tool",
                         "tool_call_id": tc_id,
-                        "content": json.dumps(tool_result, ensure_ascii=False, default=str)[
-                            : self.config.tool_result_truncate
-                        ],
+                        "content": json.dumps(
+                            tool_content, ensure_ascii=False, default=str
+                        )[: self.config.tool_result_truncate],
                     }
                 )
 
