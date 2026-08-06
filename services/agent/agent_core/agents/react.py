@@ -1249,7 +1249,13 @@ _DISPATCH_NEGATION_RE = re.compile(
 # 有实质交付结构时，不因提到「调度」就当空承诺
 _DELIVERY_STRUCTURE_RE = re.compile(
     r"(?m)^#{1,3}\s|\n[-*]\s+\S|```|\|.+\|",
-)
+)
+
+# §4.2.7: is_plan_announcement 长度阈值（魔数收敛）
+_HUB_LONG_PLAN_MAX_CHARS = 1200        # Hub 长计划 + 多 dispatch 视为实交付
+_ANNOUNCE_PLAN_MAX_CHARS = 800        # 含 "执行计划/收到" 等关键词的短上限
+_HUB_SHORT_HINT_MAX_CHARS = 280      # Hub 单次提到调度但无交付结构的极短空承诺
+
 
 
 def is_plan_announcement(
@@ -1274,15 +1280,15 @@ def is_plan_announcement(
     announce = bool(_PLAN_ANNOUNCE_RE.search(t))
     if has_header and (dispatch_hits >= 1 or announce):
         return True
-    if agent_id == "hub" and dispatch_hits >= 2 and len(t) < 1200:
+    if agent_id == "hub" and dispatch_hits >= 2 and len(t) < _HUB_LONG_PLAN_MAX_CHARS:
         return True
-    if announce and dispatch_hits >= 1 and len(t) < 800:
+    if announce and dispatch_hits >= 1 and len(t) < _ANNOUNCE_PLAN_MAX_CHARS:
         return True
     # Hub 短空承诺：提到要调度专家，但几乎无交付结构（用户可见的「卡住」主因）
     if (
         agent_id == "hub"
         and dispatch_hits >= 1
-        and len(t) < 280
+        and len(t) < _HUB_SHORT_HINT_MAX_CHARS
         and not _DISPATCH_NEGATION_RE.search(t)
         and not _DELIVERY_STRUCTURE_RE.search(t)
     ):
