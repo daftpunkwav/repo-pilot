@@ -8,11 +8,8 @@
 - `backend/` — Flask 单文件后端
 - `frontend/` — 原生 JS 前端
 - `data/` — JSON 数据文件（已迁移到 SQLite）
-- `build/` — 旧构建产物
-- `dist/` — 旧打包产物
 - `main.py` — 旧入口
 - `*.spec` — 旧 spec 文件
-- `*.txt` — 旧构建日志
 
 ## 可借鉴的逻辑
 
