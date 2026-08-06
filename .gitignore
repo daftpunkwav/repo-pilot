@@ -55,3 +55,9 @@ apps/web/tsconfig.tsbuildinfo
 # 本地临时脚本/冒烟产物（可能含密钥与截图，禁止入库）
 tmp/
 .zcode/
+
+
+# 工具缓存与本地配置（§4.1.5）
+.claude/
+.pytest_cache/
+*.pkg
