@@ -13,7 +13,7 @@
 ### 本地验证
 
 ```bash
-$ git log --all -S 'REDACTED-EMAIL' --oneline
+$ git log --all -S '<REDACTED-EMAIL>' --oneline
 # (无输出 = PII 已彻底从可达历史中移除)
 
 $ git log --all -- archive/data/stash_users.json
@@ -38,7 +38,7 @@ $ git ls-tree -r HEAD archive/data/
 3. **构建 expressions 文件**（注意：文件保存为 ASCII，不要带 UTF-8 BOM，否则 filter-repo 会跳过）：
    ```
    # repopilot-filter-expressions.txt
-   REDACTED-EMAIL==>REDACTED-EMAIL
+   <REDACTED-EMAIL>==>REDACTED-EMAIL
    ```
    ⚠️ BOM 问题：Powershell `Set-Content -Encoding utf8` 默认加 BOM，必须用 `-Encoding ascii` 或 `-Encoding oem` 或 `-NoNewline`。
 4. **在 Bare Clone 中执行重写**：
@@ -74,7 +74,7 @@ $ git ls-tree -r HEAD archive/data/
 > 由于 force-push 到 GitHub/GitLab/Gitee 是不可逆的破坏性操作（会改变所有公开 commit hash、影响已有 fork/clone），本执行器未自动进行。
 
 **强密码轮换**（首要，与 push 顺序无关，并行进行）：
-- `REDACTED-EMAIL` Outlook 账号密码。
+- `<REDACTED-EMAIL>` Outlook 账号密码。
 - 若该邮箱在 GitHub/Gitee/GitLab/任何 SSO 平台也用作密码复用，请全部轮换。
 - 若 `archive/data/stash_users.json` 中任何 token（refresh token 等）曾用生产环境，登入对应服务吊销。
 
@@ -100,7 +100,7 @@ git push --force --tags gitee --all
 ```bash
 # 远程端不应再能拉到污染 commit
 git fetch --all --tags --prune
-git log --all -S 'REDACTED-EMAIL' --oneline
+git log --all -S '<REDACTED-EMAIL>' --oneline
 git log --all -- archive/data/stash_users.json
 ```
 
