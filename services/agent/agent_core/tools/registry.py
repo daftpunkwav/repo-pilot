@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading  # §4.2.10 registry 锁
 import logging
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
@@ -68,9 +69,12 @@ class ToolDefinition:
 class ToolRegistry:
     def __init__(self) -> None:
         self._tools: dict[str, ToolDefinition] = {}
+        # §4.2.10: 注册路径并发保护
+        self._lock = threading.RLock()
 
     def register(self, tool: ToolDefinition) -> None:
-        self._tools[tool.name] = tool
+        with self._lock:
+            self._tools[tool.name] = tool
 
     def get(self, name: str) -> ToolDefinition | None:
         return self._tools.get(name)

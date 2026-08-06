@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import threading  # §4.2.10 registry 锁
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -439,6 +440,8 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
 
 class AgentRegistry:
     def __init__(self, definitions: dict[str, AgentDefinition] | None = None):
+        # §4.2.10: 注册路径并发保护
+        self._lock = threading.RLock()
         self._agents = dict(definitions or AGENT_DEFINITIONS)
 
     def get(self, agent_id: str) -> AgentDefinition:
@@ -454,7 +457,8 @@ class AgentRegistry:
 
     def register(self, definition: AgentDefinition) -> None:
         """未来扩展：动态注册新 Agent。"""
-        self._agents[definition.id] = definition
+        with self._lock:
+            self._agents[definition.id] = definition
 
 
 # 模块级单例：导入即创建（AGENT_DEFINITIONS 已在本模块定义），
