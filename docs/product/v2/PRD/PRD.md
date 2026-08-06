@@ -3,6 +3,8 @@
 > 版本: 2.0.0 | 日期: 2026-07-04 | 状态: 草稿
 >
 > **发布策略:** v2.0 基于 v1.0 迭代，引入 Multi-Agent Architecture 升级。MVP_SCOPE.md 的范围即 v2.0 全部交付内容。
+>
+> ⚠️ **与代码对照（2026-08-04）：** 本文仍为规划草稿，正文 Agent 数量（"7 Agent (+Evaluator)"）与代码实际不一致：代码已实现 **7 个（hub / scout / mentor / navigator / curator / scribe / atlas）**，**Evaluator 未实现**。代码现状以 [`docs/development/PROGRESS_REPORT.md`](../../development/PROGRESS_REPORT.md) 为准；v1 PRD 与 v2 草案的描述冲突见 [`docs/review/full-review-20260804.md`](../../review/full-review-20260804.md) §12。
 
 ---
 
@@ -504,7 +506,7 @@ RepoPilot v2 采用 **v2.0 单版本完整发布** 策略。MVP_SCOPE.md 的范�
 - Knowledge Graph 从展示升级为共享查询工具
 - 多推理模式（ReAct / ToT / GoT / Reflexion）
 - Fallback Mode 完整降级策略
-- 6 Agent 全部实现（Evaluator 不含）
+- 7 Agent 全部实现（含 Atlas，Evaluator 不含）
 - v1 全部用户系统、项目管理、笔记系统、分类系统功能继承
 
 **理由:**

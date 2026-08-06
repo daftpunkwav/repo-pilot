@@ -28,14 +28,14 @@ docs/product/
 │   ├── SPEC/                                  ← 技术规格文档
 │   │   ├── TECHNICAL_SPEC.md
 │   │   └── AGENT_SPEC.md
-│   ├── MVP/                                   ← v1.0 实施范围
-│   │   └── MVP_SCOPE.md                       ← 含部分「与代码差异」标注
-│   ├── RepoPilot-v1-审查报告-第1~13轮.md       ← 历史记录，勿改写
-│   └── RepoPilot-v1-修复报告-第1~7次.md       ← 历史记录，勿改写
+│   └── MVP/                                   ← v1.0 实施范围
+│       └── MVP_SCOPE.md                       ← 含部分「与代码差异」标注
 └── v2/
     ├── IDEA.md
     ├── PRD/ · SPEC/ · MVP/                    ← 规划草案
 ```
+
+> **审查报告不在此目录：** 2026-07 的 v1 文档审查/修复过程报告（第 1~13 轮 / 第 1~7 次）已于 2026-08-04 移除，由 [`docs/review/`](../review/) 下的审查报告归档取代（最新全量审查见 `full-review-20260804.md`）。
 
 > **命名规范：** 目录名使用大写（`PRD/`、`SPEC/`、`MVP/`），不使用小写。
 
@@ -128,9 +128,9 @@ DEVELOPMENT_ROADMAP   ← 12 Phase 开发计划（Phase 0~11）
 | `v1` PRD/SPEC | 草案 | 部分细节（Agent 数、表结构、端点）与代码不一致 |
 | `v1` MVP_SCOPE | 草案 + 差异标注 | 优先参考文内「与代码实际」标注 |
 | `v2/` | 构思/草案 | 不覆盖 v1 权威链 |
-| 实现进度 | 活文档 | **[`../development/PROGRESS_REPORT.md`](../development/PROGRESS_REPORT.md)**（2026-08-03） |
+| 实现进度 | 活文档 | **[`../development/PROGRESS_REPORT.md`](../development/PROGRESS_REPORT.md)**（2026-08-04） |
 
-> 审查/修复报告为**历史快照**，仅供追溯，不随代码改写。
+> 审查报告统一归档在 `docs/review/`，为**历史快照**，仅供追溯，不随代码改写。最新全量审查：`docs/review/full-review-20260804.md`。
 
 | 文档 | 状态 | 说明 |
 |------|------|------|
@@ -148,8 +148,8 @@ DEVELOPMENT_ROADMAP   ← 12 Phase 开发计划（Phase 0~11）
 | 路径对照 | `../architecture/PATH_MAPPING.md` | 历史路径 → 现行路径 |
 | **开发进度报告** | `../development/PROGRESS_REPORT.md` | **当前代码实现状态（优先）** |
 | 开发路线图 | `../development/DEVELOPMENT_ROADMAP.md` | 历史 Phase 计划 |
-| 审查报告 | `v1/RepoPilot-v1-审查报告-第13轮.md` 等 | 历史审查记录 |
-| 修复报告 | `v1/RepoPilot-v1-修复报告-第7次.md` 等 | 历史修复记录 |
+| 全量审查报告 | `../review/full-review-20260804.md` | 最新全量审查（v2.0，175 项发现） |
+| Agent 核心审查 | `../review/AGENT_CODE_REVIEW.md` | 2026-08-03 Agent 审查（整改已落地） |
 
 ---
 

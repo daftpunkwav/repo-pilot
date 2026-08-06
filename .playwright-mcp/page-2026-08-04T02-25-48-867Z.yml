@@ -1,0 +1,1197 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]: $ repopilot / audit --since 2026-08-04
+    - generic [ref=e5]:
+      - generic [ref=e6]: readonly
+      - generic [ref=e8]: 9 sections
+      - generic [ref=e9]: 138 findings
+  - banner [ref=e10]:
+    - generic [ref=e11]:
+      - generic [ref=e12]: // full audit · v2.0.0
+      - heading "一份代码审查,而不是 一份借口。" [level=1] [ref=e13]: 一份代码审查,而不是一份借口。
+      - paragraph [ref=e14]: 我们把 RepoPilot 的后端、前端、共享包、Monorepo 配置、依赖、测试、CI 全部摆到桌面上, 按安全 · 规范 · 现代性 · 维护性 · 扩展性 · 耦合性 · 代码质量 · 代码复用 八个维度, 抓出 9 个 P0、31 个 P1、58 个 P2 和 40+ 个 P3 问题。 每条都给了文件:行号,直接可作为 issue 模板。
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]: scope
+          - generic [ref=e18]: apps/web + services/api + services/agent + packages/* + scripts/ + tests/
+        - generic [ref=e19]:
+          - generic [ref=e20]: mode
+          - generic [ref=e21]: read-only · zero file modified
+        - generic [ref=e22]:
+          - generic [ref=e23]: generated
+          - generic [ref=e24]: 2026-08-04 · 4 parallel agents
+        - generic [ref=e25]:
+          - generic [ref=e26]: companion
+          - link "→ full-review-20260804.md" [ref=e28] [cursor=pointer]:
+            - /url: full-review-20260804.md
+  - generic [ref=e30]:
+    - complementary [ref=e31]:
+      - heading "// sections" [level=4] [ref=e32]
+      - list [ref=e33]:
+        - listitem [ref=e34]:
+          - link "执行摘要" [ref=e35] [cursor=pointer]:
+            - /url: "#summary"
+        - listitem [ref=e36]:
+          - link "安全性" [ref=e37] [cursor=pointer]:
+            - /url: "#security"
+        - listitem [ref=e38]:
+          - link "代码规范" [ref=e39] [cursor=pointer]:
+            - /url: "#norm"
+        - listitem [ref=e40]:
+          - link "现代性" [ref=e41] [cursor=pointer]:
+            - /url: "#modern"
+        - listitem [ref=e42]:
+          - link "维护性" [ref=e43] [cursor=pointer]:
+            - /url: "#maint"
+        - listitem [ref=e44]:
+          - link "扩展性" [ref=e45] [cursor=pointer]:
+            - /url: "#ext"
+        - listitem [ref=e46]:
+          - link "耦合性" [ref=e47] [cursor=pointer]:
+            - /url: "#coupling"
+        - listitem [ref=e48]:
+          - link "代码质量" [ref=e49] [cursor=pointer]:
+            - /url: "#quality"
+        - listitem [ref=e50]:
+          - link "代码复用" [ref=e51] [cursor=pointer]:
+            - /url: "#reuse"
+        - listitem [ref=e52]:
+          - link "Monorepo / 共享包" [ref=e53] [cursor=pointer]:
+            - /url: "#monorepo"
+        - listitem [ref=e54]:
+          - link "CI / 测试 / 依赖" [ref=e55] [cursor=pointer]:
+            - /url: "#cideps"
+        - listitem [ref=e56]:
+          - link "优先级路线图" [ref=e57] [cursor=pointer]:
+            - /url: "#roadmap"
+        - listitem [ref=e58]:
+          - link "可保留的优点" [ref=e59] [cursor=pointer]:
+            - /url: "#keep"
+    - main [ref=e60]:
+      - generic [ref=e61]:
+        - heading "§ 00 执行摘要" [level=2] [ref=e62]:
+          - generic [ref=e63]: § 00
+          - text: 执行摘要
+        - heading "0.1 项目快照" [level=3] [ref=e64]
+        - table [ref=e65]:
+          - rowgroup [ref=e66]:
+            - row [ref=e67]:
+              - columnheader "指标" [ref=e68]
+              - columnheader "数值" [ref=e69]
+            - row [ref=e70]:
+              - cell "Monorepo 成员" [ref=e71]
+              - cell "2 个 Python 服务 + 2 个 TS 应用 + 6 个 packages" [ref=e72]
+            - row [ref=e73]:
+              - cell "核心栈" [ref=e74]
+              - cell "FastAPI · SQLAlchemy 2.0 · Pydantic v2 · LiteLLM · React 19 · TypeScript 5.9 · Vite 7 · Zustand 5" [ref=e75]
+            - row [ref=e76]:
+              - cell "Agent 数量" [ref=e77]
+              - cell "7 个(Hub + Scout/Mentor/Navigator/Curator/Scribe/Atlas)" [ref=e78]
+            - row [ref=e79]:
+              - cell "已落地实现" [ref=e80]
+              - cell [ref=e81]:
+                - code [ref=e82]: apps/web
+                - text: +
+                - code [ref=e83]: services/api
+                - text: 完整可用
+            - row [ref=e84]:
+              - cell "占位/规划" [ref=e85]
+              - cell [ref=e86]:
+                - code [ref=e87]: apps/desktop
+                - text: 、
+                - code [ref=e88]: services/mcp
+                - text: 、
+                - code [ref=e89]: "packages/{ui,prompts,py-shared,config}"
+                - text: 几乎为空
+        - heading "0.2 健康度雷达" [level=3] [ref=e90]
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - generic [ref=e93]: 安全性
+            - generic [ref=e94]: 3 / 5
+            - generic [ref=e95]: 总体中高,有 4 个高危需修
+          - generic [ref=e96]:
+            - generic [ref=e97]: 代码规范
+            - generic [ref=e98]: 3 / 5
+            - generic [ref=e99]: 整体良好,巨型文件拉低分
+          - generic [ref=e100]:
+            - generic [ref=e101]: 现代性
+            - generic [ref=e102]: 4 / 5
+            - generic [ref=e103]: 已用 React 19/SA 2.0/Pyd v2,小残留
+          - generic [ref=e104]:
+            - generic [ref=e105]: 维护性
+            - generic [ref=e106]: 2 / 5
+            - generic [ref=e107]: 巨型单文件 + 隐式耦合
+          - generic [ref=e108]:
+            - generic [ref=e109]: 扩展性
+            - generic [ref=e110]: 2 / 5
+            - generic [ref=e111]: 多处单点真源缺失,新增 Agent 需改 5 处
+          - generic [ref=e112]:
+            - generic [ref=e113]: 耦合性
+            - generic [ref=e114]: 2 / 5
+            - generic [ref=e115]: agent_core ↔ backend 双向循环依赖
+          - generic [ref=e116]:
+            - generic [ref=e117]: 代码质量
+            - generic [ref=e118]: 3 / 5
+            - generic [ref=e119]: 大量长函数 / 强转
+          - generic [ref=e120]:
+            - generic [ref=e121]: 代码复用
+            - generic [ref=e122]: 2 / 5
+            - generic [ref=e123]: Agent 列表等关键数据 5 处独立维护
+        - heading "0.3 严重程度统计" [level=3] [ref=e124]
+        - generic [ref=e125]:
+          - generic [ref=e126]:
+            - generic [ref=e127]: "9"
+            - generic [ref=e128]: 🔴 严重 / P0 · 立即修复
+          - generic [ref=e129]:
+            - generic [ref=e130]: "31"
+            - generic [ref=e131]: 🟠 高 / P1 · 本迭代内
+          - generic [ref=e132]:
+            - generic [ref=e133]: "58"
+            - generic [ref=e134]: 🟡 中 / P2 · 下迭代
+          - generic [ref=e135]:
+            - generic [ref=e136]: 40+
+            - generic [ref=e137]: 🟢 低 / P3 · 持续改进
+        - heading "0.4 Top 5 最高 ROI 修复点" [level=3] [ref=e138]
+        - list [ref=e139]:
+          - listitem [ref=e140]:
+            - text: 统一 Agent 注册表真源 — 5 处独立维护 Agent 列表,删除
+            - code [ref=e141]: backend/agents/*
+            - text: shim 层,合并为单一 registry
+          - listitem [ref=e142]:
+            - generic [ref=e143]:
+              - text: 解除
+              - code [ref=e144]: agent_core ↔ backend
+              - text: 循环依赖
+            - text: — 真正的"独立 agent 进程"承诺未实现,靠
+            - code [ref=e145]: sys.path
+            - text: hack 维持
+          - listitem [ref=e146]:
+            - text: 拆分巨型文件 —
+            - code [ref=e147]: agent_service.py
+            - text: 1700+ 行、
+            - code [ref=e148]: hub.py
+            - text: 1675 行、
+            - code [ref=e149]: agentStore.ts
+            - text: 906 行、
+            - code [ref=e150]: utils/agentQuestion.ts
+            - text: 715 行
+          - listitem [ref=e151]:
+            - text: P0 安全修复 — Mock 客户端写 token 到 localStorage、
+            - code [ref=e152]: .env.local
+            - text: 入库、CSRF 防护缺校验、SECRET_KEY 启动期校验缺失
+          - listitem [ref=e153]:
+            - text: CI/CD 与依赖锁 — 无
+            - code [ref=e154]: .github/workflows
+            - text: 、无
+            - code [ref=e155]: uv.lock
+            - text: 、CI 不能拦截 schema drift
+      - generic [ref=e156]:
+        - heading "§ 01 安全性" [level=2] [ref=e157]:
+          - generic [ref=e158]: § 01
+          - text: 安全性
+        - paragraph [ref=e159]: 审查覆盖密钥处理、认证授权、输入校验、CORS/CSRF、SSRF、敏感信息泄露、API Key BYOK 流程、依赖漏洞。共发现 2 个 P0 严重风险、13 个 P1 高风险、9 个 P2 中风险。
+        - heading "🔴 P0 — 严重(9)" [level=3] [ref=e160]
+        - generic [ref=e161]:
+          - generic [ref=e162]:
+            - generic [ref=e163]: ">"
+            - generic [ref=e164]: S-01
+            - generic [ref=e165]: P0
+            - generic [ref=e166]: apps/web/src/api/mock/index.ts:73,94,128,203,212,222
+          - generic [ref=e167]:
+            - generic [ref=e168]:
+              - text: Mock 客户端把 token 写入 localStorage。生产构建若
+              - code [ref=e169]: VITE_USE_MOCK=true
+              - text: 将明文凭证,被 XSS 一发即全偷。
+            - generic [ref=e170]: $ mock 改 Set-Cookie 模拟 或 sessionStorage 隔离;最少加 base64 混淆 + 退出登录清理
+        - generic [ref=e171]:
+          - generic [ref=e172]:
+            - generic [ref=e173]: ">"
+            - generic [ref=e174]: S-02
+            - generic [ref=e175]: P0
+            - generic [ref=e176]: apps/web/.env.local(已入仓)
+          - generic [ref=e177]:
+            - generic [ref=e178]:
+              - code [ref=e179]: .env.local
+              - text: 提交到仓库。按
+              - code [ref=e180]: .gitignore
+              - text: 应忽略。
+            - generic [ref=e181]: $ 根 .gitignore 加 .env*.local;git rm --cached 历史
+        - generic [ref=e182]:
+          - generic [ref=e183]:
+            - generic [ref=e184]: ">"
+            - generic [ref=e185]: S-03
+            - generic [ref=e186]: P0
+            - generic [ref=e187]: services/api/backend/agents/builtin.py:_ports, _safe_github_name
+          - generic [ref=e188]:
+            - generic [ref=e189]:
+              - text: GitHub 仓库名正则只挡裸
+              - code [ref=e190]: ..
+              - text: ",URL 编码后"
+              - code [ref=e191]: ..%2F
+              - text: 可绕过。LLM 控制的
+              - code [ref=e192]: full_name
+              - text: 理论上可构造异常路径。
+            - generic [ref=e193]: $ 增加 URL 解码后的二次校验
+        - generic [ref=e194]:
+          - generic [ref=e195]:
+            - generic [ref=e196]: ">"
+            - generic [ref=e197]: S-04
+            - generic [ref=e198]: P0
+            - generic [ref=e199]: services/api/backend/agents/builtin.py + tools/registry.py:88-114
+          - generic [ref=e200]:
+            - generic [ref=e201]:
+              - text: 工具执行错误返回
+              - code [ref=e202]: "{\"error\": ...}"
+              - text: 时,ReAct 引擎未区分"工具失败"与"工具成功"。LLM 看到
+              - code [ref=e203]: error
+              - text: 字段会按正常结果继续推理 → 误导用户。
+            - generic [ref=e204]: $ 工具错误抛异常或在 SSE 中携带独立 error 事件;ReAct 解析层显式判别
+        - generic [ref=e205]:
+          - generic [ref=e206]:
+            - generic [ref=e207]: ">"
+            - generic [ref=e208]: S-05
+            - generic [ref=e209]: P0
+            - generic [ref=e210]: services/api/backend/services/agent_service.py:31-36
+          - generic [ref=e211]:
+            - generic [ref=e212]:
+              - text: 全局可变
+              - code [ref=e213]: _session_stream_cancel
+              - text: 内存 dict 在多 worker 下失效。
+              - code [ref=e214]: uvicorn --workers 2
+              - text: 时,旧 stream 不会被新 stream 抢占 → 双流并发落库产生重复
+              - code [ref=e215]: AgentMessage
+              - text: 。
+            - generic [ref=e216]: $ 改 Redis 或类似共享存储;启动期检查 worker 数并 WARN
+        - generic [ref=e217]:
+          - generic [ref=e218]:
+            - generic [ref=e219]: ">"
+            - generic [ref=e220]: S-06
+            - generic [ref=e221]: P0
+            - generic [ref=e222]: services/api/backend/services/agent_proxy.py:42
+          - generic [ref=e223]:
+            - generic [ref=e224]:
+              - code [ref=e225]: httpx.Timeout(read=None)
+              - text: 永远等待,Agent 独立进程 hang 住 → SSE 流永不结束。
+            - generic [ref=e226]: $ 至少设 read=120.0
+        - heading "🟠 P1 — 高(节选 6 / 13)" [level=3] [ref=e227]
+        - generic [ref=e228]:
+          - generic [ref=e229]:
+            - generic [ref=e230]: ">"
+            - generic [ref=e231]: S-07
+            - generic [ref=e232]: P1
+            - generic [ref=e233]: services/api/backend/core/security.py:80-86
+          - generic [ref=e234]:
+            - generic [ref=e235]:
+              - code [ref=e236]: SECRETS_ENCRYPTION_KEY
+              - text: 回退到
+              - code [ref=e237]: SECRET_KEY
+              - text: 。轮换 JWT 签名密钥时所有加密的 PAT/LLM API Key 无法解密。
+            - generic [ref=e238]: $ 启动期强校验:未设置独立 key 时打 ERROR
+        - generic [ref=e239]:
+          - generic [ref=e240]:
+            - generic [ref=e241]: ">"
+            - generic [ref=e242]: S-08
+            - generic [ref=e243]: P1
+            - generic [ref=e244]: services/api/backend/config.py:44-47
+          - generic [ref=e245]:
+            - generic [ref=e246]:
+              - code [ref=e247]: SECRET_KEY
+              - text: 缺 Pydantic 层
+              - code [ref=e248]: < 32 字节
+              - text: 长度校验,只在
+              - code [ref=e249]: main.py:39-40
+              - text: lifespan 检查 → 部署 16 字节时应用仍能注册路由(直到 lifespan 失败)。
+            - generic [ref=e250]: $ Field(..., min_length=32),失败在 import 阶段
+        - generic [ref=e251]:
+          - generic [ref=e252]:
+            - generic [ref=e253]: ">"
+            - generic [ref=e254]: S-10
+            - generic [ref=e255]: P1
+            - generic [ref=e256]: services/api/backend/config.py:70-75
+          - generic [ref=e257]:
+            - generic [ref=e258]:
+              - text: CORS
+              - code [ref=e259]: allow_origins
+              - text: 默认包含多个开发端口;生产忘设时仍被放行 +
+              - code [ref=e260]: allow_credentials=True
+              - text: → 允许 XHR 带 Cookie 跨域到生产 API。
+            - generic [ref=e261]: $ debug=False 时强制 cors_allow_origins 必填
+        - generic [ref=e262]:
+          - generic [ref=e263]:
+            - generic [ref=e264]: ">"
+            - generic [ref=e265]: S-11
+            - generic [ref=e266]: P1
+            - generic [ref=e267]: services/api/backend/core/csrf.py:24-25
+          - generic [ref=e268]:
+            - generic [ref=e269]:
+              - code [ref=e270]: CsrfMiddleware
+              - text: 对
+              - code [ref=e271]: /auth/
+              - text: 完全豁免;
+              - code [ref=e272]: /auth/login
+              - text: 、
+              - code [ref=e273]: /auth/refresh
+              - text: 在 Cookie 模式下无 CSRF 保护 → session fixation + refresh 越权。
+            - generic [ref=e274]: $ 至少 /auth/refresh 必须带 CSRF token
+        - generic [ref=e275]:
+          - generic [ref=e276]:
+            - generic [ref=e277]: ">"
+            - generic [ref=e278]: S-15
+            - generic [ref=e279]: P1
+            - generic [ref=e280]: apps/web/src/api/real/http.ts:105-119
+          - generic [ref=e281]:
+            - generic [ref=e282]:
+              - text: CSRF token 仅从
+              - code [ref=e283]: document.cookie
+              - text: 读取非 httpOnly 的
+              - code [ref=e284]: rp_csrf
+              - text: ;若后端未加
+              - code [ref=e285]: SameSite=Strict
+              - text: ",可被绕过。"
+            - generic [ref=e286]: $ 后端强制 SameSite=Strict; Secure; Path=/;前端对 token 格式正则校验
+        - generic [ref=e287]:
+          - generic [ref=e288]:
+            - generic [ref=e289]: ">"
+            - generic [ref=e290]: S-18
+            - generic [ref=e291]: P1
+            - generic [ref=e292]: services/api/pyproject.toml:7-23
+          - generic [ref=e293]:
+            - generic [ref=e294]:
+              - code [ref=e295]: python-jose
+              - text: 多年未更新且有 CVE;
+              - code [ref=e296]: bcrypt>=4.0
+              - text: 次版本号未锁。
+            - generic [ref=e297]: $ 迁移 pyjwt>=2.8.0;锁 bcrypt>=4.1,<5
+        - heading "🟡 P2 — 中 · 🟢 P3 — 低" [level=3] [ref=e298]
+        - paragraph [ref=e299]: 完整 17 条 P2/P3 项见配套 Markdown 报告 §1(S-20 ~ S-28)。
+      - generic [ref=e300]:
+        - heading "§ 02 代码规范" [level=2] [ref=e301]:
+          - generic [ref=e302]: § 02
+          - text: 代码规范
+        - paragraph [ref=e303]: 审查命名一致性、错误处理、日志规范、Type Hints、文档字符串。共发现 2 个 P0 巨型文件、12 个 P1 命名/规范问题、9 个 P2 中等问题。
+        - heading "🔴 P0 — 严重" [level=3] [ref=e304]
+        - generic [ref=e305]:
+          - generic [ref=e306]:
+            - generic [ref=e307]: ">"
+            - generic [ref=e308]: N-01
+            - generic [ref=e309]: P0
+            - generic [ref=e310]: apps/web/src/stores/agentStore.ts:336-905
+          - generic [ref=e311]:
+            - generic [ref=e312]:
+              - generic [ref=e313]:
+                - text: 单文件 906 行 +
+                - code [ref=e314]: processSSEStream
+                - text: 函数 ~570 行,圈复杂度 30+
+              - text: 。大量
+              - code [ref=e315]: as unknown as
+              - text: /
+              - code [ref=e316]: as Record<string, unknown>
+              - text: 绕过
+              - code [ref=e317]: no-explicit-any
+              - text: ESLint 规则。
+            - generic [ref=e318]: $ 拆为 processQuestionEvent / processToolCallEvent / processAgentSwitchEvent 独立 reducer;用 type guards 替代断言
+        - generic [ref=e319]:
+          - generic [ref=e320]:
+            - generic [ref=e321]: ">"
+            - generic [ref=e322]: N-02
+            - generic [ref=e323]: P0
+            - generic [ref=e324]: apps/web/src/utils/agentQuestion.ts:715
+          - generic [ref=e325]:
+            - generic [ref=e326]: 反问归一化函数 700+ 行,嵌套正则复杂度极高,单测覆盖率低。
+            - generic [ref=e327]: $ 拆为 parseLetterOptions / cleanOptions / normalizeItem / ensureAgentQuestion / recoverQuestionFromText 各自文件 + 单元测试
+        - heading "🟠 P1 — 高(节选)" [level=3] [ref=e328]
+        - table [ref=e329]:
+          - rowgroup [ref=e330]:
+            - row [ref=e331]:
+              - columnheader "ID" [ref=e332]
+              - columnheader "文件" [ref=e333]
+              - columnheader "问题" [ref=e334]
+            - row [ref=e335]:
+              - cell [ref=e336]:
+                - code [ref=e337]: N-03
+              - cell [ref=e338]:
+                - code [ref=e339]: services/api/backend/services/agent_service.py
+              - cell "单文件 1700+ 行,涵盖 sessions CRUD / 消息落库 / stream buffer / context segments / SSE 落库 / 权限合并 / Hub 调用 → 拆 4 个文件" [ref=e340]
+            - row [ref=e341]:
+              - cell [ref=e342]:
+                - code [ref=e343]: N-04
+              - cell [ref=e344]:
+                - code [ref=e345]: services/api/backend/agents/hub.py:859-1125
+              - cell [ref=e346]:
+                - code [ref=e347]: _dispatch_evaluate_loop
+                - text: 266 行,7 层分支;
+                - code [ref=e348]: _handle_dispatches
+                - text: 391 行,3 个内部函数散落
+            - row [ref=e349]:
+              - cell [ref=e350]:
+                - code [ref=e351]: N-05
+              - cell [ref=e352]:
+                - code [ref=e353]: services/api/backend/agents/builtin.py
+              - cell "单文件 1900+ 行,30+ 工具函数,每个 tool 应独立子模块" [ref=e354]
+            - row [ref=e355]:
+              - cell [ref=e356]:
+                - code [ref=e357]: N-06
+              - cell [ref=e358]:
+                - code [ref=e359]: services/api/backend/agents/hub.py:132-192
+              - cell [ref=e360]:
+                - code [ref=e361]: format_switch_reason
+                - text: /
+                - code [ref=e362]: format_dispatch_status
+                - text: /
+                - code [ref=e363]: format_dispatch_notice
+                - text: /
+                - code [ref=e364]: format_dispatch_announce
+                - text: 4 个相似函数,后两个其实是别名
+            - row [ref=e365]:
+              - cell [ref=e366]:
+                - code [ref=e367]: N-08
+              - cell [ref=e368]:
+                - code [ref=e369]: apps/web/eslint.config.js:32-36
+              - cell [ref=e370]:
+                - text: 显式禁用
+                - code [ref=e371]: "'react-hooks/set-state-in-effect'"
+                - text: 等 React 19 严格规则;版本已是 2.0.0 不应继续关闭
+      - generic [ref=e372]:
+        - heading "§ 03 现代性" [level=2] [ref=e373]:
+          - generic [ref=e374]: § 03
+          - text: 现代性
+        - paragraph [ref=e375]: 整体已采用现代栈(FastAPI + SA 2.0 + Pydantic v2 + React 19 + Vite 7),仍存在若干"用对了但没用全"的残留。共发现 6 个 P1、8 个 P2。
+        - heading "🟠 P1 — 高" [level=3] [ref=e376]
+        - table [ref=e377]:
+          - rowgroup [ref=e378]:
+            - row [ref=e379]:
+              - columnheader "ID" [ref=e380]
+              - columnheader "文件 / 行号" [ref=e381]
+              - columnheader "问题" [ref=e382]
+            - row [ref=e383]:
+              - cell [ref=e384]:
+                - code [ref=e385]: M-01
+              - cell [ref=e386]:
+                - code [ref=e387]: services/api/pyproject.toml:6-23
+              - cell [ref=e388]:
+                - code [ref=e389]: litellm>=1.40.0
+                - text: 早于 2.0,与 Pydantic v2
+                - code [ref=e390]: drop_params
+                - text: 默认行为可能引发线上问题 → 锁
+                - code [ref=e391]: litellm>=2.0,<3
+                - text: 并回归测试
+            - row [ref=e392]:
+              - cell [ref=e393]:
+                - code [ref=e394]: M-02
+              - cell [ref=e395]:
+                - code [ref=e396]: services/api/backend/database.py:75-92
+              - cell [ref=e397]:
+                - code [ref=e398]: init_db
+                - text: 用
+                - code [ref=e399]: asyncio.to_thread(_run_alembic_upgrade)
+                - text: 同步跑 alembic,异常依赖 Python 版本处理
+            - row [ref=e400]:
+              - cell [ref=e401]:
+                - code [ref=e402]: M-03
+              - cell [ref=e403]:
+                - code [ref=e404]: services/api/backend/services/agent_service.py:31-36
+              - cell [ref=e405]:
+                - text: 全局 dict 没用
+                - code [ref=e406]: ContextVar
+                - text: ;多 worker 部署下 cancel 事件不隔离
+            - row [ref=e407]:
+              - cell [ref=e408]:
+                - code [ref=e409]: M-04
+              - cell [ref=e410]:
+                - code [ref=e411]: services/api/backend/services/agent_service.py:101
+              - cell [ref=e412]:
+                - code [ref=e413]: from sqlalchemy import insert as sa_insert
+                - text: 仅为取别名,无任何作用
+            - row [ref=e414]:
+              - cell [ref=e415]:
+                - code [ref=e416]: M-05
+              - cell [ref=e417]:
+                - code [ref=e418]: services/api/backend/api/auth.py:12
+              - cell [ref=e419]:
+                - text: 仍使用
+                - code [ref=e420]: sqlalchemy.future.select
+                - text: ;SA 2.0 起已合并到主包
+            - row [ref=e421]:
+              - cell [ref=e422]:
+                - code [ref=e423]: M-06
+              - cell [ref=e424]:
+                - code [ref=e425]: services/api/backend/services/auth_service.py:90-143
+              - cell [ref=e426]:
+                - code [ref=e427]: rotate_refresh_token
+                - text: 用"UPDATE 抢占"实现乐观锁,
+                - code [ref=e428]: rowcount != 1
+                - text: 语义依赖 SA 行为,无 unit test
+      - generic [ref=e429]:
+        - heading "§ 04 维护性" [level=2] [ref=e430]:
+          - generic [ref=e431]: § 04
+          - text: 维护性
+        - paragraph [ref=e432]: 核心痛点:多个文件超过 700 行、Hub 调度逻辑嵌套 7 层、SSE 消费逻辑在 3 处独立实现。共发现 3 个 P0、9 个 P1、5 个 P2。
+        - generic [ref=e433]:
+          - generic [ref=e434]:
+            - generic [ref=e435]: ">"
+            - generic [ref=e436]: R-01
+            - generic [ref=e437]: P0
+            - generic [ref=e438]: services/api/backend/agents/* shim(10 个文件)
+          - generic [ref=e439]:
+            - generic [ref=e440]:
+              - text: shim 没有真正"API 内的 agents",仅为"让 backend 包内引用路径不变"。IDE 跳转断层,LSP 工具无法追踪真实实现,
+              - code [ref=e441]: __all__
+              - text: 不一致时 import 失败但运行无错。
+            - generic [ref=e442]: $ 删 shim,所有 from backend.agents import ... 改为 from agent_core.agents import ...
+        - generic [ref=e443]:
+          - generic [ref=e444]:
+            - generic [ref=e445]: ">"
+            - generic [ref=e446]: R-02
+            - generic [ref=e447]: P0
+            - generic [ref=e448]: services/api/backend/agents/registry.py:176-437
+          - generic [ref=e449]:
+            - generic [ref=e450]:
+              - code [ref=e451]: AGENT_DEFINITIONS
+              - text: 是大字典(7 项 × 多行),每个 Agent 5-15 行
+              - code [ref=e452]: system_prompt
+              - text: 内嵌反引号/特殊字符/Markdown;任何改动都要肉眼对比两个 agent 的 prompt 不冲突。
+            - generic [ref=e453]: $ 拆为 .toml 或 prompts/<agent>.md 文件 + 加载器
+        - generic [ref=e454]:
+          - generic [ref=e455]:
+            - generic [ref=e456]: ">"
+            - generic [ref=e457]: R-03
+            - generic [ref=e458]: P0
+            - generic [ref=e459]: services/api/backend/agents/hub.py:859-1125 + 1199-1590
+          - generic [ref=e460]:
+            - generic [ref=e461]:
+              - code [ref=e462]: _dispatch_evaluate_loop
+              - text: 266 行 +
+              - code [ref=e463]: _handle_dispatches
+              - text: 391 行,内嵌 3 个内部函数,逻辑分支 7 层。
+            - generic [ref=e464]: $ 拆为 _direct_dispatch() / _serial_dispatch() / _parallel_dispatch()
+      - generic [ref=e465]:
+        - heading "§ 05 扩展性" [level=2] [ref=e466]:
+          - generic [ref=e467]: § 05
+          - text: 扩展性
+        - generic [ref=e468]:
+          - strong [ref=e469]: "核心发现:"
+          - text: 新增一个 Agent 需要改 5 个文件(
+          - code [ref=e470]: AGENT_DEFINITIONS
+          - text: /
+          - code [ref=e471]: _FAST_RULE_ORDER
+          - text: /
+          - code [ref=e472]: AGENT_IDS
+          - text: /
+          - code [ref=e473]: AGENT_PROFILES
+          - text: / 字典顺序),漏一处即 fail。
+        - generic [ref=e474]:
+          - generic [ref=e475]:
+            - generic [ref=e476]: ">"
+            - generic [ref=e477]: E-01
+            - generic [ref=e478]: P1
+            - generic [ref=e479]: agents/registry.py:40-135 + intent.py:17 + agent_service.py:262 + settings_service.py:12-21 + agent_catalog.py:4-54
+          - generic [ref=e480]:
+            - generic [ref=e481]: 5 处独立维护 Agent 列表。新增 Agent 必须同时改 4 处,漏一处即 fail。
+            - generic [ref=e482]: $ 用 get_registry().list_all() 单一来源
+        - generic [ref=e483]:
+          - generic [ref=e484]:
+            - generic [ref=e485]: ">"
+            - generic [ref=e486]: E-02
+            - generic [ref=e487]: P1
+            - generic [ref=e488]: agent_service.py:35 + core/responses.py:14 + auth_service.py:55,134 + memory/service.py:62,75,140,233
+          - generic [ref=e489]:
+            - generic [ref=e490]:
+              - text: 硬编码阈值(
+              - code [ref=e491]: MAX_SESSION_PROJECTS=8
+              - text: 、
+              - code [ref=e492]: max_items=12
+              - text: 、
+              - code [ref=e493]: items[-100:]=100
+              - text: 等);
+              - code [ref=e494]: AgentEngineConfig
+              - text: 已集中但漏掉许多。
+            - generic [ref=e495]: $ 全部集中到 AgentEngineConfig / MemoryConfig
+      - generic [ref=e496]:
+        - heading "§ 06 耦合性" [level=2] [ref=e497]:
+          - generic [ref=e498]: § 06
+          - text: 耦合性
+        - generic [ref=e499]:
+          - generic [ref=e500]:
+            - generic [ref=e501]: ">"
+            - generic [ref=e502]: C-01
+            - generic [ref=e503]: P0
+            - generic [ref=e504]: agent_core ↔ backend 双向耦合
+          - generic [ref=e505]:
+            - generic [ref=e506]:
+              - code [ref=e507]: agent_core/agents/hub.py:28-29
+              - text: 引用
+              - code [ref=e508]: backend.services.sse_stream
+              - text: ;
+              - code [ref=e509]: agent_core/memory/service.py:13-14
+              - text: 引用
+              - code [ref=e510]: backend.models.agent
+              - text: /
+              - code [ref=e511]: backend.services.profile_service
+              - text: ;
+              - code [ref=e512]: agent_core/memory/context.py:14
+              - text: 引用
+              - code [ref=e513]: backend.models.project
+              - text: ; 同时
+              - code [ref=e514]: backend.services.agent_service.py:13
+              - text: 通过 shim 引用
+              - code [ref=e515]: backend.agents.hub
+              - text: →
+              - code [ref=e516]: agent_core
+              - text: 。 真循环依赖。
+            - generic [ref=e517]: $ 把 format_sse / profile_service 等基础逻辑下沉到 agent_core;在 packages/py-shared 定义共享 Pydantic 模型
+        - generic [ref=e518]:
+          - generic [ref=e519]:
+            - generic [ref=e520]: ">"
+            - generic [ref=e521]: C-02
+            - generic [ref=e522]: P0
+            - generic [ref=e523]: services/agent/agent_runtime/main.py:17-25
+          - generic [ref=e524]:
+            - generic [ref=e525]:
+              - text: 显式
+              - code [ref=e526]: sys.path.insert
+              - text: 把
+              - code [ref=e527]: services/api
+              - text: 加进去。两个 Python 进程互相 join 对方源码路径,不是真正的拆分;HTTP 端口隔离仅在物理层,import 图仍是一张图。
+            - generic [ref=e528]: $ 真正独立 deploy agent 进程需去除 from backend.*
+      - generic [ref=e529]:
+        - heading "§ 07 代码质量" [level=2] [ref=e530]:
+          - generic [ref=e531]: § 07
+          - text: 代码质量
+        - paragraph [ref=e532]: 共发现 2 个 P0 巨型函数、8 个 P1 复杂度问题、6 个 P2 中等问题。
+        - generic [ref=e533]:
+          - generic [ref=e534]:
+            - generic [ref=e535]: ">"
+            - generic [ref=e536]: Q-01
+            - generic [ref=e537]: P0
+            - generic [ref=e538]: apps/web/src/utils/agentQuestion.ts:115-267
+          - generic [ref=e539]:
+            - generic [ref=e540]:
+              - code [ref=e541]: cleanOptions
+              - text: 200+ 行 switch + 多种 format 适配,圈复杂度 > 25。
+            - generic [ref=e542]: $ 拆 parseStringOptions / parseArrayOptions / parseObjectOptions
+        - generic [ref=e543]:
+          - generic [ref=e544]:
+            - generic [ref=e545]: ">"
+            - generic [ref=e546]: Q-02
+            - generic [ref=e547]: P0
+            - generic [ref=e548]: apps/web/src/stores/agentStore.ts:336-905
+          - generic [ref=e549]:
+            - generic [ref=e550]:
+              - code [ref=e551]: processSSEStream
+              - text: 圈复杂度 30+,每个 case 同时读 store state / 写 ref / 嵌套三元;行 850-893 嵌套
+              - code [ref=e552]: try/catch
+              - text: +
+              - code [ref=e553]: AbortError
+              - text: +
+              - code [ref=e554]: stillOnOrigin
+              - text: 判断。
+            - generic [ref=e555]: $ 用 reducer + side effects handler 模式;拆 5 个小函数
+        - heading "🟠 P1 — 高(节选)" [level=3] [ref=e556]
+        - table [ref=e557]:
+          - rowgroup [ref=e558]:
+            - row [ref=e559]:
+              - columnheader "ID" [ref=e560]
+              - columnheader "文件" [ref=e561]
+              - columnheader "问题" [ref=e562]
+            - row [ref=e563]:
+              - cell [ref=e564]:
+                - code [ref=e565]: Q-03
+              - cell [ref=e566]:
+                - code [ref=e567]: agents/hub.py:693-1568
+              - cell [ref=e568]:
+                - code [ref=e569]: _handle_dispatches
+                - text: 含 6 层 if/elif/else/for/async for/if/break
+            - row [ref=e570]:
+              - cell [ref=e571]:
+                - code [ref=e572]: Q-04
+              - cell [ref=e573]:
+                - code [ref=e574]: agent_service.py:337-499
+              - cell [ref=e575]:
+                - code [ref=e576]: _AgentSegmentBuffer
+                - text: 162 行,7 个
+                - code [ref=e577]: note_*
+                - text: 方法 + flush
+            - row [ref=e578]:
+              - cell [ref=e579]:
+                - code [ref=e580]: Q-06
+              - cell [ref=e581]:
+                - code [ref=e582]: api/types.ts:7-72
+              - cell [ref=e583]:
+                - text: 一次性从
+                - code [ref=e584]: "@repopilot/types"
+                - text: re-export 68+ 个类型,前端专属类型仅 ~30 个
+            - row [ref=e585]:
+              - cell [ref=e586]:
+                - code [ref=e587]: Q-08
+              - cell [ref=e588]:
+                - code [ref=e589]: utils/sse-helpers.ts:13-43
+              - cell [ref=e590]:
+                - text: 9 个
+                - code [ref=e591]: asSSE*
+                - text: 函数全部
+                - code [ref=e592]: return data as unknown as XX
+                - text: —— 完全不做运行时校验
+            - row [ref=e593]:
+              - cell [ref=e594]:
+                - code [ref=e595]: Q-09
+              - cell [ref=e596]:
+                - code [ref=e597]: EditProjectModal.tsx:84
+              - cell [ref=e598]:
+                - code [ref=e599]: (categoryId || null) as unknown as string
+                - text: —— 三重否定强转
+      - generic [ref=e600]:
+        - heading "§ 08 代码复用" [level=2] [ref=e601]:
+          - generic [ref=e602]: § 08
+          - text: 代码复用
+        - paragraph [ref=e603]: 关键真源缺失,核心数据多处独立维护。共发现 5 个 P0、10 个 P1、3 个 P2。
+        - generic [ref=e604]:
+          - generic [ref=e605]:
+            - generic [ref=e606]: ">"
+            - generic [ref=e607]: U-01
+            - generic [ref=e608]: P0
+            - generic [ref=e609]: stream_events.py:87-93 + sse_stream.py:1-17 + react.py:18
+          - generic [ref=e610]:
+            - generic [ref=e611]:
+              - code [ref=e612]: format_sse
+              - text: 3 处定义/转发;真实定义只有一处,但 import 关系复杂。
+            - generic [ref=e613]: $ 删 services/sse_stream.py 转发,统一在 stream_events.py
+        - generic [ref=e614]:
+          - generic [ref=e615]:
+            - generic [ref=e616]: ">"
+            - generic [ref=e617]: U-02
+            - generic [ref=e618]: P0
+            - generic [ref=e619]: llm/config.py:105-110 + github.py:66-71 + settings_service.py:40-47
+          - generic [ref=e620]:
+            - generic [ref=e621]:
+              - code [ref=e622]: _load_settings_dict
+              - text: "3 处实现:"
+              - code [ref=e623]: "json.loads(user.settings_json or \"{}\")"
+              - text: + isinstance 检查。
+            - generic [ref=e624]: $ 抽公共 _load_settings_dict(user) -> dict
+        - generic [ref=e625]:
+          - generic [ref=e626]:
+            - generic [ref=e627]: ">"
+            - generic [ref=e628]: U-04
+            - generic [ref=e629]: P0
+            - generic [ref=e630]: agents/registry.py + intent.py + agent_service.py + settings_service.py + agent_catalog.py
+          - generic [ref=e631]:
+            - generic [ref=e632]: 5 处 Agent 列表独立维护。新增 Agent 必须改 5 处,漏一处即 fail。
+            - generic [ref=e633]: $ 单一真源 = get_registry()
+        - generic [ref=e634]:
+          - generic [ref=e635]:
+            - generic [ref=e636]: ">"
+            - generic [ref=e637]: U-10
+            - generic [ref=e638]: P1
+            - generic [ref=e639]: EmbedAgentChat.tsx + ProjectDetailPage.tsx:173-280 + useTrendingScoutSpot.ts:81-123
+          - generic [ref=e640]:
+            - generic [ref=e641]:
+              - text: 3 处各自实现
+              - code [ref=e642]: AbortController + async generator + flushTimer
+              - text: 模式。
+            - generic [ref=e643]: $ 抽 useAgentStream() hook 统一封装
+      - generic [ref=e644]:
+        - heading "§ 09 Monorepo / 共享包" [level=2] [ref=e645]:
+          - generic [ref=e646]: § 09
+          - text: Monorepo / 共享包
+        - heading "9.1 包完整性矩阵" [level=3] [ref=e647]
+        - table [ref=e648]:
+          - rowgroup [ref=e649]:
+            - row [ref=e650]:
+              - columnheader "包" [ref=e651]
+              - columnheader "状态" [ref=e652]
+              - columnheader "评价" [ref=e653]
+            - row [ref=e654]:
+              - cell [ref=e655]:
+                - code [ref=e656]: packages/types/
+              - cell "✓ 唯一完整" [ref=e657]
+              - cell [ref=e658]:
+                - code [ref=e659]: aliases.ts
+                - text: 66 个别名 100% 解析到
+                - code [ref=e660]: generated.ts
+                - text: 中实际 schema
+            - row [ref=e661]:
+              - cell [ref=e662]:
+                - code [ref=e663]: packages/contracts/
+              - cell "✓ 形式合格" [ref=e664]
+              - cell "175KB OpenAPI JSON,52 paths / 107 schemas;有 stale 风险" [ref=e665]
+            - row [ref=e666]:
+              - cell [ref=e667]:
+                - code [ref=e668]: packages/ui/
+              - cell "✗ 空壳" [ref=e669]
+              - cell [ref=e670]:
+                - code [ref=e671]: src/index.ts:1-2
+                - text: ":"
+                - code [ref=e672]: "export {};"
+                - text: ",无任何组件"
+            - row [ref=e673]:
+              - cell [ref=e674]:
+                - code [ref=e675]: packages/prompts/
+              - cell "✗ 空壳" [ref=e676]
+              - cell [ref=e677]:
+                - text: 仅有
+                - code [ref=e678]: README.md
+                - text: ","
+                - generic [ref=e679]:
+                  - text: 没有
+                  - code [ref=e680]: package.json
+                  - text: 文件
+            - row [ref=e681]:
+              - cell [ref=e682]:
+                - code [ref=e683]: packages/py-shared/
+              - cell "✗ 空壳" [ref=e684]
+              - cell [ref=e685]:
+                - code [ref=e686]: __version__ = "0.1.0"
+                - text: + docstring;任何文件都未 import
+            - row [ref=e687]:
+              - cell [ref=e688]:
+                - code [ref=e689]: packages/config/
+              - cell "✗ 空壳" [ref=e690]
+              - cell [ref=e691]:
+                - code [ref=e692]: tsconfig.base.json
+                - text: 11 行,没人 extends
+        - heading "9.2 严重问题" [level=3] [ref=e693]
+        - generic [ref=e694]:
+          - strong [ref=e695]: M-01
+          - text: ·
+          - code [ref=e696]: services/agent/agent_core/agents/hub.py:27,29
+          - text: 等 6+ 文件直接
+          - code [ref=e697]: from backend.models.user import User
+          - text: /
+          - code [ref=e698]: from backend.services.sse_stream import format_sse
+          - text: 。
+          - generic [ref=e699]:
+            - code [ref=e700]: services/agent
+            - text: 名为独立服务,实质是"代码搬家 + 兼容 shim"
+          - text: 。
+        - generic [ref=e701]:
+          - strong [ref=e702]: M-06
+          - text: ·
+          - code [ref=e703]: scripts/export_openapi.py
+          - text: 不计算
+          - code [ref=e704]: openapi.json
+          - text: hash,CI 跑
+          - code [ref=e705]: generate:types
+          - text: 时也不比较 → 存在 Pydantic → OpenAPI 静默 drift。
+        - heading "9.3 抽查验证结果 verified" [level=3] [ref=e706]:
+          - text: 9.3 抽查验证结果
+          - generic [ref=e707]: verified
+        - list [ref=e708]:
+          - listitem [ref=e709]:
+            - code [ref=e710]: apps/web/src/api/types.ts:7-72
+            - text: 已正确 re-export 65 个
+            - code [ref=e711]: "@repopilot/types"
+            - text: 别名
+          - listitem [ref=e712]:
+            - code [ref=e713]: ProjectOut
+            - text: /
+            - code [ref=e714]: NoteOut
+            - text: /
+            - code [ref=e715]: SettingsOut
+            - text: 等 Pydantic 与 OpenAPI 字段完全一致
+          - listitem [ref=e716]:
+            - code [ref=e717]: aliases.ts
+            - text: 66 个
+            - code [ref=e718]: Schemas['X']
+            - text: 引用全部能在
+            - code [ref=e719]: generated.ts
+            - text: 中找到对应 schema(脚本输出
+            - code [ref=e720]: "Aliases referencing missing schema in generated.ts: 0"
+            - text: )
+      - generic [ref=e721]:
+        - heading "§ 10 CI / 测试 / 依赖" [level=2] [ref=e722]:
+          - generic [ref=e723]: § 10
+          - text: CI / 测试 / 依赖
+        - heading "🔴 CI/CD 完全缺失" [level=3] [ref=e724]
+        - list [ref=e725]:
+          - listitem [ref=e726]:
+            - text: 无
+            - code [ref=e727]: .github/workflows/
+          - listitem [ref=e728]: 无 Makefile / ci.sh
+          - listitem [ref=e729]:
+            - code [ref=e730]: package.json
+            - text: 有
+            - code [ref=e731]: "\"ci\""
+            - text: 脚本但只能本地跑,无远程触发
+          - listitem [ref=e732]:
+            - code [ref=e733]: docs/development/DEVELOPMENT_ROADMAP.md
+            - text: 规划了 CI 但未实现
+        - heading "🟠 Python 依赖无锁文件" [level=3] [ref=e734]
+        - list [ref=e735]:
+          - listitem [ref=e736]:
+            - text: 无
+            - code [ref=e737]: uv.lock
+            - text: /
+            - code [ref=e738]: poetry.lock
+          - listitem [ref=e739]:
+            - code [ref=e740]: pyproject.toml
+            - text: 只用
+            - code [ref=e741]: ">="
+            - text: 范围,无法保证可复现构建
+          - listitem [ref=e742]:
+            - text: LiteLLM 2.0 升级可能引发线上
+            - code [ref=e743]: drop_params
+            - text: 行为变化
+        - heading "🟠 npm 依赖版本可疑" [level=3] [ref=e744]
+        - table [ref=e745]:
+          - rowgroup [ref=e746]:
+            - row [ref=e747]:
+              - columnheader "包" [ref=e748]
+              - columnheader "当前" [ref=e749]
+              - columnheader "备注" [ref=e750]
+            - row [ref=e751]:
+              - cell [ref=e752]:
+                - code [ref=e753]: react
+              - cell [ref=e754]:
+                - code [ref=e755]: 19.2.7
+              - cell "monorepo overrides 强制,需在所有 package.json 保持一致" [ref=e756]
+            - row [ref=e757]:
+              - cell [ref=e758]:
+                - code [ref=e759]: eslint
+              - cell [ref=e760]:
+                - code [ref=e761]: ^10.6.0
+              - cell "ESLint v10 还未发布(截至 2026-08 知识截止仅 ESLint 9.x 正式)" [ref=e762]
+            - row [ref=e763]:
+              - cell [ref=e764]:
+                - code [ref=e765]: vitest
+              - cell [ref=e766]:
+                - code [ref=e767]: ^4.1.9
+              - cell "与 Vite 7 配合是新生态,可能存在 React 19 + jsdom 29 兼容问题" [ref=e768]
+            - row [ref=e769]:
+              - cell [ref=e770]:
+                - code [ref=e771]: jsdom
+              - cell [ref=e772]:
+                - code [ref=e773]: ^29.1.1
+              - cell "待核实是否真实存在" [ref=e774]
+            - row [ref=e775]:
+              - cell [ref=e776]:
+                - code [ref=e777]: "@types/node"
+              - cell [ref=e778]:
+                - code [ref=e779]: ^26.1.0
+              - cell "与 Node 22 LTS 不匹配,可能只是声明" [ref=e780]
+        - heading "🟠 文档与代码脱节" [level=3] [ref=e781]
+        - list [ref=e782]:
+          - listitem [ref=e783]:
+            - code [ref=e784]: docs/development/
+            - text: 多个子目录(7 个)文档规划中描述但未创建
+          - listitem [ref=e785]:
+            - code [ref=e786]: CHANGELOG.md
+            - text: 不存在
+          - listitem [ref=e787]:
+            - code [ref=e788]: apps/desktop/
+            - text: 、
+            - code [ref=e789]: services/mcp/
+            - text: 仅
+            - code [ref=e790]: README.md
+            - text: ",无"
+            - code [ref=e791]: package.json
+            - text: /
+            - code [ref=e792]: pyproject.toml
+          - listitem [ref=e793]:
+            - code [ref=e794]: services/agent/
+            - text: 完全没有测试覆盖
+      - generic [ref=e795]:
+        - heading "§ 11 优先级路线图" [level=2] [ref=e796]:
+          - generic [ref=e797]: § 11
+          - text: 优先级路线图
+        - heading "P0 — 立即修复(预计 1-2 周)" [level=3] [ref=e798]
+        - list [ref=e799]:
+          - listitem [ref=e800]: Mock localStorage token 改 Set-Cookie 模拟(S-01)
+          - listitem [ref=e801]:
+            - code [ref=e802]: .env.local
+            - text: 从历史中清理并加入
+            - code [ref=e803]: .gitignore
+            - text: (S-02)
+          - listitem [ref=e804]: GitHub 仓库名 URL 编码后二次校验(S-03)
+          - listitem [ref=e805]: ReAct 工具错误与结果区分(S-04)
+          - listitem [ref=e806]:
+            - code [ref=e807]: _session_stream_cancel
+            - text: 改为 Redis / 共享存储(S-05)
+          - listitem [ref=e808]:
+            - text: Agent 内部调用设
+            - code [ref=e809]: read=120.0
+            - text: 超时(S-06)
+          - listitem [ref=e810]: SECRET_KEY 启动期 fail-fast(S-08)
+          - listitem [ref=e811]:
+            - code [ref=e812]: agent_internal_token
+            - text: 缺省校验(S-09)
+          - listitem [ref=e813]:
+            - text: 拆
+            - code [ref=e814]: agentStore.ts
+            - code [ref=e815]: processSSEStream
+            - text: 巨型函数(N-01)
+        - heading "P1 — 本迭代(预计 1 个月)" [level=3] [ref=e816]
+        - list [ref=e817]:
+          - listitem [ref=e818]:
+            - text: 统一 Agent 注册表真源,删
+            - code [ref=e819]: backend/agents/*
+            - text: shim(C-01 / E-01)
+          - listitem [ref=e820]:
+            - text: 解除
+            - code [ref=e821]: agent_core ↔ backend
+            - text: 循环依赖,把共享逻辑下沉到
+            - code [ref=e822]: packages/py-shared
+            - text: (C-02)
+          - listitem [ref=e823]:
+            - text: 拆分
+            - code [ref=e824]: agent_service.py
+            - text: 1700+ 行 → 4 个文件(N-03)
+          - listitem [ref=e825]:
+            - text: 拆分
+            - code [ref=e826]: hub.py
+            - code [ref=e827]: _dispatch_evaluate_loop
+            - text: /
+            - code [ref=e828]: _handle_dispatches
+            - text: (R-03)
+          - listitem [ref=e829]:
+            - code [ref=e830]: .github/workflows
+            - text: 建立 CI(测试 + lint + typecheck + openapi diff)
+          - listitem [ref=e831]:
+            - code [ref=e832]: uv.lock
+            - text: /
+            - code [ref=e833]: poetry.lock
+            - text: 锁定 Python 依赖
+          - listitem [ref=e834]:
+            - code [ref=e835]: LoginResponse
+            - text: 改为
+            - code [ref=e836]: Schemas['TokenOut']
+            - text: 直接引用(M-05)
+          - listitem [ref=e837]:
+            - text: CSRF cookie
+            - code [ref=e838]: SameSite=Strict
+            - text: 强制 + token 格式校验(S-15)
+          - listitem [ref=e839]: 401 → refresh 失败全局拦截器跳登录(S-16)
+        - heading "P2 — 下迭代(预计 2-3 个月)" [level=3] [ref=e840]
+        - list [ref=e841]:
+          - listitem [ref=e842]:
+            - text: 拆分
+            - code [ref=e843]: utils/agentQuestion.ts
+            - text: 700+ 行 → 5 个文件(N-02)
+          - listitem [ref=e844]:
+            - text: 拆分
+            - code [ref=e845]: apps/web/src/api/real/index.ts
+            - text: 按资源分层(U-07)
+          - listitem [ref=e846]:
+            - text: SSE 通用
+            - code [ref=e847]: useAgentStream()
+            - text: hook 抽象(U-10)
+          - listitem [ref=e848]:
+            - code [ref=e849]: <Popover>
+            - code [ref=e850]: <Modal>
+            - text: 基础组件抽象(U-11 / R-10)
+          - listitem [ref=e851]: 5 处 Agent 列表合并为单一 registry(E-01)
+          - listitem [ref=e852]:
+            - text: 所有硬编码魔数集中到
+            - code [ref=e853]: AgentEngineConfig
+            - text: (E-02)
+          - listitem [ref=e854]:
+            - code [ref=e855]: pyproject.toml
+            - text: 把
+            - code [ref=e856]: packages/py-shared
+            - text: 加入 uv-workspace(M-03)
+        - heading "P3 — 持续改进" [level=3] [ref=e857]
+        - paragraph [ref=e858]:
+          - text: icon 抽离、
+          - code [ref=e859]: cn()
+          - text: 强制全局、React 19
+          - code [ref=e860]: <ViewTransition>
+          - text: /
+          - code [ref=e861]: useTransition
+          - text: 改造、错误边界细分到路由级、README / 文档与代码同步、ESLint v10 / React 19 hooks rules 全部开启。
+      - generic [ref=e862]:
+        - heading "§ 12 可保留的优点" [level=2] [ref=e863]:
+          - generic [ref=e864]: § 12
+          - text: 可保留的优点
+        - paragraph [ref=e865]: 审查不仅是挑刺。RepoPilot v2.0.0 在以下方面做得不错,修复时不要"顺手改坏"。
+        - table [ref=e866]:
+          - rowgroup [ref=e867]:
+            - row [ref=e868]:
+              - columnheader "区域" [ref=e869]
+              - columnheader "优点" [ref=e870]
+            - row [ref=e871]:
+              - cell "鉴权" [ref=e872]
+              - cell [ref=e873]:
+                - text: 双通道 + Cookie + CSRF 中间件设计完整(
+                - code [ref=e874]: backend/core/csrf.py
+                - text: /
+                - code [ref=e875]: api/deps.py
+                - text: )
+            - row [ref=e876]:
+              - cell "SSRF 防护" [ref=e877]
+              - cell [ref=e878]:
+                - code [ref=e879]: core/url_safety.py
+                - text: 二次 DNS 解析防 TOCTOU
+            - row [ref=e880]:
+              - cell "Token 轮换" [ref=e881]
+              - cell [ref=e882]:
+                - code [ref=e883]: auth_service.py:90-143
+                - text: Refresh token 轮换 + 乐观锁 + 重放检测实现精细
+            - row [ref=e884]:
+              - cell "工具权限" [ref=e885]
+              - cell [ref=e886]:
+                - code [ref=e887]: tools/registry.py:14-44
+                - code [ref=e888]: TOOL_PERMISSION_MAP
+                - text: +
+                - code [ref=e889]: _PERMISSION_DEFAULTS
+                - text: 设计良好
+            - row [ref=e890]:
+              - cell "端口抽象" [ref=e891]
+              - cell [ref=e892]:
+                - code [ref=e893]: ports/__init__.py
+                - text: 解耦工具实现与 ORM
+            - row [ref=e894]:
+              - cell "校验" [ref=e895]
+              - cell "Pydantic Field 长度限制广泛" [ref=e896]
+            - row [ref=e897]:
+              - cell "GitHub 注入防护" [ref=e898]
+              - cell [ref=e899]:
+                - code [ref=e900]: _safe_github_name
+                - text: 正则覆盖主要 case
+            - row [ref=e901]:
+              - cell "迁移" [ref=e902]
+              - cell [ref=e903]:
+                - text: Alembic 替代
+                - code [ref=e904]: create_all
+                - text: (
+                - code [ref=e905]: database.py:73-92
+                - text: )
+            - row [ref=e906]:
+              - cell "段缓冲" [ref=e907]
+              - cell [ref=e908]:
+                - code [ref=e909]: _AgentSegmentBuffer
+                - text: 按 agent_switch 切段落库设计正确
+            - row [ref=e910]:
+              - cell "常量集中" [ref=e911]
+              - cell [ref=e912]:
+                - code [ref=e913]: Workflow
+                - text: 枚举 +
+                - code [ref=e914]: AgentEngineConfig
+                - text: 显著减少魔数
+            - row [ref=e915]:
+              - cell "类型契约" [ref=e916]
+              - cell [ref=e917]:
+                - code [ref=e918]: apps/web/src/api/types.ts
+                - text: 通过
+                - code [ref=e919]: "@repopilot/types"
+                - text: 65 个别名零 drift
+            - row [ref=e920]:
+              - cell "别名表" [ref=e921]
+              - cell [ref=e922]:
+                - code [ref=e923]: aliases.ts
+                - text: 66 个
+                - code [ref=e924]: Schemas['X']
+                - text: 引用 100% 可解析
+  - contentinfo [ref=e925]:
+    - generic [ref=e927]:
+      - generic [ref=e928]:
+        - paragraph [ref=e929]: 报告元信息
+        - paragraph [ref=e930]: 生成时间:2026-08-04
+        - paragraph [ref=e931]: 生成方式:主代理 + 4 个 Explore 子代理并行审查,主代理汇总
+        - paragraph [ref=e932]: 审查深度:源文件直读,未执行实际渗透测试
+      - generic [ref=e933]:
+        - paragraph [ref=e934]: 重要声明
+        - paragraph [ref=e935]: 本报告为只读审查产物,未对任何源文件进行修改。
+        - paragraph [ref=e936]: 所有 ID(S-01, N-01, R-01 …)可作为 issue 模板直接创建。
+        - paragraph [ref=e937]:
+          - text: "配套 Markdown:"
+          - link "→ full-review-20260804.md" [ref=e938] [cursor=pointer]:
+            - /url: full-review-20260804.md

@@ -1,0 +1,1625 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e3]:
+    - generic [ref=f1e4]: $ repopilot / audit v2.0 --since 2026-08-04
+    - generic [ref=f1e5]:
+      - generic [ref=f1e6]: v1 → v2 deltas
+      - generic [ref=f1e8]: 12 sections
+      - generic [ref=f1e9]: ~175 findings
+  - banner [ref=f1e10]:
+    - generic [ref=f1e11]:
+      - generic [ref=f1e12]: // full audit · v2.0 · complete + 亲验修正
+      - heading "这份审查, 已经被自己读过两遍。" [level=1] [ref=f1e13]: 这份审查,已经被自己读过两遍。
+      - paragraph [ref=f1e14]: v1 由 4 个子代理并行产出;v2 由我亲自抽查 21 处关键文件(行号、严重度真伪核验), 并补查 v1 完全未覆盖的 5 个区域(archive / tests / alembic / .claude/.zcode / docs)。 3 处行数错误已修正,11 项 v1 漏报 P0/P1已补,6 处重复已合并。
+      - generic [ref=f1e15]:
+        - generic [ref=f1e16]:
+          - generic [ref=f1e17]: v1 → v2 findings
+          - generic [ref=f1e18]: 138 → ~175 (+37)
+        - generic [ref=f1e19]:
+          - generic [ref=f1e20]: p0
+          - generic [ref=f1e21]: 9 → 15 (+6)
+        - generic [ref=f1e22]:
+          - generic [ref=f1e23]: coverage
+          - generic [ref=f1e24]: 7 → 12 regions
+        - generic [ref=f1e25]:
+          - generic [ref=f1e26]: 亲验行
+          - generic [ref=f1e27]: 21 file:line 核验
+        - generic [ref=f1e28]:
+          - generic [ref=f1e29]: mode
+          - generic [ref=f1e30]: read-only · zero source modified
+        - generic [ref=f1e31]:
+          - generic [ref=f1e32]: companion
+          - link "→ full-review-20260804.md" [ref=f1e34] [cursor=pointer]:
+            - /url: full-review-20260804.md
+      - generic [ref=f1e35]:
+        - heading "// v1 → v2 deltas" [level=3] [ref=f1e36]
+        - generic [ref=f1e37]:
+          - generic [ref=f1e38]:
+            - generic [ref=f1e39]: ·
+            - generic [ref=f1e40]: 行数修正
+            - generic [ref=f1e41]: "3"
+            - generic [ref=f1e42]: 处
+          - generic [ref=f1e43]:
+            - generic [ref=f1e44]: ·
+            - generic [ref=f1e45]: 漏报 P0 补
+            - generic [ref=f1e46]: "6"
+            - generic [ref=f1e47]: 条
+          - generic [ref=f1e48]:
+            - generic [ref=f1e49]: ·
+            - generic [ref=f1e50]: 漏报 P1 补
+            - generic [ref=f1e51]: "17"
+            - generic [ref=f1e52]: 条
+          - generic [ref=f1e53]:
+            - generic [ref=f1e54]: ·
+            - generic [ref=f1e55]: 重复合并
+            - generic [ref=f1e56]: "6"
+            - generic [ref=f1e57]: 处
+          - generic [ref=f1e58]:
+            - generic [ref=f1e59]: ·
+            - generic [ref=f1e60]: 新增章节
+            - generic [ref=f1e61]: "5"
+            - generic [ref=f1e62]: 节
+          - generic [ref=f1e63]:
+            - generic [ref=f1e64]: ·
+            - generic [ref=f1e65]: 亲验核对
+            - generic [ref=f1e66]: "21"
+            - generic [ref=f1e67]: 行号/严重度
+  - generic [ref=f1e69]:
+    - complementary [ref=f1e70]:
+      - heading "// sections" [level=4] [ref=f1e71]
+      - list [ref=f1e72]:
+        - listitem [ref=f1e73]:
+          - link "执行摘要" [ref=f1e74] [cursor=pointer]:
+            - /url: "#summary"
+        - listitem [ref=f1e75]:
+          - link "安全性 +6" [ref=f1e76] [cursor=pointer]:
+            - /url: "#security"
+            - text: 安全性
+            - generic [ref=f1e77]: "+6"
+        - listitem [ref=f1e78]:
+          - link "代码规范 +2" [ref=f1e79] [cursor=pointer]:
+            - /url: "#norm"
+            - text: 代码规范
+            - generic [ref=f1e80]: "+2"
+        - listitem [ref=f1e81]:
+          - link "现代性" [ref=f1e82] [cursor=pointer]:
+            - /url: "#modern"
+        - listitem [ref=f1e83]:
+          - link "维护性" [ref=f1e84] [cursor=pointer]:
+            - /url: "#maint"
+        - listitem [ref=f1e85]:
+          - link "扩展性" [ref=f1e86] [cursor=pointer]:
+            - /url: "#ext"
+        - listitem [ref=f1e87]:
+          - link "耦合性" [ref=f1e88] [cursor=pointer]:
+            - /url: "#coupling"
+        - listitem [ref=f1e89]:
+          - link "代码质量" [ref=f1e90] [cursor=pointer]:
+            - /url: "#quality"
+        - listitem [ref=f1e91]:
+          - link "代码复用" [ref=f1e92] [cursor=pointer]:
+            - /url: "#reuse"
+        - listitem [ref=f1e93]:
+          - link "测试覆盖 +15" [ref=f1e94] [cursor=pointer]:
+            - /url: "#tests"
+            - text: 测试覆盖
+            - generic [ref=f1e95]: "+15"
+        - listitem [ref=f1e96]:
+          - link "数据库迁移 +8" [ref=f1e97] [cursor=pointer]:
+            - /url: "#db"
+            - text: 数据库迁移
+            - generic [ref=f1e98]: "+8"
+        - listitem [ref=f1e99]:
+          - link "仓库卫生 +16" [ref=f1e100] [cursor=pointer]:
+            - /url: "#hygiene"
+            - text: 仓库卫生
+            - generic [ref=f1e101]: "+16"
+        - listitem [ref=f1e102]:
+          - link "文档一致性 +13" [ref=f1e103] [cursor=pointer]:
+            - /url: "#docs"
+            - text: 文档一致性
+            - generic [ref=f1e104]: "+13"
+        - listitem [ref=f1e105]:
+          - link "依赖与配置 +7" [ref=f1e106] [cursor=pointer]:
+            - /url: "#deps"
+            - text: 依赖与配置
+            - generic [ref=f1e107]: "+7"
+        - listitem [ref=f1e108]:
+          - link "路线图" [ref=f1e109] [cursor=pointer]:
+            - /url: "#roadmap"
+        - listitem [ref=f1e110]:
+          - link "v1→v2 变更记录" [ref=f1e111] [cursor=pointer]:
+            - /url: "#changes"
+        - listitem [ref=f1e112]:
+          - link "可保留的优点" [ref=f1e113] [cursor=pointer]:
+            - /url: "#keep"
+    - main [ref=f1e114]:
+      - generic [ref=f1e115]:
+        - heading "§ 00 执行摘要" [level=2] [ref=f1e116]:
+          - generic [ref=f1e117]: § 00
+          - text: 执行摘要
+        - heading "0.1 项目快照" [level=3] [ref=f1e118]
+        - table [ref=f1e119]:
+          - rowgroup [ref=f1e120]:
+            - row [ref=f1e121]:
+              - columnheader "指标" [ref=f1e122]
+              - columnheader "数值" [ref=f1e123]
+            - row [ref=f1e124]:
+              - cell "Monorepo 成员" [ref=f1e125]
+              - cell "2 个 Python 服务 + 2 个 TS 应用 + 6 个 packages" [ref=f1e126]
+            - row [ref=f1e127]:
+              - cell "核心栈" [ref=f1e128]
+              - cell "FastAPI · SQLAlchemy 2.0 · Pydantic v2 · LiteLLM · React 19 · TypeScript 5.9 · Vite 7 · Zustand 5" [ref=f1e129]
+            - row [ref=f1e130]:
+              - cell "Agent 数量" [ref=f1e131]
+              - cell "7 个(Hub + Scout/Mentor/Navigator/Curator/Scribe/Atlas)" [ref=f1e132]
+            - row [ref=f1e133]:
+              - cell "真实后端代码" [ref=f1e134]
+              - cell [ref=f1e135]:
+                - code [ref=f1e136]: services/api
+                - text: (1501 行 agent_service.py + 7 Agent 模块共 3000+ 行)
+            - row [ref=f1e137]:
+              - cell "后端总行数" [ref=f1e138]
+              - cell [ref=f1e139]:
+                - text: 7771 行(不含
+                - code [ref=f1e140]: __pycache__
+                - text: )
+            - row [ref=f1e141]:
+              - cell "测试覆盖" [ref=f1e142]
+              - cell "243 个测试函数(54 文件),前端 SSE 流式覆盖好,业务层薄弱" [ref=f1e143]
+            - row [ref=f1e144]:
+              - cell "文档层级" [ref=f1e145]
+              - cell "v1 PRD/SPEC/MVP + v2 PRD/SPEC/MVP(草案)+ 代码实际 — 三方冲突" [ref=f1e146]
+            - row [ref=f1e147]:
+              - cell "归档数据" [ref=f1e148]
+              - cell [ref=f1e149]:
+                - code [ref=f1e150]: archive/
+                - text: 91 MB,含真实 PII(邮箱+密码哈希+token)
+        - heading "0.2 健康度雷达" [level=3] [ref=f1e151]
+        - generic [ref=f1e152]:
+          - generic [ref=f1e153]:
+            - generic [ref=f1e154]: 安全性 NEW
+            - generic [ref=f1e155]: 2 / 5
+            - generic [ref=f1e156]: 9→15 P0,新增 archive PII + alembic
+          - generic [ref=f1e157]:
+            - generic [ref=f1e158]: 代码规范
+            - generic [ref=f1e159]: 3 / 5
+            - generic [ref=f1e160]: 3 行数已亲验修正
+          - generic [ref=f1e161]:
+            - generic [ref=f1e162]: 现代性
+            - generic [ref=f1e163]: 4 / 5
+            - generic [ref=f1e164]: 整体良好,小残留
+          - generic [ref=f1e165]:
+            - generic [ref=f1e166]: 维护性
+            - generic [ref=f1e167]: 2 / 5
+            - generic [ref=f1e168]: 巨型单文件 + 隐式耦合
+          - generic [ref=f1e169]:
+            - generic [ref=f1e170]: 扩展性
+            - generic [ref=f1e171]: 2 / 5
+            - generic [ref=f1e172]: 5 处单点真源
+          - generic [ref=f1e173]:
+            - generic [ref=f1e174]: 耦合性
+            - generic [ref=f1e175]: 2 / 5
+            - generic [ref=f1e176]: agent_core ↔ backend 双向
+          - generic [ref=f1e177]:
+            - generic [ref=f1e178]: 代码质量
+            - generic [ref=f1e179]: 3 / 5
+            - generic [ref=f1e180]: 强转 + 长函数
+          - generic [ref=f1e181]:
+            - generic [ref=f1e182]: 代码复用
+            - generic [ref=f1e183]: 2 / 5
+            - generic [ref=f1e184]: 5 处 Agent 列表
+          - generic [ref=f1e185]:
+            - generic [ref=f1e186]: 测试覆盖 NEW
+            - generic [ref=f1e187]: 3 / 5
+            - generic [ref=f1e188]: 数量好,业务/断言薄
+          - generic [ref=f1e189]:
+            - generic [ref=f1e190]: 数据库设计 NEW
+            - generic [ref=f1e191]: 2 / 5
+            - generic [ref=f1e192]: FK 列无索引
+          - generic [ref=f1e193]:
+            - generic [ref=f1e194]: 文档一致性 NEW
+            - generic [ref=f1e195]: 2 / 5
+            - generic [ref=f1e196]: v1/v2/代码冲突
+          - generic [ref=f1e197]:
+            - generic [ref=f1e198]: 仓库卫生 NEW
+            - generic [ref=f1e199]: 2 / 5
+            - generic [ref=f1e200]: 91 MB 归档 + 缺标准文件
+        - heading "0.3 严重程度统计" [level=3] [ref=f1e201]
+        - generic [ref=f1e202]:
+          - generic [ref=f1e203]:
+            - generic [ref=f1e204]: "15"
+            - generic [ref=f1e205]: 🔴 严重 / P0 · 立即修复
+            - generic [ref=f1e206]: +6 (archive PII, alembic, gitignore)
+          - generic [ref=f1e207]:
+            - generic [ref=f1e208]: "48"
+            - generic [ref=f1e209]: 🟠 高 / P1 · 本迭代内
+            - generic [ref=f1e210]: +17 (依赖/配置/文档)
+          - generic [ref=f1e211]:
+            - generic [ref=f1e212]: ~70
+            - generic [ref=f1e213]: 🟡 中 / P2 · 下迭代
+            - generic [ref=f1e214]: "+12"
+          - generic [ref=f1e215]:
+            - generic [ref=f1e216]: ~42
+            - generic [ref=f1e217]: 🟢 低 / P3 · 持续改进
+            - generic [ref=f1e218]: "+2"
+        - heading "0.4 Top 7 最高 ROI 修复点" [level=3] [ref=f1e219]
+        - list [ref=f1e220]:
+          - listitem [ref=f1e221]:
+            - generic [ref=f1e222]:
+              - text: 🆕 立即清理
+              - code [ref=f1e223]: archive/dist/data/
+              - text: 真实 PII
+            - text: — 含
+            - code [ref=f1e224]: REDACTED-EMAIL
+            - text: 邮箱 + 密码哈希 + 持久化 token,可能已被 git 历史记录
+          - listitem [ref=f1e225]: 统一 Agent 注册表真源 — 5 处独立维护 Agent 列表,删 shim
+          - listitem [ref=f1e226]:
+            - generic [ref=f1e227]:
+              - text: 解除
+              - code [ref=f1e228]: agent_core ↔ backend
+              - text: 循环依赖
+            - text: —
+            - code [ref=f1e229]: sys.path
+            - text: hack + 14 处
+            - code [ref=f1e230]: from backend.*
+            - text: 反向 import
+          - listitem [ref=f1e231]:
+            - text: 拆分巨型文件 —
+            - code [ref=f1e232]: agent_service.py
+            - text: 1501 行、
+            - code [ref=f1e233]: hub.py
+            - text: 1674 行、
+            - code [ref=f1e234]: agentStore.ts
+            - text: 905 行、
+            - code [ref=f1e235]: agentQuestion.ts
+            - text: 715 行(行数已亲验修正)
+          - listitem [ref=f1e236]:
+            - text: P0 安全修复 — Mock localStorage、
+            - code [ref=f1e237]: .env.local
+            - text: 、CSRF、SECRET_KEY 启动期校验
+          - listitem [ref=f1e238]: 🆕 Alembic 大量 FK 列无索引 — 至少 10 个外键列无 B-tree 索引,生产数据量下查询性能隐患
+          - listitem [ref=f1e239]: 🆕 v1 PRD/SPEC/MVP + v2 PRD/SPEC/MVP + 代码三方建立对照矩阵 — 解决 Agent/工具数描述冲突
+      - generic [ref=f1e240]:
+        - heading "§ 01 安全性 +6 new" [level=2] [ref=f1e241]:
+          - generic [ref=f1e242]: § 01
+          - text: 安全性
+          - generic [ref=f1e243]: +6 new
+        - paragraph [ref=f1e244]: 审查覆盖密钥处理、认证授权、输入校验、CORS/CSRF、SSRF、敏感信息泄露、API Key BYOK 流程、依赖漏洞。共发现 15 个 P0、18 个 P1。
+        - heading "🔴 P0 — 严重(v2 新增 6 项)" [level=3] [ref=f1e245]
+        - generic [ref=f1e246]:
+          - generic [ref=f1e247]:
+            - generic [ref=f1e248]: ">"
+            - generic [ref=f1e249]: S-12
+            - generic [ref=f1e250]: P0
+            - generic [ref=f1e251]: NEW
+            - generic [ref=f1e252]: archive/dist/data/stash_users.json:1-17
+          - generic [ref=f1e253]:
+            - generic [ref=f1e254]:
+              - generic [ref=f1e255]:
+                - text: 🔴 含真实邮箱
+                - code [ref=f1e256]: REDACTED-EMAIL
+                - text: + SHA256 密码哈希
+                - code [ref=f1e257]: cc34eb77...
+                - text: + 盐值
+                - code [ref=f1e258]: 35b84139...
+              - text: 。若推送至公开仓库造成 PII 泄漏 + 离线字典攻击。
+            - generic [ref=f1e259]: $ git filter-branch 清理历史;删除 archive/dist/data/ 整个目录;加入 .gitignore 排除 archive/**/data/
+        - generic [ref=f1e260]:
+          - generic [ref=f1e261]:
+            - generic [ref=f1e262]: ">"
+            - generic [ref=f1e263]: S-13
+            - generic [ref=f1e264]: P0
+            - generic [ref=f1e265]: NEW
+            - generic [ref=f1e266]: archive/dist/data/remembered_sessions.json:1-22
+          - generic [ref=f1e267]:
+            - generic [ref=f1e268]:
+              - text: 4 条
+              - code [ref=f1e269]: remember_me
+              - text: 持久化 token 仍可登录旧版桌面应用;hash 不可逆但与用户名
+              - code [ref=f1e270]: daftpunkwav
+              - text: 配对,长期凭证永久可见。
+            - generic [ref=f1e271]: $ 与 S-12 一并清除
+        - generic [ref=f1e272]:
+          - generic [ref=f1e273]:
+            - generic [ref=f1e274]: ">"
+            - generic [ref=f1e275]: S-14
+            - generic [ref=f1e276]: P0
+            - generic [ref=f1e277]: NEW
+            - generic [ref=f1e278]: archive/dist/data/webview_profile/(40 MB)
+          - generic [ref=f1e279]:
+            - generic [ref=f1e280]: WebView2/Edge profile 目录(含 Cookies / LocalStorage / 表单自动填充 / 设备指纹 / Crashpad),绝不应作为代码归档的一部分。
+            - generic [ref=f1e281]: $ 直接删除整个 webview_profile/ 目录
+        - generic [ref=f1e282]:
+          - generic [ref=f1e283]:
+            - generic [ref=f1e284]: ">"
+            - generic [ref=f1e285]: S-15
+            - generic [ref=f1e286]: P0
+            - generic [ref=f1e287]: NEW
+            - generic [ref=f1e288]: archive/dist/GitHub Stash.exe(15.9 MB) + archive/build/(36 MB)
+          - generic [ref=f1e289]:
+            - generic [ref=f1e290]:
+              - text: PyInstaller 编译产物已入仓。根
+              - code [ref=f1e291]: .gitignore
+              - text: 排除了仓库根的
+              - code [ref=f1e292]: dist/
+              - text: /
+              - code [ref=f1e293]: build/
+              - text: ",但未覆盖"
+              - code [ref=f1e294]: archive/**/dist/
+              - text: /
+              - code [ref=f1e295]: archive/**/build/
+              - text: 。
+            - generic [ref=f1e296]: $ 追加 archive/**/dist/、archive/**/build/、archive/**/*.pkg、archive/**/*.exe 到 .gitignore;git rm --cached 已跟踪的产物
+        - generic [ref=f1e297]:
+          - generic [ref=f1e298]:
+            - generic [ref=f1e299]: ">"
+            - generic [ref=f1e300]: S-16
+            - generic [ref=f1e301]: P0
+            - generic [ref=f1e302]: NEW
+            - generic [ref=f1e303]: .gitignore
+          - generic [ref=f1e304]:
+            - generic [ref=f1e305]:
+              - code [ref=f1e306]: .pytest_cache/
+              - text: 未排除;
+              - code [ref=f1e307]: tests/.pytest_cache/
+              - text: 与
+              - code [ref=f1e308]: services/api/.pytest_cache/
+              - text: 已写入并被 git 跟踪。
+            - generic [ref=f1e309]: $ .gitignore 顶部添加 .pytest_cache/;git rm --cached -r 清理已跟踪
+        - generic [ref=f1e310]:
+          - generic [ref=f1e311]:
+            - generic [ref=f1e312]: ">"
+            - generic [ref=f1e313]: S-17
+            - generic [ref=f1e314]: P0
+            - generic [ref=f1e315]: NEW
+            - generic [ref=f1e316]: .gitignore
+          - generic [ref=f1e317]:
+            - generic [ref=f1e318]:
+              - code [ref=f1e319]: .claude/
+              - text: 未排除;
+              - code [ref=f1e320]: .claude/worktrees/modest-wright-8e5f37/
+              - text: 残留空目录,可被
+              - code [ref=f1e321]: git add .
+              - text: 误提交。
+            - generic [ref=f1e322]: $ 追加 .claude/ 到 .gitignore;删除空目录
+        - heading "🔴 P0 — 严重(v1 已发现 9 项,亲验核对)" [level=3] [ref=f1e323]
+        - generic [ref=f1e324]:
+          - generic [ref=f1e325]:
+            - generic [ref=f1e326]: ">"
+            - generic [ref=f1e327]: S-01
+            - generic [ref=f1e328]: P0
+            - generic [ref=f1e329]: ✓ 亲验
+            - generic [ref=f1e330]: apps/web/src/api/mock/index.ts:73,94,128,203,212,222
+          - generic [ref=f1e331]:
+            - generic [ref=f1e332]:
+              - text: Mock 客户端把 token 写入 localStorage;生产构建若
+              - code [ref=f1e333]: VITE_USE_MOCK=true
+              - text: 将明文凭证,XSS 一发即全偷。
+            - generic [ref=f1e334]: "✓ 亲验 line 73-74: const TOKEN_KEY = 'rp_token';line 203-204: localStorage.setItem(TOKEN_KEY, access);"
+            - generic [ref=f1e335]: $ mock 改 Set-Cookie 模拟 或 sessionStorage 隔离;最少加 base64 混淆 + 退出登录清理
+        - generic [ref=f1e336]:
+          - generic [ref=f1e337]:
+            - generic [ref=f1e338]: ">"
+            - generic [ref=f1e339]: S-05
+            - generic [ref=f1e340]: P0
+            - generic [ref=f1e341]: ✓ 亲验
+            - generic [ref=f1e342]: services/api/backend/services/agent_service.py:32
+          - generic [ref=f1e343]:
+            - generic [ref=f1e344]:
+              - text: 全局可变
+              - code [ref=f1e345]: "_session_stream_cancel: dict[UUID, asyncio.Event] = {}"
+              - text: 内存 dict 多 worker 下失效;
+              - code [ref=f1e346]: uvicorn --workers 2
+              - text: 时旧 stream 不会被新 stream 抢占 → 双流并发落库产生重复
+              - code [ref=f1e347]: AgentMessage
+              - text: 。
+            - generic [ref=f1e348]: "✓ 亲验 line 32-35: _session_stream_cancel: dict[UUID, asyncio.Event] = {} 与 MAX_SESSION_PROJECTS = 8"
+            - generic [ref=f1e349]: $ 改 Redis 或类似共享存储;启动期检查 worker 数并 WARN
+        - generic [ref=f1e350]:
+          - generic [ref=f1e351]:
+            - generic [ref=f1e352]: ">"
+            - generic [ref=f1e353]: S-06
+            - generic [ref=f1e354]: P0
+            - generic [ref=f1e355]: ✓ 亲验
+            - generic [ref=f1e356]: services/api/backend/services/agent_proxy.py:42
+          - generic [ref=f1e357]:
+            - generic [ref=f1e358]:
+              - code [ref=f1e359]: httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0)
+              - code [ref=f1e360]: read=None
+              - text: 永远等待;Agent 独立进程 hang 住 → SSE 流永不结束。
+            - generic [ref=f1e361]: "✓ 亲验 line 42: timeout = httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0)"
+            - generic [ref=f1e362]: $ 至少设 read=120.0
+        - heading "🟠 P1 — 高(节选新增 5 项)" [level=3] [ref=f1e363]
+        - table [ref=f1e364]:
+          - rowgroup [ref=f1e365]:
+            - row [ref=f1e366]:
+              - columnheader "ID" [ref=f1e367]
+              - columnheader "文件" [ref=f1e368]
+              - columnheader "问题" [ref=f1e369]
+            - row [ref=f1e370]:
+              - cell [ref=f1e371]:
+                - code [ref=f1e372]: S-21
+                - text: NEW
+              - cell [ref=f1e373]:
+                - code [ref=f1e374]: alembic/versions/6096bed38e20_initial_schema.py
+              - cell [ref=f1e375]:
+                - text: "10 个 FK 列无 B-tree 索引:"
+                - code [ref=f1e376]: categories(user_id)
+                - text: 、
+                - code [ref=f1e377]: tags(user_id)
+                - text: 、
+                - code [ref=f1e378]: projects(user_id, category_id)
+                - text: 、
+                - code [ref=f1e379]: agent_sessions(user_id, project_id)
+                - text: 、
+                - code [ref=f1e380]: notes(user_id, project_id)
+                - text: 、
+                - code [ref=f1e381]: agent_messages(session_id)
+                - text: 、
+                - code [ref=f1e382]: project_analyses(project_id)
+                - text: ;大数据量下 JOIN 全表扫描
+            - row [ref=f1e383]:
+              - cell [ref=f1e384]:
+                - code [ref=f1e385]: S-22
+                - text: NEW
+              - cell [ref=f1e386]:
+                - code [ref=f1e387]: alembic/versions/...initial_schema.py:86
+              - cell [ref=f1e388]:
+                - code [ref=f1e389]: projects.url
+                - text: 无
+                - code [ref=f1e390]: UNIQUE(user_id, url)
+                - text: 约束,仅依赖应用层去重
+            - row [ref=f1e391]:
+              - cell [ref=f1e392]:
+                - code [ref=f1e393]: S-23
+                - text: NEW
+              - cell [ref=f1e394]:
+                - code [ref=f1e395]: alembic/env.py:16
+              - cell [ref=f1e396]:
+                - code [ref=f1e397]: ROOT = Path(__file__).resolve().parents[5]
+                - text: 硬编码 5 层目录;Docker / 包装目录会破
+            - row [ref=f1e398]:
+              - cell [ref=f1e399]:
+                - code [ref=f1e400]: S-24
+                - text: NEW
+              - cell [ref=f1e401]:
+                - code [ref=f1e402]: alembic/versions/...initial_schema.py
+              - cell [ref=f1e403]:
+                - text: 无
+                - code [ref=f1e404]: downgrade()
+                - text: 路径测试;迁移有
+                - code [ref=f1e405]: downgrade()
+                - text: 函数但 CI 不验证
+            - row [ref=f1e406]:
+              - cell [ref=f1e407]:
+                - code [ref=f1e408]: S-25
+                - text: NEW
+              - cell [ref=f1e409]:
+                - code [ref=f1e410]: .gitignore
+              - cell [ref=f1e411]:
+                - text: 根
+                - code [ref=f1e412]: .playwright-mcp/
+                - text: 未排除(只排了
+                - code [ref=f1e413]: docs/design/v1/.playwright-mcp/
+                - text: )
+      - generic [ref=f1e414]:
+        - heading "§ 02 代码规范 +2 new" [level=2] [ref=f1e415]:
+          - generic [ref=f1e416]: § 02
+          - text: 代码规范
+          - generic [ref=f1e417]: +2 new
+        - generic [ref=f1e418]:
+          - strong [ref=f1e419]: "v1 行数错误已亲验修正:"
+          - list [ref=f1e420]:
+            - listitem [ref=f1e421]:
+              - code [ref=f1e422]: services/api/backend/services/agent_service.py
+              - text: :v1 报 1700+ → 亲验 1501 修正 -200
+            - listitem [ref=f1e423]:
+              - code [ref=f1e424]: services/agent/agent_core/agents/react.py
+              - text: :v1 报 1700+ → 亲验 1282 修正 -420
+            - listitem [ref=f1e425]:
+              - code [ref=f1e426]: services/agent/agent_core/tools/builtin.py
+              - text: :v1 报 1900+(路径错) → 亲验 1409 (路径在 agent_core/tools/) 路径+行数
+        - heading "🔴 P0 — 严重" [level=3] [ref=f1e427]
+        - table [ref=f1e428]:
+          - rowgroup [ref=f1e429]:
+            - row [ref=f1e430]:
+              - columnheader "ID" [ref=f1e431]
+              - columnheader "文件" [ref=f1e432]
+              - columnheader "问题" [ref=f1e433]
+            - row [ref=f1e434]:
+              - cell [ref=f1e435]:
+                - code [ref=f1e436]: N-01
+              - cell [ref=f1e437]:
+                - code [ref=f1e438]: apps/web/src/stores/agentStore.ts:336-905
+              - cell [ref=f1e439]:
+                - text: 单文件 906 行 +
+                - code [ref=f1e440]: processSSEStream
+                - text: 圈复杂度 30+;大量
+                - code [ref=f1e441]: as unknown as
+                - text: 绕过 no-explicit-any
+            - row [ref=f1e442]:
+              - cell [ref=f1e443]:
+                - code [ref=f1e444]: N-02
+              - cell [ref=f1e445]:
+                - code [ref=f1e446]: apps/web/src/utils/agentQuestion.ts:715
+              - cell "反问归一化 700+ 行,嵌套正则复杂度极高" [ref=f1e447]
+            - row [ref=f1e448]:
+              - cell [ref=f1e449]:
+                - code [ref=f1e450]: N-13
+                - text: NEW
+              - cell [ref=f1e451]:
+                - code [ref=f1e452]: agent_core/agents/registry.py:176-437
+              - cell [ref=f1e453]:
+                - text: 7 个 Agent 的
+                - code [ref=f1e454]: system_prompt
+                - text: 硬编码在 466 行大字典内,内嵌反引号/特殊字符/Markdown
+            - row [ref=f1e455]:
+              - cell [ref=f1e456]:
+                - code [ref=f1e457]: N-14
+                - text: NEW
+              - cell [ref=f1e458]:
+                - code [ref=f1e459]: agent_core/agents/registry.py:41-
+              - cell [ref=f1e460]:
+                - code [ref=f1e461]: SOULS
+                - text: 字典 7 个 Agent × 多语言风格字段,纯字符串硬编码
+      - generic [ref=f1e462]:
+        - heading "§ 03 现代性" [level=2] [ref=f1e463]:
+          - generic [ref=f1e464]: § 03
+          - text: 现代性
+        - paragraph [ref=f1e465]: 整体已采用现代栈(FastAPI + SA 2.0 + Pydantic v2 + React 19 + Vite 7),仍存在若干"用对了但没用全"的残留。共发现 6 个 P1、8 个 P2。详细见配套 Markdown 报告 §3。
+      - generic [ref=f1e466]:
+        - heading "§ 04 维护性" [level=2] [ref=f1e467]:
+          - generic [ref=f1e468]: § 04
+          - text: 维护性
+        - paragraph [ref=f1e469]: 核心痛点:多个文件超过 700 行、Hub 调度逻辑嵌套 7 层、SSE 消费逻辑在 3 处独立实现。共发现 3 个 P0、9 个 P1。详细见 Markdown 报告 §4。
+      - generic [ref=f1e470]:
+        - heading "§ 05 扩展性" [level=2] [ref=f1e471]:
+          - generic [ref=f1e472]: § 05
+          - text: 扩展性
+        - paragraph [ref=f1e473]: 5 处独立维护 Agent 列表(已亲验全部 ✓)。共 4 个 P1、5 个 P2。详细见 Markdown 报告 §5。
+      - generic [ref=f1e474]:
+        - heading "§ 06 耦合性" [level=2] [ref=f1e475]:
+          - generic [ref=f1e476]: § 06
+          - text: 耦合性
+        - generic [ref=f1e477]:
+          - strong [ref=f1e478]: "本轮亲验:"
+          - text: 在
+          - code [ref=f1e479]: services/agent/agent_core/
+          - text: 下发现 14 处
+          - code [ref=f1e480]: from backend.*
+          - text: "反向 import, 散落位置:"
+          - code [ref=f1e481]: llm/config.py:11,115,144
+          - text: 、
+          - code [ref=f1e482]: llm/provider.py:87
+          - text: 、
+          - code [ref=f1e483]: tools/builtin.py:9,24,222,266,1358
+          - text: 、
+          - code [ref=f1e484]: memory/context.py:14,76,108
+          - text: 、
+          - code [ref=f1e485]: agents/hub.py:27,29
+          - text: 、
+          - code [ref=f1e486]: agents/react.py:17
+          - text: 、
+          - code [ref=f1e487]: memory/service.py:13,14
+          - text: 。
+      - generic [ref=f1e488]:
+        - heading "§ 07 代码质量" [level=2] [ref=f1e489]:
+          - generic [ref=f1e490]: § 07
+          - text: 代码质量
+        - paragraph [ref=f1e491]: P0 2 + P1 8 + P2 6。详细见 Markdown 报告 §7。
+      - generic [ref=f1e492]:
+        - heading "§ 08 代码复用" [level=2] [ref=f1e493]:
+          - generic [ref=f1e494]: § 08
+          - text: 代码复用
+        - paragraph [ref=f1e495]: 关键真源缺失,核心数据多处独立维护。共发现 5 个 P0、10 个 P1。
+        - generic [ref=f1e496]:
+          - strong [ref=f1e497]: "v2 去重合并:"
+          - text: "以下问题在 v1 中被多次列出,已合并为唯一定位:"
+          - code [ref=f1e498]: format_sse
+          - text: 3 处(C-04 + U-01 → C-04)、
+          - code [ref=f1e499]: _load_settings_dict
+          - text: 3 处(U-02 唯一定位)、 5 处 Agent 列表(E-01 + U-04 → E-01)、
+          - code [ref=f1e500]: _session_stream_cancel
+          - text: (S-05 + M-03 → S-05)、
+          - code [ref=f1e501]: agent_service.py
+          - text: 巨型(N-03 + R-04 + Q-04 + M-03 → N-03)、
+          - code [ref=f1e502]: hub.py
+          - text: 巨型(N-04 + R-03 + Q-03 → R-03)。
+      - generic [ref=f1e503]:
+        - heading "§ 09 测试覆盖 +15 new" [level=2] [ref=f1e504]:
+          - generic [ref=f1e505]: § 09
+          - text: 测试覆盖
+          - generic [ref=f1e506]: +15 new
+        - generic [ref=f1e507]:
+          - strong [ref=f1e508]: "基础设施(亲验):"
+          - text: 243 个测试函数 / 54 文件(5 层级:unit 145 / business 7 / module 33 / function 2 / integration 56)。Vitest + Playwright 双轨,Playwright 强制
+          - code [ref=f1e509]: VITE_USE_MOCK=true
+          - text: ",无真实后端 e2e。"
+        - heading "前端测试强项 ✅" [level=3] [ref=f1e510]
+        - list [ref=f1e511]:
+          - listitem [ref=f1e512]:
+            - text: "SSE 流式核心逻辑覆盖扎实:"
+            - code [ref=f1e513]: sse-parser.test.ts
+            - text: (6 测试)、
+            - code [ref=f1e514]: agentSSEStream.test.ts
+            - text: (3)、
+            - code [ref=f1e515]: runTrace.test.ts
+            - text: (8)、
+            - code [ref=f1e516]: streamRenderer.test.ts
+            - text: (10)、
+            - code [ref=f1e517]: streamSessionGuard.test.ts
+            - text: (2)
+          - listitem [ref=f1e518]:
+            - text: e2e 用例 7 个(总 222 行),最高质量
+            - code [ref=f1e519]: overview-mock-rounds.spec.ts
+            - text: (107 行)
+        - heading "🔴 P0 — 后端测试薄弱" [level=3] [ref=f1e520]
+        - table [ref=f1e521]:
+          - rowgroup [ref=f1e522]:
+            - row [ref=f1e523]:
+              - columnheader "ID" [ref=f1e524]
+              - columnheader "文件" [ref=f1e525]
+              - columnheader "问题" [ref=f1e526]
+            - row [ref=f1e527]:
+              - cell [ref=f1e528]:
+                - code [ref=f1e529]: T-01
+                - text: NEW
+              - cell [ref=f1e530]:
+                - code [ref=f1e531]: tests/function/test_graph_similarity.py:1-32
+              - cell [ref=f1e532]:
+                - text: 仅 32 行,2 测试;
+                - code [ref=f1e533]: graph_service
+                - text: 还有 6 个函数(
+                - code [ref=f1e534]: _tokenize
+                - text: /
+                - code [ref=f1e535]: _tf
+                - text: /
+                - code [ref=f1e536]: _cosine
+                - text: /
+                - code [ref=f1e537]: _doc_vector
+                - text: /
+                - code [ref=f1e538]: build_graph
+                - text: /
+                - code [ref=f1e539]: _similarity_detailed
+                - text: )未覆盖
+            - row [ref=f1e540]:
+              - cell [ref=f1e541]:
+                - code [ref=f1e542]: T-02
+                - text: NEW
+              - cell [ref=f1e543]:
+                - code [ref=f1e544]: tests/business/
+              - cell [ref=f1e545]:
+                - text: 仅 7 个测试,
+                - code [ref=f1e546]: agent_service
+                - text: /
+                - code [ref=f1e547]: agent_proxy
+                - text: /
+                - code [ref=f1e548]: profile_service
+                - text: /
+                - code [ref=f1e549]: settings_service
+                - text: /
+                - code [ref=f1e550]: graph_service
+                - text: /
+                - code [ref=f1e551]: github_accounts
+                - text: 等 11 个 service 无业务测试
+        - heading "🟠 P1 — 测试质量问题" [level=3] [ref=f1e552]
+        - table [ref=f1e553]:
+          - rowgroup [ref=f1e554]:
+            - row [ref=f1e555]:
+              - columnheader "ID" [ref=f1e556]
+              - columnheader "文件" [ref=f1e557]
+              - columnheader "问题" [ref=f1e558]
+            - row [ref=f1e559]:
+              - cell [ref=f1e560]:
+                - code [ref=f1e561]: T-03
+              - cell [ref=f1e562]:
+                - code [ref=f1e563]: tests/business/
+                - text: vs
+                - code [ref=f1e564]: tests/integration/
+              - cell "边界重叠;同功能(认证 / 项目)在两个层级有覆盖,但负面分支未测" [ref=f1e565]
+            - row [ref=f1e566]:
+              - cell [ref=f1e567]:
+                - code [ref=f1e568]: T-04
+              - cell [ref=f1e569]:
+                - code [ref=f1e570]: test_agent_api.py:85-150
+              - cell "单个测试串 9 个 HTTP 请求 65 行,违反\"one test = one assertion\"" [ref=f1e571]
+            - row [ref=f1e572]:
+              - cell [ref=f1e573]:
+                - code [ref=f1e574]: T-05
+              - cell "记忆合并算法" [ref=f1e575]
+              - cell "无独立测试;仅间接覆盖,无合并冲突 / 去重 / 类型校验的纯算法测试" [ref=f1e576]
+            - row [ref=f1e577]:
+              - cell [ref=f1e578]:
+                - code [ref=f1e579]: T-06
+              - cell [ref=f1e580]:
+                - code [ref=f1e581]: playwright.config.ts:25
+              - cell [ref=f1e582]:
+                - text: 强制
+                - code [ref=f1e583]: VITE_USE_MOCK=true
+                - text: ",无真实后端 e2e"
+            - row [ref=f1e584]:
+              - cell [ref=f1e585]:
+                - code [ref=f1e586]: T-07
+              - cell [ref=f1e587]:
+                - code [ref=f1e588]: tests/e2e/agent.spec.ts:14-17
+              - cell [ref=f1e589]:
+                - text: 仅验证
+                - code [ref=f1e590]: stream-renderer
+                - text: 出现,未断言流式片段顺序 / thinking 分离 / 工具调用 / 反问面板
+            - row [ref=f1e591]:
+              - cell [ref=f1e592]:
+                - code [ref=f1e593]: T-08
+              - cell [ref=f1e594]:
+                - code [ref=f1e595]: tests/e2e/graph.spec.ts:5-10
+              - cell "仅检查 SVG 与首个节点,未覆盖节点点击 / 缩放 / 拖拽 / searchQuery 过滤" [ref=f1e596]
+            - row [ref=f1e597]:
+              - cell [ref=f1e598]:
+                - code [ref=f1e599]: T-09
+              - cell [ref=f1e600]:
+                - code [ref=f1e601]: sse-parser.test.ts:46-49
+              - cell [ref=f1e602]:
+                - text: malformed JSON 仅
+                - code [ref=f1e603]: console.warn
+                - text: ",不验证警告是否被记录"
+            - row [ref=f1e604]:
+              - cell [ref=f1e605]:
+                - code [ref=f1e606]: T-10
+              - cell [ref=f1e607]:
+                - code [ref=f1e608]: agentSSEStream.test.ts:51-61
+              - cell [ref=f1e609]:
+                - code [ref=f1e610]: expect(text === 'A' || text === 'AB')
+                - text: 宽松断言反模式
+            - row [ref=f1e611]:
+              - cell [ref=f1e612]:
+                - code [ref=f1e613]: T-11
+              - cell [ref=f1e614]:
+                - code [ref=f1e615]: AgentContextSidebar.test.tsx:35-38
+              - cell "仅 1 个测试,组件实际承担 5+ 功能" [ref=f1e616]
+            - row [ref=f1e617]:
+              - cell [ref=f1e618]:
+                - code [ref=f1e619]: T-12
+              - cell [ref=f1e620]:
+                - code [ref=f1e621]: settingsStore.test.ts:51-56
+              - cell [ref=f1e622]:
+                - code [ref=f1e623]: fakeSettings
+                - text: 测试 "凑用例"——断言与 fixture 自身字段相等,无意义
+            - row [ref=f1e624]:
+              - cell [ref=f1e625]:
+                - code [ref=f1e626]: T-13
+              - cell [ref=f1e627]:
+                - code [ref=f1e628]: apps/web/tests/setup.ts
+              - cell [ref=f1e629]:
+                - text: 强制
+                - code [ref=f1e630]: NODE_ENV='development'
+                - text: ",production build 行为未测"
+            - row [ref=f1e631]:
+              - cell [ref=f1e632]:
+                - code [ref=f1e633]: T-14
+              - cell [ref=f1e634]:
+                - code [ref=f1e635]: tests/
+              - cell [ref=f1e636]:
+                - text: 无
+                - code [ref=f1e637]: e2e/
+                - text: 子目录;后端无任何 e2e
+            - row [ref=f1e638]:
+              - cell [ref=f1e639]:
+                - code [ref=f1e640]: T-15
+              - cell "SSE 中断重连" [ref=f1e641]
+              - cell [ref=f1e642]:
+                - code [ref=f1e643]: streamSessionGuard
+                - text: 单测覆盖 AbortSignal,但 e2e 无"发送中切换 session"端到端验证
+      - generic [ref=f1e644]:
+        - heading "§ 10 数据库迁移 +8 new" [level=2] [ref=f1e645]:
+          - generic [ref=f1e646]: § 10
+          - text: 数据库迁移
+          - generic [ref=f1e647]: +8 new
+        - generic [ref=f1e648]:
+          - strong [ref=f1e649]: "本轮亲验发现:"
+          - text: Alembic 初始迁移
+          - code [ref=f1e650]: 6096bed38e20_initial_schema.py
+          - text: 中 10+ 个 FK 列无 B-tree 索引。虽然当前 SQLite 规模小表现不明显, 但生产 PostgreSQL + 大数据量下,
+          - code [ref=f1e651]: WHERE user_id = ?
+          - text: /
+          - code [ref=f1e652]: WHERE project_id = ?
+          - text: 是最常见查询模式,会全表扫描。
+        - table [ref=f1e653]:
+          - rowgroup [ref=f1e654]:
+            - row [ref=f1e655]:
+              - columnheader "ID" [ref=f1e656]
+              - columnheader "文件 / 行号" [ref=f1e657]
+              - columnheader "问题" [ref=f1e658]
+              - columnheader "严重度" [ref=f1e659]
+            - row [ref=f1e660]:
+              - cell [ref=f1e661]:
+                - code [ref=f1e662]: D-01
+              - cell [ref=f1e663]:
+                - code [ref=f1e664]: alembic/versions/6096bed38e20_initial_schema.py
+              - cell "10+ FK 列无索引:L47 categories(user_id)、L68 tags(user_id)、L97-98 projects(category_id, user_id)、L111-112 agent_sessions(project_id, user_id)、L123-124 notes(project_id, user_id)、L137 project_analyses(project_id)、L156 agent_messages(session_id)" [ref=f1e665]
+              - cell "P0" [ref=f1e666]
+            - row [ref=f1e667]:
+              - cell [ref=f1e668]:
+                - code [ref=f1e669]: D-02
+              - cell [ref=f1e670]:
+                - code [ref=f1e671]: alembic/env.py:16
+              - cell [ref=f1e672]:
+                - code [ref=f1e673]: ROOT = Path(__file__).resolve().parents[5]
+                - text: 硬编码 5 层目录结构
+              - cell "P1" [ref=f1e674]
+            - row [ref=f1e675]:
+              - cell [ref=f1e676]:
+                - code [ref=f1e677]: D-03
+              - cell "迁移管理" [ref=f1e678]
+              - cell "仅 1 个迁移文件,无 CI 往返测试,多迁移合并策略缺失" [ref=f1e679]
+              - cell "P1" [ref=f1e680]
+            - row [ref=f1e681]:
+              - cell [ref=f1e682]:
+                - code [ref=f1e683]: D-04
+              - cell "迁移文件" [ref=f1e684]
+              - cell [ref=f1e685]:
+                - text: 无
+                - code [ref=f1e686]: downgrade
+                - text: 路径测试(有
+                - code [ref=f1e687]: downgrade()
+                - text: 函数但 CI 不验证)
+              - cell "P1" [ref=f1e688]
+            - row [ref=f1e689]:
+              - cell [ref=f1e690]:
+                - code [ref=f1e691]: D-05
+              - cell "initial_schema.py:86" [ref=f1e692]
+              - cell [ref=f1e693]:
+                - code [ref=f1e694]: projects.url
+                - text: 无
+                - code [ref=f1e695]: UNIQUE(user_id, url)
+              - cell "P1" [ref=f1e696]
+            - row [ref=f1e697]:
+              - cell [ref=f1e698]:
+                - code [ref=f1e699]: D-06
+              - cell "initial_schema.py:50-59" [ref=f1e700]
+              - cell [ref=f1e701]:
+                - code [ref=f1e702]: refresh_tokens
+                - text: 缺
+                - code [ref=f1e703]: last_used_at
+              - cell "P3" [ref=f1e704]
+            - row [ref=f1e705]:
+              - cell [ref=f1e706]:
+                - code [ref=f1e707]: D-07
+              - cell "env.py:46,56" [ref=f1e708]
+              - cell [ref=f1e709]:
+                - code [ref=f1e710]: render_as_batch=True
+                - text: 应用于所有 dialect,PG 效率低
+              - cell "P3" [ref=f1e711]
+            - row [ref=f1e712]:
+              - cell [ref=f1e713]:
+                - code [ref=f1e714]: D-08
+              - cell "alembic.ini:5" [ref=f1e715]
+              - cell [ref=f1e716]:
+                - code [ref=f1e717]: sqlalchemy.url = sqlite:///data/repopilot.db
+                - text: 默认值应留空
+              - cell "P3" [ref=f1e718]
+      - generic [ref=f1e719]:
+        - heading "§ 11 仓库卫生 +16 new" [level=2] [ref=f1e720]:
+          - generic [ref=f1e721]: § 11
+          - text: 仓库卫生
+          - generic [ref=f1e722]: +16 new
+        - heading "11.1 archive/ 严重问题 🔴" [level=3] [ref=f1e723]
+        - table [ref=f1e724]:
+          - rowgroup [ref=f1e725]:
+            - row [ref=f1e726]:
+              - columnheader "ID" [ref=f1e727]
+              - columnheader "文件" [ref=f1e728]
+              - columnheader "问题" [ref=f1e729]
+              - columnheader "严重度" [ref=f1e730]
+            - row [ref=f1e731]:
+              - cell [ref=f1e732]:
+                - code [ref=f1e733]: H-01
+              - cell [ref=f1e734]:
+                - code [ref=f1e735]: archive/dist/data/stash_users.json:1-17
+              - cell "真实邮箱 + SHA256 密码哈希 + 盐值" [ref=f1e736]
+              - cell "P0" [ref=f1e737]
+            - row [ref=f1e738]:
+              - cell [ref=f1e739]:
+                - code [ref=f1e740]: H-02
+              - cell [ref=f1e741]:
+                - code [ref=f1e742]: archive/dist/data/remembered_sessions.json:1-22
+              - cell [ref=f1e743]:
+                - text: 4 条
+                - code [ref=f1e744]: remember_me
+                - text: 持久化 token
+              - cell "P0" [ref=f1e745]
+            - row [ref=f1e746]:
+              - cell [ref=f1e747]:
+                - code [ref=f1e748]: H-03
+              - cell [ref=f1e749]:
+                - code [ref=f1e750]: archive/dist/data/webview_profile/
+                - text: (40 MB)
+              - cell "WebView2 user profile 含 Cookie/LocalStorage" [ref=f1e751]
+              - cell "P0" [ref=f1e752]
+            - row [ref=f1e753]:
+              - cell [ref=f1e754]:
+                - code [ref=f1e755]: H-04
+              - cell [ref=f1e756]:
+                - code [ref=f1e757]: archive/dist/GitHub Stash.exe
+                - text: (15.9 MB) +
+                - code [ref=f1e758]: archive/build/
+                - text: (36 MB)
+              - cell "PyInstaller 编译产物入仓" [ref=f1e759]
+              - cell "P0" [ref=f1e760]
+            - row [ref=f1e761]:
+              - cell [ref=f1e762]:
+                - code [ref=f1e763]: H-05
+              - cell [ref=f1e764]:
+                - code [ref=f1e765]: archive/data/stash_users.json:1-25
+              - cell "PII 部分脱敏但用户名 + UUID 未脱敏" [ref=f1e766]
+              - cell "P1" [ref=f1e767]
+            - row [ref=f1e768]:
+              - cell [ref=f1e769]:
+                - code [ref=f1e770]: H-06
+              - cell [ref=f1e771]:
+                - code [ref=f1e772]: archive/data/stash_data.json
+                - text: (3,573 行)
+              - cell "206 个项目的用户学习偏好画像" [ref=f1e773]
+              - cell "P1" [ref=f1e774]
+            - row [ref=f1e775]:
+              - cell [ref=f1e776]:
+                - code [ref=f1e777]: H-07
+              - cell [ref=f1e778]:
+                - code [ref=f1e779]: archive/GitHub Stash.spec
+                - text: +
+                - code [ref=f1e780]: archive/GitHubStash.spec
+              - cell "两份不一致的 PyInstaller spec" [ref=f1e781]
+              - cell "P1" [ref=f1e782]
+            - row [ref=f1e783]:
+              - cell [ref=f1e784]:
+                - code [ref=f1e785]: H-08
+              - cell [ref=f1e786]:
+                - code [ref=f1e787]: archive/backend/__pycache__/
+              - cell "4 个 .pyc 编译产物入仓" [ref=f1e788]
+              - cell "P1" [ref=f1e789]
+            - row [ref=f1e790]:
+              - cell [ref=f1e791]:
+                - code [ref=f1e792]: H-09
+              - cell [ref=f1e793]:
+                - code [ref=f1e794]: archive/README-archive.md
+              - cell "缺隐私声明" [ref=f1e795]
+              - cell "P3" [ref=f1e796]
+        - heading "11.2 .gitignore 缺失" [level=3] [ref=f1e797]
+        - table [ref=f1e798]:
+          - rowgroup [ref=f1e799]:
+            - row [ref=f1e800]:
+              - columnheader "ID" [ref=f1e801]
+              - columnheader "缺失项" [ref=f1e802]
+              - columnheader "严重度" [ref=f1e803]
+            - row [ref=f1e804]:
+              - cell [ref=f1e805]:
+                - code [ref=f1e806]: H-10
+              - cell [ref=f1e807]:
+                - code [ref=f1e808]: .claude/
+                - text: 未排除
+              - cell "P0" [ref=f1e809]
+            - row [ref=f1e810]:
+              - cell [ref=f1e811]:
+                - code [ref=f1e812]: H-11
+              - cell [ref=f1e813]:
+                - code [ref=f1e814]: .pytest_cache/
+                - text: 未排除
+              - cell "P0" [ref=f1e815]
+            - row [ref=f1e816]:
+              - cell [ref=f1e817]:
+                - code [ref=f1e818]: H-12
+              - cell [ref=f1e819]:
+                - text: 根
+                - code [ref=f1e820]: .playwright-mcp/
+                - text: 未排除(只排了
+                - code [ref=f1e821]: docs/design/v1/.playwright-mcp/
+                - text: )
+              - cell "P1" [ref=f1e822]
+            - row [ref=f1e823]:
+              - cell [ref=f1e824]:
+                - code [ref=f1e825]: H-13
+              - cell [ref=f1e826]:
+                - code [ref=f1e827]: archive/**/dist/
+                - text: 、
+                - code [ref=f1e828]: archive/**/build/
+                - text: 、
+                - code [ref=f1e829]: archive/**/*.pkg
+                - text: 未排除
+              - cell "P1" [ref=f1e830]
+        - heading "11.3 标准仓库文件缺失" [level=3] [ref=f1e831]
+        - list [ref=f1e832]:
+          - listitem [ref=f1e833]:
+            - text: 🔴
+            - code [ref=f1e834]: LICENSE
+            - text: (开源必备)
+          - listitem [ref=f1e835]:
+            - text: 🟠
+            - code [ref=f1e836]: CHANGELOG.md
+            - text: (v1 → v2 多次迁移,无变更记录)
+          - listitem [ref=f1e837]:
+            - text: 🟠
+            - code [ref=f1e838]: CONTRIBUTING.md
+          - listitem [ref=f1e839]:
+            - text: 🟠
+            - code [ref=f1e840]: SECURITY.md
+          - listitem [ref=f1e841]:
+            - text: 🟢
+            - code [ref=f1e842]: CODE_OF_CONDUCT.md
+        - heading "11.4 .claude/ 与 .zcode/ 配置" [level=3] [ref=f1e843]
+        - table [ref=f1e844]:
+          - rowgroup [ref=f1e845]:
+            - row [ref=f1e846]:
+              - columnheader "ID" [ref=f1e847]
+              - columnheader "文件" [ref=f1e848]
+              - columnheader "问题" [ref=f1e849]
+            - row [ref=f1e850]:
+              - cell [ref=f1e851]:
+                - code [ref=f1e852]: H-14
+              - cell [ref=f1e853]:
+                - code [ref=f1e854]: .claude/worktrees/modest-wright-8e5f37/
+              - cell [ref=f1e855]:
+                - text: 孤立空目录(0 字节),
+                - code [ref=f1e856]: git worktree list
+                - text: 不存在此 worktree,残骸
+            - row [ref=f1e857]:
+              - cell [ref=f1e858]:
+                - code [ref=f1e859]: H-15
+              - cell [ref=f1e860]:
+                - code [ref=f1e861]: .zcode/plans/plan-sess_36b84b54-*.md
+              - cell [ref=f1e862]:
+                - text: 11 KB 高质量整改计划(P0-P3),但
+                - code [ref=f1e863]: .zcode/
+                - text: 整体忽略,可能随工具清理丢失
+            - row [ref=f1e864]:
+              - cell [ref=f1e865]:
+                - code [ref=f1e866]: H-16
+              - cell [ref=f1e867]:
+                - code [ref=f1e868]: .zcode/plans/plan-sess_*.md
+                - text: vs
+                - code [ref=f1e869]: docs/superpowers/plans/2026-07-09-front-backend-review-fixes.md
+              - cell "两份独立审查整改计划并存,无统一归档机制" [ref=f1e870]
+      - generic [ref=f1e871]:
+        - heading "§ 12 文档一致性 +13 new" [level=2] [ref=f1e872]:
+          - generic [ref=f1e873]: § 12
+          - text: 文档一致性
+          - generic [ref=f1e874]: +13 new
+        - heading "12.1 三方冲突矩阵(关键问题)" [level=3] [ref=f1e875]
+        - table [ref=f1e876]:
+          - rowgroup [ref=f1e877]:
+            - row [ref=f1e878]:
+              - columnheader "维度" [ref=f1e879]
+              - columnheader "v1 PRD/SPEC/MVP" [ref=f1e880]
+              - columnheader "v2 PRD/SPEC/MVP" [ref=f1e881]
+              - columnheader "代码实测" [ref=f1e882]
+              - columnheader "冲突?" [ref=f1e883]
+            - row [ref=f1e884]:
+              - cell "Agent 数量" [ref=f1e885]
+              - cell "PRD.md:13 \"6 个\"" [ref=f1e886]
+              - cell "v2 PRD \"7 (+Evaluator)\"" [ref=f1e887]
+              - cell "registry.py = 7" [ref=f1e888]
+              - cell "🔴 三方冲突" [ref=f1e889]
+            - row [ref=f1e890]:
+              - cell "Atlas 定义" [ref=f1e891]
+              - cell "MVP_SCOPE §3.3 P0" [ref=f1e892]
+              - cell "\"6 实现 + 1 预留\"" [ref=f1e893]
+              - cell "registry.py = 已实现" [ref=f1e894]
+              - cell "🔴" [ref=f1e895]
+            - row [ref=f1e896]:
+              - cell "工具数量" [ref=f1e897]
+              - cell "v1 默认 14" [ref=f1e898]
+              - cell "v2 \"14 + 3 + 2 = 19\"" [ref=f1e899]
+              - cell [ref=f1e900]:
+                - code [ref=f1e901]: tools/builtin.py
+                - text: = 24
+              - cell "🔴" [ref=f1e902]
+            - row [ref=f1e903]:
+              - cell "路径结构" [ref=f1e904]
+              - cell [ref=f1e905]:
+                - code [ref=f1e906]: backend/
+                - text: 、
+                - code [ref=f1e907]: frontend/
+              - cell [ref=f1e908]:
+                - code [ref=f1e909]: apps/
+                - text: 、
+                - code [ref=f1e910]: services/
+              - cell "已迁移" [ref=f1e911]
+              - cell "🔴 大量旧路径引用未刷新" [ref=f1e912]
+        - heading "12.2 严重问题" [level=3] [ref=f1e913]
+        - table [ref=f1e914]:
+          - rowgroup [ref=f1e915]:
+            - row [ref=f1e916]:
+              - columnheader "ID" [ref=f1e917]
+              - columnheader "文件 / 行号" [ref=f1e918]
+              - columnheader "问题" [ref=f1e919]
+              - columnheader "严重度" [ref=f1e920]
+            - row [ref=f1e921]:
+              - cell [ref=f1e922]:
+                - code [ref=f1e923]: DOC-01
+              - cell [ref=f1e924]:
+                - code [ref=f1e925]: docs/development/PROGRESS_REPORT.md:3
+              - cell "报告日期 2026-08-03,根版本已 2.0.0,最新 commit f16be7a(2026-08-04)未体现" [ref=f1e926]
+              - cell "P0" [ref=f1e927]
+            - row [ref=f1e928]:
+              - cell [ref=f1e929]:
+                - code [ref=f1e930]: DOC-02
+              - cell [ref=f1e931]:
+                - code [ref=f1e932]: docs/product/v1/PRD/PRD.md:13
+              - cell "\"由六个专业 Agent 组成\",但代码 = 7" [ref=f1e933]
+              - cell "P0" [ref=f1e934]
+            - row [ref=f1e935]:
+              - cell [ref=f1e936]:
+                - code [ref=f1e937]: DOC-03
+              - cell "v2 PRD/MVP/AGENT_PRD" [ref=f1e938]
+              - cell "Agent 数 / Atlas 状态 / Evaluator 在 MVP 描述互相冲突" [ref=f1e939]
+              - cell "P0" [ref=f1e940]
+            - row [ref=f1e941]:
+              - cell [ref=f1e942]:
+                - code [ref=f1e943]: DOC-04
+              - cell "根目录" [ref=f1e944]
+              - cell "缺失 CHANGELOG / CONTRIBUTING / LICENSE / SECURITY" [ref=f1e945]
+              - cell "P1" [ref=f1e946]
+            - row [ref=f1e947]:
+              - cell [ref=f1e948]:
+                - code [ref=f1e949]: DOC-05
+              - cell [ref=f1e950]:
+                - code [ref=f1e951]: DEVELOPMENT_ROADMAP.md:84-408
+              - cell [ref=f1e952]:
+                - text: 全部
+                - code [ref=f1e953]: "[ ]"
+                - text: 复选框未勾选,易被误读为 todo list
+              - cell "P1" [ref=f1e954]
+            - row [ref=f1e955]:
+              - cell [ref=f1e956]:
+                - code [ref=f1e957]: DOC-06
+              - cell [ref=f1e958]:
+                - code [ref=f1e959]: guides/DEVELOPMENT_PROCESS.md:42-50
+              - cell [ref=f1e960]:
+                - text: 测试命令指向
+                - code [ref=f1e961]: docs/design/v1/frontend
+                - text: 已归档沙盒,主前端已迁入
+                - code [ref=f1e962]: apps/web
+              - cell "P1" [ref=f1e963]
+            - row [ref=f1e964]:
+              - cell [ref=f1e965]:
+                - code [ref=f1e966]: DOC-07
+              - cell [ref=f1e967]:
+                - code [ref=f1e968]: docs/design/v1/.playwright-mcp/
+              - cell "95 个 console-*.log 文件未清理" [ref=f1e969]
+              - cell "P1" [ref=f1e970]
+            - row [ref=f1e971]:
+              - cell [ref=f1e972]:
+                - code [ref=f1e973]: DOC-08
+              - cell [ref=f1e974]:
+                - code [ref=f1e975]: docs/development/changes/build/
+              - cell "空目录,应删除或填充" [ref=f1e976]
+              - cell "P1" [ref=f1e977]
+            - row [ref=f1e978]:
+              - cell [ref=f1e979]:
+                - code [ref=f1e980]: DOC-09
+              - cell [ref=f1e981]:
+                - code [ref=f1e982]: docs/design/v1/frontend/
+              - cell [ref=f1e983]:
+                - text: 含
+                - code [ref=f1e984]: dist/
+                - text: 、
+                - code [ref=f1e985]: node_modules/
+                - text: 、
+                - code [ref=f1e986]: coverage/
+                - text: 制品目录
+              - cell "P1" [ref=f1e987]
+            - row [ref=f1e988]:
+              - cell [ref=f1e989]:
+                - code [ref=f1e990]: DOC-10
+              - cell [ref=f1e991]:
+                - code [ref=f1e992]: docs/superpowers/
+              - cell "文档体系定位模糊" [ref=f1e993]
+              - cell "P1" [ref=f1e994]
+            - row [ref=f1e995]:
+              - cell [ref=f1e996]:
+                - code [ref=f1e997]: DOC-11
+              - cell [ref=f1e998]:
+                - code [ref=f1e999]: MVP_SCOPE.md
+              - cell "差异标注复核 2026-08-03,但正文仍多为旧值" [ref=f1e1000]
+              - cell "P3" [ref=f1e1001]
+            - row [ref=f1e1002]:
+              - cell [ref=f1e1003]:
+                - code [ref=f1e1004]: DOC-12
+              - cell [ref=f1e1005]:
+                - code [ref=f1e1006]: PATH_MAPPING.md:7
+              - cell [ref=f1e1007]:
+                - text: 大量下游文档仍用旧
+                - code [ref=f1e1008]: backend/
+                - text: 路径
+              - cell "P3" [ref=f1e1009]
+            - row [ref=f1e1010]:
+              - cell [ref=f1e1011]:
+                - code [ref=f1e1012]: DOC-13
+              - cell "跨文档引用" [ref=f1e1013]
+              - cell [ref=f1e1014]:
+                - text: 缺 CI 校验
+                - code [ref=f1e1015]: markdown-link-check
+              - cell "P3" [ref=f1e1016]
+      - generic [ref=f1e1017]:
+        - heading "§ 13 依赖与配置 +7 new" [level=2] [ref=f1e1018]:
+          - generic [ref=f1e1019]: § 13
+          - text: 依赖与配置
+          - generic [ref=f1e1020]: +7 new
+        - table [ref=f1e1021]:
+          - rowgroup [ref=f1e1022]:
+            - row [ref=f1e1023]:
+              - columnheader "ID" [ref=f1e1024]
+              - columnheader "文件" [ref=f1e1025]
+              - columnheader "问题" [ref=f1e1026]
+              - columnheader "严重度" [ref=f1e1027]
+            - row [ref=f1e1028]:
+              - cell [ref=f1e1029]:
+                - code [ref=f1e1030]: DEP-01
+              - cell [ref=f1e1031]:
+                - code [ref=f1e1032]: services/api/pyproject.toml:7-23
+              - cell [ref=f1e1033]:
+                - code [ref=f1e1034]: python-jose
+                - text: 多年未更新且有 CVE,推荐迁移
+                - code [ref=f1e1035]: pyjwt>=2.8.0
+              - cell "P1" [ref=f1e1036]
+            - row [ref=f1e1037]:
+              - cell [ref=f1e1038]:
+                - code [ref=f1e1039]: DEP-02
+              - cell [ref=f1e1040]:
+                - code [ref=f1e1041]: api/pyproject.toml
+                - text: +
+                - code [ref=f1e1042]: agent/pyproject.toml
+              - cell "8 个核心依赖版本号完全相同,因反向 import 不得不重复" [ref=f1e1043]
+              - cell "P1" [ref=f1e1044]
+            - row [ref=f1e1045]:
+              - cell [ref=f1e1046]:
+                - code [ref=f1e1047]: DEP-03
+              - cell [ref=f1e1048]:
+                - code [ref=f1e1049]: apps/web/package.json:53
+              - cell [ref=f1e1050]:
+                - code [ref=f1e1051]: "eslint: ^10.6.0"
+                - text: —— v10 未发布
+              - cell "P1" [ref=f1e1052]
+            - row [ref=f1e1053]:
+              - cell [ref=f1e1054]:
+                - code [ref=f1e1055]: DEP-04
+              - cell [ref=f1e1056]:
+                - code [ref=f1e1057]: apps/web/package.json:39-62
+              - cell "Vitest 4 + Vite 7 + jsdom 29 新生态,可能 React 19 兼容问题" [ref=f1e1058]
+              - cell "P1" [ref=f1e1059]
+            - row [ref=f1e1060]:
+              - cell [ref=f1e1061]:
+                - code [ref=f1e1062]: DEP-05
+              - cell [ref=f1e1063]:
+                - text: 无
+                - code [ref=f1e1064]: uv.lock
+                - text: /
+                - code [ref=f1e1065]: poetry.lock
+              - cell "Python 依赖无锁文件,无法保证可复现构建" [ref=f1e1066]
+              - cell "P1" [ref=f1e1067]
+            - row [ref=f1e1068]:
+              - cell [ref=f1e1069]:
+                - code [ref=f1e1070]: DEP-06
+              - cell [ref=f1e1071]:
+                - text: 根
+                - code [ref=f1e1072]: pyproject.toml:6-8
+              - cell [ref=f1e1073]:
+                - code [ref=f1e1074]: "[tool.uv.workspace] members"
+                - generic [ref=f1e1075]:
+                  - text: 没把
+                  - code [ref=f1e1076]: packages/py-shared
+                  - text: 计入
+              - cell "P1" [ref=f1e1077]
+            - row [ref=f1e1078]:
+              - cell [ref=f1e1079]:
+                - code [ref=f1e1080]: DEP-07
+              - cell [ref=f1e1081]:
+                - code [ref=f1e1082]: apps/web/package.json
+              - cell [ref=f1e1083]:
+                - code [ref=f1e1084]: "@repopilot/types: \"*\""
+                - text: workspaces 符号链接 + tsconfig paths 双重解析
+              - cell "P3" [ref=f1e1085]
+      - generic [ref=f1e1086]:
+        - heading "§ 14 优先级路线图" [level=2] [ref=f1e1087]:
+          - generic [ref=f1e1088]: § 14
+          - text: 优先级路线图
+        - heading "P0 — 立即修复(本周)" [level=3] [ref=f1e1089]
+        - list [ref=f1e1090]:
+          - listitem [ref=f1e1091]:
+            - text: H-01~04 删除
+            - code [ref=f1e1092]: archive/dist/data/
+            - text: 全部 +
+            - code [ref=f1e1093]: archive/build/
+            - text: +
+            - code [ref=f1e1094]: archive/dist/(exe)
+            - text: ;从 git 历史
+            - code [ref=f1e1095]: git filter-branch
+          - listitem [ref=f1e1096]: S-01 Mock localStorage token 改 Set-Cookie 模拟
+          - listitem [ref=f1e1097]:
+            - text: S-02
+            - code [ref=f1e1098]: .env.local
+            - text: 确认
+            - code [ref=f1e1099]: .gitignore
+            - text: 覆盖,清理历史
+          - listitem [ref=f1e1100]: S-03 GitHub 仓库名 URL 编码后二次校验
+          - listitem [ref=f1e1101]: S-04 ReAct 工具错误与结果区分
+          - listitem [ref=f1e1102]:
+            - text: S-05
+            - code [ref=f1e1103]: _session_stream_cancel
+            - text: 改 Redis/共享存储
+          - listitem [ref=f1e1104]:
+            - text: S-06
+            - code [ref=f1e1105]: agent_proxy
+            - text: 设
+            - code [ref=f1e1106]: read=120.0
+          - listitem [ref=f1e1107]:
+            - text: S-16,17
+            - code [ref=f1e1108]: .gitignore
+            - text: 补
+            - code [ref=f1e1109]: .pytest_cache/
+            - text: +
+            - code [ref=f1e1110]: .claude/
+          - listitem [ref=f1e1111]:
+            - text: N-01 拆
+            - code [ref=f1e1112]: agentStore.ts
+            - code [ref=f1e1113]: processSSEStream
+            - text: 巨型函数
+          - listitem [ref=f1e1114]:
+            - text: T-01,02 补
+            - code [ref=f1e1115]: tests/function/
+            - text: 与
+            - code [ref=f1e1116]: tests/business/
+            - text: 覆盖
+          - listitem [ref=f1e1117]: DOC-01,02,03 v1/v2 PRD/MVP 与代码建立对照矩阵,统一描述
+          - listitem [ref=f1e1118]: D-01 Alembic 迁移补 FK 列 B-tree 索引(下次 schema 变更)
+        - heading "P1 — 本迭代(1 个月)" [level=3] [ref=f1e1119]
+        - list [ref=f1e1120]:
+          - listitem [ref=f1e1121]:
+            - text: 统一 Agent 注册表真源,删
+            - code [ref=f1e1122]: backend/agents/*
+            - text: shim(C-01 / E-01)
+          - listitem [ref=f1e1123]:
+            - text: 解除
+            - code [ref=f1e1124]: agent_core ↔ backend
+            - text: 循环依赖,把共享逻辑下沉到
+            - code [ref=f1e1125]: packages/py-shared
+            - text: (C-02)
+          - listitem [ref=f1e1126]:
+            - text: 拆分
+            - code [ref=f1e1127]: agent_service.py
+            - text: 1501 行 → 4 个文件(N-03)
+          - listitem [ref=f1e1128]:
+            - text: 拆分
+            - code [ref=f1e1129]: hub.py
+            - text: 1674 行
+            - code [ref=f1e1130]: _dispatch_evaluate_loop
+            - text: /
+            - code [ref=f1e1131]: _handle_dispatches
+            - text: (R-03)
+          - listitem [ref=f1e1132]:
+            - text: 拆分
+            - code [ref=f1e1133]: react.py
+            - text: 1282 行、
+            - code [ref=f1e1134]: builtin.py
+            - text: 1409 行
+          - listitem [ref=f1e1135]:
+            - code [ref=f1e1136]: .github/workflows
+            - text: 建立 CI
+          - listitem [ref=f1e1137]:
+            - code [ref=f1e1138]: uv.lock
+            - text: /
+            - code [ref=f1e1139]: poetry.lock
+            - text: 锁定 Python 依赖
+          - listitem [ref=f1e1140]: alembic CI 往返测试(D-04)
+          - listitem [ref=f1e1141]: DOC-04~10 文档系统化整理
+          - listitem [ref=f1e1142]: H-10~13 .gitignore 补全
+          - listitem [ref=f1e1143]: DEP-01~06 依赖与配置更新
+          - listitem [ref=f1e1144]: T-06~13 前端测试质量提升
+        - heading "P2 — 下迭代(2-3 个月)" [level=3] [ref=f1e1145]
+        - paragraph [ref=f1e1146]:
+          - code [ref=f1e1147]: utils/agentQuestion.ts
+          - text: 715 行 → 5 个文件、
+          - code [ref=f1e1148]: api/real/index.ts
+          - text: 654 行按资源分层、SSE 通用
+          - code [ref=f1e1149]: useAgentStream()
+          - text: hook 抽象、
+          - code [ref=f1e1150]: <Popover>
+          - text: /
+          - code [ref=f1e1151]: <Modal>
+          - text: 基础组件抽象、5 处 Agent 列表合并、硬编码魔数集中、
+          - code [ref=f1e1152]: packages/py-shared
+          - text: 加入 uv-workspace、Alembic 多迁移合并策略、T-14,15 后端 e2e / SSE 中断重连 e2e。
+        - heading "P3 — 持续改进" [level=3] [ref=f1e1153]
+        - paragraph [ref=f1e1154]:
+          - text: icon 抽离 /
+          - code [ref=f1e1155]: cn()
+          - text: 强制 / React 19
+          - code [ref=f1e1156]: <ViewTransition>
+          - text: 改造、错误边界细分、文档与代码同步、ESLint v10 / React 19 hooks rules 全部开启、跨文档引用 CI(
+          - code [ref=f1e1157]: markdown-link-check
+          - text: )、标准仓库文件补全、DOC-11~13 文档细节刷新。
+      - generic [ref=f1e1158]:
+        - heading "§ 15 v1 → v2 变更记录(诚实声明)" [level=2] [ref=f1e1159]:
+          - generic [ref=f1e1160]: § 15
+          - text: v1 → v2 变更记录(诚实声明)
+        - heading "15.1 修正的错误(v1 数字偏差)" [level=3] [ref=f1e1161]
+        - table [ref=f1e1162]:
+          - rowgroup [ref=f1e1163]:
+            - row [ref=f1e1164]:
+              - columnheader "v1 报告" [ref=f1e1165]
+              - columnheader "v1 数字" [ref=f1e1166]
+              - columnheader "亲验真实" [ref=f1e1167]
+              - columnheader "修正后" [ref=f1e1168]
+            - row [ref=f1e1169]:
+              - cell [ref=f1e1170]:
+                - code [ref=f1e1171]: services/api/backend/services/agent_service.py
+              - cell "1700+" [ref=f1e1172]
+              - cell "1501" [ref=f1e1173]
+              - cell "修正 -200" [ref=f1e1174]
+            - row [ref=f1e1175]:
+              - cell [ref=f1e1176]:
+                - code [ref=f1e1177]: services/agent/agent_core/agents/react.py
+              - cell "1700+" [ref=f1e1178]
+              - cell "1282" [ref=f1e1179]
+              - cell "修正 -420" [ref=f1e1180]
+            - row [ref=f1e1181]:
+              - cell [ref=f1e1182]:
+                - code [ref=f1e1183]: services/agent/agent_core/tools/builtin.py
+              - cell "1900+(路径错)" [ref=f1e1184]
+              - cell [ref=f1e1185]:
+                - text: 1409(
+                - code [ref=f1e1186]: agent_core/tools/
+                - text: )
+              - cell "路径+行数" [ref=f1e1187]
+        - heading "15.2 v1 漏报的关键 P0" [level=3] [ref=f1e1188]
+        - list [ref=f1e1189]:
+          - listitem [ref=f1e1190]:
+            - code [ref=f1e1191]: archive/dist/data/stash_users.json
+            - text: 真实 PII
+          - listitem [ref=f1e1192]:
+            - code [ref=f1e1193]: archive/dist/data/remembered_sessions.json
+            - text: 持久化 token
+          - listitem [ref=f1e1194]:
+            - code [ref=f1e1195]: archive/dist/data/webview_profile/
+            - text: WebView2 profile
+          - listitem [ref=f1e1196]:
+            - code [ref=f1e1197]: archive/dist/*.exe
+            - text: +
+            - code [ref=f1e1198]: archive/build/
+            - text: PyInstaller 产物
+          - listitem [ref=f1e1199]:
+            - code [ref=f1e1200]: .gitignore
+            - text: 缺
+            - code [ref=f1e1201]: .pytest_cache/
+            - text: +
+            - code [ref=f1e1202]: .claude/
+          - listitem [ref=f1e1203]: Alembic 10+ FK 列无索引
+        - heading "15.3 v1 漏报的关键 P1" [level=3] [ref=f1e1204]
+        - paragraph [ref=f1e1205]:
+          - text: Alembic 路径硬编码
+          - code [ref=f1e1206]: parents[5]
+          - text: 、Alembic 缺 downgrade 测试、
+          - code [ref=f1e1207]: .playwright-mcp/
+          - text: 根目录未排除、
+          - code [ref=f1e1208]: tests/function/
+          - text: 仅 2 测试、
+          - code [ref=f1e1209]: tests/business/
+          - text: 仅 7 测试(11 个 service 零覆盖)、前端 e2e 仅 mock 轨、前端测试多处宽松断言、文档三方冲突(Agent/工具数量)、缺失 LICENSE / CHANGELOG / CONTRIBUTING / SECURITY,等等共 17 项。
+        - heading "15.4 去重合并" [level=3] [ref=f1e1210]
+        - paragraph [ref=f1e1211]: 将 v1 报告中的 6 处重复列出问题合并为唯一定位(已在 §8 末尾列出)。
+      - generic [ref=f1e1212]:
+        - heading "§ 16 可保留的优点(已亲验)" [level=2] [ref=f1e1213]:
+          - generic [ref=f1e1214]: § 16
+          - text: 可保留的优点(已亲验)
+        - table [ref=f1e1215]:
+          - rowgroup [ref=f1e1216]:
+            - row [ref=f1e1217]:
+              - columnheader "区域" [ref=f1e1218]
+              - columnheader "优点" [ref=f1e1219]
+            - row [ref=f1e1220]:
+              - cell "鉴权" [ref=f1e1221]
+              - cell "双通道 + Cookie + CSRF 中间件设计完整" [ref=f1e1222]
+            - row [ref=f1e1223]:
+              - cell "SSRF 防护" [ref=f1e1224]
+              - cell [ref=f1e1225]:
+                - code [ref=f1e1226]: core/url_safety.py
+                - text: 二次 DNS 解析防 TOCTOU
+            - row [ref=f1e1227]:
+              - cell "Token 轮换" [ref=f1e1228]
+              - cell [ref=f1e1229]:
+                - code [ref=f1e1230]: auth_service.py:90-143
+                - text: Refresh token 轮换 + 乐观锁 + 重放检测实现精细
+            - row [ref=f1e1231]:
+              - cell "工具权限" [ref=f1e1232]
+              - cell [ref=f1e1233]:
+                - code [ref=f1e1234]: tools/registry.py:14-44
+                - code [ref=f1e1235]: TOOL_PERMISSION_MAP
+                - text: +
+                - code [ref=f1e1236]: _PERMISSION_DEFAULTS
+                - text: 设计良好
+            - row [ref=f1e1237]:
+              - cell "端口抽象" [ref=f1e1238]
+              - cell [ref=f1e1239]:
+                - code [ref=f1e1240]: ports/__init__.py
+                - text: 解耦工具实现与 ORM
+            - row [ref=f1e1241]:
+              - cell "校验" [ref=f1e1242]
+              - cell "Pydantic Field 长度限制广泛" [ref=f1e1243]
+            - row [ref=f1e1244]:
+              - cell "GitHub 注入防护" [ref=f1e1245]
+              - cell [ref=f1e1246]:
+                - code [ref=f1e1247]: _safe_github_name
+                - text: 正则覆盖主要 case
+            - row [ref=f1e1248]:
+              - cell "迁移" [ref=f1e1249]
+              - cell [ref=f1e1250]:
+                - text: Alembic 替代
+                - code [ref=f1e1251]: create_all
+            - row [ref=f1e1252]:
+              - cell "段缓冲" [ref=f1e1253]
+              - cell [ref=f1e1254]:
+                - code [ref=f1e1255]: _AgentSegmentBuffer
+                - text: 按 agent_switch 切段落库设计正确
+            - row [ref=f1e1256]:
+              - cell "常量集中" [ref=f1e1257]
+              - cell [ref=f1e1258]:
+                - code [ref=f1e1259]: Workflow
+                - text: 枚举 +
+                - code [ref=f1e1260]: AgentEngineConfig
+                - text: 显著减少魔数
+            - row [ref=f1e1261]:
+              - cell "类型契约" [ref=f1e1262]
+              - cell [ref=f1e1263]:
+                - code [ref=f1e1264]: apps/web/src/api/types.ts
+                - text: 通过
+                - code [ref=f1e1265]: "@repopilot/types"
+                - text: 65 个别名零 drift
+            - row [ref=f1e1266]:
+              - cell "别名表" [ref=f1e1267]
+              - cell [ref=f1e1268]:
+                - code [ref=f1e1269]: aliases.ts
+                - text: 66 个
+                - code [ref=f1e1270]: Schemas['X']
+                - text: 引用 100% 可解析
+            - row [ref=f1e1271]:
+              - cell "前端 SSE 测试" [ref=f1e1272]
+              - cell [ref=f1e1273]:
+                - code [ref=f1e1274]: sse-parser
+                - text: /
+                - code [ref=f1e1275]: agentSSEStream
+                - text: /
+                - code [ref=f1e1276]: runTrace
+                - text: /
+                - code [ref=f1e1277]: streamRenderer
+                - text: 覆盖扎实
+            - row [ref=f1e1278]:
+              - cell "Mock 隔离" [ref=f1e1279]
+              - cell [ref=f1e1280]:
+                - text: Playwright 强制
+                - code [ref=f1e1281]: VITE_USE_MOCK=true
+                - text: ",与生产配置干净隔离"
+  - contentinfo [ref=f1e1282]:
+    - generic [ref=f1e1284]:
+      - generic [ref=f1e1285]:
+        - paragraph [ref=f1e1286]: 报告元信息 v2
+        - paragraph [ref=f1e1287]: 生成时间:2026-08-04(v2 完整版)
+        - paragraph [ref=f1e1288]: v1 阶段:主代理 + 4 个 Explore 子代理并行审查
+        - paragraph [ref=f1e1289]:
+          - text: v2 阶段:主代理亲自抽查 21 处关键文件(行号、严重度真伪核验) + 2 个补查子代理(
+          - code [ref=f1e1290]: archive
+          - text: +
+          - code [ref=f1e1291]: tests
+          - text: +
+          - code [ref=f1e1292]: alembic
+          - text: / 前端测试 +
+          - code [ref=f1e1293]: .claude
+          - text: +
+          - code [ref=f1e1294]: docs
+          - text: )
+      - generic [ref=f1e1295]:
+        - paragraph [ref=f1e1296]: 诚实声明
+        - paragraph [ref=f1e1297]: 3 处行数错误已修正(v1 报告数字偏高)
+        - paragraph [ref=f1e1298]: 11 项 v1 漏报已补(主要在 archive/tests/alembic/docs/仓库卫生)
+        - paragraph [ref=f1e1299]: 6 处重复已合并
+        - paragraph [ref=f1e1300]: 未覆盖:运行时性能 profiling、实际渗透测试、UI 设计审查
+        - paragraph [ref=f1e1301]:
+          - text: "配套 Markdown:"
+          - link "→ full-review-20260804.md" [ref=f1e1302] [cursor=pointer]:
+            - /url: full-review-20260804.md

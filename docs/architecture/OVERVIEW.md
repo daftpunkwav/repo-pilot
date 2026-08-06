@@ -1,6 +1,6 @@
 # RepoPilot 系统架构总览
 
-> 版本: 2026-08-03 | 状态: 现行有效
+> 版本: 2026-08-04 | 状态: 现行有效
 >
 > 本文档描述 **运行时架构** 与 **仓库组织原则**。目录细节见 [`REPO_LAYOUT.md`](./REPO_LAYOUT.md)，路径对照见 [`PATH_MAPPING.md`](./PATH_MAPPING.md)，实现进度见 [`../development/PROGRESS_REPORT.md`](../development/PROGRESS_REPORT.md)。
 
@@ -15,7 +15,7 @@ RepoPilot 不是单体 CRUD 网站，而是 **多客户端 + 多后端服务** �
 | 进程分离 | Web、API、Agent、MCP 可独立启动与部署 |
 | 数据主权 | 持久化与 JWT 归 **API 服务**；Agent 通过 API 或共享契约读上下文 |
 | Mock 先行 | v1 UI 已在 `docs/design/v1/frontend/` 完成并迁入 `apps/web`；当前 `apps/web` 已可对接 `services/api` 真实后端 |
-| 共享契约 | 跨服务类型与 API 形状规划归 `packages/contracts`、`packages/types`、`packages/py-shared`；**目前这些包尚未填充，实际契约仍分散维护** |
+| 共享契约 | **`packages/types` 已落地**：`scripts/export_openapi.py` 导出 `packages/contracts/openapi.json`，`apps/web` 经 `@repopilot/types` 引用（76 个别名零 drift）；`ui`/`prompts`/`py-shared`/`config` 仍为占位 |
 
 ---
 
@@ -45,18 +45,18 @@ flowchart TB
     MCP --> AGENT
 ```
 
-**当前现状：** Multi-Agent 运行时已落地在 `services/api/backend/`（与 API 同进程）：
+**当前现状：** Multi-Agent 运行时**权威实现已迁入 `services/agent/agent_core/`**；API 侧 `services/api/backend/{agents,llm,tools,memory}` 为兼容 shim（转发到 `agent_core`）。默认与 API 同进程，也可经 `AGENT_BASE_URL` + `agent_runtime`（:19877）独立部署：
 
-| 模块 | 路径 | 职责 |
+| 模块 | 路径（权威） | 职责 |
 |------|------|------|
-| Hub | `agents/hub.py` | 意图路由、Plan-and-Execute、多 Agent 编排 |
-| ReAct | `agents/react.py` | 推理循环、工具调用、反问拦截 |
-| Registry | `agents/registry.py` | Hub/Scout/Mentor/Navigator/Curator/Scribe/Atlas |
-| LLM | `llm/provider.py` | LiteLLM BYOK 流式/非流式 |
-| Memory | `memory/` | 短期/长期记忆、画像提案合并、上下文压缩 |
-| Tools | `tools/builtin.py` | 约 24 个内置工具：项目/图谱/GitHub/笔记落库/分类标签/进度/导入/反问/调度等 |
+| Hub | `services/agent/agent_core/agents/hub.py` | 意图路由、Plan-and-Execute、多 Agent 编排 |
+| ReAct | `services/agent/agent_core/agents/react.py` | 推理循环、工具调用、反问拦截 |
+| Registry | `services/agent/agent_core/agents/registry.py` | Hub/Scout/Mentor/Navigator/Curator/Scribe/Atlas |
+| LLM | `services/agent/agent_core/llm/provider.py` | LiteLLM BYOK 流式/非流式 |
+| Memory | `services/agent/agent_core/memory/` | 短期/长期记忆、画像提案合并、上下文压缩 |
+| Tools | `services/agent/agent_core/tools/builtin.py` | 24 个内置工具：项目/图谱/GitHub/笔记落库/分类标签/进度/导入/反问/调度等 |
 
-`services/agent`、`services/mcp` 仍为未来独立进程预留。对话入口统一走 Hub；专家可被 Hub 派发，并支持写工具真实落库（笔记/分类/标签/进度/导入）。
+`services/mcp` 仍为未来独立进程预留。对话入口统一走 Hub；专家可被 Hub 派发，并支持写工具真实落库（笔记/分类/标签/进度/导入）。工具层经 `backend/ports/` 协议（Project/Note/Category/Tag/Session/Graph Port）访问 ORM。
 
 ---
 
@@ -85,7 +85,7 @@ packages/    → 无运行时共享库（types、ui、prompts、contracts…）
 
 ## 5. 演进路线
 
-1. **现在：** `apps/web` 正式前端 + `services/api` 后端（含 Multi-Agent）；`docs/design/v1/frontend` 为设计归档
-2. **近期：** 产品文档（PRD/SPEC）与代码对齐、共享包落地、E2E/覆盖率补齐
-3. **中期：** Agent 拆至 `services/agent` 独立进程
+1. **现在：** `apps/web` 正式前端 + `services/api` 后端；Agent 权威代码已迁入 `services/agent/agent_core/`（默认同进程）；`docs/design/v1/frontend` 为设计归档
+2. **近期：** 产品文档（PRD/SPEC）与代码对齐（对照矩阵）、Agent 部署级独立进程（`agent_runtime` 已就绪，需解除 `agent_core ↔ backend` 循环依赖）、E2E/覆盖率补齐
+3. **中期：** `packages/py-shared` 落地共享 Python 契约、CI 建立
 4. **v1.4+：** `services/mcp` 对接外部 AI 生态

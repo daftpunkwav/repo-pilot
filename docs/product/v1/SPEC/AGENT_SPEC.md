@@ -5,7 +5,7 @@
 > TECHNICAL_SPEC.md §4-§9 仅提供架构概览，完整实现细节以本文档为准。
 > 依赖文档: AGENT_PRD.md (产品需求), TECHNICAL_SPEC.md (总体架构), MVP_SCOPE.md (实施范围)
 >
-> **路径说明：** 下文 `backend/agents/` 指 **`services/api/backend/agents/`**（v1.0）；目标独立服务为 **`services/agent/`**。对照表见 [`docs/architecture/PATH_MAPPING.md`](../../../architecture/PATH_MAPPING.md)。
+> **路径说明：** 下文 `backend/agents/` 指 **`services/agent/agent_core/agents/`**（权威实现，2026-08-03 迁入；`services/api/backend/agents/` 现为兼容 shim）。对照表见 [`docs/architecture/PATH_MAPPING.md`](../../../architecture/PATH_MAPPING.md)。
 
 ---
 
@@ -88,7 +88,7 @@ AgentRouter
         ├── IntentClassifier
         │     └── LLMProvider (for classification)
         ├── AgentRegistry
-        │     ├── AgentDefinition (×6)
+        │     ├── AgentDefinition (×7)
         │     │     ├── AGENT.md
         │     │     ├── SOUL.md
         │     │     ├── system_prompt.j2
@@ -99,7 +99,7 @@ AgentRouter
         │     ├── LLMProvider
         │     │     └── LiteLLM
         │     ├── ToolRegistry
-        │     │     └── ToolDefinition (×14)
+        │     │     └── ToolDefinition (×24)
         │     ├── StreamCollector
         │     └── PromptGuard
         ├── MemoryService
@@ -240,7 +240,7 @@ class AgentRegistry:
         ...
 ```
 
-**六个 Agent 注册信息：**
+**七个 Agent 注册信息（含 Atlas）：**
 
 | Agent ID  | 名称         | 工具数 | capabilities                       | auto_trigger | priority |
 | --------- | ---------- | --- | ---------------------------------- | ------------ | -------- |
@@ -424,19 +424,24 @@ curator(分类), scribe(笔记), hub(通用对话)
 ##### §2.2.2.1 StreamEventType
 
 ```python
-from enum import Enum
+from enum import StrEnum
 from dataclasses import dataclass
 
-class StreamEventType(Enum):
-    """SSE 事件类型（与 TECHNICAL_SPEC §3.5 权威定义对齐，8 种）"""
+class StreamEventKind(StrEnum):
+    """SSE 事件类型（与 TECHNICAL_SPEC §3.5 权威定义对齐，13 种，见 agent_core/agents/stream_events.py）"""
     TEXT_DELTA = "text_delta"
+    THINKING = "thinking"
+    AGENT_SWITCH = "agent_switch"
     TOOL_CALL = "tool_call"
     TOOL_RESULT = "tool_result"
+    SUBAGENT_START = "subagent_start"
+    SUBAGENT_THINKING = "subagent_thinking"
+    SUBAGENT_TEXT = "subagent_text"
+    SUBAGENT_DONE = "subagent_done"
+    SELECT_REPOS = "select_repos"
     QUESTION = "question"
     DONE = "done"
     ERROR = "error"
-    AGENT_SWITCH = "agent_switch"
-    THINKING = "thinking"
 
 @dataclass
 class StreamEvent:
@@ -1307,7 +1312,7 @@ agent:
 | POST | /agent/analyze/{project_id} | 分析指定项目            | JWT | 10/min/user |
 
 **POST /agent/chat：** `{"session_id": "uuid", "message": "...", "agent_id": null}`
-**SSE 事件流（与 StreamEventType 8 种枚举对齐）:** text_delta → thinking → tool_call → tool_result → agent_switch → question → done / error
+**SSE 事件流（与 StreamEventKind 13 种枚举对齐）:** text_delta → thinking → tool_call → tool_result → agent_switch → question → done / error
 **POST /agent/question：** `{"session_id": "uuid", "answers": [{"type": "radio", "question_id": "q1", "value": "..."}]}`
 
 ### §8.2 便捷端点（F5-27 修复）

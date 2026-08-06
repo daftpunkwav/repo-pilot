@@ -3,6 +3,8 @@
 > 版本: 1.0.0 | 日期: 2026-07-03 | 状态: 审核通过 - daftpubkwav
 >
 > **发布策略:** 本文档定义 **v1.0 单版本完整发布**，不拆分 v0.1~v0.6 子版本。MVP_SCOPE.md 的范围即 v1.0 全部交付内容。详细路线图见 §7 发布计划。
+>
+> ⚠️ **与代码对照（2026-08-04）：** 本文为 v1 规划文档，正文按 v1 规划写 **6 个 Agent**；代码实际已注册 **7 个**（Hub + Scout / Mentor / Navigator / Curator / Scribe / **Atlas**）。规划正文不作改写，代码现状以 [`docs/development/PROGRESS_REPORT.md`](../../development/PROGRESS_REPORT.md) 与 `services/agent/agent_core/agents/registry.py` 为准；三方（v1 / v2 / 代码）对照矩阵见 [`docs/review/full-review-20260804.md`](../../review/full-review-20260804.md) §12。
 
 ---
 

@@ -14,9 +14,9 @@
 
 | 运行时 | 现行目录 | v1.0 说明 |
 |--------|----------|-----------|
-| Web 客户端 | `apps/web/` | 正式应用位；**UI Mock 开发在** `docs/design/v1/frontend/` |
+| Web 客户端 | `apps/web/` | 正式应用位；`docs/design/v1/frontend/` 为 v1 设计归档（已迁入） |
 | API 服务 | `services/api/backend/` | 本文档 §1.1 图中「API Layer」+ 数据层的主要实现位置 |
-| Agent 服务 | `services/agent/`（占位） | v1.0 Agent 逻辑暂在 `services/api/backend/agents/` |
+| Agent 服务 | `services/agent/` | 权威实现 `services/agent/agent_core/`（2026-08-03 迁入）；`services/api/backend/{agents,llm,tools,memory}` 为兼容 shim；`agent_runtime` 可独立 SSE（:19877） |
 | MCP 服务 | `services/mcp/`（占位） | v1.4+ |
 
 ### 1.1 架构分层
@@ -170,6 +170,8 @@ AgentSession 1──N AgentMessage
 
 #### user_settings
 
+> ⚠️ **代码未建表**：设置存于 `users.settings_json` JSON 字段，见 MVP_SCOPE.md §3.2。
+
 | 字段                | 类型           | 约束             | 说明                                      |
 | ----------------- | ------------ | -------------- | --------------------------------------- |
 | user_id           | UUID         | PK, FK → users | 所属用户                                    |
@@ -285,6 +287,8 @@ AgentSession 1──N AgentMessage
 
 #### graph_cache
 
+> ⚠️ **代码未建表**：图谱由 `services/api/backend/services/graph_service.py` 实时计算，见 MVP_SCOPE.md §3.1。
+
 | 字段         | 类型           | 约束          | 说明              |
 | ---------- | ------------ | ----------- | --------------- |
 | id         | UUID         | PK          | 缓存 ID           |
@@ -295,6 +299,8 @@ AgentSession 1──N AgentMessage
 | expires_at | TIMESTAMP    | NOT NULL    | 过期时间（决策 N-P-01） |
 
 #### user_github_accounts
+
+> ⚠️ **代码未建表**：PAT 存于 `users.github_accounts` JSON 字段，见 MVP_SCOPE.md §3.3。
 
 | 字段            | 类型          | 约束                   | 说明              |
 | ------------- | ----------- | -------------------- | --------------- |
@@ -401,13 +407,17 @@ except ImportError:
 | ---------- | -------------------- | --- | ----------------- |
 | Auth       | `/api/v1/auth`       | 7   | 注册/登录/刷新/注销/密码    |
 | GitHub     | `/api/v1/github`     | 5   | Star 同步/账号管理      |
-| Projects   | `/api/v1/projects`   | 12  | CRUD/导入/导出/搜索/笔记  |
+| Projects   | `/api/v1/projects`   | 9   | CRUD/导入/进度/README  |
 | Categories | `/api/v1/categories` | 4   | 分类 CRUD           |
-| Tags       | `/api/v1/tags`       | 3   | 标签 CRUD           |
-| Notes      | `/api/v1/notes`      | 4   | 笔记 CRUD/搜索        |
+| Tags       | `/api/v1/tags`       | 4   | 标签 CRUD + 项目标签绑定           |
+| Notes      | `/api/v1/notes`      | 6   | 笔记 CRUD（含按项目筛选）        |
 | Graph      | `/api/v1/graph`      | 1   | 图谱数据              |
-| Settings   | `/api/v1/settings`   | 2   | 用户设置              |
-| Agent      | `/api/v1/agent`      | 23  | 对话/反问/分析/会话/配置/权限 |
+| Overview   | `/api/v1/overview`   | 4   | 活动/最近笔记/推荐/trending |
+| User       | `/api/v1/user`       | 5   | 画像/清记忆/记忆提案确认     |
+| Settings   | `/api/v1/settings`   | 4   | 用户设置 + LLM 测试 + API Key 加密              |
+| Agent      | `/api/v1/agent`      | 18  | 对话/反问/分析/会话/权限/上下文 |
+
+> **合计**：67 个 `@router` 端点 + 1 个 `GET /health`（`main.py:119`），共 68。以代码 `services/api/backend/api/*.py` 为准。
 
 ### 3.3 统一响应格式
 
@@ -467,18 +477,23 @@ class Message:
 #### StreamEventType
 
 ```python
-from enum import Enum
+from enum import StrEnum
 
-class StreamEventType(Enum):
-    """SSE 流式事件类型（8 种 — 权威定义，与 AGENT_SPEC §2.2.2.1 对齐）"""
-    TEXT_DELTA = "text_delta"         # 文本增量
-    TOOL_CALL = "tool_call"           # 工具调用开始
-    TOOL_RESULT = "tool_result"       # 工具执行结果
-    QUESTION = "question"             # 反问面板
-    DONE = "done"                     # 流结束
-    ERROR = "error"                   # 错误
-    AGENT_SWITCH = "agent_switch"     # 多 Agent 切换
-    THINKING = "thinking"             # Agent 思考过程
+class StreamEventKind(StrEnum):
+    """SSE 流式事件类型（13 种 - 权威定义，见 agent_core/agents/stream_events.py）"""
+    TEXT_DELTA = "text_delta"              # 文本增量
+    THINKING = "thinking"                  # Agent 思考过程
+    AGENT_SWITCH = "agent_switch"          # 多 Agent 切换
+    TOOL_CALL = "tool_call"                # 工具调用开始
+    TOOL_RESULT = "tool_result"            # 工具执行结果
+    SUBAGENT_START = "subagent_start"      # 子 Agent 调度开始
+    SUBAGENT_THINKING = "subagent_thinking"# 子 Agent 思考
+    SUBAGENT_TEXT = "subagent_text"        # 子 Agent 正文
+    SUBAGENT_DONE = "subagent_done"        # 子 Agent 完成
+    SELECT_REPOS = "select_repos"          # 导入助手勾选
+    QUESTION = "question"                  # 反问面板
+    DONE = "done"                          # 流结束
+    ERROR = "error"                        # 错误
 ```
 
 #### LLMChunk
@@ -2301,6 +2316,8 @@ class SkillLoader:
 ---
 
 ## 附录 B: 预设分类种子数据
+
+> ⚠️ **代码现状（2026-08-05 核实）**：实际注入 **5 个**预设分类（前端/后端/AI-ML/DevOps/其他），见 `services/api/backend/services/seed_service.py:9-15`。下表 12 个为 v1 规划设计，未落地；MVP_SCOPE.md 附录 B 已声明此差异。
 
 ```python
 PRESET_CATEGORIES = [

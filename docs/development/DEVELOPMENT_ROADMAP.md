@@ -1,19 +1,19 @@
 # RepoPilot v1.0 — 开发路线图 (Development Roadmap)
 
-> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | **状态复核: 2026-08-03**
+> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | **状态复核: 2026-08-04**
 >
 > ⚠️ **本文档是 v1.0 发布前的计划草案。** 任务清单中的复选框**未**随开发勾选；请勿当作当前进度看板。
 >
 > **当前实现状态请读：** [`PROGRESS_REPORT.md`](./PROGRESS_REPORT.md) · [`../architecture/REPO_LAYOUT.md`](../architecture/REPO_LAYOUT.md)
 >
-> ### 与代码对照（2026-08-03 摘要）
+> ### 与代码对照（2026-08-04 摘要）
 >
 > | 阶段 | 计划内容 | 相对代码的粗粒度状态 |
 > |------|----------|----------------------|
-> | Phase 0–1 | 初始化 / Auth 骨架 | ✅ 已落地（Alembic 除外，仍用 create_all + schema_sync） |
+> | Phase 0–1 | 初始化 / Auth 骨架 | ✅ 已落地（Alembic 迁移 `6096bed38e20` 已启用，`schema_sync.py` 已废） |
 > | Phase 2–4 | 项目 / GitHub / 笔记 / 图谱 | ✅ 核心已落地 |
-> | Phase 5–10 | LLM / Agent / SSE / 记忆 / Scout | ✅ 核心已落地（含 Atlas；部分规划端点未做） |
-> | Phase 11 | 质量 / E2E / 性能 | 🟡 测试骨架在，覆盖与 E2E 仍在补 |
+> | Phase 5–10 | LLM / Agent / SSE / 记忆 / Scout | ✅ 核心已落地（含 Atlas；权威实现在 `services/agent/agent_core/`；部分规划端点未做） |
+> | Phase 11 | 质量 / E2E / 性能 | 🟡 后端约 210 测试函数在跑（54 文件），E2E 仅前端 Mock 轨、性能调优未做 |
 >
 > 权威来源: `v1/PRD/PRD.md` · `v1/SPEC/TECHNICAL_SPEC.md` · `v1/MVP/MVP_SCOPE.md`
 >
@@ -50,7 +50,7 @@
 |--------|---------|------|
 | **M1: 骨架完成** | Phase 0-1 完成 | 前后端联通，AC-01/02/03 通过 |
 | **M2: 核心功能可用** | Phase 2-4 完成 | 不含 LLM 的完整业务闭环，AC-04~12/16 通过 |
-| **M3: Agent 可用** | Phase 5-10 完成 | 6 个 Agent 全部工作，AC-17~20 通过 |
+| **M3: Agent 可用** | Phase 5-10 完成 | 7 个 Agent 全部工作，AC-17~20 通过 |
 | **M4: v1.0 发布候选** | Phase 11 完成 | 所有 🔴 严重问题修复，性能达标，PRD §7.3 质量门禁全部通过 |
 
 ---
@@ -117,7 +117,7 @@
 - [ ] CORS 配置（仅本地前端）
 
 **前端任务：**
-- [ ] Vite + React 18 + TypeScript strict
+- [ ] Vite + React 19 + TypeScript strict
 - [ ] React Router 6 路由配置
 - [ ] Tailwind CSS + CSS Variables 主题系统
 - [ ] Zustand stores: authStore, uiStore
@@ -270,12 +270,12 @@
 
 ### Phase 6: Agent 核心 (7-10 天)
 
-**目标：** Agent 框架完整，6 个 Agent 注册就绪
+**目标：** Agent 框架完整，7 个 Agent 注册就绪
 
 **后端任务：**
 - [ ] AgentDefinition + AgentRegistry
 - [ ] ToolDefinition + ToolRegistry
-- [ ] **注册全部 14 个工具**（query_user_projects, read_readme, read_source_file, search_web, get_project_analysis, get_user_profile, update_user_profile, suggest_classification, generate_note_outline, compare_projects, build_learning_path, ask_user_question, save_to_memory, recall_from_memory）
+- [ ] **注册全部 14 个工具**（query_user_projects, read_readme, read_source_file, search_web, get_project_analysis, get_user_profile, update_user_profile, suggest_classification, generate_note_outline, compare_projects, build_learning_path, ask_user_question, save_to_memory, recall_from_memory）  <!-- v1 规划：实际代码已注册 24 个工具，命名见 services/agent/agent_core/tools/builtin.py -->
 - [ ] **query_user_projects 允许 Scribe**（N-10）
 - [ ] ReActEngine 执行循环
 - [ ] HubService + IntentClassifier
@@ -474,7 +474,7 @@ Phase 1 (骨架)
 | `TECHNICAL_SPEC.md` | 本文档的上游，定义"怎么做"的技术约束 |
 | `MVP_SCOPE.md §10` | **本文档的展开**，更详细的 v1.0 开发步骤 |
 | `DEVELOPMENT_PROCESS.md` | 本文档的补充，定义开发流程规范（PR 流程、commit 规范） |
-| `RepoPilot-v1-文档审查报告-2026-07-03-v2.md` | 本文档修复了其中识别的所有 🔴 严重问题 |
+| `docs/review/`（审查报告归档） | 最新全量审查见 `full-review-20260804.md`；本文档按早期审查识别的 🔴 严重问题修复 |
 
 ---
 

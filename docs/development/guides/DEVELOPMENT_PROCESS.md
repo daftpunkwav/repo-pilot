@@ -1,8 +1,10 @@
 # RepoPilot — 开发流程文档
 
-> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05
+> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 复核: 2026-08-05
+> 
+> 注：本文档版本 1.0.0 为文档自身版本；描述的 RepoPilot 代码版本为 2.0.0（对应 v1.0 产品闭环）。
 >
-> **仓库布局：** Monorepo（`apps/` · `services/` · `packages/`）。下文若出现 `frontend/`、`backend/`，对照 [`docs/architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)。**当前 UI Mock 开发在** `docs/design/v1/frontend/`。
+> **仓库布局：** Monorepo（`apps/` · `services/` · `packages/`）。下文若出现 `frontend/`、`backend/`，对照 [`docs/architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)。**当前 UI 主开发在 `apps/web/`**；`docs/design/v1/frontend/` 仅为 v1 设计归档（只读参考）。
 
 ---
 
@@ -37,17 +39,18 @@
 
 **执行方式:**
 ```bash
-# 后端测试（API 服务）
-pytest services/api/backend/ -v --cov=backend --cov-report=term-missing
+# 后端测试（tests/ 根目录，conftest 已注入 services/api 与 services/agent）
+npm run test:api
+# 等价: pytest tests -q
 
-# 前端单元测试（Mock 开发沙盒）
-cd docs/design/v1/frontend && npm run test
+# 前端单元测试（apps/web）
+npm run test:web
 
-# E2E 测试（Mock 开发沙盒）
-cd docs/design/v1/frontend && npx playwright test
+# 前端 E2E（apps/web，Playwright，强制 VITE_USE_MOCK=true）
+npm run test:e2e -w @repopilot/web
 
-# 全量测试 (CI)
-make test-all
+# 全量测试
+npm run test
 ```
 
 ### Gate 2: 安全审查
@@ -99,15 +102,14 @@ make test-all
 **代码规范工具:**
 
 ```bash
-# Python（API 服务包）
-ruff check services/api/backend/
-ruff format services/api/backend/
+# Python（API + Agent）
+ruff check services/api/backend/ services/agent/agent_core/
 mypy services/api/backend/
 
-# TypeScript/React（在对应前端目录执行，Mock 阶段见 docs/design/v1/frontend）
-npx eslint src/
-npx prettier --write src/
-npx tsc --noEmit
+# TypeScript/React（apps/web，主应用）
+cd apps/web && npx eslint src/
+cd apps/web && npx prettier --write src/
+cd apps/web && npx tsc --noEmit
 ```
 
 ---
@@ -162,38 +164,47 @@ test(graph): add integration tests for TF-IDF similarity
 |------|------|
 | Python | 3.11+ |
 | Node.js | 20+ |
-| pnpm | 9+ |
+| npm | 10+（monorepo workspace） |
 | Git | 2.40+ |
 | SQLite | 3.40+ (系统自带) |
 
 ### 4.2 环境变量 (.env)
 
 ```env
-# 数据库
-DATABASE_URL=sqlite+aiosqlite:///./data/repopilot.db
+# 必填：JWT 签名密钥，长度不少于 32 字节（启动期强校验）
+SECRET_KEY=<random-64-char-hex>
 
-# JWT
-JWT_SECRET_KEY=<random-64-char-hex>
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=15
-REFRESH_TOKEN_EXPIRE_DAYS=7
+# 建议：与 JWT 分离的敏感字段 at-rest 加密密钥（Fernet 派生）
+# SECRETS_ENCRYPTION_KEY=
 
-# Agent
-# LLM_API_KEY 仅用于开发/测试环境的 fallback。生产环境下 LLM Key 由用户在
-# Settings 页面通过 BYOK 方式配置，存储在 user_settings 表的 encrypted_api_key 字段中。
-LLM_PROVIDER=openai          # openai / anthropic / local
-LLM_MODEL=gpt-4o
-LLM_API_KEY=<your-api-key>
-LLM_API_BASE=                 # 可选，自定义 API 地址
+# 数据库（默认仓库根 data/repopilot.db，由 backend/config.py 解析）
+# DATABASE_URL=sqlite:///./data/repopilot.db
 
-# GitHub
-GITHUB_CLIENT_ID=             # 可选，用于 OAuth
-GITHUB_CLIENT_SECRET=         # 可选
+# 开发调试（生产务必 false）
+DEBUG=false
+
+# CORS 允许源（逗号分隔；默认含本地开发端口）
+# CORS_ALLOW_ORIGINS=http://127.0.0.1:5173
+
+# Cookie（默认 Secure+SameSite 由 DEBUG/设置决定；跨端口本地开发可 DEBUG=true）
+# AUTH_COOKIE_SECURE=true
+# AUTH_COOKIE_SAMESITE=lax
+
+# Agent 独立进程（可选）。未设置时 Hub 与 API 同进程
+# AGENT_BASE_URL=http://127.0.0.1:19877
+# AGENT_INTERNAL_TOKEN=change-me-agent-internal-token
+
+# LLM（仅开发/测试 fallback；生产由用户在设置页 BYOK，加密存 settings_json）
+# LLM_API_KEY=
+# LLM_API_BASE=
+# LLM_MODEL=gpt-4o-mini
+
+# 限流
+# RATE_LIMIT_ENABLED=true
+# RATE_LIMIT_AGENT=20/minute
 
 # 应用
 APP_ENV=development
-APP_DEBUG=true
-APP_HOST=127.0.0.1
 APP_PORT=19878
 ```
 
@@ -208,7 +219,10 @@ npm run dev:api
 # Web — Monorepo 正式应用（当前主流程）
 npm run dev:web   # 仓库根目录
 
-# Web — Mock 开发（设计归档，保留用于回溯；v1 UI 已迁入 apps/web）
+# Agent 独立进程（可选；配合 AGENT_BASE_URL 代理）
+npm run dev:agent
+
+# Web — v1 设计归档（只读回溯；主线已迁入 apps/web）
 cd docs/design/v1/frontend && npm run dev
 
 # 桌面端 (打包后，规划中)

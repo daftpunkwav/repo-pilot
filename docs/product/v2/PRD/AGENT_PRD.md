@@ -3,6 +3,8 @@
 > 版本: 2.0.0 | 日期: 2026-07-04 | 状态: 草稿
 >
 > 本文档是 v2 Agent 系统产品需求的权威来源。
+>
+> ⚠️ **与代码对照（2026-08-04）：** 本文仍为规划草稿。代码实际已注册 **7 个 Agent（hub / scout / mentor / navigator / curator / scribe / atlas，全部实现）**，其中 Atlas 已实现；v2 规划的 Evaluator 尚未实现。Agent 数表述（如"7（新增 Evaluator）"）与代码对照时以 [`docs/development/PROGRESS_REPORT.md`](../../development/PROGRESS_REPORT.md) 与 `services/agent/agent_core/agents/registry.py` 为准。
 
 ---
 
@@ -20,7 +22,7 @@ RepoPilot v2 的 Agent 系统从 v1 的"专业 Agent 协同网络"升级为 **Mu
 | 上下文管理 | 滑动窗口 + Token 预算 | Context Engineering Pipeline（Retrieve → Filter → Compress → Inject） |
 | 知识图谱 | Scout 内部工具 | 所有 Agent 共享的 Graph Query 工具 |
 | 质量保障 | 无 | Evaluator Agent（v2.1+，PRD 层面完整定义） |
-| Agent 数量 | 6 | 7（新增 Evaluator） |
+| Agent 数量 | 6 | 7（新增 Atlas；Evaluator 未实现，v2.1+ 预留） |
 
 **核心原则：**
 

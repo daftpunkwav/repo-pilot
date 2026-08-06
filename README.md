@@ -12,26 +12,26 @@ RepoPilot/
 │   ├── web/          # React Web 前端
 │   └── desktop/      # 桌面壳（规划中）
 ├── services/
-│   ├── api/          # FastAPI 后端（含 Multi-Agent 运行时）
-│   ├── agent/        # 独立 Agent 服务（预留扩展）
+│   ├── api/          # FastAPI 后端（认证/CRUD/图谱；Agent 兼容 shim）
+│   ├── agent/        # Agent 服务（agent_core 权威实现 + agent_runtime 独立进程）
 │   └── mcp/          # MCP Server（规划中）
-├── packages/         # 共享库（types / ui / prompts / …）
+├── packages/         # 共享库（types 已生成契约 / ui / prompts / …）
 ├── docs/
 └── archive/
 ```
 
 完整说明见 [`docs/architecture/REPO_LAYOUT.md`](docs/architecture/REPO_LAYOUT.md)。
 
-> **实现状态速览（截至 2026-08-03）：**
-> - `apps/web`、`services/api` 已实现核心页面与端点；开发环境（`.env.development`）默认 `VITE_USE_MOCK=false` 走真实后端；未设置时客户端默认 Mock。
-> - `packages/*`（types / ui / contracts / prompts / py-shared）目前多为空壳，前后端类型与契约仍分别维护在 `apps/web/src/api/types.ts` 与 `services/api/backend/schemas/`。
-> - `services/agent`、`services/mcp`、`apps/desktop` 仅为占位或规划，尚未实现。
+> **实现状态速览（截至 2026-08-04）：**
+> - `apps/web`、`services/api` 已实现核心页面与端点；Agent 权威代码在 `services/agent/agent_core/`（默认与 API 同进程，可经 `AGENT_BASE_URL` 独立部署）。开发环境（`.env.development`）默认 `VITE_USE_MOCK=false` 走真实后端；未设置时客户端默认 Mock。
+> - `packages/types` 已由 OpenAPI 生成契约并被 `apps/web` 使用（`@repopilot/types`）；`contracts/` 含 openapi.json；`ui` / `prompts` / `py-shared` / `config` 仍为占位。
+> - `services/mcp`、`apps/desktop` 仍为占位或规划。
 
 ## 技术栈
 
 - API：`services/api` — FastAPI + SQLAlchemy 2.0 + SQLite + LiteLLM Multi-Agent
 - Web：`apps/web` — React 19 + TypeScript + Vite 7 + Zustand + React Query
-- Agent：**7 个 Agent**：Hub 统筹调度 + Scout/Mentor/Navigator/Curator/Scribe/Atlas（BYOK）；Agent 运行时当前位于 `services/api/backend/agents/`，独立的 `services/agent` 仍为占位
+- Agent：**7 个 Agent**：Hub 统筹调度 + Scout/Mentor/Navigator/Curator/Scribe/Atlas（BYOK）；权威实现在 `services/agent/agent_core/`（`services/api/backend/agents/` 为兼容 shim），默认与 API 同进程
 - 桌面：`apps/desktop` — pywebview（规划中，尚未实现）
 
 ### 启用真实后端（关闭 Mock）

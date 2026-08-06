@@ -5,6 +5,8 @@
 > 权威来源: `v2/PRD/PRD.md` (产品需求) · `v2/SPEC/TECHNICAL_SPEC.md` (技术规格)
 >
 > 本文档定义 v2.0 的实现范围、开发顺序和验收标准。基于 v1.0 迭代升级。
+>
+> ⚠️ **与代码对照（2026-08-04）：** 本文为规划草稿。§1.1 "Agent 数量 6 实现 + 1 预留" 与代码实际不符：代码已实现 **7 个（hub / scout / mentor / navigator / curator / scribe / atlas）**，Atlas 已实现；v2 规划的 Evaluator（预留）未实现。工具数量表述（"19 个"）也与代码实际的 **24 个**（`services/agent/agent_core/tools/builtin.py`）不同。代码现状以 [`docs/development/PROGRESS_REPORT.md`](../../development/PROGRESS_REPORT.md) 为准。
 
 ---
 
@@ -108,6 +110,8 @@ v2.0 采用**单版本完整发布**策略，基于 v1.0 全量迭代。MVP_SCOP
 
 ### 3.2 v2 新增表
 
+> ⚠️ **代码现状（2026-08-05 核实）**：下表 5 张 v2 新增表在代码中**均未建表**。实际 Alembic 迁移仅 `6096bed38e20_initial_schema`（12 张 v1 表）。memory proposal 暂以 `user_profiles.agent_prefs` JSON 内 `pending_memory_proposals` 字段存储；图谱仍由 `graph_service.py` 实时计算。下表为 v2 规划设计，尚未落地。
+
 | 表名 | 建表 | v2.0 写入 | 说明 |
 | --- | --- | --- | --- |
 | `knowledge_states` | YES | YES | 知识状态层 (L3)，`UNIQUE(user_id, domain)`，Mentor 主要维护 |
@@ -124,7 +128,9 @@ v2.0 迁移文件: `003_v2_memory_knowledge`，包含所有新增表。v1 初始
 
 ## 4. API 端点清单
 
-**统一前缀:** v1 端点保持 `/api/v1/`，v2 新增端点使用 `/api/v2/`。统一响应格式 `{ "data": ..., "meta": {...} }`。
+> ⚠️ **代码现状（2026-08-05 核实）**：代码中**不存在 `/api/v2/` 前缀**（全 services 无 `api_v2_prefix`）。下述 v2 端点均为规划设计，尚未落地。当前所有功能仍走 `/api/v1/`（67 端点，见 v1 MVP_SCOPE.md §4.1）。
+
+**统一前缀:** v1 端点保持 `/api/v1/`，v2 新增端点使用 `/api/v2/`（规划中）。统一响应格式 `{ "data": ..., "meta": {...} }`。
 
 ### 4.1 v1 保留端点 (不变)
 

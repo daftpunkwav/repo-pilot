@@ -1,6 +1,6 @@
 # 仓库路径对照表
 
-> 版本: 2026-08-03 | 状态: 现行有效
+> 版本: 2026-08-04 | 状态: 现行有效
 >
 > **用途：** 2026-07-05 起 RepoPilot 采用 Monorepo。历史文档中的 `frontend/`、`backend/` 等路径**按本表理解**，正文细节可逐步更新，不必一次性改完。
 
@@ -15,7 +15,7 @@ RepoPilot/
 │   └── desktop/             # 桌面壳（规划中）
 ├── services/
 │   ├── api/                 # 传统后端 API
-│   ├── agent/               # Agent 运行时（占位，逻辑暂在 api）
+│   ├── agent/               # Agent 运行时（agent_core 权威实现 + agent_runtime 独立进程）
 │   └── mcp/                 # MCP Server（占位，v1.4+）
 ├── packages/                # 跨服务共享库
 ├── docs/
@@ -40,7 +40,8 @@ RepoPilot/
 | `backend/agents/` | `services/agent/agent_core/agents/`（权威）；`services/api/backend/agents/` 为 shim | 物理实现已迁入 Agent 服务；API 侧保留 `backend.agents.*` 导入兼容 |
 | `backend/llm/` / `tools/` / `memory/` | `services/agent/agent_core/{llm,tools,memory}/` | 同上 |
 | `backend/config.py` | `services/api/backend/config.py` | 配置入口 |
-| `backend/migrations/` | `services/api/backend/migrations/` | 当前使用 `create_all` + `schema_sync.py`；Alembic 目录存在但尚未启用 |
+| `backend/migrations/` | `services/api/backend/migrations/` | **Alembic 已启用**（唯一迁移 `6096bed38e20_initial_schema`，启动期 `upgrade head`）；`schema_sync.py` 已废弃 |
+| `backend/agents/hub.py` 等 | `services/agent/agent_core/agents/{hub,react,registry,intent,question,stream_events,...}.py` | 权威实现（2026-08-03 迁入）；`services/api/backend/agents/*` 仅为转发 shim |
 | `pyproject.toml`（根） | 根 + `services/api/pyproject.toml` | 根为 workspace；API 依赖在 `services/api/` |
 | `data/*.db` | `data/*.db`（仓库根） | 路径未变 |
 
@@ -66,7 +67,7 @@ RepoPilot/
 |------|------|----------|
 | Web | `apps/web` | 5173 |
 | API | `services/api` | **19878**（开发；Vite 代理目标。历史文档常写 19876） |
-| Agent | `services/agent` | 19877（占位 `/health`） |
+| Agent | `services/agent` | 19877（`npm run dev:agent`；独立进程可选，API 设 `AGENT_BASE_URL` 后 SSE 代理） |
 | MCP | `services/mcp` | stdio / HTTP（规划） |
 
 ---

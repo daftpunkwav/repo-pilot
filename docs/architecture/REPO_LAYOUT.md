@@ -1,6 +1,6 @@
 # RepoPilot Monorepo 布局
 
-> 版本: 2026-08-03 | 状态: `apps/web` + `services/api` 核心已落地；agent/mcp/desktop/packages 仍多为占位
+> 版本: 2026-08-04 | 状态: `apps/web` + `services/api` + `services/agent`（agent_core）核心已落地；mcp/desktop 与部分 packages 仍为占位
 >
 > **相关文档：** 运行时架构 [`OVERVIEW.md`](./OVERVIEW.md) · 路径对照 [`PATH_MAPPING.md`](./PATH_MAPPING.md) · 进度 [`../development/PROGRESS_REPORT.md`](../development/PROGRESS_REPORT.md)
 
@@ -14,7 +14,7 @@ RepoPilot/
 │
 ├── services/                # 可独立部署的后端服务
 │   ├── api/                 # 传统 API（认证、CRUD、图谱）
-│   ├── agent/               # Agent 运行时（占位，代码暂在 api）
+│   ├── agent/               # Agent 运行时（agent_core 权威实现 + agent_runtime 独立进程）
 │   └── mcp/                 # MCP Server（占位，v1.4+）
 │
 ├── packages/                # 跨应用/服务共享库
@@ -48,10 +48,10 @@ RepoPilot/
 |------|------|----------|
 | Web | ✅ 已实现核心功能 | `apps/web/`（全部 MVP 页面、路由、Mock/Real 双轨 API 客户端已就位） |
 | API | ✅ 已实现核心端点 | `services/api/backend/`（Auth/Projects/Categories/Tags/Notes/Graph/Settings/Agent 等） |
-| Agent | ✅ 核心已迁入 | 实现在 `services/agent/agent_core/`（agents/llm/tools/memory）；`services/api/backend/{agents,llm,tools,memory}` 为兼容 shim；`agent_runtime` 可独立 SSE |
+| Agent | ✅ 核心已迁入 | 实现在 `services/agent/agent_core/`（agents/llm/tools/memory）；`services/api/backend/{agents,llm,tools,memory}` 为兼容 shim；`agent_runtime` 可独立 SSE（:19877，经 `AGENT_BASE_URL` 代理） |
 | MCP | ⬜ 占位 | `services/mcp/`（v1.4+ 规划） |
 | Desktop | ⬜ 占位 | `apps/desktop/`（规划中，尚未实现） |
-| Packages | 🟡 空壳 | `packages/types/ui/contracts/prompts/py-shared/config` 目录已建，实际共享代码尚未抽取 |
+| Packages | 🟡 部分落地 | `types/` 已由 OpenAPI 生成并被 `apps/web` 使用（`@repopilot/types`）；`contracts/` 含 openapi.json；`ui/prompts/py-shared/config` 仍为占位 |
 
 ## 服务拆分触发条件
 

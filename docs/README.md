@@ -318,21 +318,23 @@ development/{logs, changes, issues, ...} (随时记录)
 
 ### 5.1 目录状态
 
-> 截至 **2026-08-03** 实际仓库结构。
+> 截至 **2026-08-04** 实际仓库结构。
 
 | 目录 | 状态 | 备注 |
 |------|------|------|
 | `product/` | ✅ 完整 | `v1/`、`v2/` 两套 PRD/SPEC/MVP；详见 `product/README.md` |
 | `architecture/` | ✅ 有内容 | `OVERVIEW.md`、`REPO_LAYOUT.md`、`PATH_MAPPING.md` |
-| `design/` | ✅ 有内容 | `v1/` UI 原型、设计规格与 Mock 前端归档 |
-| `development/` | ✅ 有内容 | `PROGRESS_REPORT.md`（实现状态）+ `DEVELOPMENT_ROADMAP.md`（历史计划）+ `guides/` |
-| `superpowers/plans/` | ✅ 有内容 | 分支工作计划（如 `2026-07-09-front-backend-review-fixes.md`） |
+| `design/` | ✅ 有内容 | `v1/` UI 原型、设计规格与 Mock 前端归档（2026-08-04 已清理 `node_modules`/`dist`/`coverage`/`.playwright-mcp` 等制品） |
+| `development/` | ✅ 有内容 | `PROGRESS_REPORT.md`（实现状态）+ `DEVELOPMENT_ROADMAP.md`（历史计划）+ `guides/` + `status-snapshot.md`（审查盘点快照） |
+| `review/` | ✅ 有内容 | 审查报告归档：`full-review-20260804.md/.html`（最新全量 v2.0）、`AGENT_CODE_REVIEW.md`（2026-08-03，已整改）、`architecture-review-20260803-224202.html` |
+| `superpowers/plans/` | ✅ 有内容 | 分支工作计划（如 `2026-07-09-front-backend-review-fixes.md`）；与 `.zcode/plans/` 存在内容重叠，定位待统一 |
 | `api/`、`debug/`、`development/{process,logs,issues,experiments,changelog}/` | ⛔ **未创建** | §3.3 描述的子目录结构尚未落地，仅为愿景 |
-| `development/changes/` | 🟡 空壳 | 仅有空 `build/` 目录，尚无变更笔记 |
+| `development/changes/` | 🗑️ **已删除** | 原为空壳（仅空 `build/`），无变更笔记，2026-08-04 清理 |
+| `product/v1/` 旧审查/修复报告 | 🗑️ **已删除** | 第 1~13 轮审查 + 第 1~7 次修复报告（2026-07 过程产物）已被 `review/` 取代，2026-08-04 归档移除 |
 
 ### 5.2 现有文件清单
 
-> 截至 **2026-08-03**；仅列出有内容的文件与目录，空目录省略。
+> 截至 **2026-08-04**；仅列出有内容的文件与目录，空目录省略。
 
 ````
 docs/
@@ -346,6 +348,7 @@ docs/
 ├── development/
 │   ├── DEVELOPMENT_ROADMAP.md               # v1.0 预实施路线图（历史计划）
 │   ├── PROGRESS_REPORT.md                   # ★ 当前代码实现状态（优先阅读）
+│   ├── status-snapshot.md                   # 2026-08-04 只读盘点（file:line 可验证）
 │   └── guides/
 │       └── DEVELOPMENT_PROCESS.md           # 开发流程与质量门禁
 ├── product/
@@ -353,16 +356,18 @@ docs/
 │   ├── v1/
 │   │   ├── PRD/                  (PRD.md, AGENT_PRD.md)
 │   │   ├── SPEC/                 (TECHNICAL_SPEC.md, AGENT_SPEC.md)
-│   │   ├── MVP/                  (MVP_SCOPE.md)
-│   │   ├── RepoPilot-v1-修复报告-第1~7次.md
-│   │   └── RepoPilot-v1-审查报告-第1~13轮.md
+│   │   └── MVP/                  (MVP_SCOPE.md)
 │   └── v2/
 │       ├── IDEA.md
 │       ├── MVP/                  (MVP_SCOPE.md)
 │       ├── PRD/                  (PRD.md, AGENT_PRD.md)
 │       └── SPEC/                 (TECHNICAL_SPEC.md, AGENT_SPEC.md)
+├── review/                                 # 审查报告归档（2026-08 起）
+│   ├── full-review-20260804.md/.html        # ★ 最新全量审查 v2.0（175 项发现）
+│   ├── AGENT_CODE_REVIEW.md                 # 2026-08-03 Agent 核心审查（已整改）
+│   └── architecture-review-20260803-224202.html
 └── superpowers/
-    └── plans/                              # 当前分支活跃工作计划
+    └── plans/                              # 分支工作计划
         └── 2026-07-09-front-backend-review-fixes.md
 ````
 

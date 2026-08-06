@@ -1,5 +1,10 @@
 # RepoPilot Agent 核心审查报告
 
+> ⚠️ **状态（2026-08-04）：** 本报告基线 `5ff949c`（2026-08-03）。此后：
+> - 报告指出的 P0–P3 整改已随 `9bd682c` 落地（限流、message 上限、`run()`/`_handle_dispatches` 拆分、`question.py`、`AgentEngineConfig`、调度指纹 sha1 等）；
+> - Agent 代码已物理迁入 `services/agent/agent_core/`（`8d73a8a`），文中 `services/api/backend/agents/*`、`backend/agents/*` 路径现为转发 shim，**行号已全部失效**；
+> - 当前未决问题以 [`full-review-20260804.md`](./full-review-20260804.md)（v2.0 全量审查）为准。
+
 > 审查范围:`services/api/backend/agents/`(`hub.py` 1642 行 / `react.py` 1462 行 / `registry.py` 421 行 / `intent.py` 144 行 / `think_stream.py` 136 行 / `__init__.py`)及其依赖契约(`llm/provider.py`、`tools/builtin.py`、`memory/context.py`、`services/sse_stream.py`、`api/agent.py`)。
 > 审查日期:2026-08-03
 > 基线 commit:`5ff949c`
@@ -554,6 +559,8 @@ class DispatchRoundOutcome:
 
 ## 8. 修改优先级清单
 
+> **已解决状态（2026-08-05 复核）**：以下清单基于基线 `5ff949c`（2026-08-03）。经后续提交 `9bd682c`/`d6152c9`/`8d73a8a` 等整改，多数条目已落地：**已解决** = 1.2（SSE 限流 + 消息长度）、2.1（dispatch_task 清洗）、3.1（类型注解）、3.2（question.py 拆分）、3.4（SSE 切片 helper）、5.1（AgentEngineConfig）、5.2（route_message 删除）、6.2（_dispatch_fingerprint 全文 hash）、7.3（registry 单例）；**部分解决** = 1.1（react.py 已拆分 1462->1282 行，hub._handle_dispatches 仍 1199 行）、2.2（intent 已加日志，complete_json 仍返 {}）、4.3（规则已从 registry 派生，MULTI_KEYWORDS 仍硬编码）、3.3（is_plan_announcement 已提为模块级函数）；**待核** = 1.3（单测覆盖）、2.3、5.3、4.1、4.2、6.4、2.4、5.4、7.1、7.2。下表保留原基线内容供追溯。
+
 | 优先级 | 编号 | 问题 | 工作量 | 风险 |
 |--------|------|------|--------|------|
 | P0 | 1.2 | agent SSE 无限流 + 消息无长度上限 | 小 | 低 |
@@ -591,17 +598,15 @@ class DispatchRoundOutcome:
 ---
 
 ## 附录:被审查文件清单
+> **路径与行数已更新（2026-08-05）**：权威实现已迁至 `services/agent/agent_core/agents/`；`services/api/backend/agents/*` 现为 9 行 shim。下表为当前行数。
 
 | 文件 | 行数 | 关键问题编号 |
 |------|------|-------------|
-| `services/api/backend/agents/react.py` | 1462 | 1.1, 1.3, 2.2, 3.2, 3.3, 3.4, 4.1, 5.1, 6.3 |
-| `services/api/backend/agents/hub.py` | 1642 | 1.1, 1.2, 1.3, 2.1, 2.3, 3.1, 4.2, 5.1, 5.3, 5.4, 6.2, 6.4 |
-| `services/api/backend/agents/registry.py` | 421 | 4.1, 4.2, 7.3 |
-| `services/api/backend/agents/intent.py` | 144 | 2.2, 4.2, 4.3, 5.3, 7.2 |
-| `services/api/backend/agents/think_stream.py` | 136 | 7.1 |
-| `services/api/backend/agents/__init__.py` | 3 | — |
-| 依赖:`llm/provider.py` | — | 2.2 |
-| 依赖:`tools/builtin.py` | — | 2.1, 3.5, 4.2 |
-| 依赖:`services/sse_stream.py` | — | 2.4 |
-| 依赖:`routes/api/agent.py` + `schemas/agent.py` | — | 1.2 |
-| 依赖:`memory/context.py` + `memory/service.py` | — | 2.3, 6.1 |
+| `services/agent/agent_core/agents/react.py` | 1282 | 1.1, 1.3, 2.2, 3.2, 3.3, 3.4, 4.1, 5.1, 6.3 |
+| `services/agent/agent_core/agents/hub.py` | 1674 | 1.1, 1.2, 1.3, 2.1, 2.3, 3.1, 4.2, 5.1, 5.3, 5.4, 6.2, 6.4 |
+| `services/agent/agent_core/agents/registry.py` | 466 | 4.1, 4.2, 7.3 |
+| `services/agent/agent_core/agents/intent.py` | 183 | 2.2, 4.2, 4.3, 5.3, 7.2 |
+| `services/agent/agent_core/agents/think_stream.py` | 141 | 7.1 |
+| `services/api/backend/agents/__init__.py` | 9（shim） | - |
+| 依赖:`agent_core/llm/provider.py` | - | 2.2 |
+| 依赖:`agent_core/tools/builtin.py` | - | 2.1, 3.5, 4.2 |

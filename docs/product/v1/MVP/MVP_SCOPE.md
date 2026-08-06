@@ -1,6 +1,6 @@
 # RepoPilot v1.0 — MVP 实施规格
 
-> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 差异标注复核: 2026-08-03 | 状态: 审核通过 - daftpunkwav（**本文档部分具体声明已随代码迭代过期，正在与代码对齐**）
+> 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 差异标注复核: 2026-08-04 | 状态: 审核通过 - daftpunkwav（**本文档部分具体声明已随代码迭代过期，正在与代码对齐**）
 > 权威来源: `v1/PRD/PRD.md` (产品需求) · `v1/SPEC/TECHNICAL_SPEC.md` (技术规格)
 > 本文档定义 **v1.0 单版本发布** 的实施范围。所有设计细节以 PRD 和 SPEC 为准，本文档仅标注裁剪决策和扩展预留。
 >
@@ -66,7 +66,7 @@ v1.0 是 RepoPilot 的**首个完整交付版本**，采用单版本发布策略
 | 用户系统 | OAuth GitHub 绑定 | §3.1 P0 | OAuth 流程复杂，v1.0 使用 PAT 手动绑定（已在 v1.0 范围） | v1.1 |
 | 项目管理 | JSON 导入/导出 | §3.2 P1 | 批量数据迁移，非核心使用流程；**`GET /export` 尚未实现** | v1.1 |
 | 项目管理 | 列表/卡片双视图 | §3.2 P1 | v1.0 只实现列表视图 | v1.1 |
-| 笔记系统 | 笔记搜索 | §3.4 P1 | v1.0 暂用 LIKE 搜索，v1.1 升级全文搜索 | v1.1 |
+| 笔记系统 | 笔记搜索 | §3.4 P1 | v1.0 **未实现**笔记搜索端点（见 §4.1 Notes 节 × 标注），v1.1 升级全文搜索 | v1.1 |
 | 笔记系统 | 笔记导出 | §3.4 P2 | 导出为 PDF/Markdown | v1.1 |
 | 可视化 | 分类统计图 | §3.6 P1 | StatsPage 路由预留 | v1.2 |
 | 可视化 | 学习进度看板 | §3.6 P2 | 时间线视图 | v1.2 |
@@ -101,6 +101,7 @@ v1.0 是 RepoPilot 的**首个完整交付版本**，采用单版本发布策略
 | `user_profiles` | ✅ | ✅ | 完整实现并写入（v1.0 启用记忆系统） |
 | `agent_sessions` | ✅ | ✅ | 完整实现，7 个 Agent 共用 sessions 表 |
 | `agent_messages` | ✅ | ✅ | 完整实现，SSE 流式消息持久化 |
+| `agent_session_projects` | ✅ | ✅ | 会话-项目多对多关联（会话可绑定多个项目上下文），ON DELETE CASCADE |
 | `project_analyses` | ✅ | ✅ | 完整实现，Scout/Mentor 分析结果缓存 |
 | `user_github_accounts` | ⬜ | ⬜ | **尚未独立建表**；当前 GitHub 账号以 `users.github_accounts` JSON 字段存储（v1.1+ 可按 SPEC 拆出） |
 | `user_settings` | ⬜ | ⬜ | **尚未独立建表**；当前设置以 `users.settings_json` JSON 字段存储（v1.1+ 可按 SPEC 拆出） |
@@ -158,11 +159,11 @@ GitHub PAT 不再存储在 `users.github_accounts` JSON 字段，而是独立的
 
 | 方法 | 路径 | 说明 | 验收标准 |
 |------|------|------|---------|
-| GET | /stars | 获取当前用户 Star 列表 | 使用绑定账号的 PAT 调用 GitHub API，支持分页 |
-| GET | /stars/{username} | 获取指定用户 Star 列表 | URL 参数，公开 API（无需 PAT） |
 | GET | /accounts | 列出已绑定的 GitHub 账号 | 返回当前用户的所有绑定记录（决策 D-16） |
-| POST | /accounts | 绑定 GitHub (PAT) | 加密存储 PAT，验证连通性（v1.0 限 1 个账号） |
-| DELETE | /accounts/{id} | 解绑 GitHub | 删除绑定记录 |
+| GET | /stars | 获取当前用户 Star 列表 | 使用绑定账号的 PAT 调用 GitHub API，6h 缓存；`?refresh=true` 强制刷新 |
+| POST | /bindaccount | 绑定 GitHub (PAT) | 加密存储 PAT，验证连通性（v1.0 限 1 个账号） |
+| DELETE | /accounts/{account_id} | 解绑 GitHub | 删除绑定记录 |
+| GET | /search?q= | 搜索 GitHub 仓库 | 调用 GitHub Search API，返回仓库列表（非项目库/笔记全文搜索） |
 
 #### Projects (`/api/v1/projects`)
 
@@ -209,7 +210,7 @@ GitHub PAT 不再存储在 `users.github_accounts` JSON 字段，而是独立的
 | GET | /tags | 列出当前用户所有标签 | 含每个标签关联的项目数 |
 | POST | /tags | 新建标签 | UNIQUE(user_id, name) 约束，name 1-64 字符 |
 | DELETE | /tags/{id} | 删除标签 | 级联删除 project_tags 关联 |
-| PUT | /projects/{id}/tags | 设置项目标签（多对多） | 接收 `{"tag_ids": ["uuid1", "uuid2"]}` 全量替换 |
+| PUT | /tags/projects/{id} | 设置项目标签（多对多） | 完整路径 `/api/v1/tags/projects/{id}`（挂在 tags 前缀，非 projects）；接收 `{"tag_ids": ["uuid1", "uuid2"]}` 全量替换 |
 
 #### Notes (`/api/v1/notes`)
 
@@ -235,8 +236,28 @@ GitHub PAT 不再存储在 `users.github_accounts` JSON 字段，而是独立的
 | GET | / | 获取用户设置 | 含主题、缩放、LLM 配置 (api_key 脱敏为 `sk-****xxxx`) |
 | PUT | / | 更新设置 | 支持部分更新 |
 | POST | /test-llm | 测试 LLM 连通性 | 发送最小请求验证 Key 有效（速率限制 5 次/分钟/user） |
+| POST | /api-key | 加密保存 LLM API Key | 明文 Key 加密写入 `settings_json`，返回脱敏形式（决策 N-S-04） |
 
 > **路径说明（N-05 补全）：** v1.0 阶段 LLM 测试端点为 `/api/v1/settings/test-llm`。SPEC §3.2 同时定义了 `/api/v1/agent/config/test`（v1.0 完整版启用）。两路径在 v1.0 都可用，settings/test-llm 作为简化的"仅测试连接"端点，agent/config/test 作为完整的 Agent 配置测试端点。
+
+#### Overview (`/api/v1/overview`)
+
+| 方法 | 路径 | 说明 | 验收标准 |
+|------|------|------|---------|
+| GET | /activities | 最近活动流 | 项目/笔记/Agent 等近期行为聚合 |
+| GET | /recent-notes | 最近笔记 | 按更新时间倒序的笔记列表 |
+| GET | /recommended | 推荐项目 | 按 progress ∈ {none,learning} + stars desc 过滤（非算法级推荐） |
+| GET | /trending | GitHub 热门项目 | 调用 GitHub Search API 近似 trending（未鉴权可访问） |
+
+#### User (`/api/v1/user`)
+
+| 方法 | 路径 | 说明 | 验收标准 |
+|------|------|------|---------|
+| GET | /profile | 获取用户画像 | 含 tech_profile / preferences / goals / agent_prefs |
+| PATCH | /profile | 更新画像字段 | 支持部分更新（tech_stack/level/language/goal/speaking_style 白名单） |
+| POST | /profile/clear-memory | 清除记忆 | 清空 memory_items / pending_proposals，保留 extensions |
+| POST | /profile/memory-proposals/{id}/accept | 接受记忆提案 | 从 pending 取出并 apply |
+| POST | /profile/memory-proposals/{id}/reject | 拒绝记忆提案 | 从 pending 删除 |
 
 #### Agent (`/api/v1/agent`)
 
@@ -361,7 +382,7 @@ v1.0 原计划是单版本完整发布，但实际开发中部分端点尚未实
 
 ### 6.3 数据库迁移
 
-> **当前实现：** Alembic 已列在依赖中，但尚未启用。当前使用 SQLAlchemy `metadata.create_all()` + `services/api/backend/migrations/schema_sync.py` 进行列补齐，无 `alembic/versions/` 迁移文件。
+> **当前实现：** **Alembic 已启用**（2026-08-03 落地，唯一迁移 `6096bed38e20_initial_schema`，应用启动期 `upgrade head`）；`migrations/schema_sync.py` 已废弃，不再使用 `metadata.create_all()`。
 
 使用 Alembic 管理 Schema 迁移。MVP 为初始迁移 (migration `001_initial`)，包含所有 §3.1 中"建表"的表。Agent 相关表（agent_sessions / agent_messages / project_analyses / user_profiles）在 v1.0 完整写入（§3.1 已标记 ✅），初始迁移必须包含全部表结构。
 
@@ -476,15 +497,15 @@ ERROR_CODES = {
 
 ## 7. 扩展预留清单（v1.0 → v1.4+）
 
-> **与代码实际的对齐说明：** AgentRegistry、ToolRegistry、MemoryService、ReActEngine、HubService、SSE 流式输出、反问交互等核心模块已在 `services/api/backend/` 实现，但实现形态与 SPEC 中的目录/工具命名存在差异（如 Agent 配置集中在 `registry.py`，工具清单见 `tools/builtin.py`）。NotificationService / MCPToolAdapter 抽象接口尚未实现。
+> **与代码实际的对齐说明：** AgentRegistry、ToolRegistry、MemoryService、ReActEngine、HubService、SSE 流式输出、反问交互等核心模块已在 `services/agent/agent_core/` 实现（API 侧 `services/api/backend/{agents,llm,tools,memory}` 为兼容 shim），但实现形态与 SPEC 中的目录/工具命名存在差异（如 Agent 配置集中在 `registry.py`，工具清单见 `tools/builtin.py`）。NotificationService / MCPToolAdapter 抽象接口尚未实现。
 
 ### 7.1 v1.0 必须实现的接口（v1.0 范围，非预留）
 
 | 接口 | 实现要求 | 验证方式 |
 |------|---------|---------|
 | **LLMProvider** | 完整实现 `complete()` 和 `test_connection()`，v1.0 启用 LiteLLM（决策 D-11：v1.0 完整实现含 `complete()`） | 单元测试覆盖 `complete()` 的 mock 调用，集成测试覆盖 `test_connection()` |
-| **AgentRegistry** | `AgentDefinition` 与 `AgentRegistry` 已在 `services/api/backend/agents/registry.py` 实现，注册 **7 个 Agent**（含 Atlas）。SPEC 中按子目录 + AGENT.md/SOUL.md/system_prompt.j2/config.yaml 组织的文件结构尚未落地 | AgentRegistry 单元测试覆盖 7 个 Agent 加载 |
-| **ToolRegistry** | `ToolDefinition` 与 `ToolRegistry` 已在 `services/api/backend/tools/registry.py` 实现。当前 `tools/builtin.py` 注册了约 **24 个内置工具**，名称与 §7.4 的工具清单不完全一致（如 `fetch_github_repo`、`fetch_readme`、`create_note`、`import_github_repos` 等） | 单元测试覆盖注册和执行 |
+| **AgentRegistry** | `AgentDefinition` 与 `AgentRegistry` 已在 **`services/agent/agent_core/agents/registry.py`** 实现（API 侧 `backend/agents/` 为 shim），注册 **7 个 Agent**（含 Atlas）。SPEC 中按子目录 + AGENT.md/SOUL.md/system_prompt.j2/config.yaml 组织的文件结构尚未落地 | AgentRegistry 单元测试覆盖 7 个 Agent 加载 |
+| **ToolRegistry** | `ToolDefinition` 与 `ToolRegistry` 已在 **`services/agent/agent_core/tools/registry.py`** 实现。当前 `tools/builtin.py` 注册了约 **24 个内置工具**，名称与 §7.4 的工具清单不完全一致（如 `fetch_github_repo`、`fetch_readme`、`create_note`、`import_github_repos` 等） | 单元测试覆盖注册和执行 |
 | **CapabilityDetector** | SPEC §5.3 中的独立 `CapabilityDetector` 尚未实现；当前 `has_llm` 能力判断由 `backend/llm/config.py` 中的 `build_llm_config_from_user()` 完成 | 单元/集成测试覆盖有/无 Key 两种场景 |
 | **MemoryService** | 完整实现 `get_user_profile()`、`save_session()`、`recall()` 等 | 集成测试覆盖用户画像读写 |
 | **ReActEngine** | 完整实现 AGENT_SPEC §4.1 的 ReAct 执行循环（§4.4 为无 Function Calling 降级模式） | 单元测试覆盖单步推理 + 工具调用 |
@@ -515,7 +536,7 @@ ERROR_CODES = {
 
 ### 7.4 工具注册清单（v1.0 规划清单）
 
-> **当前实现：** 实际注册的工具见 `services/api/backend/tools/builtin.py`，约 **24** 个，命名与权限白名单与本表存在差异（例如 `read_readme` 实际为 `fetch_readme`，`search_web` 尚未实现；另有笔记/分类/标签/进度/导入等写工具）。本表保留为规划参考。
+> **当前实现：** 实际注册的工具见 `services/agent/agent_core/tools/builtin.py`（API 侧 `backend/tools/builtin.py` 为 shim），约 **24** 个，命名与权限白名单与本表存在差异（例如 `read_readme` 实际为 `fetch_readme`，`search_web` 尚未实现；另有笔记/分类/标签/进度/导入等写工具）。本表保留为规划参考。
 
 | 工具名 | 用途 | 允许 Agent |
 |--------|------|-----------|
@@ -706,7 +727,7 @@ CLASSIFY_RULES = {
 
 ## 10. 开发顺序
 
-> **当前状态：** 以下顺序是 v1.0 发布前的建议开发计划。实际开发已跨越这些阶段，实现形态与规划存在差异（如 Agent 配置未按子目录组织、未启用 Alembic、未建 `graph_cache` 表等）。本节保留为历史规划参考。
+> **当前状态：** 以下顺序是 v1.0 发布前的建议开发计划。实际开发已跨越这些阶段，实现形态与规划存在差异（如 Agent 配置未按子目录组织、`graph_cache` 表未建；Alembic 已于 2026-08-03 启用）。本节保留为历史规划参考。
 
 v1.0 单版本完整发布的建议开发顺序（不含时间预估）。每个顺序对应一次 PR/迭代：
 
