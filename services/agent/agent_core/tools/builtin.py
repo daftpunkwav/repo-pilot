@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import logging
+import threading  # §4.2.6 ensure_tools_loaded 锁
+import threading  # §4.2.6 ensure_tools_loaded 锁
 import re
 from typing import Any
 from uuid import UUID
@@ -1411,6 +1413,18 @@ async def import_github_repos(
     )
 
 
+# §4.2.6: 模块级 @tool 装饰器是隐式副作用（import-time）。
+# ensure_tools_loaded() 在外部多次调用应是幂等的；本函数仅为 API 兼容性保留。
+_ENSURE_LOCK = threading.RLock()
+_ENSURE_CALLED = False
+
 def ensure_tools_loaded() -> None:
-    """导入本模块以注册全部工具。"""
+    """导入本模块以注册全部工具。
+
+    §4.2.6: 幂等 + 线程安全；当前实现为 no-op（注册已在 import 时完成），
+    保留函数签名以兼容外部调用方。
+    """
+    global _ENSURE_CALLED
+    with _ENSURE_LOCK:
+        _ENSURE_CALLED = True
     return None
