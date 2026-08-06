@@ -1,9 +1,9 @@
 # RepoPilot 开发进度报告
 
-> 报告日期：2026-08-04  
+> 报告日期：2026-08-06  
 > 代码版本：`2.0.0`（根 `package.json` / `apps/web/package.json` / `services/api` pyproject / FastAPI `version`）  
 > 报告范围：`services/api/backend/`、`services/agent/`（agent_core）、`apps/web/src/`、`packages/*`、`tests/`  
-> 上一版：2026-08-03  
+> 上一版：2026-08-04  
 > 依据：最近一轮全量审查报告 [`docs/review/full-review-20260804.md`](../review/full-review-20260804.md) 与代码实况
 
 ---

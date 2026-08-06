@@ -30,7 +30,7 @@ v2.0 采用**单版本完整发布**策略，基于 v1.0 全量迭代。MVP_SCOP
 | 知识图谱 | 展示用 TF-IDF 力导向图 | 所有 Agent 共享查询工具 (Graph Query API) |
 | Agent 数量 | 6 (Scout/Mentor/Navigator/Curator/Scribe/Hub) | 6 实现 + 1 预留 (Evaluator 仅建表和接口) |
 | 降级策略 | 无 LLM 时功能受限 | 完整 Fallback Mode (GitHub API → TF-IDF → Keyword → Rule Engine → Graph) |
-| 工具数量 | 14 个 | 14 保留 + 3 新增 + 2 预留 = 19 个 |
+| 工具数量 | 14 个 | 24 个实际注册（§4.1.12 / `services/agent/agent_core/tools/builtin.py`） |
 
 ---
 

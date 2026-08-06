@@ -19,7 +19,7 @@ RepoPilot v2 是一个 **Multi-Agent Driven GitHub Learning Operating System（�
 | 维度 | v1 | v2 |
 | --- | --- | --- |
 | 系统定位 | AI 驱动的开源项目学习平台 | Multi-Agent Driven GitHub Learning OS |
-| Agent 数量 | 6 Agent (Scout/Mentor/Navigator/Curator/Scribe/Hub) | 7 Agent (+Evaluator，MVP 不含实现) |
+| Agent 数量 | 6 Agent (Scout/Mentor/Navigator/Curator/Scribe/Hub) | 7 Agent (hub / scout / mentor / navigator / curator / scribe / atlas，均已实现；无 Evaluator，§4.1.12) |
 | 架构层次 | 前后端 + Agent 平铺 | 四层架构：Presentation → Agent → Knowledge → Infrastructure |
 | Hub 角色 | 简单路由器（Routing） | Chief Agent（Plan-and-Execute Workflow） |
 | 记忆系统 | UserProfile + 会话历史压缩 | 五层 Memory Architecture + Memory Merge Protocol |
