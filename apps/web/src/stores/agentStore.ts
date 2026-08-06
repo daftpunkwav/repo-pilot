@@ -10,13 +10,10 @@ import type {
 import { getApi } from '@/api/client';
 import {
   asSSEAgentSwitch,
-  asSSEError,
   asSSESubagentDone,
   asSSESubagentStart,
   asSSEToolCall,
   asSSEToolResult,
-  asSSETextDelta,
-  asSSEThinking,
 } from '@/utils/sse-helpers';
 import {
   ensureAgentQuestion,
@@ -32,6 +29,7 @@ import { isStreamSessionActive } from '@/utils/streamSessionGuard';
 import { displaySwitchReason } from '@/utils/agentSwitchDisplay';
 import { snapshotSubagents, snapshotToolCalls } from '@/utils/runTrace';
 import { parseActionResult } from '@/utils/actionResult';
+import { HANDLERS, type SseHandlerCtx } from './agentStore/sseHandlers';
 
 interface ToolCallEntry {
   name: string;
@@ -384,21 +382,20 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         if (!stillOnOrigin()) {
           break;
         }
+        // §4.1.10: SSE handler 上下文，把 set/get 与 set 闭包转接
+        const ctx: SseHandlerCtx = {
+          set: (partial) => set(partial as any),
+          get: () => get() as any,
+        };
         switch (event.event) {
           case 'text_delta': {
-            const delta = asSSETextDelta(event.data);
-            const piece = delta.content ?? '';
-            if (!piece) break;
-            set((state) => ({
-              streamingContent: state.streamingContent + piece,
-            }));
+            // §4.1.10: 委托给独立 handler，便于单测与维护
+            HANDLERS.text_delta!(event, ctx);
             break;
           }
           case 'thinking': {
-            const thinking = asSSEThinking(event.data);
-            set((state) => ({
-              thinkingBuffer: state.thinkingBuffer + (thinking.content ?? ''),
-            }));
+            // §4.1.10: 委托给独立 handler
+            HANDLERS.thinking!(event, ctx);
             break;
           }
           case 'question': {
@@ -640,36 +637,14 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           }
           case 'subagent_thinking': {
             if (!stillOnOrigin()) break;
-            const raw = event.data as Record<string, unknown>;
-            const agentId = (
-              typeof raw.agent_id === 'string' ? raw.agent_id : ''
-            ) as AgentId;
-            const content = typeof raw.content === 'string' ? raw.content : '';
-            if (!agentId || !content) break;
-            set((state) => ({
-              subagents: state.subagents.map((s) =>
-                s.agentId === agentId
-                  ? { ...s, thinking: (s.thinking || '') + content }
-                  : s
-              ),
-            }));
+            // §4.1.10: 委托给独立 handler
+            HANDLERS.subagent_thinking!(event, ctx);
             break;
           }
           case 'subagent_text': {
             if (!stillOnOrigin()) break;
-            const raw = event.data as Record<string, unknown>;
-            const agentId = (
-              typeof raw.agent_id === 'string' ? raw.agent_id : ''
-            ) as AgentId;
-            const content = typeof raw.content === 'string' ? raw.content : '';
-            if (!agentId || !content) break;
-            set((state) => ({
-              subagents: state.subagents.map((s) =>
-                s.agentId === agentId
-                  ? { ...s, output: (s.output || '') + content }
-                  : s
-              ),
-            }));
+            // §4.1.10: 委托给独立 handler
+            HANDLERS.subagent_text!(event, ctx);
             break;
           }
           case 'subagent_done': {
@@ -729,13 +704,14 @@ export const useAgentStore = create<AgentState>((set, get) => ({
             break;
           }
           case 'done': {
-            // 仅作中间信号：不在此处 push messages（防止多次 done 重复）
+            // §4.1.10: 仅作中间信号（防止多次 done 重复）；主流程在循环结束后统一落库
+            HANDLERS.done!(event, ctx);
             break;
           }
           case 'error': {
             if (!stillOnOrigin()) break;
-            const errData = asSSEError(event.data);
-            set({ error: errData.message, streaming: false });
+            // §4.1.10: 委托给独立 handler
+            HANDLERS.error!(event, ctx);
             break;
           }
           default:
