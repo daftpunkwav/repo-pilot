@@ -1036,7 +1036,11 @@ async def stream_import_assist(
     message: str,
     context: dict[str, Any],
 ) -> AsyncIterator[str]:
-    """导入助手：精简工具 + 寒暄快路径 + 空正文兜底。"""
+    """导入助手：精简工具 + 寒暄快路径 + 空正文兜底。
+
+    §4.2.11: 与 Hub 使用同一配置源 — build_llm_config_from_user + get_registry() +
+    global_registry，与 _handle_chat / _handle_dispatches 同源；不重复读取 LLM Key。
+"""
     import re
     from dataclasses import replace
 
