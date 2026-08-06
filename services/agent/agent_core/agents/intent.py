@@ -1,6 +1,8 @@
 """意图分类 —— 规则 + 多意图 + LLM"""
 from __future__ import annotations
 
+import os  # §4.2.8 多意图关键词 env 覆盖
+
 import json
 import logging
 import re
@@ -52,7 +54,12 @@ class IntentClassifier:
 
     FAST_RULES: list[tuple[re.Pattern[str], str]] = _derive_fast_rules()
 
-    MULTI_KEYWORDS = ["并且", "同时", "另外", "还有", "以及", "并帮我", "再帮我", "然后"]
+    # §4.2.8: 多意图连接词；可经 REPOPILOT_MULTI_KEYWORDS 环境变量覆盖（逗号分隔）
+    _BASE_MULTI_KEYWORDS = ("并且", "同时", "另外", "还有", "以及", "并帮我", "再帮我", "然后")
+    MULTI_KEYWORDS = list(_BASE_MULTI_KEYWORDS)
+    _OVERRIDE_KW = os.environ.get("REPOPILOT_MULTI_KEYWORDS")
+    if _OVERRIDE_KW:
+        MULTI_KEYWORDS = [k.strip() for k in _OVERRIDE_KW.split(",") if k.strip()]
 
     def __init__(self, llm: LLMProvider | None = None):
         self.llm = llm
