@@ -11,6 +11,16 @@ from backend.schemas.settings import AgentLlmConfigOut, SettingsOut, SettingsUpd
 
 AGENT_IDS = ("hub", "scout", "mentor", "navigator", "curator", "scribe", "atlas")
 
+# §4.2.2: 提供派生函数；settings_service 模块自身需要 AGENT_IDS 但循环依赖
+# (agent_core 反向依赖 backend) 阻止在模块顶层做 import-time 派生。
+def derive_agent_ids() -> tuple[str, ...]:
+    """优先从 agent_core registry 派生；不可用时回退到静态 AGENT_IDS。"""
+    try:
+        from agent_core.agents.registry import get_registry as _get_reg
+        return tuple(d.id for d in _get_reg().list_all())
+    except Exception:
+        return AGENT_IDS
+
 DEFAULT_AGENT_LLM_CONFIGS: list[dict[str, str | None]] = [
     {"agent_id": aid, "model_override": None, "speaking_style": "default"}
     for aid in AGENT_IDS

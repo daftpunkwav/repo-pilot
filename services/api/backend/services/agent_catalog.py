@@ -52,3 +52,28 @@ AGENT_PROFILES: list[AgentProfileOut] = [
         capabilities=["图谱查询", "关系解读", "探索建议"],
     ),
 ]
+
+
+def get_agent_profiles() -> list[AgentProfileOut]:
+    """§4.2.2 R-02: 从 agent_core registry 派生的 AgentProfileOut 列表。
+
+    注意：因 agent_core 反向依赖 backend 的端口与安全（§4.2.1），此处采用延迟
+    导入以避免模块加载时死锁。真源仍由 services/agent/agent_core/agents/registry.py
+    维护，本文件 AGENT_PROFILES 保留为 e2e/文档展示用的静态快照。
+    """
+    try:
+        from agent_core.agents.registry import get_registry as _get_reg
+        defs = _get_reg().list_all()
+        return [
+            AgentProfileOut(
+                id=d.id,
+                name=d.display_name or d.name,
+                description=(d.description or ""),
+                avatar_emoji="",
+                capabilities=list(d.capabilities or []),
+            )
+            for d in defs
+        ]
+    except Exception:
+        # agent_core 不可用（独立部署、CI mock 等场景），回退到静态快照
+        return list(AGENT_PROFILES)
