@@ -223,7 +223,7 @@ npm run dev:web   # 仓库根目录
 npm run dev:agent
 
 # Web — v1 设计归档（只读回溯；主线已迁入 apps/web）
-cd docs/design/v1/frontend && npm run dev
+cd docs/design/v1/frontend && npm run dev   # 已停用：归档沙盒制品已清理，主线开发用 npm run dev:web
 
 # 桌面端 (打包后，规划中)
 # 见 apps/desktop/README.md

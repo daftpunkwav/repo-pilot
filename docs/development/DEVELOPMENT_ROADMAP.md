@@ -81,7 +81,7 @@
 
 **任务清单：**
 - [ ] 验证 `services/api/` 的 Python 入口和依赖配置
-- [ ] 验证 `docs/design/v1/frontend/`（Mock）与 `apps/web/`（正式位）的 Vite/TS 配置
+- [ ] 验证 `apps/web/` 的 Vite/TS 配置（v1 设计归档已清理制品，仅保留只读源码）
 - [ ] 配置 Alembic 数据库迁移工具
 - [ ] 配置 ESLint / Ruff / Prettier / commitlint
 - [ ] 建立 CI 流程（GitHub Actions：lint + test）
@@ -89,8 +89,7 @@
 
 **关键文件：**
 - `pyproject.toml` + `services/api/pyproject.toml` (API 依赖)
-- `docs/design/v1/frontend/package.json` (Mock 前端依赖)
-- `apps/web/package.json` (正式 Web 脚手架)
+- `apps/web/package.json` (正式 Web 脚手架；v1 Mock 依赖已归档不再维护)
 - `services/api/backend/migrations/` (数据库迁移)
 - `.github/workflows/ci.yml` (CI 配置)
 - `.pre-commit-config.yaml` (pre-commit 配置)
