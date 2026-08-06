@@ -107,7 +107,8 @@ def _prefix_expert_thinking_sse(
             return ev
         payload["content"] = f"【{expert_name}】\n{content}"
         return format_sse("thinking", payload)
-    except Exception:
+    except Exception:  # noqa: BLE001 — §4.2.9 加日志
+        logger.warning("_prefix_expert_thinking_sse fallback to raw chunk: %s", expert_name, exc_info=True)
         return chunk
 
 
