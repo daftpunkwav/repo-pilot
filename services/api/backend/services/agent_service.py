@@ -22,6 +22,7 @@ from backend.schemas.agent import (
     ContextWindowSegmentOut,
     ContextWindowStatsOut,
 )
+from backend.core import stream_cancel
 from backend.services.project_service import get_project_owned_by_user
 from backend.services.sse_stream import StreamEvent, encode_stream_item, format_sse
 from backend.tools.builtin import ensure_tools_loaded
@@ -47,6 +48,38 @@ def _begin_session_stream(session_id: UUID) -> asyncio.Event:
 def _end_session_stream(session_id: UUID, ev: asyncio.Event) -> None:
     if _session_stream_cancel.get(session_id) is ev:
         _session_stream_cancel.pop(session_id, None)
+
+
+async def _begin_session_cancel_token(
+    db: AsyncSession, session_id: UUID
+) -> str:
+    """在 Event 之上叠加跨 worker token；返回本次流的 token。
+
+    调用后端会刷新 agent_session_cancel_tokens 表中同 session 的 token；
+    任何其他 worker / 协程若再调用 begin 就会让本 token 失效。
+    """
+    return await stream_cancel.begin(db, session_id)
+
+
+async def _is_session_cancel_observed(
+    db: AsyncSession,
+    session_id: UUID,
+    my_token: str,
+    local_ev: asyncio.Event,
+) -> bool:
+    """跨 worker 取消判定：本地 Event 被 set 或 DB 中 token 已变更均视为取消。
+
+    注意：DB 轮询存在刷新窗口，建议每 8-16 个 chunk 调用一次。
+    """
+    if local_ev.is_set():
+        return True
+    return await stream_cancel.poll(db, session_id, my_token)
+
+
+async def _end_session_cancel_token(
+    db: AsyncSession, session_id: UUID, my_token: str
+) -> None:
+    await stream_cancel.clear(db, session_id, my_token)
 
 
 async def get_session_project_ids(db: AsyncSession, session_id: UUID) -> list[UUID]:
@@ -678,6 +711,9 @@ async def stream_chat(
     await append_message(db, session, role="user", content=message, agent_id="hub")
 
     cancel_ev = _begin_session_stream(session_id)
+    # 跨 worker token：把本次流的标识写到 agent_session_cancel_tokens 表，
+    # 流循环每 N 步与 DB 当前 token 比对，确保多 worker 部署下取消信号仍生效。
+    cancel_token = await _begin_session_cancel_token(db, session_id)
     hub = HubService(db)
     buf = _AgentSegmentBuffer(agent_id="hub")
     aborted = False
@@ -686,6 +722,10 @@ async def stream_chat(
     bound_ids = await get_session_project_ids(db, session_id)
     primary_project_id = session.project_id or (bound_ids[0] if bound_ids else None)
 
+    # 跨 worker 取消轮询节流：每 8 个 chunk 查一次 DB
+    _CANCEL_POLL_INTERVAL = 8
+    _chunk_idx = 0
+
     try:
         async for chunk in hub.handle_chat(
             user=user,
@@ -693,9 +733,17 @@ async def stream_chat(
             message=message,
             project_id=primary_project_id,
         ):
+            # 每 N 个 chunk 跨 worker 取消检查；本地 Event 命中走快路径
+            if (_chunk_idx % _CANCEL_POLL_INTERVAL == 0 and
+                    await _is_session_cancel_observed(
+                        db, session_id, cancel_token, cancel_ev
+                    )):
+                aborted = True
+                break
             if cancel_ev.is_set():
                 aborted = True
                 break
+            _chunk_idx += 1
             if await _apply_persistence_side_effects(
                 buf=buf, db=db, session=session, event=chunk
             ):
@@ -722,6 +770,10 @@ async def stream_chat(
         raise
     finally:
         _end_session_stream(session_id, cancel_ev)
+        try:
+            await _end_session_cancel_token(db, session_id, cancel_token)
+        except Exception:  # noqa: BLE001 — 资源清理失败不影响主流程
+            pass
 
 
 async def stream_question_answer(

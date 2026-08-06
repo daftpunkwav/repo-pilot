@@ -1,4 +1,4 @@
-"""
+﻿"""
 ORM 模型 —— Agent 相关
 """
 import uuid
@@ -65,6 +65,20 @@ class AgentSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=datetime.utcnow, nullable=True)
 
+# 跨 worker 会话流取消信号：每会话至多一行；流开始时 upsert 并 set 旧 token。
+class AgentSessionCancelToken(Base):
+    __tablename__ = "agent_session_cancel_tokens"
+
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("agent_sessions.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    # 每次 begin 流时生成新的 token；流循环周期性比对，若发现与自身 token 不一致即让步终止
+    cancel_token: Mapped[str] = mapped_column(String(64), nullable=False)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, onupdate=datetime.utcnow, default=datetime.utcnow, nullable=True
+    )
 
 class AgentMessage(Base):
     __tablename__ = "agent_messages"
