@@ -10,7 +10,9 @@ from typing import Optional
 
 import bcrypt
 from cryptography.fernet import Fernet, InvalidToken
-from jose import JWTError, jwt
+# §4.2.12: python-jose → pyjwt 迁移
+import jwt
+from jwt import PyJWTError as JWTError
 
 from backend.config import get_settings
 
