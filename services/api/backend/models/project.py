@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -35,6 +35,8 @@ class Tag(Base):
 
 class Project(Base):
     __tablename__ = "projects"
+    # §4.1.9: 同一用户同一仓库 URL 唯一，并发导入竞态保护
+    __table_args__ = (UniqueConstraint('user_id', 'url', name='uq_projects_user_url'),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4

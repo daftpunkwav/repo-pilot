@@ -42,8 +42,13 @@ def upgrade() -> None:
             [col],
             unique=False,
         )
+    # §4.1.9: 同一用户同一仓库 URL 必须唯一，防止并发导入竞态
+    op.create_index(
+        'uq_projects_user_url', 'projects', ['user_id', 'url'], unique=True
+    )
 
 
 def downgrade() -> None:
+    op.drop_index('uq_projects_user_url', table_name='projects')
     for table, col in reversed(_INDEXES):
         op.drop_index(f'ix_{table}_{col}', table_name=table)
