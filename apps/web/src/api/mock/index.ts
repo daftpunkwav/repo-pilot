@@ -72,6 +72,25 @@ const MIN_DELAY = 200;
 const MAX_DELAY = 500;
 const TOKEN_KEY = 'rp_token';
 const REFRESH_KEY = 'rp_refresh';
+// 用内存 Map 存储 mock 端的 token，与 real 走 httpOnly cookie 的安全设计对齐：
+// 在 XSS 场景下 localStorage 中敏感凭据可被读取，内存则随 JS 上下文消失。
+const _memStore = new Map<string, string>();
+function memGet(key: string): string | null {
+  return _memStore.get(key) ?? null;
+}
+function memSet(key: string, val: string): void {
+  _memStore.set(key, val);
+}
+function memDel(key: string): void {
+  _memStore.delete(key);
+}
+// 测试入口：暴露给 e2e 清状态，避免依赖 localStorage 跨页持久化。
+if (typeof window !== 'undefined') {
+  (window as unknown as { __mockAuth?: { clear: () => void; get: (k: string) => string | null } }).__mockAuth = {
+    clear: () => _memStore.clear(),
+    get: (k: string) => _memStore.get(k) ?? null,
+  };
+}
 
 function delay(ms?: number): Promise<void> {
   const duration = ms ?? MIN_DELAY + Math.random() * (MAX_DELAY - MIN_DELAY);
@@ -91,7 +110,7 @@ function throwError(code: string, message: string): never {
 }
 
 function requireAuth(): void {
-  if (!localStorage.getItem(TOKEN_KEY)) {
+  if (!memGet(TOKEN_KEY)) {
     throwError('UNAUTHORIZED', '请先登录');
   }
 }
@@ -125,7 +144,7 @@ export class MockApiClient implements IApiClient {
   private appliedOverviewRound: OverviewMockRound | null = null;
 
   constructor() {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = memGet(TOKEN_KEY);
     if (token) {
       const main = MOCK_USERS[0];
       if (main) this.currentUser = { ...main.user };
@@ -200,8 +219,8 @@ export class MockApiClient implements IApiClient {
   private async issueTokens(user: User): Promise<ApiResponse<LoginResponse>> {
     const access = `mock_token_${Date.now()}`;
     const refresh = `mock_refresh_${Date.now()}`;
-    localStorage.setItem(TOKEN_KEY, access);
-    localStorage.setItem(REFRESH_KEY, refresh);
+    memSet(TOKEN_KEY, access);
+    memSet(REFRESH_KEY, refresh);
     this.currentUser = { ...user };
     this.applyOverviewScenario(readOverviewMockRound());
     return wrapResponse({ access_token: access, refresh_token: refresh, user });
@@ -209,8 +228,8 @@ export class MockApiClient implements IApiClient {
 
   async logout(): Promise<ApiResponse<{ success: boolean }>> {
     await delay(100);
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_KEY);
+    memDel(TOKEN_KEY);
+    memDel(REFRESH_KEY);
     this.currentUser = null;
     return wrapResponse({ success: true });
   }
@@ -219,12 +238,12 @@ export class MockApiClient implements IApiClient {
     ApiResponse<{ access_token: string; refresh_token?: string }>
   > {
     await delay(100);
-    const refresh = localStorage.getItem(REFRESH_KEY);
+    const refresh = memGet(REFRESH_KEY);
     if (!refresh) throwError('AUTH_FAILED', 'Refresh token 无效');
     const access = `mock_token_${Date.now()}`;
     const nextRefresh = `mock_refresh_${Date.now()}`;
-    localStorage.setItem(TOKEN_KEY, access);
-    localStorage.setItem(REFRESH_KEY, nextRefresh);
+    memSet(TOKEN_KEY, access);
+    memSet(REFRESH_KEY, nextRefresh);
     return wrapResponse({ access_token: access, refresh_token: nextRefresh });
   }
 

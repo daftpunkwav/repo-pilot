@@ -9,7 +9,14 @@ export const MOCK_USER = {
 /** 清除 Mock 会话，保证未登录测试隔离 */
 export async function clearMockAuth(page: Page) {
   await page.goto('/login');
+  // §4.1.3: mock 端 token 现用内存 Map；先尝试通过 window.__mockAuth.clear() 清空，
+  // 未注入时回退到 localStorage 调用（兼容历史 e2e 行为）。
   await page.evaluate(() => {
+    const w = window as unknown as { __mockAuth?: { clear: () => void } };
+    if (w.__mockAuth) {
+      w.__mockAuth.clear();
+      return;
+    }
     localStorage.removeItem('rp_token');
     localStorage.removeItem('rp_refresh');
   });
