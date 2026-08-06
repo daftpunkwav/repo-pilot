@@ -30,11 +30,18 @@ _GITHUB_NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
 
 
 def _safe_github_name(value: str) -> str | None:
-    """拒绝路径穿越与异常字符，降低 GitHub API path 注入风险。"""
+    """拒绝路径穿越与异常字符，降低 GitHub API path 注入风险。
+
+    §4.2.5: 在白名单基础上追加 URL 编码往返校验，防御 %2e%2e / %2f 等编码绕过。
+    """
     s = (value or "").strip().removesuffix(".git")
     if not s or "/" in s or "\\" in s or ".." in s:
         return None
     if not _GITHUB_NAME_RE.fullmatch(s):
+        return None
+    # 二次校验：URL 编码后再解码应与原值一致
+    from urllib.parse import quote, unquote
+    if unquote(quote(s, safe="")) != s:
         return None
     return s
 
