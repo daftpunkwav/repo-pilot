@@ -39,7 +39,8 @@ async def proxy_agent_chat_sse(
     if project_id is not None:
         payload["project_id"] = str(project_id)
 
-    timeout = httpx.Timeout(connect=10.0, read=None, write=30.0, pool=10.0)
+    # SSE 透传允许较长间隔，但不能无限；120s 无任何数据视为上游故障并抛 ReadTimeout。
+    timeout = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
         async with client.stream("POST", url, json=payload, headers=headers) as resp:
             if resp.status_code >= 400:
