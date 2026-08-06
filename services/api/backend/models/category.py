@@ -18,8 +18,9 @@ class Category(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    # §4.1.8: 分类按 user 维度查询；与 f4542a1f742b 迁移一致
     user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(64), nullable=False)
     icon: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)

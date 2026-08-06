@@ -50,13 +50,15 @@ class AgentSession(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    # §4.1.8: 会话按 user 维度查询；与 f4542a1f742b 迁移一致
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
     )
     title: Mapped[Optional[str]] = mapped_column(String(255), default="新对话")
     # 主项目（兼容旧逻辑）；完整列表见 agent_session_projects
+    # §4.1.8: 项目维度查询；与 f4542a1f742b 迁移一致
     project_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True, index=True
     )
     # chat=用户主动对话；analyze=详情页快速 AI 分析
     source: Mapped[Optional[str]] = mapped_column(String(16), default="chat")
@@ -86,8 +88,9 @@ class AgentMessage(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    # §4.1.8: 消息按 session 维度查询；与 f4542a1f742b 迁移一致
     session_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("agent_sessions.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("agent_sessions.id"), nullable=False, index=True
     )
     role: Mapped[str] = mapped_column(String(16), nullable=False)
     agent_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
@@ -103,8 +106,9 @@ class ProjectAnalysis(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
+    # §4.1.8: 分析按 project 维度查询；与 f4542a1f742b 迁移一致
     project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True
     )
     agent_id: Mapped[str] = mapped_column(String(32), nullable=False)
     analysis_type: Mapped[str] = mapped_column(String(32), nullable=False)
