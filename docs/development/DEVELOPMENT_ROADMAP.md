@@ -5,6 +5,7 @@
 > ⚠️ **本文档是 v1.0 发布前的计划草案。** 任务清单中的复选框**未**随开发勾选；请勿当作当前进度看板。
 >
 > **当前实现状态请读：** [`PROGRESS_REPORT.md`](./PROGRESS_REPORT.md) · [`../architecture/REPO_LAYOUT.md`](../architecture/REPO_LAYOUT.md)
+> 2026-08-06 复核（§4.3.6）：本文 113 个 `[ ]` 待分批勾选，不在本次修复中逐条核对；请以 PROGRESS_REPORT.md 为准。
 >
 > ### 与代码对照（2026-08-04 摘要）
 >
