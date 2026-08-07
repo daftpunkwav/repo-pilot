@@ -37,22 +37,27 @@ def _async_url() -> str:
 
 
 def run_migrations_offline() -> None:
+    # §4.3.3: 仅 SQLite 需要 batch mode；PG 默认 DDL 直接执行
+    from sqlalchemy import make_url
+    is_sqlite = make_url(_async_url()).dialect.name == "sqlite"
     context.configure(
         url=_async_url(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        render_as_batch=True,
+        render_as_batch=is_sqlite,
     )
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection: Connection) -> None:
+    # §4.3.3: 与 offline 一致，按 dialect 决定 render_as_batch
+    is_sqlite = connection.dialect.name == "sqlite"
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
-        render_as_batch=True,
+        render_as_batch=is_sqlite,
     )
     with context.begin_transaction():
         context.run_migrations()
