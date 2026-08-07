@@ -49,3 +49,5 @@ class RefreshToken(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     revoked: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # §4.3.5: 最近一次 refresh 调用时间；nullable，便于审计与过期清理
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
