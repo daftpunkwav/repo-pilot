@@ -74,6 +74,8 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
     <div
       className="md-mermaid"
       data-testid="mermaid-svg"
+      {/* §4.2.15: svg 已在上方经 DOMPurify.sanitize(..., SVG_PURIFY) 清洗 */}
+      {/* eslint-disable-next-line no-restricted-syntax */}
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );
