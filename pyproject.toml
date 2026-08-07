@@ -5,4 +5,4 @@ description = "AI-driven open source project learning platform (monorepo root)"
 requires-python = ">=3.11"
 
 [tool.uv.workspace]
-members = ["services/api", "services/agent", "services/mcp"]
+members = ["services/api", "services/agent", "services/mcp", "packages/py-shared"]

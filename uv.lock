@@ -12,6 +12,7 @@ members = [
     "repopilot-agent",
     "repopilot-api",
     "repopilot-mcp",
+    "repopilot-py-shared",
 ]
 
 [[package]]
@@ -2256,6 +2257,17 @@ provides-extras = ["dev"]
 name = "repopilot-mcp"
 version = "0.1.0"
 source = { editable = "services/mcp" }
+
+[[package]]
+name = "repopilot-py-shared"
+version = "0.1.0"
+source = { editable = "packages/py-shared" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.5.0" }]
 
 [[package]]
 name = "requests"
