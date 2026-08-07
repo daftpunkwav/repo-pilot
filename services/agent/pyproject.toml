@@ -4,6 +4,8 @@ version = "0.3.0"
 description = "RepoPilot Agent 运行时 — Hub / Scout / Mentor 等"
 requires-python = ">=3.11"
 dependencies = [
+    # §4.3.8: 与 api 重复的依赖（pydantic/sqlalchemy/httpx/fastapi/uvicorn/litellm/python-dotenv）
+    # 中期通过 packages/py-shared 收敛；当前版本声明仍独立以避免破坏部署。
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
     "httpx>=0.25.0",

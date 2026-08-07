@@ -8,12 +8,14 @@ import type { QuestionItem } from '@/api/types';
 
 // ---- 复刻自原 agentQuestion.ts 的 helper（保持语义一致） ----
 
-function _labelForRadio(qi: QuestionItem, value: string, formatRadioOptionLabel: (opt: { text: string }, idx: number) => string): string {
+function _labelForRadio(qi: QuestionItem, value: string): string {
   if (qi.type !== 'radio') return value;
   const opt = qi.options.find((o) => o.value === value);
   if (!opt) return value;
-  const idx = qi.options.findIndex((o) => o.value === value);
-  return formatRadioOptionLabel(opt, idx >= 0 ? idx : 0);
+  const letter = String.fromCharCode(65 + qi.options.findIndex((o) => o.value === value));
+  // 原始 agentQuestion.ts 的 formatRadioOptionLabel 会同时处理 RadioOption (label) 与 CheckboxOption (text)
+  const text = ('label' in opt && typeof (opt as { label?: string }).label === 'string' ? (opt as { label?: string }).label : (opt as { text?: string }).text) ?? value;
+  return `${letter} · ${text}`;
 }
 
 function _labelForCheckbox(qi: QuestionItem, value: string): string {
@@ -41,7 +43,7 @@ export function formatAnswersForCard(
     let answer = '（未答）';
     if (a) {
       if (a.type === 'radio') {
-        answer = a.other_text?.trim() || _labelForRadio(qi, a.value, _fmt);
+        answer = a.other_text?.trim() || _labelForRadio(qi, a.value);
       } else if (a.type === 'checkbox') {
         answer = a.values.map((v) => _labelForCheckbox(qi, v)).join('、');
       } else if (a.type === 'slider') {
@@ -65,13 +67,6 @@ export function formatAnswersForCard(
 }
 
 // 与原 formatRadioOptionLabel 行为兼容（仅做兼容包装）
-function _fmt(opt: { text: string }, idx: number): string {
-  const letter = String.fromCharCode(65 + idx);
-  // 实际项目里的 formatRadioOptionLabel 会处理 A·xxx / 纯 xxx / 中文 letter 等；
-  // 这里只做最简格式兼容，真实使用仍走原 agentQuestion.ts 的实现（见下方的再导出）。
-  return `${letter} · ${opt.text}`;
-}
-
 /** 单条答案摘要（用于 tryParseAnswerDump 内的格式化）。 */
 export function summarizeOneAnswer(a: QuestionAnswer): string {
   return _summarizeOneAnswer(a);

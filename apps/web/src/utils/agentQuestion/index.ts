@@ -10,4 +10,3 @@
  * 拆分原则：保持公开 API 不变；测试断言覆盖的语义不变；逐步替换原文件中的实现。
  */
 export * from '../agentQuestion';
-export * from './formatters';
