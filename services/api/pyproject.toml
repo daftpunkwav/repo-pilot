@@ -1,7 +1,7 @@
 [project]
 name = "repopilot-api"
 version = "2.0.0"
-description = "RepoPilot API �?传统后端（用户、项目、笔记、图谱）"
+description = "RepoPilot API - unified backend (auth, projects, notes, graph, agent, settings)"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.104.0",
@@ -12,7 +12,7 @@ dependencies = [
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
     "email-validator>=2.0.0",
-    "pyjwt[crypto]>=2.8.0",  # ��4.2.12: ��� python-jose
+    "pyjwt[crypto]>=2.8.0",  # ��4.2.12: ��� python-jose
     "passlib[bcrypt]>=1.7.4",
     "bcrypt>=4.0.0",
     "python-multipart>=0.0.6",
