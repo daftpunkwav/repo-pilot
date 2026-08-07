@@ -11,9 +11,8 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-# 保证可 import backend
-# .../services/api/backend/migrations/alembic/env.py → repo root = parents[5]
-ROOT = Path(__file__).resolve().parents[5]
+# §4.3.1: 优先使用环境变量 REPOPILOT_ROOT，缺失时回退 parents[5]（保留旧行为）
+ROOT = Path(os.environ.get("REPOPILOT_ROOT") or Path(__file__).resolve().parents[5])
 import sys
 
 sys.path.insert(0, str(ROOT / "services" / "api"))
