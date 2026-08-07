@@ -191,6 +191,44 @@ def format_dispatch_notice(dispatch: dict) -> str:
 def format_dispatch_announce(dispatch: dict) -> str:
     """兼容旧名：现为短状态文案，不再产出「任务：…」长正文。"""
     return format_dispatch_status(dispatch)
+def format_subagent_start(
+    target: str, dispatch: dict, original_message: str
+) -> StreamEvent:
+    """§4.2.3 helper:_handle_dispatches 三分支共用的 subagent_start 事件。
+
+    把 4 处重复的 `format_sse("subagent_start", {...})` 字面量集中,
+    避免直接/串行/并行三路径出现 drift(task 截断 / reason 截断规则)。
+    """
+    return format_sse(
+        "subagent_start",
+        {
+            "agent_id": target,
+            "task": (dispatch.get("task") or original_message)[:200],
+            "reason": format_switch_reason(dispatch),
+        },
+    )
+
+
+def format_subagent_done(
+    target: str,
+    status: str,
+    *,
+    thinking: str | None = None,
+    output: str | None = None,
+) -> StreamEvent:
+    """§4.2.3 helper:三处 subagent_done 事件的统一构造器。
+
+    status ∈ {"ok", "question", "error"}。
+    thinking/output 仅用于 direct 嵌套路径(展示子代理思考/正文)。
+    """
+    data: dict[str, Any] = {"agent_id": target, "status": status}
+    if thinking is not None:
+        data["thinking"] = thinking
+    if output is not None:
+        data["output"] = output
+    return format_sse("subagent_done", data)
+
+
 
 
 def apply_merge_mode(agent_def: AgentDefinition) -> AgentDefinition:
@@ -1216,6 +1254,16 @@ class HubService:
         force_subagent: bool = False,
     ) -> AsyncIterator[str]:
         # preamble 已在引擎中以 text_delta 发出（若有）；此处再发具体调度预告
+        # ----- §4.2.3 函数结构:4 个阶段 -----
+        # 阶段 1: 过滤 + 合法性检查
+        # 阶段 2: 决策 direct / must_serial / parallel
+        # 阶段 3: 三选一分支执行
+        #   - direct: 单专家嵌套 + 流式 subagent_* + Hub 收尾汇总
+        #   - must_serial: 多专家串行静默 + prior_summary 串联 + question 即停
+        #   - parallel: 多专家并行静默 + gather + 任一 question 即停
+        # 阶段 4 (末尾): 若 finalize 且有 summaries,触发 Hub 合并汇总
+        # §4.2.3: subagent_start/done 已抽 format_subagent_start/done 模块级 helper
+
         _ = hub_preamble
         capped = list(dispatches[:3])
         # 过滤未注册
@@ -1335,14 +1383,7 @@ class HubService:
             target = d.get("target_agent") or "scout"
             expert_name = _AGENT_DISPLAY_NAMES.get(target, target)
             # 嵌套专家：思考/正文进 subagent 卡片（默认收起），Hub 再汇总成主文
-            yield format_sse(
-                "subagent_start",
-                {
-                    "agent_id": target,
-                    "task": (d.get("task") or original_message)[:200],
-                    "reason": format_switch_reason(d),
-                },
-            )
+            yield format_subagent_start(target, d, original_message)
             yield format_sse(
                 "thinking",
                 {"content": f"[状态] {expert_name} · 执行中\n"},
@@ -1370,14 +1411,11 @@ class HubService:
                     break
                 yield _yield_sse(item)
             if question:
-                yield format_sse(
-                    "subagent_done",
-                    {
-                        "agent_id": target,
-                        "status": "question",
-                        "thinking": think_text[: self.config.subagent_thinking_limit],
-                        "output": (text or "").strip()[: self.config.subagent_output_limit],
-                    },
+                yield format_subagent_done(
+                    target,
+                    "question",
+                    thinking=think_text[: self.config.subagent_thinking_limit],
+                    output=(text or "").strip()[: self.config.subagent_output_limit],
                 )
                 if result_bag is not None:
                     result_bag.had_question = True
@@ -1393,14 +1431,11 @@ class HubService:
                 )
                 return
             final_out = (text or body_text).strip()
-            yield format_sse(
-                "subagent_done",
-                {
-                    "agent_id": target,
-                    "status": "ok",
-                    "thinking": think_text[: self.config.subagent_thinking_limit],
-                    "output": final_out[: self.config.subagent_output_limit],
-                },
+            yield format_subagent_done(
+                target,
+                "ok",
+                thinking=think_text[: self.config.subagent_thinking_limit],
+                output=final_out[: self.config.subagent_output_limit],
             )
             expert_results.append((target, final_out))
             summaries.append(structure_expert_summary(target, final_out))
@@ -1446,14 +1481,7 @@ class HubService:
                         "前序专家已覆盖内容（勿重复，只补缺口）：\n"
                         + "\n\n".join(summaries)
                     )
-                yield format_sse(
-                    "subagent_start",
-                    {
-                        "agent_id": target,
-                        "task": (d.get("task") or original_message)[:200],
-                        "reason": format_switch_reason(d),
-                    },
-                )
+                yield format_subagent_start(target, d, original_message)
                 text = ""
                 async for item in _dispatch_one(
                     d=d,
@@ -1474,10 +1502,7 @@ class HubService:
                         for c in passthrough:
                             yield c
                         if question:
-                            yield format_sse(
-                                "subagent_done",
-                                {"agent_id": target, "status": "question"},
-                            )
+                            yield format_subagent_done(target, "question")
                             if result_bag is not None:
                                 result_bag.had_question = True
                             await self.memory.append_short_memory(
@@ -1493,10 +1518,7 @@ class HubService:
                             return
                         break
                     yield _yield_sse(item)
-                yield format_sse(
-                    "subagent_done",
-                    {"agent_id": target, "status": "ok"},
-                )
+                yield format_subagent_done(target, "ok")
                 expert_results.append((target, text or ""))
                 summaries.append(structure_expert_summary(target, text))
         else:
@@ -1531,14 +1553,7 @@ class HubService:
             )
             for d, r in zip(valid, results):
                 target = d.get("target_agent") or "scout"
-                yield format_sse(
-                    "subagent_start",
-                    {
-                        "agent_id": target,
-                        "task": (d.get("task") or original_message)[:200],
-                        "reason": format_switch_reason(d),
-                    },
-                )
+                yield format_subagent_start(target, d, original_message)
                 if isinstance(r, Exception):
                     logger.exception("并行调度失败: %s", r)
                     yield format_sse(
@@ -1549,10 +1564,7 @@ class HubService:
                 target, text, question, chunks, _think, _body = r
                 for c in chunks:
                     yield c
-                yield format_sse(
-                    "subagent_done",
-                    {"agent_id": target, "status": "question" if question else "ok"},
-                )
+                yield format_subagent_done(target, "question" if question else "ok")
                 if question:
                     if result_bag is not None:
                         result_bag.had_question = True

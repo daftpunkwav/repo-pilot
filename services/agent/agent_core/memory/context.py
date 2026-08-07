@@ -253,18 +253,38 @@ class ContextBuilder:
     async def load_chat_history(
         self, session_id: UUID, limit: int = 20
     ) -> list[dict[str, Any]]:
+        """?4.4.1: ???????? tool ???
+
+        ????:tool ??? tool_call_id ? tool_calls ??(?? schema ?? content),
+        ?????? OpenAI tool_calls ?????????????,
+        ????? assistant+tool ???????,LLM ????????????????
+        ??????? user/assistant?
+        """
         msgs = await self.memory.list_recent_messages(session_id, limit=limit)
         out: list[dict[str, Any]] = []
-        for m in msgs:
-            if m.role in ("user", "assistant", "system", "tool"):
-                item: dict[str, Any] = {"role": m.role, "content": m.content or ""}
-                # 设计取舍：tool 消息缺 tool_call_id 无法安全重放，跨会话只保留
-                # user/assistant，工具调用上下文依赖 short_memory 摘要补偿（上限 12 条）。
-                # 若摘要质量不足，模型可能丢失「上一轮调过什么工具」，导致重复调用。
-                if m.role in ("user", "assistant"):
-                    out.append(item)
+        # 1. ?????,????? assistant+tool ?????
+        last_round_start = len(msgs)  # ?? = len,????? tool ??
+        for idx in range(len(msgs) - 1, -1, -1):
+            m = msgs[idx]
+            if m.role == "tool":
+                # ???? tool: ?????? assistant
+                for j in range(idx, -1, -1):
+                    if msgs[j].role == "assistant":
+                        last_round_start = j
+                        break
+                break
+            if m.role == "assistant":
+                # ???? assistant: tool ??? assistant ?????(?? tool_call_id)
+                last_round_start = idx
+                break
+        # 2. ????(?????????? order)
+        for idx, m in enumerate(msgs):
+            if m.role in ("user", "assistant", "system"):
+                out.append({"role": m.role, "content": m.content or ""})
+            elif m.role == "tool" and idx >= last_round_start:
+                # tool ?????????(assistant+tool)
+                out.append({"role": "tool", "content": m.content or ""})
         return out
-
     def context_segments(
         self, messages: list[dict[str, Any]], agent_id: str
     ) -> list[dict[str, Any]]:
