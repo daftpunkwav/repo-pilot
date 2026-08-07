@@ -734,17 +734,13 @@ class HubService:
             prior = "\n".join(summaries) if summaries else None
             agent_text = ""
             expert_name = _AGENT_DISPLAY_NAMES.get(sub.agent_id, sub.agent_id)
+            # format_subagent_start 需要的 dispatch dict(sub.message 对应 task 字段)
             switch_d = {
-                "target_agent": sub.agent_id,
-                "reason": sub.reason or "多意图编排",
-            }
-            # 构造兼容 dispatch dict（sub.message 对应 task 字段）
-            switch_d_for_helper = {
                 "target_agent": sub.agent_id,
                 "task": sub.message or message,
                 "reason": sub.reason or "多意图编排",
             }
-            yield format_subagent_start(sub.agent_id, switch_d_for_helper, message)
+            yield format_subagent_start(sub.agent_id, switch_d, message)
             if direct:
                 yield format_sse(
                     "thinking",

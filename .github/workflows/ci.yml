@@ -24,9 +24,14 @@ jobs:
         # 根目录是 uv workspace;api 是 member,从根 sync 能解析 workspace 依赖
         run: uv sync --frozen
       - name: 跑单元测试
-        # 从 tests/ 目录运行,让 pytest 读到 pytest.ini + conftest.py
-        working-directory: tests
-        run: uv run --project ../../services/api pytest unit -q
+        # 测试在仓库根 tests/(含 pytest.ini + conftest.py),必须从仓库根运行。
+        # PYTHONPATH 设为仓库根,使 `from tests.sse_util import ...` 这类
+        # 顶层包导入生效(tests/ 无 __init__.py,需靠 PYTHONPATH 暴露为包)。
+        # pytest.ini 的 pythonpath 字段另负责注入 services/api 与 services/agent。
+        working-directory: .
+        env:
+          PYTHONPATH: .
+        run: uv run --project services/api pytest tests/unit -q
 
   frontend:
     runs-on: ubuntu-latest
