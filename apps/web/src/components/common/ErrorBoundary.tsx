@@ -1,8 +1,12 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+﻿import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: (error: Error, reset: () => void) => ReactNode;
+  /**
+   * 外部错误上报钩子(Sentry / DataDog 等);未提供时仅 console.error
+   */
+  onError?: (error: Error, info: ErrorInfo) => void;
 }
 
 interface ErrorBoundaryState {
@@ -12,9 +16,9 @@ interface ErrorBoundaryState {
 /**
  * 应用级错误边界
  *
- * - 捕获子树渲染时的同步异常，避免整页白屏
- * - 提供「重新加载」入口
- * - 控制台保留原始错误信息便于排查
+ * - 捕获子树渲染时的同步异常,避免整页白屏
+ * - 提供 fallback 渲染与 reset 重试入口
+ * - onError 钩子可用于对接 Sentry / DataDog 等上报通道,未设置时仅 console.error
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   override state: ErrorBoundaryState = { error: null };
@@ -24,7 +28,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    // 生产环境可对接 Sentry / DataDog；本地仅 console.error
+    // 优先调用外部 onError 上报;未提供时降级到本地 console.error
+    if (this.props.onError) {
+      this.props.onError(error, info);
+      return;
+    }
     console.error('[ErrorBoundary]', error, info.componentStack);
   }
 

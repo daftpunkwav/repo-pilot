@@ -1,4 +1,4 @@
-# RepoPilot 开发进度报告
+﻿# RepoPilot 开发进度报告
 
 > 报告日期：2026-08-06  
 > 代码版本：`2.0.0`（根 `package.json` / `apps/web/package.json` / `services/api` pyproject / FastAPI `version`）  
@@ -145,5 +145,17 @@ Vite + React 19 + Router + Zustand + TanStack Query → Mock/Real → SSE 解析
 | 最新全量审查 | `docs/review/full-review-20260804.md`（175 项发现，P0 15 / P1 48 / P2 ~70 / P3 ~42） |
 
 ---
+
+## 8. 前端通用基础设施:ErrorBoundary
+
+`apps/web/src/components/common/ErrorBoundary.tsx` 是应用级错误边界(class 组件,React 19 仍未提供 hook 版本)。
+
+- **路由层接入**:`apps/web/src/App.tsx` 已在 `<QueryClientProvider>` 之外包裹整个 `<RouterProvider>`,任何路由级渲染异常都会被捕获并展示 `app-error-fallback`(默认带 "页面出错了 / 错误详情 / 重试" 三段式 fallback)。
+- **页面级覆盖**:若某个页面想独立兜底(避免整页降级到 fallback),可直接在页面根组件再套一层 `<ErrorBoundary>` 并传入自定义 `fallback` 函数,reset 回调用于清除局部错误状态。
+- **错误上报**:`onError?: (error, info) => void` 可对接 Sentry / DataDog;未提供时降级为 `console.error` 记录到控制台。
+- **测试**:`apps/web/tests/unit/ErrorBoundary.test.tsx` 覆盖默认 fallback 显示、自定义 `onError` 钩子调用、以及点击 "重试" 后子树恢复渲染三个用例。
+
+---
+
 
 *本报告基于对仓库代码与近期提交的检查生成；具体实现以代码为准。*
