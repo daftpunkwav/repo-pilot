@@ -1,0 +1,23 @@
+﻿name: Markdown Link Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 链接失败(4xx/5xx)直接让 job 失败,起到 CI 拦截作用。
+# node_modules / .git / vendor / target 由 lychee 默认排除;
+# dist / .venv 等本地构建产物已被 .gitignore 忽略,actions/checkout 不会带入。
+
+jobs:
+  markdown-link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          check-files: |
+            *.md
+            docs/**/*.md
+            apps/web/**/*.md
+          base-branch: main
