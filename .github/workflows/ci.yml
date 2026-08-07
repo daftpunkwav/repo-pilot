@@ -6,8 +6,9 @@ on:
   pull_request:
     branches: [main]
 
-# 注意:此 CI 当前为骨架版本,backend job 的 pytest 路径与 services/api 测试分层
-# 仍待后续 infra PR 细化(参见 REMEDIATION_PLAN_20260806.md §4.4.3);不在本 PR 范围内。
+# backend 测试分层:实际测试在仓库根 tests/(含 pytest.ini + conftest.py),
+# pytest.ini 的 pythonpath 指向 services/api 与 services/agent。
+# 必须从 tests/ 目录运行,否则找不到 pytest.ini 与 conftest。
 
 jobs:
   backend:
@@ -20,9 +21,12 @@ jobs:
       - name: 安装 uv
         run: pip install uv
       - name: 同步依赖(锁定版本)
-        run: cd services/api && uv sync --frozen
+        # 根目录是 uv workspace;api 是 member,从根 sync 能解析 workspace 依赖
+        run: uv sync --frozen
       - name: 跑单元测试
-        run: cd services/api && uv run pytest tests/unit -q
+        # 从 tests/ 目录运行,让 pytest 读到 pytest.ini + conftest.py
+        working-directory: tests
+        run: uv run --project ../../services/api pytest unit -q
 
   frontend:
     runs-on: ubuntu-latest

@@ -18,8 +18,7 @@
  *   - quiz.ts            isExamQuestion / questionTitle
  *   - card-formatters.ts formatAnswersForCard / formatMemoryChipContent
  *
- * 历史：原 715 行单文件已拆为 7 个职责清晰的子模块；
- * `./agentQuestion/index.ts` 与本文件同步 re-export（保持原 import 路径）。
+ * 历史：原 715 行单文件已拆为 7 个职责清晰的子模块。
  */
 
 export {

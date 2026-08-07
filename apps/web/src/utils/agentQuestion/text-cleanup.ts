@@ -222,16 +222,30 @@ export function cleanOptions(raw: unknown, prompt = '', id = ''): RadioOption[] 
 /**
  * 判定一段助手正文是否包含反问（JSON 形态或 Markdown 选择题）。
  * 仅做粗筛——实际解析交给 recoverQuestionFromText。
+ *
+ * 注意:除"以 JSON 开头"的形态外,也覆盖"文本中间嵌入 JSON 子串"的场景,
+ * 对齐旧 `extractAskUserFromText` 的 start/end 分支,避免 UI 重复展示
+ * (说明文字 + 中间 JSON 反问时,若判为非反问,会被保留为独立 assistant 消息)。
  */
 export function isAskUserShapedText(text: string): boolean {
   if (!text) return false;
   const trimmed = text.trim();
+  // 1. 开头即是 JSON 形态
   if (
     (trimmed.startsWith('{') || trimmed.startsWith('[')) &&
     (/"items"\s*:|"questions"\s*:|"options"\s*:/).test(trimmed)
   ) {
     return true;
   }
+  // 2. 文本中间嵌入的 JSON 子串(对齐旧 extractAskUserFromText 的 start/end 分支,
+  //    避免"说明文字 + 中间 JSON 反问"场景下 UI 重复展示)
+  const start = trimmed.indexOf('{');
+  const end = trimmed.lastIndexOf('}');
+  if (start >= 0 && end > start) {
+    const slice = trimmed.slice(start, end + 1);
+    if (/"items"\s*:|"questions"\s*:/.test(slice)) return true;
+  }
+  // 3. Markdown 选择题
   if (
     parseLetterOptions(trimmed).length >= 2 &&
     /(?:题目[：:]|请选择|选出|测验|小测试|正确答案|第\s*\d+\s*题)/.test(trimmed)

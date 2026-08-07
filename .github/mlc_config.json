@@ -1,0 +1,15 @@
+{
+  "ignorePatterns": [
+    { "pattern": "^node_modules/" },
+    { "pattern": "^\\.venv/" },
+    { "pattern": "^dist/" },
+    { "pattern": "^apps/web/dist/" },
+    { "pattern": "package-lock\\.json" }
+  ],
+  "replacementPatterns": [],
+  "httpHeaders": [],
+  "timeout": "20s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "aliveStatusCodes": [200, 206, 301, 302, 308, 403]
+}

@@ -1,12 +1,13 @@
 /**
  * 卡片格式化（§4.2.16 N-02 拆分）。
  *
- * 含:
- *   - formatAnswersForCard   反问卡 + 聊天卡片的"已答 N 题"摘要与详情列表
- *   - summarizeOneAnswer     单条答案摘要（从 hydrate 复用）
- *   - labelForRadio          radio 答案 → "A. 文案"
- *   - labelForCheckbox       checkbox 答案 → "文案"
- *   - formatMemoryChipContent 侧栏记忆芯片：避免直接展示答题 JSON
+ * 公开导出:
+ *   - formatAnswersForCard     反问卡 + 聊天卡片的"已答 N 题"摘要与详情列表
+ *   - formatMemoryChipContent  侧栏记忆芯片：避免直接展示答题 JSON
+ *
+ * 文件内私有 helper:
+ *   - labelForRadio     radio 答案 → "A. 文案"（复用 radio-helpers.formatRadioOptionLabel）
+ *   - labelForCheckbox  checkbox 答案 → "文案"
  *
  * 行为完全对齐原 `agentQuestion.ts`（§4.2.16 拆分第一步中的 formatters.ts
  * 用 "A · 文案" 拼接口径不同，本文件以原文件为准）。

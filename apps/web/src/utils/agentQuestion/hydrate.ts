@@ -7,8 +7,9 @@
  *   - hydrateAgentMessages 水合:  会话消息列表 → 渲染友好的 question/answer 卡片
  *   - tryParseAnswerDump   反规范化: 泄漏在聊天/偏好的答案 JSON → QuestionAnswerRecord
  *
- * 注意 ensureAgentQuestion 与 parsers.ts 互相依赖（解析需要归一化），
- * 拆分时让 parsers → hydrate 方向引用，避免循环。
+ * 注意 ensureAgentQuestion 与 parsers.ts 存在循环依赖（hydrate → parsers → hydrate），
+ * 双方均在函数体内调用对方，ESM 运行时安全。如需彻底消除，
+ * 可将 recoverQuestionFromText 从 parsers 内联到 hydrate.ts。
  */
 import type {
   AgentMessage,
@@ -323,6 +324,3 @@ function summarizeOneAnswer(a: QuestionAnswer): string {
   if (a.type === 'knowledge_map') return a.checked.join('、');
   return '（已答）';
 }
-
-// 暴露私有 helper 给 card-formatters 复用（避免重复实现）
-export const __hydrateInternal = { summarizeOneAnswer, normalizeItem };

@@ -260,4 +260,26 @@ describe('agentQuestion 模块化(§4.2.16 N-02)', () => {
       expect(CardFormatters.formatMemoryChipContent('')).toBe('');
     });
   });
+
+  describe('isAskUserShapedText 边界(§4.2.16 拆分回归保护)', () => {
+    it('纯 JSON 开头 → true', () => {
+      expect(TextCleanup.isAskUserShapedText('{"items":[{"type":"radio"}]}')).toBe(true);
+    });
+    it('文本中间嵌入 JSON 反问 → true(捕获回归:防止"说明文字 + 中间 JSON"被漏判导致 UI 重复展示)', () => {
+      expect(
+        TextCleanup.isAskUserShapedText(
+          '好的，我来问你：{"items":[{"type":"radio","options":["A","B"]}]}'
+        )
+      ).toBe(true);
+    });
+    it('含 A/B/C 选项 + 题目关键词 → true', () => {
+      expect(TextCleanup.isAskUserShapedText('A.x\nB.y\nC.z\n第 1 题：选什么？')).toBe(true);
+    });
+    it('普通说明文本 → false', () => {
+      expect(TextCleanup.isAskUserShapedText('我来帮你分析一下这个项目')).toBe(false);
+    });
+    it('空字符串 → false', () => {
+      expect(TextCleanup.isAskUserShapedText('')).toBe(false);
+    });
+  });
 });

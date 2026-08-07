@@ -738,15 +738,13 @@ class HubService:
                 "target_agent": sub.agent_id,
                 "reason": sub.reason or "多意图编排",
             }
-
-            yield format_sse(
-                "subagent_start",
-                {
-                    "agent_id": sub.agent_id,
-                    "task": (sub.message or message)[:200],
-                    "reason": format_switch_reason(switch_d),
-                },
-            )
+            # 构造兼容 dispatch dict（sub.message 对应 task 字段）
+            switch_d_for_helper = {
+                "target_agent": sub.agent_id,
+                "task": sub.message or message,
+                "reason": sub.reason or "多意图编排",
+            }
+            yield format_subagent_start(sub.agent_id, switch_d_for_helper, message)
             if direct:
                 yield format_sse(
                     "thinking",
@@ -771,14 +769,11 @@ class HubService:
                 if isinstance(item, EngineResult):
                     agent_text = item.text or "".join(text_parts)
                     if item.question:
-                        yield format_sse(
-                            "subagent_done",
-                            {
-                                "agent_id": sub.agent_id,
-                                "status": "question",
-                                "thinking": "".join(think_parts).strip()[: self.config.subagent_thinking_limit],
-                                "output": (agent_text or "").strip()[: self.config.subagent_output_limit],
-                            },
+                        yield format_subagent_done(
+                            sub.agent_id,
+                            "question",
+                            thinking="".join(think_parts).strip()[: self.config.subagent_thinking_limit],
+                            output=(agent_text or "").strip()[: self.config.subagent_output_limit],
                         )
                         return
                 else:
@@ -814,14 +809,11 @@ class HubService:
                         yield _yield_sse(item)
 
             final_out = (agent_text or "".join(text_parts)).strip()
-            yield format_sse(
-                "subagent_done",
-                {
-                    "agent_id": sub.agent_id,
-                    "status": "ok",
-                    "thinking": "".join(think_parts).strip()[: self.config.subagent_thinking_limit],
-                    "output": final_out[: self.config.subagent_output_limit],
-                },
+            yield format_subagent_done(
+                sub.agent_id,
+                "ok",
+                thinking="".join(think_parts).strip()[: self.config.subagent_thinking_limit],
+                output=final_out[: self.config.subagent_output_limit],
             )
 
             expert_results.append((sub.agent_id, final_out))

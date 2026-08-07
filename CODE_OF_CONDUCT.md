@@ -39,7 +39,7 @@
 
 如有违反本准则的行为,请通过电子邮件向项目维护者举报:
 
-- 联系邮箱:`open-source@example.com`(占位符,发布前请替换为真实邮箱)
+- 联系邮箱:`daftpunk.wav@outlook.com`
 
 所有举报都将由维护者审阅并调查,必要时采取对应措施。维护者有义务对举报者身份保密。
 
@@ -116,7 +116,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-`open-source@example.com`.
+`daftpunk.wav@outlook.com`.
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

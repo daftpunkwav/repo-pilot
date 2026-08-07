@@ -253,36 +253,42 @@ class ContextBuilder:
     async def load_chat_history(
         self, session_id: UUID, limit: int = 20
     ) -> list[dict[str, Any]]:
-        """?4.4.1: ???????? tool ???
+        """§4.4.1: 跨会话历史保留最近一轮 tool 交互(以 tool 结尾的形态)。
 
-        ????:tool ??? tool_call_id ? tool_calls ??(?? schema ?? content),
-        ?????? OpenAI tool_calls ?????????????,
-        ????? assistant+tool ???????,LLM ????????????????
-        ??????? user/assistant?
+        背景:tool 消息缺 tool_call_id 与 tool_calls 字段(当前 schema 只存 content),
+        若全部重放会破坏 OpenAI tool_calls 协议触发 API 报错;
+        本方法仅在历史以 tool 结尾时,保留该 tool 及其配对的 assistant,
+        让 LLM 知道上一轮调过什么工具。
+
+        注意:在 `assistant → tool → assistant` 的常见形态下,算法仍会丢弃中间的
+        tool(因为末尾是 assistant,会重置 last_round_start 到末尾 assistant)。
+        这是保守安全选择,避免孤立的 tool 触发 API 400。上下文连续性由
+        `short_memory` 摘要补偿(参见 agent_core.agents.hub.format_subagent_start)。
+        其余轮次的 tool 始终丢弃,仅保留 user/assistant/system。
         """
         msgs = await self.memory.list_recent_messages(session_id, limit=limit)
         out: list[dict[str, Any]] = []
-        # 1. ?????,????? assistant+tool ?????
-        last_round_start = len(msgs)  # ?? = len,????? tool ??
+        # 1. 反向扫描,定位"以 tool 结尾的最近一轮"起点;若末尾非 tool 则取末尾 assistant
+        last_round_start = len(msgs)  # 默认 = len,即不保留任何 tool
         for idx in range(len(msgs) - 1, -1, -1):
             m = msgs[idx]
             if m.role == "tool":
-                # ???? tool: ?????? assistant
+                # 最后一条是 tool: 回溯找配对的 assistant
                 for j in range(idx, -1, -1):
                     if msgs[j].role == "assistant":
                         last_round_start = j
                         break
                 break
             if m.role == "assistant":
-                # ???? assistant: tool ??? assistant ?????(?? tool_call_id)
+                # 最后一条是 assistant: tool 已被消费或不存在(无需保留旧 tool)
                 last_round_start = idx
                 break
-        # 2. ????(?????????? order)
+        # 2. 正向输出(保持原始时间顺序)
         for idx, m in enumerate(msgs):
             if m.role in ("user", "assistant", "system"):
                 out.append({"role": m.role, "content": m.content or ""})
             elif m.role == "tool" and idx >= last_round_start:
-                # tool ?????????(assistant+tool)
+                # tool 仅保留最近一轮(配对的 assistant+tool)
                 out.append({"role": "tool", "content": m.content or ""})
         return out
     def context_segments(
