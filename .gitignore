@@ -69,5 +69,8 @@ tmp/
 .pytest_cache/
 *.pkg
 
+# CodeGraph 本地索引（.codegraph/ 为生成产物，可随时 codegraph init 重建）
+.codegraph/
+
 # Mimosa 安全扫描产物(本地 finding ledger / hook state，含会话级缓存)
 .mimosa/
