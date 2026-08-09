@@ -21,9 +21,9 @@ describe('graphStore', () => {
     expect(useGraphStore.getState().minSimilarity).toBe(0);
   });
 
-  it('clamp maxEdges into [10, 2000]', () => {
+  it('clamp maxEdges into [10, 1000]', () => {
     useGraphStore.getState().setMaxEdges(99999);
-    expect(useGraphStore.getState().maxEdges).toBe(2000);
+    expect(useGraphStore.getState().maxEdges).toBe(1000);
     useGraphStore.getState().setMaxEdges(0);
     expect(useGraphStore.getState().maxEdges).toBe(10);
   });

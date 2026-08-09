@@ -10,7 +10,11 @@ export function useGraph() {
     queryKey: ['graph', minSimilarity, maxEdges],
     queryFn: async () => {
       const api = getApi();
-      const res = await api.getGraph({ min_similarity: minSimilarity, max_edges: maxEdges });
+      const res = await api.getGraph({
+        min_similarity: minSimilarity,
+        /* 兼容尚未热更的后端（旧 le=1000）；社区仍由后端全量边计算 */
+        max_edges: Math.min(maxEdges, 1000),
+      });
       return res.data;
     },
   });

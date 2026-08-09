@@ -633,7 +633,7 @@ export class MockApiClient implements IApiClient {
   }): Promise<ApiResponse<GraphData>> {
     await delay(300);
     const minSim = params?.min_similarity ?? 0.1;
-    const maxEdges = params?.max_edges ?? 500;
+    const maxEdges = params?.max_edges ?? 2000;
     const nodeIds = new Set(this.projects.map((p) => p.id));
     const nodes = MOCK_GRAPH.nodes.filter((n) => nodeIds.has(n.id));
     let edges = MOCK_GRAPH.edges.filter(

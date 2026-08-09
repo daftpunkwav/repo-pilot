@@ -18,7 +18,7 @@ router = APIRouter(prefix="/graph", tags=["graph-l0"])
 @router.get("/", response_model=DataResponse[dict])
 async def get_graph(
     min_similarity: float = Query(0.3, ge=0, le=1),
-    max_edges: int = Query(200, ge=1, le=1000),
+    max_edges: int = Query(1000, ge=1, le=5000),
     db: AsyncSession = Depends(get_db),
 ):
     """L0 项目相似度图（不依赖代码索引引擎）。"""

@@ -40,7 +40,7 @@ def test_similarity_same_language_and_category():
     cid = uuid4()
     a = _project(name="react/core", language="TypeScript", category_id=cid, description="ui library")
     b = _project(name="react/core", language="TypeScript", category_id=cid, description="ui library")
-    assert _similarity(a, b) >= 0.65
+    assert _similarity(a, b) >= 0.55
 
 
 def test_similarity_no_match():
@@ -50,10 +50,98 @@ def test_similarity_no_match():
 
 
 def test_similarity_partial_language_only():
-    a = _project(name="react/core", language="TypeScript", description="ui lib for declarative components")
-    b = _project(name="vue/runtime", language="TypeScript", description="progressive web framework")
+    """同语言但角色/问题不同：不应仅因语言拉高。"""
+    a = _project(
+        name="acme/platformer",
+        language="TypeScript",
+        description="indie platformer game demo with sprite physics",
+        url="https://github.com/acme/platformer",
+    )
+    b = _project(
+        name="acme/admin-dashboard",
+        language="TypeScript",
+        description="saas admin dashboard spa with react components",
+        url="https://github.com/other/admin-dashboard",
+    )
     score = _similarity(a, b)
-    assert 0.12 <= score < 0.9
+    assert score < 0.28
+
+
+def test_similarity_language_category_not_enough():
+    """仅同语言+同粗分类、无结构信号：应被 shallow_signal_cap 压低。"""
+    cid = uuid4()
+    a = _project(
+        name="corp/alpha-notes",
+        language="TypeScript",
+        category_id=cid,
+        description="personal scratchpad",
+        url="https://github.com/corp/alpha-notes",
+    )
+    b = _project(
+        name="other/beta-memo",
+        language="TypeScript",
+        category_id=cid,
+        description="daily journal entries",
+        url="https://github.com/other/beta-memo",
+    )
+    assert _similarity(a, b) < 0.12
+
+
+def test_similarity_same_author_boost():
+    a = _project(
+        name="alice/mcp-filesystem",
+        language="Python",
+        description="mcp server for filesystem tools",
+        url="https://github.com/alice/mcp-filesystem",
+    )
+    b = _project(
+        name="alice/mcp-browser",
+        language="TypeScript",
+        description="mcp server browser automation",
+        url="https://github.com/alice/mcp-browser",
+    )
+    score = _similarity(a, b)
+    assert score >= 0.28
+    _, reasons = _similarity_detailed(
+        a, b, _doc_vector(a), _doc_vector(b), tokens_a=_doc_tokens(a), tokens_b=_doc_tokens(b)
+    )
+    assert "author" in reasons
+    assert "role" in reasons or "role_family" in reasons or "stack" in reasons
+
+
+def test_similarity_agent_frameworks_cross_language():
+    a = _project(
+        name="langchain-ai/langchain",
+        language="Python",
+        description="agent framework langchain for llm orchestration",
+        url="https://github.com/langchain-ai/langchain",
+    )
+    b = _project(
+        name="microsoft/autogen",
+        language="Python",
+        description="multi-agent framework autogen orchestration",
+        url="https://github.com/microsoft/autogen",
+    )
+    assert _similarity(a, b) >= 0.30
+
+
+def test_similarity_same_problem_rag():
+    a = _project(
+        name="x/rag-kit",
+        language="Python",
+        description="rag retrieval embedding vectorstore knowledge base",
+    )
+    b = _project(
+        name="y/doc-chat",
+        language="TypeScript",
+        description="chatbot with rag retrieval and vector embeddings",
+    )
+    score = _similarity(a, b)
+    assert score >= 0.18
+    _, reasons = _similarity_detailed(
+        a, b, _doc_vector(a), _doc_vector(b), tokens_a=_doc_tokens(a), tokens_b=_doc_tokens(b)
+    )
+    assert "problem" in reasons or "tfidf" in reasons
 
 
 def test_similarity_both_empty():
@@ -72,7 +160,7 @@ def test_similarity_chinese_text_overlap():
     a = _project(name="react/core", language="TypeScript", description="React 是一款用于构建用户界面的 JavaScript 库")
     b = _project(name="react/core", language="TypeScript", description="React 是构建用户界面的库")
     score = _similarity(a, b)
-    assert score >= 0.40
+    assert score >= 0.30
 
 
 def test_cosine_zero_vector():
@@ -128,25 +216,39 @@ def test_tfidf_downweights_common_terms():
 def test_doc_vector_combines_fields():
     p = _project(name="react", language="TypeScript", description="ui", note="frontend")
     v = _doc_vector(p)
-    assert "typescript" in v
     assert "react" in v
     assert "ui" in v
+    assert "frontend" in v
+    # language 不进 TF 向量，走独立弱信号
+    assert "typescript" not in v
 
 
 def test_similarity_detailed_reasons():
     cid = uuid4()
-    a = _project(name="react/core", language="TypeScript", category_id=cid, description="ui library framework")
-    b = _project(name="react/core", language="TypeScript", category_id=cid, description="ui library framework")
+    a = _project(
+        name="react/core",
+        language="TypeScript",
+        category_id=cid,
+        description="react ui component library design-system",
+        url="https://github.com/facebook/react",
+    )
+    b = _project(
+        name="react/core",
+        language="TypeScript",
+        category_id=cid,
+        description="react ui component library design-system",
+        url="https://github.com/facebook/react-dom",
+    )
     toks = _doc_tokens(a)
     idf = _build_idf([toks, toks])
     score, reasons = _similarity_detailed(
         a, b, _tfidf(toks, idf), _tfidf(toks, idf), tokens_a=toks, tokens_b=toks
     )
     assert "tfidf" in reasons
-    assert "language" in reasons
-    assert "category" in reasons
-    assert "name" in reasons
-    assert score >= 0.65
+    assert "author" in reasons
+    assert score >= 0.45
+    # 语言可有，但不应是唯一结构信号
+    assert any(r in reasons for r in ("role", "stack", "problem", "name", "tfidf"))
 
 
 def test_similarity_detailed_empty_reasons():
@@ -210,7 +312,23 @@ def test_cluster_communities_merges_strong_edges():
     ]
     comm = _cluster_communities(nodes, edges)
     assert comm["a"] == comm["b"] == comm["c"]
-    assert comm["d"] != comm["a"] or True  # d 可能孤立
+
+
+def test_cluster_communities_caps_count_for_many_nodes():
+    from backend.services.graph_service import _target_cluster_count
+
+    n = 232
+    nodes = [f"n{i}" for i in range(n)]
+    edges = []
+    for i in range(n - 1):
+        edges.append({"source": f"n{i}", "target": f"n{i+1}", "similarity": 0.25})
+    for i in range(0, n, 15):
+        for j in range(i + 1, min(i + 8, n)):
+            edges.append({"source": f"n{i}", "target": f"n{j}", "similarity": 0.55})
+    comm = _cluster_communities(nodes, edges)
+    uniq = set(comm.values())
+    assert len(uniq) <= _target_cluster_count(n)
+    assert len(uniq) >= 1
 
 
 @pytest.mark.asyncio

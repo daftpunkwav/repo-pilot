@@ -46,8 +46,9 @@ export const useGraphStore = create<GraphState>((set) => ({
   selectedNodeId: null,
   highlightNodeId: null,
   searchQuery: '',
-  minSimilarity: 0.1,
-  maxEdges: 500,
+  minSimilarity: 0.08,
+  /** 与 API Query le 对齐；过大会导致未热更后端时 422「参数校验失败」 */
+  maxEdges: 1000,
   categoryFilter: null,
   edgeTypeFilter: null,
   viewMode: 'force',
@@ -63,7 +64,7 @@ export const useGraphStore = create<GraphState>((set) => ({
   setSearchQuery: (query) => set({ searchQuery: query }),
   setMinSimilarity: (value) =>
     set({ minSimilarity: Math.max(0, Math.min(1, value)) }),
-  setMaxEdges: (value) => set({ maxEdges: Math.max(10, Math.min(2000, value)) }),
+  setMaxEdges: (value) => set({ maxEdges: Math.max(10, Math.min(1000, value)) }),
   setCategoryFilter: (categoryId) => set({ categoryFilter: categoryId }),
   setEdgeTypeFilter: (edgeType) => set({ edgeTypeFilter: edgeType }),
   setViewMode: (mode) => set({ viewMode: mode }),

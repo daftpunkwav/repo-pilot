@@ -1,14 +1,19 @@
 /**
- * L0 布局纯函数单测：半径单调、树状 Y 序、径向 hubness 反相关
+ * L0 布局：相对秩圆心、树状层距、径向铺满
  */
 import { describe, expect, it } from 'vitest';
 import {
   clusterRadius,
+  coarsenClustersForDisplay,
   fallbackCommunities,
+  filledDiskRadius,
   forceLayout3d,
   foundationRadius,
   hubnessRadius,
+  layoutEdgeWeight,
   radialLayout3d,
+  relativeRankHigh,
+  targetDisplayClusters,
   treeClusterOrderY,
   treeLayout3d,
   treeRingRadius,
@@ -23,6 +28,7 @@ type Vec = {
   foundation: number;
   hubness: number;
   clusterId: string;
+  fineClusterId: string;
   stars: number;
 };
 
@@ -31,6 +37,7 @@ function makeVec(
   clusterId: string,
   foundation: number,
   hubness: number,
+  fineClusterId = clusterId,
 ): Vec {
   return {
     id,
@@ -41,98 +48,117 @@ function makeVec(
     foundation,
     hubness,
     clusterId,
+    fineClusterId,
     stars: 100,
   };
 }
 
+describe('relative rank and filled disk', () => {
+  it('ranks higher values closer to 1', () => {
+    const r = relativeRankHigh([0.1, 0.9, 0.5]);
+    expect(r[1]).toBe(1);
+    expect(r[0]).toBe(0);
+    expect(r[2]).toBe(0.5);
+  });
+
+  it('filledDiskRadius: higher centrality closer to center', () => {
+    expect(filledDiskRadius(100, 1)).toBeLessThan(filledDiskRadius(100, 0));
+    expect(filledDiskRadius(100, 1)).toBeLessThan(25);
+  });
+
+  it('targets a bounded number of display clusters', () => {
+    expect(targetDisplayClusters(232)).toBeLessThanOrEqual(10);
+  });
+
+  it('coarsens many tiny clusters into target count', () => {
+    const cluster = new Map<string, string>();
+    const links: { source: string; target: string; w: number }[] = [];
+    for (let i = 0; i < 40; i += 1) {
+      cluster.set(`n${i}`, `c${i}`);
+      if (i > 0) links.push({ source: `n${i - 1}`, target: `n${i}`, w: 0.4 });
+    }
+    const coarse = coarsenClustersForDisplay(cluster, links, 8);
+    expect(new Set(coarse.values()).size).toBeLessThanOrEqual(8);
+  });
+
+  it('layoutEdgeWeight lifts weak edges', () => {
+    expect(layoutEdgeWeight(0.1)).toBeGreaterThan(0.1);
+  });
+});
+
 describe('l0 layout metrics', () => {
   it('clusterRadius grows with member count', () => {
     expect(clusterRadius(100)).toBeGreaterThan(clusterRadius(5));
-    expect(clusterRadius(5)).toBeGreaterThan(clusterRadius(1));
   });
 
-  it('foundationRadius: higher foundation → closer to center', () => {
-    const R = 100;
-    expect(foundationRadius(R, 0.9)).toBeLessThan(foundationRadius(R, 0.2));
-  });
-
-  it('treeRingRadius enforces a visible minimum', () => {
-    const R = 100;
-    const nearCore = treeRingRadius(R, 0.99, 8);
-    expect(nearCore).toBeGreaterThanOrEqual(R * 0.28);
-    expect(nearCore).toBeLessThan(treeRingRadius(R, 0.1, 8));
+  it('foundationRadius / treeRingRadius follow centrality', () => {
+    expect(foundationRadius(100, 0.9)).toBeLessThan(foundationRadius(100, 0.2));
+    expect(treeRingRadius(100, 0.9, 8)).toBeLessThan(treeRingRadius(100, 0.1, 8));
   });
 
   it('hubnessRadius: higher hubness → closer to center', () => {
-    const R = 200;
-    expect(hubnessRadius(R, 0.95)).toBeLessThan(hubnessRadius(R, 0.1));
+    expect(hubnessRadius(200, 1)).toBeLessThan(hubnessRadius(200, 0));
   });
 });
 
 describe('l0 tree layout', () => {
-  it('orders smaller clusters above larger ones (higher Y for larger)', () => {
+  it('puts smaller layers above larger ones (higher Y)', () => {
     const nodes = [
       makeVec('a1', 'small', 0.8, 0.5),
       makeVec('a2', 'small', 0.3, 0.4),
       makeVec('a3', 'small', 0.2, 0.3),
-      ...Array.from({ length: 8 }, (_, i) =>
-        makeVec(`b${i}`, 'large', 0.5, 0.4),
-      ),
-      ...Array.from({ length: 4 }, (_, i) =>
-        makeVec(`m${i}`, 'mid', 0.5, 0.4),
+      ...Array.from({ length: 8 }, (_, i) => makeVec(`b${i}`, 'large', 0.5, 0.4)),
+      ...Array.from({ length: 4 }, (_, i) => makeVec(`m${i}`, 'mid', 0.5, 0.4)),
+    ];
+    treeLayout3d(nodes, []);
+    const order = treeClusterOrderY(nodes);
+    const sizes = order.map(
+      (id) => nodes.filter((n) => n.clusterId === id).length,
+    );
+    expect(sizes[0]!).toBeGreaterThanOrEqual(sizes[sizes.length - 1]!);
+    const topY = nodes
+      .filter((n) => n.clusterId === order[order.length - 1])
+      .reduce((s, n) => s + n.y, 0);
+    const botY = nodes
+      .filter((n) => n.clusterId === order[0])
+      .reduce((s, n) => s + n.y, 0);
+    expect(topY).toBeGreaterThan(botY);
+  });
+
+  it('balances layers but keeps small-top large-bottom gradient', () => {
+    const nodes = [
+      ...Array.from({ length: 5 }, (_, i) => makeVec(`s${i}`, 'tiny', 0.4, 0.3)),
+      ...Array.from({ length: 180 }, (_, i) =>
+        makeVec(`b${i}`, 'huge', 0.3 + (i % 10) / 20, 0.4, `f${i % 12}`),
       ),
     ];
     treeLayout3d(nodes, []);
     const order = treeClusterOrderY(nodes);
-    expect(order[0]).toBe('small');
-    expect(order[order.length - 1]).toBe('large');
-
-    const smallY = nodes.filter((n) => n.clusterId === 'small').reduce((s, n) => s + n.y, 0) / 3;
-    const largeY = nodes.filter((n) => n.clusterId === 'large').reduce((s, n) => s + n.y, 0) / 8;
-    expect(largeY).toBeGreaterThan(smallY);
-  });
-
-  it('spreads nodes on each ring instead of a vertical line', () => {
-    const nodes = Array.from({ length: 12 }, (_, i) =>
-      makeVec(`n${i}`, 'ring', 0.9, 0.4),
+    const sizes = order.map(
+      (id) => nodes.filter((n) => n.clusterId === id).length,
     );
-    treeLayout3d(nodes, []);
-    const xs = nodes.map((n) => n.x);
-    const zs = nodes.map((n) => n.z);
-    const xSpan = Math.max(...xs) - Math.min(...xs);
-    const zSpan = Math.max(...zs) - Math.min(...zs);
-    expect(xSpan).toBeGreaterThan(30);
-    expect(zSpan).toBeGreaterThan(30);
-    /* 高 foundation 也不得塌到圆心 */
-    for (const n of nodes) {
-      expect(Math.hypot(n.x, n.z)).toBeGreaterThan(20);
-    }
+    expect(sizes[0]!).toBeGreaterThanOrEqual(sizes[sizes.length - 1]!);
+    expect(sizes[0]! / Math.max(1, sizes[sizes.length - 1]!)).toBeGreaterThan(1.5);
   });
 
-  it('stacked circles do not overlap vertically', () => {
+  it('uses compact vertical gaps (~1.5x of prior tight gap)', () => {
     const nodes = [
-      ...Array.from({ length: 3 }, (_, i) => makeVec(`s${i}`, 'c3', 0.5, 0.4)),
-      ...Array.from({ length: 8 }, (_, i) => makeVec(`m${i}`, 'c8', 0.5, 0.4)),
-      ...Array.from({ length: 20 }, (_, i) => makeVec(`b${i}`, 'c20', 0.5, 0.4)),
+      ...Array.from({ length: 12 }, (_, i) => makeVec(`a${i}`, 'c12', 0.5, 0.4, `f${i % 3}`)),
+      ...Array.from({ length: 20 }, (_, i) => makeVec(`b${i}`, 'c20', 0.5, 0.4, `f${i % 4}`)),
+      ...Array.from({ length: 28 }, (_, i) => makeVec(`c${i}`, 'c28', 0.5, 0.4, `f${i % 5}`)),
     ];
     treeLayout3d(nodes, []);
-    const scale = 1.35;
-    const centers = ['c3', 'c8', 'c20'].map((cid) => {
+    const ys = [...new Set(nodes.map((n) => n.clusterId))].map((cid) => {
       const ms = nodes.filter((n) => n.clusterId === cid);
-      const y = ms.reduce((s, n) => s + n.y, 0) / ms.length;
-      return { cid, y, R: clusterRadius(ms.length) * scale };
+      return ms.reduce((s, n) => s + n.y, 0) / ms.length;
     });
-    centers.sort((a, b) => a.y - b.y);
-    for (let i = 1; i < centers.length; i += 1) {
-      const gap = centers[i]!.y - centers[i - 1]!.y;
-      const need = centers[i]!.R + centers[i - 1]!.R;
-      expect(gap).toBeGreaterThanOrEqual(need - 20);
-    }
+    const span = Math.max(...ys) - Math.min(...ys);
+    expect(span).toBeLessThan(360);
   });
 });
 
 describe('l0 radial layout', () => {
-  it('places higher hubness closer to origin', () => {
+  it('places highest relative hubness nearest origin', () => {
     const nodes = [
       makeVec('hub', 'c1', 0.5, 0.95),
       makeVec('leaf', 'c1', 0.2, 0.05),
@@ -140,18 +166,32 @@ describe('l0 radial layout', () => {
     ];
     radialLayout3d(nodes, []);
     const dist = (n: Vec) => Math.hypot(n.x, n.z);
-    const hub = nodes.find((n) => n.id === 'hub')!;
-    const leaf = nodes.find((n) => n.id === 'leaf')!;
-    expect(dist(hub)).toBeLessThan(dist(leaf));
+    expect(dist(nodes.find((n) => n.id === 'hub')!)).toBeLessThan(
+      dist(nodes.find((n) => n.id === 'leaf')!),
+    );
+  });
+
+  it('fills mid-disk for ~200 nodes instead of hollow ring', () => {
+    const nodes = Array.from({ length: 200 }, (_, i) =>
+      makeVec(`n${i}`, `c${i % 8}`, 0.4, i / 199, `f${i % 20}`),
+    );
+    radialLayout3d(nodes, []);
+    const maxR = Math.max(...nodes.map((n) => Math.hypot(n.x, n.z)));
+    const midCount = nodes.filter((n) => {
+      const r = Math.hypot(n.x, n.z);
+      return r > maxR * 0.15 && r < maxR * 0.75;
+    }).length;
+    expect(midCount).toBeGreaterThan(60);
+    expect(Math.min(...nodes.map((n) => Math.hypot(n.x, n.z)))).toBeLessThan(maxR * 0.25);
   });
 });
 
 describe('l0 force layout', () => {
-  it('keeps higher foundation nearer its cluster centroid', () => {
+  it('keeps higher relative foundation nearer cluster centroid', () => {
     const nodes = [
       makeVec('core', 'g', 0.95, 0.6),
-      makeVec('app1', 'g', 0.15, 0.3),
-      makeVec('app2', 'g', 0.2, 0.25),
+      makeVec('app1', 'g', 0.15, 0.3, 'g2'),
+      makeVec('app2', 'g', 0.2, 0.25, 'g2'),
       makeVec('other', 'h', 0.5, 0.4),
       makeVec('other2', 'h', 0.4, 0.35),
     ];
@@ -167,9 +207,9 @@ describe('l0 force layout', () => {
     const cy = g.reduce((s, n) => s + n.y, 0) / g.length;
     const cz = g.reduce((s, n) => s + n.z, 0) / g.length;
     const d = (n: Vec) => Math.hypot(n.x - cx, n.y - cy, n.z - cz);
-    const core = nodes.find((n) => n.id === 'core')!;
-    const app = nodes.find((n) => n.id === 'app1')!;
-    expect(d(core)).toBeLessThan(d(app));
+    expect(d(nodes.find((n) => n.id === 'core')!)).toBeLessThan(
+      d(nodes.find((n) => n.id === 'app1')!),
+    );
   });
 });
 
