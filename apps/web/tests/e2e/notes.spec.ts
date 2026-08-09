@@ -1,9 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { loginAsMockUser } from './helpers';
+import { openApp } from './helpers';
 
 test.describe('notes', () => {
   test('lists notes and opens editor', async ({ page }) => {
-    await loginAsMockUser(page);
+    await openApp(page);
     await page.goto('/notes');
     const first = page.getByTestId('note-item').first();
     await expect(first).toBeVisible({ timeout: 15000 });

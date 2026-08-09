@@ -19,7 +19,6 @@ from agent_core.tools.registry import ToolRegistry, global_registry
 class AgentRunContext:
     """单次 Agent 执行上下文。"""
 
-    user_id: UUID
     session_id: UUID
     agent_id: str
     db: AsyncSession
@@ -64,7 +63,6 @@ class ContextBuilder:
     async def build_run_context(
         self,
         *,
-        user_id: UUID,
         session_id: UUID,
         agent_id: str,
         llm: LLMProvider,
@@ -84,16 +82,16 @@ class ContextBuilder:
         valid_ids: list[UUID] = []
         for pid in bound_ids:
             p = await self.db.get(Project, pid)
-            if p and p.user_id == user_id:
+            if p:
                 projects.append(p)
                 valid_ids.append(pid)
 
         primary_id = project_id if project_id in valid_ids else (valid_ids[0] if valid_ids else None)
         project = next((p for p in projects if p.id == primary_id), None) if primary_id else None
 
-        profile = await self.memory.get_user_profile_dict(user_id)
-        long_mem = await self.memory.get_long_memory(user_id)
-        short_mem = await self.memory.get_short_memory(user_id, agent_id)
+        profile = await self.memory.get_user_profile_dict()
+        long_mem = await self.memory.get_long_memory()
+        short_mem = await self.memory.get_short_memory(agent_id)
 
         from agent_core.llm.config import (
             get_agent_code_of_conduct,
@@ -101,14 +99,13 @@ class ContextBuilder:
             load_user_settings_dict,
         )
 
-        raw_settings = await load_user_settings_dict(self.db, user_id)
+        raw_settings = await load_user_settings_dict(self.db)
         code_of_conduct = get_agent_code_of_conduct(raw_settings)
         agent_guideline = get_agent_guideline(raw_settings, agent_id)
 
         from backend.ports.sqlalchemy_adapters import build_tool_ports
 
         return AgentRunContext(
-            user_id=user_id,
             session_id=session_id,
             agent_id=agent_id,
             db=self.db,
@@ -157,7 +154,7 @@ class ContextBuilder:
         parts.extend(
             [
                 "",
-                "## 用户画像",
+                "## 学习者信息",
                 self._format_profile(ctx.user_profile),
                 "",
                 "## 长期记忆（共享）",
@@ -217,6 +214,8 @@ class ContextBuilder:
                 "- 需要反问、摸底水平或出题测验时，必须调用 ask_user 工具弹出交互面板"
                 "（选择题/多选/滑块/测验），禁止只在正文里出题让用户手打题号答案。",
                 "- 可调用工具获取真实数据，不要编造用户库中不存在的项目。",
+                "- 需要学习者称呼、语言、技术栈、兴趣等时，调用 get_learner_info，"
+                "并只请求当前必要的 fields，禁止一次拉取全部字段。",
                 "- 更新用户画像或长期记忆时，调用 propose_memory 工具提交提案。",
                 "- 需要把项目加入/移出会话上下文时，调用 manage_session_projects。",
                 "- 优先简洁可执行；不要堆砌套话。",
@@ -320,19 +319,28 @@ class ContextBuilder:
 
     @staticmethod
     def _format_profile(profile: dict) -> str:
+        """默认不注入完整画像；仅提示称呼 + 按需工具。"""
         if not profile:
-            return "（暂无）"
-        tech = profile.get("tech_proficiency") or {}
-        prefs = profile.get("learning_preferences") or {}
-        goals = profile.get("goals") or []
-        summary = profile.get("history_summary") or ""
-        lines = [
-            f"技术熟练度: {json.dumps(tech, ensure_ascii=False) if tech else '未知'}",
-            f"学习偏好: {json.dumps(prefs, ensure_ascii=False) if prefs else '未知'}",
-            f"目标: {json.dumps(goals, ensure_ascii=False) if goals else '未设定'}",
-            f"历史摘要: {summary or '无'}",
-        ]
-        return "\n".join(lines)
+            return (
+                "（暂无本机身份信息）\n"
+                "需要称呼、语言、技术栈、兴趣等时，调用 get_learner_info(fields=[...])。"
+            )
+        identity = profile.get("identity") or {}
+        if not isinstance(identity, dict):
+            identity = {}
+        name = (identity.get("preferred_name") or "").strip()
+        name_line = f"称呼: {name}" if name else "称呼: （未设置，可请用户在个人主页填写）"
+        return "\n".join(
+            [
+                name_line,
+                "完整信息默认不注入。需要时调用 get_learner_info，"
+                "fields 仅包含当前必要字段，例如 "
+                '["preferred_name","tech_stack","programming_languages"]。',
+                "可用字段: preferred_name, spoken_languages, programming_languages, "
+                "tech_stack, interests, occupation, experience_level, bio, "
+                "learning_preferences, tech_proficiency, goals, history_summary。",
+            ]
+        )
 
     @staticmethod
     def _format_memory_items(items: list[dict]) -> str:

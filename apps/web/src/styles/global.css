@@ -86,6 +86,23 @@ a {
   cursor: pointer;
   font-size: 1.25rem;
 }
+.toast-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-500);
+  flex-shrink: 0;
+}
+.toast-title {
+  font-weight: 600;
+}
+.toast-hint {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-500);
+  line-height: 1.4;
+}
 
 .modal-overlay,
 .drawer-overlay {

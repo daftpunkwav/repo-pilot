@@ -8,10 +8,8 @@ from uuid import uuid4
 import pytest
 
 from backend.config import get_settings
-from backend.core.security import hash_password
 from backend.database import get_session_factory, init_db, reset_database
 from backend.models.project import Project
-from backend.models.user import User
 from backend.tools.builtin import get_project_detail
 
 
@@ -23,11 +21,7 @@ async def detail_ctx(tmp_path):
     await init_db()
     factory = get_session_factory()
     async with factory() as session:
-        user = User(username=f"u_{uuid4().hex[:8]}", password_hash=hash_password("demo1234"))
-        session.add(user)
-        await session.flush()
         project = Project(
-            user_id=user.id,
             name="langchain-ai/langgraph",
             url="https://github.com/langchain-ai/langgraph",
             source="github",
@@ -36,11 +30,9 @@ async def detail_ctx(tmp_path):
         )
         session.add(project)
         await session.commit()
-        await session.refresh(user)
         await session.refresh(project)
         ctx = SimpleNamespace(
             db=session,
-            user_id=user.id,
             session_id=uuid4(),
             agent_id="scout",
             permissions={"allow_github_api": True},

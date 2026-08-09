@@ -7,11 +7,10 @@ from uuid import uuid4
 
 import pytest
 
+from backend.agents.registry import AGENT_DEFINITIONS
 from backend.config import get_settings
-from backend.core.security import hash_password
 from backend.database import get_session_factory, init_db, reset_database
 from backend.models.project import Project
-from backend.models.user import User
 from backend.tools.builtin import (
     create_note_tool,
     ensure_tools_loaded,
@@ -20,7 +19,6 @@ from backend.tools.builtin import (
     update_project_progress,
 )
 from backend.tools.registry import global_registry
-from backend.agents.registry import AGENT_DEFINITIONS
 
 
 @pytest.fixture
@@ -31,11 +29,7 @@ async def tool_ctx(tmp_path):
     await init_db()
     factory = get_session_factory()
     async with factory() as session:
-        user = User(username=f"u_{uuid4().hex[:8]}", password_hash=hash_password("demo1234"))
-        session.add(user)
-        await session.flush()
         project = Project(
-            user_id=user.id,
             name="owner/demo",
             url="https://github.com/owner/demo",
             source="github",
@@ -43,11 +37,9 @@ async def tool_ctx(tmp_path):
         )
         session.add(project)
         await session.commit()
-        await session.refresh(user)
         await session.refresh(project)
         ctx = SimpleNamespace(
             db=session,
-            user_id=user.id,
             session_id=uuid4(),
             agent_id="scribe",
             permissions={
@@ -76,12 +68,13 @@ async def test_create_note_persists(tool_ctx):
     assert result["resource"]["title"] == "对比学习笔记"
     note_id = result["resource"]["id"]
 
-    from backend.models.note import Note
     from uuid import UUID
+
+    from backend.models.note import Note
 
     note = await ctx.db.get(Note, UUID(note_id))
     assert note is not None
-    assert note.user_id == ctx.user_id
+    assert note.project_id == project.id
     assert "要点" in (note.content or "")
 
 
@@ -141,7 +134,6 @@ async def test_write_tools_permission_blocked(tool_ctx):
 async def test_set_project_tags_rejects_foreign_tag_id(tool_ctx):
     ctx, project = tool_ctx
     ctx.agent_id = "curator"
-    # 先写入真实标签
     ok = await set_project_tags_tool(
         context=ctx,
         project_id=str(project.id),
@@ -173,6 +165,5 @@ def test_scribe_curator_whitelist_includes_write_tools():
     assert "set_project_tags" in AGENT_DEFINITIONS["curator"].tools
     assert "import_github_repos" in AGENT_DEFINITIONS["curator"].tools
     assert "update_project_progress" in AGENT_DEFINITIONS["navigator"].tools
-    # Hub 只调度，不直接拿写工具
     assert "create_note" not in AGENT_DEFINITIONS["hub"].tools
     assert "set_project_category" not in AGENT_DEFINITIONS["hub"].tools

@@ -1,13 +1,11 @@
 """设置 service 单元测试"""
-import pytest
-
+from backend.models.app_state import AppState
 from backend.services.settings_service import settings_to_out
-from backend.models.user import User
 
 
 def test_settings_to_out_defaults():
-    user = User(username="u", password_hash="x", settings_json="{}")
-    out = settings_to_out(user)
+    state = AppState(id=1, display_name="u", settings_json="{}")
+    out = settings_to_out(state)
     assert out.theme in ("dark", "light")
     assert out.llm_configured is False
     assert isinstance(out.agent_llm_configs, list)

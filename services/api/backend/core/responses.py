@@ -2,7 +2,9 @@
 统一 API 响应辅助
 """
 import time
-from typing import TypeVar
+from typing import Any, TypeVar
+
+from fastapi import HTTPException
 
 from backend.schemas.common import DataResponse, PaginatedData, PaginatedResponse
 
@@ -35,3 +37,17 @@ def wrap_paginated(
         ),
         meta=meta_ts(total=total, page=page, page_size=page_size, **meta_extra),
     )
+
+
+def wrap_error(
+    code: str,
+    message: str,
+    status_code: int = 503,
+    **extra: Any,
+) -> HTTPException:
+    """统一错误响应：{detail:{code, message, ...}}"""
+    return HTTPException(
+        status_code=status_code,
+        detail={"code": code, "message": message, **extra},
+    )
+

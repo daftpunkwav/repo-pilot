@@ -21,9 +21,6 @@ from httpx import ASGITransport, AsyncClient
 # 必须在导入 backend 之前设置；长度不少于 32 字节，满足启动校验
 os.environ.setdefault("SECRET_KEY", "pytest-secret-key-do-not-use-in-prod")
 os.environ.setdefault("DEBUG", "false")
-# 测试为 http:// 客户端：Cookie 不能 Secure，否则 httpx 不落盘
-os.environ.setdefault("AUTH_COOKIE_SECURE", "false")
-# 测试环境默认关闭限流，避免并发/顺序执行时因共享内存存储导致 flaky
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 
@@ -38,14 +35,15 @@ async def client(tmp_path) -> AsyncIterator[AsyncClient]:
     get_settings.cache_clear()
     reset_database()
 
-    # 延迟导入 app，确保数据库配置生效
     from backend.main import app
+    from backend.services.app_state_service import ensure_singleton_rows
     from backend.services.seed_service import seed_preset_categories
 
     await init_db()
     factory = get_session_factory()
     async with factory() as session:
         await seed_preset_categories(session)
+        await ensure_singleton_rows(session)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -54,11 +52,10 @@ async def client(tmp_path) -> AsyncIterator[AsyncClient]:
 
 @pytest.fixture
 async def auth_headers(client: AsyncClient) -> dict[str, str]:
-    """注册并返回 Bearer 头（include_tokens 供测试取 JWT）。"""
-    res = await client.post(
-        "/api/v1/auth/register?include_tokens=true",
-        json={"username": "testuser", "password": "demo1234"},
-    )
+    """本地单机无认证；保留 fixture 名以兼容既有测试。
+
+    预热 /user/me，确保 AppState 单行可用。
+    """
+    res = await client.get("/api/v1/user/me")
     assert res.status_code == 200, res.text
-    token = res.json()["data"]["access_token"]
-    return {"Authorization": f"Bearer {token}"}
+    return {}

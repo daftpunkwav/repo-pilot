@@ -7,7 +7,8 @@ interface ImportAgentModalProps {
   subtitle?: string;
   size?: 'default' | 'large';
   children: ReactNode;
-  agentPanel: ReactNode;
+  /** Agent 面板；不可用时可省略以折叠右侧 */
+  agentPanel?: ReactNode;
 }
 
 /** 导入 / 同步弹窗：左侧业务区 : 右侧 Agent = 1.168 : 1 */
@@ -25,7 +26,7 @@ export function ImportAgentModal({
   return (
     <div className="modal-overlay import-modal-overlay" role="presentation" onClick={onClose}>
       <div
-        className={`import-agent-modal ${size === 'large' ? 'import-agent-modal--large' : ''}`}
+        className={`import-agent-modal ${size === 'large' ? 'import-agent-modal--large' : ''}${!agentPanel ? ' import-agent-modal--no-agent' : ''}`}
         role="dialog"
         aria-labelledby="import-modal-title"
         onClick={(e) => e.stopPropagation()}
@@ -41,7 +42,7 @@ export function ImportAgentModal({
         </header>
         <div className="import-agent-modal__body">
           <div className="import-agent-modal__biz">{children}</div>
-          <div className="import-agent-modal__agent">{agentPanel}</div>
+          {agentPanel && <div className="import-agent-modal__agent">{agentPanel}</div>}
         </div>
       </div>
     </div>

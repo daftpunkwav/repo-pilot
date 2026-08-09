@@ -60,12 +60,11 @@ def _doc_vector(p: Project) -> dict[str, float]:
 
 async def build_graph(
     db: AsyncSession,
-    user_id: UUID,
     *,
     min_similarity: float = 0.3,
     max_edges: int = 200,
 ) -> dict:
-    result = await db.execute(select(Project).where(Project.user_id == user_id))
+    result = await db.execute(select(Project))
     projects = list(result.scalars().all())
     vectors = {p.id: _doc_vector(p) for p in projects}
 

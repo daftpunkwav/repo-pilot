@@ -1,56 +1,68 @@
-"""§4.3.2 (D-03 / D-04) 迁移往返 + downgrade 单测
-
-针对 base→head→base→head 路径做集成测试，确保每条迁移都可回退。
-"""
+"""迁移冒烟：upgrade head；不可回退的 remove_user_dimension 不参与 base 往返。"""
 import os
 import tempfile
 from pathlib import Path
 
-import pytest
 from alembic import command
 from alembic.config import Config
 
 
 def _make_alembic_config(db_path: str) -> Config:
     """构造指向临时 SQLite 的 alembic config。"""
-    cfg = Config(str(Path(__file__).resolve().parents[2] / 'alembic.ini'))
-    cfg.set_main_option('script_location', 'services/api/backend/migrations/alembic')
-    # env.py 通过 get_settings().database_url 注入；此处覆盖 settings
-    os.environ['DATABASE_URL'] = f'sqlite:///{db_path}'
+    cfg = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini") )
+    cfg.set_main_option("script_location", "services/api/backend/migrations/alembic")
+    os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
     return cfg
 
 
 def test_migration_upgrade_downgrade_roundtrip():
-    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         db_path = f.name
     try:
         cfg = _make_alembic_config(db_path)
-        # 第一次升级到 head
-        command.upgrade(cfg, 'head')
-        # 回退到 base
-        command.downgrade(cfg, 'base')
-        # 再升级回 head - 验证迁移可重复执行
-        command.upgrade(cfg, 'head')
-        # 验证数据库非空（表已重建）
+        # head 含不可回退的 b2c3d4e5f6a7；先验证升级结果
+        command.upgrade(cfg, "head")
         from sqlalchemy import create_engine, text
-        engine = create_engine(f'sqlite:///{db_path}')
-        engine.dispose()
+
+        engine = create_engine(f"sqlite:///{db_path}")
         with engine.connect() as conn:
             tables = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' "
-                     "AND name NOT LIKE 'sqlite_%' AND name != 'alembic_version'")
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' "
+                    "AND name NOT LIKE 'sqlite_%' AND name != 'alembic_version'"
+                )
             ).fetchall()
             table_names = {t[0] for t in tables}
-            # 关键表存在
-            for t in ('users', 'projects', 'agent_sessions', 'refresh_tokens', 'agent_session_cancel_tokens'):
-                assert t in table_names, f'missing table {t} after roundtrip'
-            # refresh_tokens 含 last_used_at 列（§4.3.5）
-            cols = conn.execute(text('PRAGMA table_info(refresh_tokens)')).fetchall()
-            col_names = {c[1] for c in cols}
-            assert 'last_used_at' in col_names
+            for name in (
+                "app_state",
+                "projects",
+                "agent_sessions",
+                "agent_session_cancel_tokens",
+            ):
+                assert name in table_names, f"missing table {name} after upgrade"
+            assert "users" not in table_names
+            assert "refresh_tokens" not in table_names
+        engine.dispose()
+
+        # 更早迁移链（止于 a1）仍可 base 往返
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f2:
+            db_path2 = f2.name
+        try:
+            cfg2 = _make_alembic_config(db_path2)
+            command.upgrade(cfg2, "a1b2c3d4e5f6")
+            command.downgrade(cfg2, "base")
+            command.upgrade(cfg2, "a1b2c3d4e5f6")
+        finally:
+            import time
+
+            time.sleep(0.1)
+            try:
+                Path(db_path2).unlink(missing_ok=True)
+            except OSError:
+                pass
     finally:
-        # Windows: engine connection may still hold the file briefly.
         import time
+
         time.sleep(0.1)
         try:
             Path(db_path).unlink(missing_ok=True)

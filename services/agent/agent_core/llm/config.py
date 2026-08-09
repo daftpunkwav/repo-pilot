@@ -4,11 +4,10 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from typing import Any
-from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.models.user import User
+from backend.models.app_state import AppState
 
 
 @dataclass
@@ -102,9 +101,9 @@ class LLMConfig:
         return m
 
 
-def _load_settings_dict(user: User) -> dict[str, Any]:
+def _load_settings_dict(state: AppState) -> dict[str, Any]:
     try:
-        data = json.loads(user.settings_json or "{}")
+        data = json.loads(state.settings_json or "{}")
         return data if isinstance(data, dict) else {}
     except json.JSONDecodeError:
         return {}
@@ -155,34 +154,35 @@ def llm_config_status(raw: dict[str, Any]) -> str:
 
 
 async def load_user_settings_dict(
-    db: AsyncSession, user_id: UUID
+    db: AsyncSession,
 ) -> dict[str, Any]:
-    """与 LLM 配置同源：强制刷新 settings_json。"""
-    from sqlalchemy import select
+    """与 LLM 配置同源：强制刷新 AppState.settings_json。"""
+    from backend.services.app_state_service import get_or_create_app_state
 
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        return {}
-    await db.refresh(user, attribute_names=["settings_json", "agent_permissions"])
-    return _load_settings_dict(user)
+    state = await get_or_create_app_state(db)
+    await db.refresh(state, attribute_names=["settings_json", "agent_permissions"])
+    return _load_settings_dict(state)
 
 
 async def build_llm_config_from_user(
-    db: AsyncSession, user_id: UUID
+    db: AsyncSession,
 ) -> LLMConfig | None:
-    """始终重新读取用户行，避免 session expire 后拿到空 settings_json。"""
-    raw = await load_user_settings_dict(db, user_id)
+    """始终重新读取 AppState，避免 session expire 后拿到空 settings_json。"""
+    raw = await load_user_settings_dict(db)
     return build_llm_config_from_settings(raw)
 
 
-async def build_llm_bundle_from_user(
-    db: AsyncSession, user_id: UUID
+async def build_llm_bundle_from_app(
+    db: AsyncSession,
 ) -> tuple[LLMConfig | None, str, dict[str, Any]]:
     """一次查库返回 (config, status, settings_dict)，诊断与构建同源。"""
-    raw = await load_user_settings_dict(db, user_id)
+    raw = await load_user_settings_dict(db)
     cfg = build_llm_config_from_settings(raw)
     return cfg, llm_config_status(raw), raw
+
+
+# 兼容旧名
+build_llm_bundle_from_user = build_llm_bundle_from_app
 
 
 def get_agent_model_override(raw: dict[str, Any], agent_id: str) -> str | None:

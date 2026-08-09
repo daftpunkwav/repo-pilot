@@ -28,12 +28,12 @@ class FakeMemory:
         self.short_memory_calls: list[dict] = []
         self.propose_calls: list[dict] = []
 
-    async def append_short_memory(self, user_id, agent_id, payload: dict):
-        self.short_memory_calls.append({"user_id": user_id, "agent_id": agent_id, **payload})
+    async def append_short_memory(self, agent_id, payload: dict):
+        self.short_memory_calls.append({"agent_id": agent_id, **payload})
 
-    async def propose_memory(self, user_id, *, agent_id, value, confidence, evidence=None, kind="long_memory", apply=False):
+    async def propose_memory(self, *, agent_id, value, confidence, evidence=None, kind="long_memory", apply=False):
         self.propose_calls.append(
-            {"user_id": user_id, "agent_id": agent_id, "value": value, "confidence": confidence,
+            {"agent_id": agent_id, "value": value, "confidence": confidence,
              "evidence": evidence, "kind": kind, "apply": apply}
         )
         return {"status": "applied"}
@@ -56,7 +56,7 @@ def make_service(monkeypatch, *, registry=None, memory=None):
     service.db = None
     service.engine = None
     # 无 LLM 配置 → LLMProvider(None).available=False → 意图走纯规则
-    async def _no_bundle(self, user):
+    async def _no_bundle(self):
         return (LLMProvider(None), None, "ok", {}, {})
 
     monkeypatch.setattr(HubService, "_load_user_bundle", _no_bundle)
@@ -87,12 +87,11 @@ def test_handle_chat_normal_hub_flow(monkeypatch):
         yield EngineResult(text="完成", agent_id=kwargs["agent_id"])
 
     monkeypatch.setattr(HubService, "_run_agent", fake_run_agent)
-    user = fake_user()
 
     chunks = []
     async def iterate():
         async for c in service.handle_chat(
-            user=user, session_id="s1", message="帮我分析一下 RepoPilot"
+            session_id="s1", message="帮我分析一下 RepoPilot"
         ):
             chunks.append(c)
     import asyncio
@@ -123,8 +122,7 @@ def test_handle_chat_force_agent_direct(monkeypatch):
 
     chunks = []
     async def iterate():
-        async for c in service.handle_chat(
-            user=fake_user(), session_id="s1", message="讲讲 FastAPI", force_agent="mentor"
+        async for c in service.handle_chat( session_id="s1", message="讲讲 FastAPI", force_agent="mentor"
         ):
             chunks.append(c)
     import asyncio
@@ -149,7 +147,7 @@ def test_handle_chat_chitchat_fast_path(monkeypatch):
 
     chunks = []
     async def iterate():
-        async for c in service.handle_chat(user=fake_user(), session_id="s1", message="你好"):
+        async for c in service.handle_chat(session_id="s1", message="你好"):
             chunks.append(c)
     import asyncio
     asyncio.run(iterate())
@@ -177,8 +175,7 @@ def test_handle_chat_multi_goes_orchestrate(monkeypatch):
 
     chunks = []
     async def iterate():
-        async for c in service.handle_chat(
-            user=fake_user(), session_id="s1", message="分析一下 X 并且整理笔记"
+        async for c in service.handle_chat( session_id="s1", message="分析一下 X 并且整理笔记"
         ):
             chunks.append(c)
     import asyncio
@@ -200,7 +197,7 @@ def test_handle_chat_question_early_return(monkeypatch):
 
     chunks = []
     async def iterate():
-        async for c in service.handle_chat(user=fake_user(), session_id="s1", message="你好呀帮我分析"):
+        async for c in service.handle_chat(session_id="s1", message="你好呀帮我分析"):
             chunks.append(c)
     import asyncio
     asyncio.run(iterate())
@@ -228,8 +225,7 @@ def test_handle_question_answer_writes_extracted_prefs(monkeypatch):
     }
     chunks = []
     async def iterate():
-        async for c in service.handle_question_answer(
-            user=fake_user(), session_id="s1", question_id="q1", answers=answers
+        async for c in service.handle_question_answer( session_id="s1", question_id="q1", answers=answers
         ):
             chunks.append(c)
     import asyncio
@@ -256,8 +252,7 @@ def test_handle_question_answer_skipped_no_prefs(monkeypatch):
     monkeypatch.setattr(HubService, "_run_agent", fake_run_agent)
 
     async def iterate():
-        async for _ in service.handle_question_answer(
-            user=fake_user(), session_id="s1", question_id="q1",
+        async for _ in service.handle_question_answer( session_id="s1", question_id="q1",
             answers={}, skipped=True,
         ):
             pass

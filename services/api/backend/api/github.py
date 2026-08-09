@@ -1,5 +1,5 @@
 """
-GitHub API —— Star 导入、绑定账号、仓库搜索
+GitHub API —— Star 导入、绑定账号、仓库搜索（读写 AppState）
 """
 from __future__ import annotations
 
@@ -13,12 +13,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.deps import get_current_user, get_db
+from backend.api.deps import get_db
 from backend.core.responses import wrap_data
-from backend.core.security import encrypt_secret, ensure_encrypted_secret
+from backend.core.security import encrypt_secret
+from backend.models.app_state import AppState
 from backend.models.project import Project
-from backend.models.user import User
 from backend.schemas.common import DataResponse
+from backend.services.app_state_service import get_or_create_app_state
 from backend.services.github_accounts import (
     load_accounts as _load_accounts,
     migrate_plaintext_pats as _migrate_plaintext_pats,
@@ -29,7 +30,6 @@ from backend.services.github_client import list_user_stars, search_repositories
 
 router = APIRouter(prefix="/github", tags=["github"])
 
-# Stars 缓存默认 6 小时
 STARS_CACHE_TTL = timedelta(hours=6)
 
 
@@ -63,22 +63,22 @@ class StarsListOut(BaseModel):
     cache_ttl_hours: float = 6.0
 
 
-def _load_settings(user: User) -> dict:
+def _load_settings(state: AppState) -> dict:
     try:
-        data = json.loads(user.settings_json or "{}")
+        data = json.loads(state.settings_json or "{}")
         return data if isinstance(data, dict) else {}
     except json.JSONDecodeError:
         return {}
 
 
-def _save_settings(user: User, data: dict) -> None:
-    user.settings_json = json.dumps(data, ensure_ascii=False)
+def _save_settings(state: AppState, data: dict) -> None:
+    state.settings_json = json.dumps(data, ensure_ascii=False)
 
 
 def _stars_from_cache(
-    user: User, username: str
+    state: AppState, username: str
 ) -> tuple[list[dict], str | None] | None:
-    raw = _load_settings(user)
+    raw = _load_settings(state)
     cache = raw.get("github_stars_cache")
     if not isinstance(cache, dict):
         return None
@@ -97,10 +97,9 @@ def _stars_from_cache(
     return items, fetched_at
 
 
-def _write_stars_cache(user: User, username: str, items: list[dict]) -> str:
-    raw = _load_settings(user)
+def _write_stars_cache(state: AppState, username: str, items: list[dict]) -> str:
+    raw = _load_settings(state)
     fetched_at = datetime.utcnow().isoformat() + "Z"
-    # 缓存瘦身：只保留列表展示字段
     slim = []
     for it in items:
         slim.append(
@@ -119,7 +118,7 @@ def _write_stars_cache(user: User, username: str, items: list[dict]) -> str:
         "fetched_at": fetched_at,
         "items": slim,
     }
-    _save_settings(user, raw)
+    _save_settings(state, raw)
     return fetched_at
 
 
@@ -142,13 +141,11 @@ def _to_star_out(s: dict, existing_urls: set[str]) -> StarRepoOut:
 
 
 @router.get("/accounts", response_model=DataResponse[list[GithubAccountOut]])
-async def list_accounts(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    if _migrate_plaintext_pats(current_user):
+async def list_accounts(db: AsyncSession = Depends(get_db)):
+    state = await get_or_create_app_state(db)
+    if _migrate_plaintext_pats(state):
         await db.commit()
-    accounts = _load_accounts(current_user)
+    accounts = _load_accounts(state)
     out = []
     for a in accounts:
         out.append(
@@ -166,15 +163,11 @@ async def list_accounts(
 async def get_stars(
     username: str | None = Query(None),
     refresh: bool = Query(False, description="强制刷新，忽略缓存"),
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    拉取用户全部 Stars（分页聚合）。
-    默认使用 6 小时缓存；?refresh=true 强制更新。
-    """
-    # _primary_token 可能迁移明文 PAT，需落库
-    bound_user, token = _primary_token(current_user)
+    """拉取全部 Stars；默认 6 小时缓存。"""
+    state = await get_or_create_app_state(db)
+    bound_user, token = _primary_token(state)
     uname = username or bound_user
     if not uname:
         await db.commit()
@@ -186,9 +179,7 @@ async def get_stars(
             },
         )
 
-    existing = (
-        await db.execute(select(Project.url).where(Project.user_id == current_user.id))
-    ).scalars().all()
+    existing = (await db.execute(select(Project.url))).scalars().all()
     existing_set = set(existing)
 
     cached = False
@@ -196,20 +187,16 @@ async def get_stars(
     raw_items: list[dict] = []
 
     if not refresh:
-        hit = _stars_from_cache(current_user, uname)
+        hit = _stars_from_cache(state, uname)
         if hit:
             raw_items, fetched_at = hit
             cached = True
 
     if not cached:
         raw_items = await list_user_stars(uname, token=token, per_page=100, max_pages=30)
-        # 重新绑定 user 后写缓存
-        user = await db.get(User, current_user.id)
-        if user is not None:
-            fetched_at = _write_stars_cache(user, uname, raw_items)
-            await db.commit()
+        fetched_at = _write_stars_cache(state, uname, raw_items)
+        await db.commit()
     else:
-        # 缓存命中时仍提交可能的 PAT 迁移
         await db.commit()
 
     items = [_to_star_out(s, existing_set) for s in raw_items]
@@ -227,11 +214,11 @@ async def get_stars(
 @router.post("/bindaccount", response_model=DataResponse[GithubAccountOut])
 async def bind_account(
     body: BindGithubBody,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     from backend.services.github_client import _request
 
+    state = await get_or_create_app_state(db)
     status_code, data, _ = await _request("/user", token=body.pat)
     if status_code != 200:
         raise HTTPException(
@@ -243,7 +230,7 @@ async def bind_account(
         )
     login = (data.get("login") if isinstance(data, dict) else None) or body.username
     avatar = data.get("avatar_url") if isinstance(data, dict) else None
-    accounts = _load_accounts(current_user)
+    accounts = _load_accounts(state)
     accounts = [a for a in accounts if a.get("username") != login]
     entry = {
         "id": str(uuid4()),
@@ -253,11 +240,10 @@ async def bind_account(
         "bound_at": datetime.utcnow().isoformat() + "Z",
     }
     accounts.insert(0, entry)
-    _save_accounts(current_user, accounts)
-    # 绑定后清空旧 stars 缓存
-    settings = _load_settings(current_user)
+    _save_accounts(state, accounts)
+    settings = _load_settings(state)
     settings.pop("github_stars_cache", None)
-    _save_settings(current_user, settings)
+    _save_settings(state, settings)
     await db.commit()
     return wrap_data(
         GithubAccountOut(
@@ -272,10 +258,10 @@ async def bind_account(
 @router.delete("/accounts/{account_id}", response_model=DataResponse[dict])
 async def unbind_account(
     account_id: str,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    accounts = _load_accounts(current_user)
+    state = await get_or_create_app_state(db)
+    accounts = _load_accounts(state)
     new_accounts = [
         a
         for a in accounts
@@ -286,10 +272,10 @@ async def unbind_account(
             status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "账号不存在"},
         )
-    _save_accounts(current_user, new_accounts)
-    settings = _load_settings(current_user)
+    _save_accounts(state, new_accounts)
+    settings = _load_settings(state)
     settings.pop("github_stars_cache", None)
-    _save_settings(current_user, settings)
+    _save_settings(state, settings)
     await db.commit()
     return wrap_data({"success": True})
 
@@ -297,14 +283,12 @@ async def unbind_account(
 @router.get("/search", response_model=DataResponse[list[StarRepoOut]])
 async def search_repos(
     q: str = Query(..., min_length=1),
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    _, token = _primary_token(current_user)
+    state = await get_or_create_app_state(db)
+    _, token = _primary_token(state)
     items = await search_repositories(q, token=token, per_page=30)
-    existing = (
-        await db.execute(select(Project.url).where(Project.user_id == current_user.id))
-    ).scalars().all()
+    existing = (await db.execute(select(Project.url))).scalars().all()
     existing_set = set(existing)
     out = []
     for s in items:
@@ -325,4 +309,5 @@ async def search_repos(
                 already_imported=url in existing_set,
             )
         )
+    await db.commit()
     return wrap_data(out)

@@ -1013,6 +1013,12 @@
   grid-template-columns: 1.168fr 1fr;
   min-height: 0;
 }
+.import-agent-modal--no-agent .import-agent-modal__body {
+  grid-template-columns: 1fr;
+}
+.import-agent-modal--no-agent .import-agent-modal__biz {
+  border-right: none;
+}
 .import-agent-modal__biz {
   padding: 0;
   overflow: hidden;

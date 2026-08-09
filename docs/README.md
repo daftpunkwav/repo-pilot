@@ -323,7 +323,7 @@ development/{logs, changes, issues, ...} (随时记录)
 | 目录 | 状态 | 备注 |
 |------|------|------|
 | `product/` | ✅ 完整 | `v1/`、`v2/` 两套 PRD/SPEC/MVP；详见 `product/README.md` |
-| `architecture/` | ✅ 有内容 | `OVERVIEW.md`、`REPO_LAYOUT.md`、`PATH_MAPPING.md` |
+| `architecture/` | ✅ 有内容 | `OVERVIEW.md`、`REPO_LAYOUT.md`、`PATH_MAPPING.md`、`graph/`（两级图谱总体开发文档） |
 | `design/` | ✅ 有内容 | `v1/` UI 原型、设计规格与 Mock 前端归档（2026-08-04 已清理 `node_modules`/`dist`/`coverage`/`.playwright-mcp` 等制品） |
 | `development/` | ✅ 有内容 | `PROGRESS_REPORT.md`（实现状态）+ `DEVELOPMENT_ROADMAP.md`（历史计划）+ `guides/` + `status-snapshot.md`（审查盘点快照） |
 | `review/` | ✅ 有内容 | 审查报告归档：`full-review-20260804.md/.html`（最新全量 v2.0）、`AGENT_CODE_REVIEW.md`（2026-08-03，已整改）、`architecture-review-20260803-224202.html` |
@@ -342,7 +342,14 @@ docs/
 ├── architecture/
 │   ├── OVERVIEW.md                          # 运行时架构
 │   ├── PATH_MAPPING.md                      # 历史路径对照
-│   └── REPO_LAYOUT.md                       # Monorepo 布局
+│   ├── REPO_LAYOUT.md                       # Monorepo 布局
+│   └── graph/                                # 两级图谱文档集（方向 + 详细设计 + 索引流水线，2026-08-09）
+│       ├── README.md                      # 方向性文档
+│       ├── DETAILED_DESIGN.md             # 整体详细设计
+│       └── INDEX_PIPELINE.md              # 云端项目索引流水线方案
+│   └── decoupling/                           # 服务脱耦与删用户系统（2026-08-09）
+│       ├── EXECUTION_REPORT.md            # 执行报告（含核心代码/改动位置/报错码）
+│       └── ERROR_CODES.md                 # 报错码表
 ├── design/
 │   └── v1/                                  # UI 设计归档 + FRONTEND_SPEC + process/
 ├── development/
@@ -365,6 +372,7 @@ docs/
 ├── review/                                 # 审查报告归档（2026-08 起）
 │   ├── full-review-20260804.md/.html        # ★ 最新全量审查 v2.0（175 项发现）
 │   ├── AGENT_CODE_REVIEW.md                 # 2026-08-03 Agent 核心审查（已整改）
+│   ├── agent-gap-analysis-20260809.md       # Agent 能力评估（vs Claude Code/Codex + vs CrewAI/AutoGen/LangGraph）
 │   └── architecture-review-20260803-224202.html
 └── superpowers/
     └── plans/                              # 分支工作计划

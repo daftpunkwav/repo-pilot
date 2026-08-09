@@ -117,7 +117,7 @@ export function Topbar() {
           <circle cx="12" cy="17" r="0.8" fill="currentColor" />
         </svg>
       </button>
-      <Link to="/profile" className="topbar-action" title="账号" style={{ display: 'grid', placeItems: 'center' }}>
+      <Link to="/profile" className="topbar-action" title="个人资料" style={{ display: 'grid', placeItems: 'center' }}>
         <div className="avatar" style={{ width: 28, height: 28, fontSize: 11 }}>
           {initials}
         </div>

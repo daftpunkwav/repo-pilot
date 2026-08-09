@@ -1,10 +1,9 @@
-"""用户设置 API —— 持久化到 users.settings_json"""
+"""本机设置 API —— 持久化到 AppState.settings_json"""
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.deps import get_current_user, get_db
+from backend.api.deps import get_db
 from backend.core.responses import wrap_data
-from backend.models.user import User
 from backend.schemas.common import DataResponse
 from backend.schemas.settings import (
     ApiKeyIn,
@@ -20,26 +19,21 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 
 @router.get("/", response_model=DataResponse[SettingsOut])
-async def get_user_settings(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    return wrap_data(await get_settings(db, current_user.id))
+async def get_user_settings(db: AsyncSession = Depends(get_db)):
+    return wrap_data(await get_settings(db))
 
 
 @router.put("/", response_model=DataResponse[SettingsOut])
 async def put_user_settings(
     data: SettingsUpdate,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return wrap_data(await update_settings(db, current_user.id, data))
+    return wrap_data(await update_settings(db, data))
 
 
 @router.post("/test-llm", response_model=DataResponse[LlmTestOut])
 async def test_llm(
     body: LlmTestIn | None = None,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -50,8 +44,8 @@ async def test_llm(
     from backend.llm.provider import LLMProvider
     from backend.services.settings_service import record_llm_test
 
-    settings = await get_settings(db, current_user.id)
-    cfg = await build_llm_config_from_user(db, current_user.id)
+    settings = await get_settings(db)
+    cfg = await build_llm_config_from_user(db)
     model = (body.model if body else None) or settings.llm_model or settings.llm_default_model
     if not cfg:
         return wrap_data(
@@ -62,14 +56,12 @@ async def test_llm(
                 error="未配置 API Key，请先保存密钥",
             )
         )
-    # 用指定模型覆盖一次
     if model:
         cfg.model = model
     provider = LLMProvider(cfg)
     result = await provider.test_connection(model_override=model)
     await record_llm_test(
         db,
-        current_user.id,
         success=result.success,
         latency_ms=result.latency_ms,
         model=result.model or model,
@@ -89,9 +81,8 @@ async def test_llm(
 @router.post("/api-key", response_model=DataResponse[ApiKeyOut])
 async def save_api_key(
     data: ApiKeyIn,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """接收真实 LLM API Key，持久化后返回掩码。"""
-    masked = await save_llm_api_key(db, current_user.id, data.api_key)
+    masked = await save_llm_api_key(db, data.api_key)
     return wrap_data(ApiKeyOut(masked=masked))

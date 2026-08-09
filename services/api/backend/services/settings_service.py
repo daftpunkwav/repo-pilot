@@ -1,25 +1,26 @@
-"""用户设置持久化"""
+"""本机设置持久化 —— 读写 AppState.settings_json"""
 import json
 from typing import Any
-from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.security import decrypt_secret, encrypt_secret, ensure_encrypted_secret
-from backend.models.user import User
+from backend.models.app_state import AppState
 from backend.schemas.settings import AgentLlmConfigOut, SettingsOut, SettingsUpdate
+from backend.services.app_state_service import get_or_create_app_state
 
 AGENT_IDS = ("hub", "scout", "mentor", "navigator", "curator", "scribe", "atlas")
 
-# §4.2.2: 提供派生函数；settings_service 模块自身需要 AGENT_IDS 但循环依赖
-# (agent_core 反向依赖 backend) 阻止在模块顶层做 import-time 派生。
+
 def derive_agent_ids() -> tuple[str, ...]:
     """优先从 agent_core registry 派生；不可用时回退到静态 AGENT_IDS。"""
     try:
         from agent_core.agents.registry import get_registry as _get_reg
+
         return tuple(d.id for d in _get_reg().list_all())
     except Exception:
         return AGENT_IDS
+
 
 DEFAULT_AGENT_LLM_CONFIGS: list[dict[str, str | None]] = [
     {"agent_id": aid, "model_override": None, "speaking_style": "default"}
@@ -47,9 +48,9 @@ def _mask_api_key(key: str | None) -> str | None:
     return f"{key[:3]}****{key[-4:]}"
 
 
-def _load_raw(user: User) -> dict[str, Any]:
+def _load_raw(state: AppState) -> dict[str, Any]:
     try:
-        data = json.loads(user.settings_json or "{}")
+        data = json.loads(state.settings_json or "{}")
         if isinstance(data, dict):
             return {**DEFAULT_SETTINGS, **data}
     except json.JSONDecodeError:
@@ -95,17 +96,15 @@ def _get_plain_api_key(raw: dict[str, Any]) -> str | None:
     return decrypt_secret(raw.get("llm_api_key"))
 
 
-def settings_to_out(user: User) -> SettingsOut:
-    raw = _load_raw(user)
+def settings_to_out(state: AppState) -> SettingsOut:
+    raw = _load_raw(state)
     api_key = _get_plain_api_key(raw)
     raw.pop("llm_api_key", None)
     raw["llm_api_key_masked"] = _mask_api_key(api_key) if api_key else None
     raw["llm_configured"] = bool(api_key)
-    # 默认模型与生效模型保持一致（优先 default）
     default_model = raw.get("llm_default_model") or raw.get("llm_model") or "gpt-4o"
     raw["llm_default_model"] = default_model
     raw["llm_model"] = default_model
-    # 保证可选列表包含默认模型
     models = raw.get("llm_available_models") or []
     if isinstance(models, list) and default_model and default_model not in models:
         raw["llm_available_models"] = [*models, default_model]
@@ -116,65 +115,58 @@ def settings_to_out(user: User) -> SettingsOut:
     return SettingsOut.model_validate(raw)
 
 
-async def _migrate_plaintext_llm_key(db: AsyncSession, user: User) -> None:
+async def _migrate_plaintext_llm_key(db: AsyncSession, state: AppState) -> None:
     """读路径将历史明文 LLM Key 升级为 enc:v1 密文。"""
-    raw = _load_raw(user)
+    raw = _load_raw(state)
     stored, migrated = ensure_encrypted_secret(raw.get("llm_api_key"))
     if not migrated:
         return
     raw["llm_api_key"] = stored
-    user.settings_json = json.dumps(raw, ensure_ascii=False)
+    state.settings_json = json.dumps(raw, ensure_ascii=False)
     await db.commit()
-    await db.refresh(user)
+    await db.refresh(state)
 
 
-async def get_settings(db: AsyncSession, user_id: UUID) -> SettingsOut:
-    user = await db.get(User, user_id)
-    assert user is not None
-    await _migrate_plaintext_llm_key(db, user)
-    return settings_to_out(user)
+async def get_settings(db: AsyncSession) -> SettingsOut:
+    state = await get_or_create_app_state(db)
+    await _migrate_plaintext_llm_key(db, state)
+    return settings_to_out(state)
 
 
-async def save_llm_api_key(db: AsyncSession, user_id: UUID, api_key: str) -> str:
-    """保存真实 LLM API Key（加密落库）到用户 settings_json，返回掩码。"""
-    user = await db.get(User, user_id)
-    assert user is not None
-    raw = _load_raw(user)
+async def save_llm_api_key(db: AsyncSession, api_key: str) -> str:
+    """保存真实 LLM API Key（加密落库），返回掩码。"""
+    state = await get_or_create_app_state(db)
+    raw = _load_raw(state)
     raw["llm_api_key"] = encrypt_secret(api_key)
-    user.settings_json = json.dumps(raw, ensure_ascii=False)
+    state.settings_json = json.dumps(raw, ensure_ascii=False)
     await db.commit()
-    await db.refresh(user)
+    await db.refresh(state)
     return _mask_api_key(api_key) or ""
 
 
-async def update_settings(
-    db: AsyncSession, user_id: UUID, data: SettingsUpdate
-) -> SettingsOut:
-    user = await db.get(User, user_id)
-    assert user is not None
-    raw = _load_raw(user)
+async def update_settings(db: AsyncSession, data: SettingsUpdate) -> SettingsOut:
+    state = await get_or_create_app_state(db)
+    raw = _load_raw(state)
     payload = data.model_dump(exclude_unset=True)
     if "llm_api_key" in payload:
         plain = payload.pop("llm_api_key")
         if plain is not None:
             payload["llm_api_key"] = encrypt_secret(plain)
     raw.update(payload)
-    # 任一模型字段变更时双向同步，避免 default/model 漂移
     if data.llm_default_model is not None:
         raw["llm_default_model"] = data.llm_default_model
         raw["llm_model"] = data.llm_default_model
     elif data.llm_model is not None:
         raw["llm_model"] = data.llm_model
         raw["llm_default_model"] = data.llm_model
-    user.settings_json = json.dumps(raw, ensure_ascii=False)
+    state.settings_json = json.dumps(raw, ensure_ascii=False)
     await db.commit()
-    await db.refresh(user)
-    return settings_to_out(user)
+    await db.refresh(state)
+    return settings_to_out(state)
 
 
 async def record_llm_test(
     db: AsyncSession,
-    user_id: UUID,
     *,
     success: bool,
     latency_ms: int,
@@ -182,14 +174,12 @@ async def record_llm_test(
 ) -> None:
     from datetime import datetime
 
-    user = await db.get(User, user_id)
-    if not user:
-        return
-    raw = _load_raw(user)
+    state = await get_or_create_app_state(db)
+    raw = _load_raw(state)
     raw["llm_last_test"] = datetime.utcnow().isoformat() + "Z"
     raw["llm_latency_ms"] = latency_ms
     if model:
         raw["llm_model"] = model
     raw["llm_test_success"] = success
-    user.settings_json = json.dumps(raw, ensure_ascii=False)
+    state.settings_json = json.dumps(raw, ensure_ascii=False)
     await db.commit()

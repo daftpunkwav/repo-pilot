@@ -113,7 +113,6 @@ async def test_dispatch_evaluate_loop_nested_expert_merges(monkeypatch):
     chunks = []
     async for chunk in service._dispatch_evaluate_loop(
         dispatches=[{"target_agent": "mentor", "task": "x", "reason": "y"}],
-        user=type("U", (), {"id": "u1"})(),
         session_id="s1",
         original_message="learn",
         llm=None,
@@ -175,7 +174,6 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
     chunks = []
     async for chunk in service._dispatch_evaluate_loop(
         dispatches=[{"target_agent": "mentor", "task": "x", "reason": "y"}],
-        user=type("U", (), {"id": "u1"})(),
         session_id="s1",
         original_message="learn",
         llm=None,
@@ -279,7 +277,6 @@ async def test_dispatch_evaluate_loop_can_re_dispatch_until_cap(monkeypatch):
         dispatches=[
             {"target_agent": "mentor", "task": "teach", "reason": "learn"}
         ],
-        user=type("U", (), {"id": "u1"})(),
         session_id="s1",
         original_message="Godot",
         llm=None,

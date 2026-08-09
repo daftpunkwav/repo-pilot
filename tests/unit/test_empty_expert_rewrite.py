@@ -48,7 +48,6 @@ async def test_empty_expert_passthrough_triggers_hub_rewrite(monkeypatch):
     chunks: list[str] = []
     async for chunk in service._dispatch_evaluate_loop(
         dispatches=[{"target_agent": "mentor", "task": "讲", "reason": "t"}],
-        user=type("U", (), {"id": "u1"})(),
         session_id="s1",
         original_message="想学",
         llm=None,

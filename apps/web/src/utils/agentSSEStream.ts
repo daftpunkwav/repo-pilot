@@ -23,6 +23,8 @@ export interface AgentStreamResult {
   thinking: string;
   sawError: boolean;
   errorMessage: string;
+  /** SSE error 事件中的报错码（若有） */
+  errorCode: string | null;
   doneData: Record<string, unknown> | null;
 }
 
@@ -39,6 +41,7 @@ export async function consumeAgentSSEStream(
   let thinking = '';
   let sawError = false;
   let errorMessage = '';
+  let errorCode: string | null = null;
   let doneData: Record<string, unknown> | null = null;
   const signal = options?.signal;
 
@@ -96,9 +99,9 @@ export async function consumeAgentSSEStream(
       }
       case 'error': {
         sawError = true;
-        errorMessage =
-          (event.data as { message?: string })?.message ??
-          '助手返回错误，请稍后再试。';
+        const data = event.data as { message?: string; code?: string };
+        errorMessage = data?.message ?? '助手返回错误，请稍后再试。';
+        errorCode = typeof data?.code === 'string' ? data.code : null;
         handlers.onError?.(errorMessage, event.data as Record<string, unknown>);
         break;
       }
@@ -107,5 +110,5 @@ export async function consumeAgentSSEStream(
     }
   }
 
-  return { text, thinking, sawError, errorMessage, doneData };
+  return { text, thinking, sawError, errorMessage, errorCode, doneData };
 }

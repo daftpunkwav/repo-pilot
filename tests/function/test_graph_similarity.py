@@ -21,7 +21,6 @@ from backend.services.graph_service import (
 def _project(**kwargs) -> Project:
     p = Project(
         id=uuid4(),
-        user_id=uuid4(),
         name="a/b",
         url="https://github.com/a/b",
     )
@@ -171,7 +170,7 @@ async def test_build_graph_smoke():
     db.execute = AsyncMock(
         return_value=MagicMock(scalars=MagicMock(return_value=MagicMock(all=MagicMock(return_value=[]))))
     )
-    graph = await build_graph(db, uuid4(), min_similarity=0.1, max_edges=10)
+    graph = await build_graph(db, min_similarity=0.1, max_edges=10)
     assert "nodes" in graph
     assert "edges" in graph
     assert graph["nodes"] == []

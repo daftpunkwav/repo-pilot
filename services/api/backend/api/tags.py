@@ -1,12 +1,11 @@
-"""标签 API"""
+"""标签 API（本地单机）"""
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.deps import get_current_user, get_db
+from backend.api.deps import get_db
 from backend.core.responses import wrap_data
-from backend.models.user import User
 from backend.schemas.common import DataResponse
 from backend.schemas.tag import SetProjectTagsBody, SetProjectTagsOut, TagCreate, TagOut
 from backend.services.tag_service import (
@@ -20,30 +19,25 @@ router = APIRouter(prefix="/tags", tags=["tags"])
 
 
 @router.get("/", response_model=DataResponse[list[TagOut]])
-async def list_tags(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    return wrap_data(await list_user_tags(db, current_user.id))
+async def list_tags(db: AsyncSession = Depends(get_db)):
+    return wrap_data(await list_user_tags(db))
 
 
 @router.post("/", response_model=DataResponse[TagOut])
 async def create_tag_api(
     data: TagCreate,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    tag = await create_tag(db, current_user.id, data.name)
+    tag = await create_tag(db, data.name)
     return wrap_data(tag)
 
 
 @router.delete("/{tag_id}", response_model=DataResponse[dict])
 async def delete_tag_api(
     tag_id: UUID,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    ok = await delete_tag(db, current_user.id, tag_id)
+    ok = await delete_tag(db, tag_id)
     if not ok:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
@@ -56,11 +50,10 @@ async def delete_tag_api(
 async def set_project_tags_api(
     project_id: UUID,
     body: SetProjectTagsBody,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await set_project_tags(db, current_user.id, project_id, body.tag_ids)
-    if not result:
+    result = await set_project_tags(db, project_id, body.tag_ids)
+    if result is None:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Project not found"},

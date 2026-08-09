@@ -72,18 +72,11 @@ async def chat_session(
     x_agent_internal_token: str | None = Header(default=None),
 ):
     """
-    内部 SSE 入口：由 API 鉴权用户后转发。
-    Body: {user_id, message, project_id?}
+    内部 SSE 入口：由 API 转发。
+    Body: {message, project_id?}
     """
     _require_internal_token(x_agent_internal_token)
     body = await request.json()
-    try:
-        user_id = UUID(str(body.get("user_id") or ""))
-    except ValueError as exc:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            detail={"code": "VALIDATION_ERROR", "message": "user_id 无效"},
-        ) from exc
     message = str(body.get("message") or "")
     if not message.strip():
         raise HTTPException(
@@ -102,7 +95,6 @@ async def chat_session(
             ) from exc
 
     from backend.database import get_session_factory
-    from backend.models.user import User
     from backend.services.agent_service import stream_chat
     from agent_core.agents.stream_events import encode_stream_item
 
@@ -110,18 +102,8 @@ async def chat_session(
 
     async def gen():
         async with factory() as db:
-            user = await db.get(User, user_id)
-            if not user:
-                from agent_core.agents.stream_events import format_sse
-
-                yield format_sse(
-                    "error",
-                    {"code": "NOT_FOUND", "message": "用户不存在"},
-                ).to_sse()
-                return
             async for chunk in stream_chat(
                 db,
-                user,
                 session_id,
                 message,
                 project_id=project_id,

@@ -28,6 +28,16 @@ export const DEFAULT_MEMORY_ITEMS: MemoryItem[] = [
 ];
 
 export const DEFAULT_USER_PROFILE: UserProfile = {
+  identity: {
+    preferred_name: '小明',
+    spoken_languages: ['中文', 'English'],
+    programming_languages: ['TypeScript', 'Python'],
+    tech_stack: ['React', 'FastAPI'],
+    interests: ['系统设计', '开源学习'],
+    occupation: '学习者',
+    experience_level: 'intermediate',
+    bio: '偏好动手实践，正在系统学习全栈与 Agent。',
+  },
   tech_proficiency: {
     JavaScript: {
       level: 'advanced',

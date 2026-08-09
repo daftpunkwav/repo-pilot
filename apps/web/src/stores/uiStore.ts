@@ -7,6 +7,8 @@ export interface Toast {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';
   message: string;
+  /** 报错码，用于渲染与查表 */
+  code?: string;
   duration?: number;
 }
 

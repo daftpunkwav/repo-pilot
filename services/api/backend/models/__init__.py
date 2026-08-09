@@ -1,4 +1,4 @@
-"""ORM 模型聚合导出，供 metadata.create_all 使用。"""
+"""ORM 模型聚合导出，供 metadata.create_all / Alembic 使用。"""
 from backend.models.agent import (
     AgentMessage,
     AgentSession,
@@ -6,14 +6,13 @@ from backend.models.agent import (
     UserProfile,
     agent_session_projects,
 )
+from backend.models.app_state import AppState
 from backend.models.category import Category
 from backend.models.note import Note
 from backend.models.project import Project, Tag, project_tags
-from backend.models.user import RefreshToken, User
 
 __all__ = [
-    "User",
-    "RefreshToken",
+    "AppState",
     "UserProfile",
     "Project",
     "Tag",
@@ -23,4 +22,5 @@ __all__ = [
     "AgentSession",
     "AgentMessage",
     "ProjectAnalysis",
+    "agent_session_projects",
 ]

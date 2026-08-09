@@ -1,107 +1,21 @@
 """
-Pydantic schemas —— 用户相关请求/响应
+Pydantic schemas —— 本机身份（无认证）
+
+UserOut 仅描述本机展示名与 GitHub 绑定状态；无头像 / 邮箱 / 密码。
 """
 from datetime import datetime
 from typing import Optional
-from uuid import UUID
 
-import re
-
-from pydantic import BaseModel, EmailStr, Field, field_validator
-
-
-def _validate_password_bcrypt_bytes(password: str) -> str:
-    """拒绝超过 bcrypt 72 字节的密码，避免静默截断。"""
-    if len(password.encode("utf-8")) > 72:
-        raise ValueError("密码过长（编码后不得超过 72 字节）")
-    return password
-
-
-class UserCreate(BaseModel):
-    username: str = Field(..., min_length=3, max_length=32)
-    password: str = Field(..., min_length=8, max_length=72)
-    email: Optional[EmailStr] = None
-
-    @field_validator("password")
-    @classmethod
-    def _password_bytes(cls, v: str) -> str:
-        return _validate_password_bcrypt_bytes(v)
-
-
-class UserLogin(BaseModel):
-    username: str
-    password: str = Field(..., min_length=8, max_length=72)
-    remember_me: bool = False
-
-    @field_validator("password")
-    @classmethod
-    def _password_bytes(cls, v: str) -> str:
-        return _validate_password_bcrypt_bytes(v)
-
-
-class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
-    avatar_url: Optional[str] = None
-
-    @field_validator("avatar_url")
-    @classmethod
-    def _validate_avatar_url(cls, value: Optional[str]) -> Optional[str]:
-        """头像 URL 仅允许 GitHub 头像域名，防止 XSS/SSRF 向量。"""
-        if value is None or value == "":
-            return value
-        if len(value) > 512:
-            raise ValueError("头像 URL 过长")
-        if not re.match(r"^https://avatars\.githubusercontent\.com/", value, re.IGNORECASE):
-            raise ValueError("头像 URL 必须是 GitHub 头像地址")
-        return value
+from pydantic import BaseModel
 
 
 class UserOut(BaseModel):
-    id: UUID
+    """本机身份；id 固定为字符串 local（非 UUID）。"""
+
+    id: str
     username: str
-    email: Optional[str] = None
-    avatar_url: Optional[str] = None
     github_login: Optional[str] = None
     github_bound: bool = False
     created_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
-
-
-class TokenOut(BaseModel):
-    """登录/注册响应。
-
-    浏览器主路径：凭证只在 httpOnly Cookie；body 默认不含 token。
-    API 客户端可传 include_tokens=true 取回明文 token。
-    """
-
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
-    token_type: str = "bearer"
-    user: UserOut
-
-
-class RefreshBody(BaseModel):
-    """refresh_token 可选：浏览器可仅依赖 httpOnly Cookie。"""
-
-    refresh_token: Optional[str] = None
-
-
-class AccessTokenOut(BaseModel):
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
-    token_type: str = "bearer"
-
-
-class PasswordUpdate(BaseModel):
-    old_password: str
-    new_password: str = Field(..., min_length=8, max_length=72)
-
-    @field_validator("new_password")
-    @classmethod
-    def _new_password_bytes(cls, v: str) -> str:
-        return _validate_password_bcrypt_bytes(v)
-
-
-class LogoutBody(BaseModel):
-    refresh_token: Optional[str] = None

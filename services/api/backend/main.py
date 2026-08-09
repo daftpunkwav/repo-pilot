@@ -1,95 +1,41 @@
 """
-FastAPI 应用入口 —— v2.0
+FastAPI 应用入口 —— v2.0（模块容错挂载 + 本地单机无认证）
 """
-import json
+import importlib
 from contextlib import asynccontextmanager
+from typing import Callable
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from backend.api import (
-    agent,
-    auth,
-    categories,
-    github,
-    graph,
-    notes,
-    overview,
-    projects,
-    settings as settings_api,
-    tags,
-    user,
-)
 from backend.config import get_settings
 from backend.core.limiter import limiter
 from backend.core.middleware import setup_middleware
-from backend.core.csrf import CsrfMiddleware
+from backend.core.module_registry import all_module_statuses, get_module_status, safe_load_router
 from backend.database import get_session_factory, init_db
 from backend.services.seed_service import seed_preset_categories
 
 settings = get_settings()
+api = settings.api_v1_prefix
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # 启动前校验 JWT 密钥长度，防止使用弱密钥
+    # 启动前校验密钥长度，防止使用弱密钥
     if len(settings.secret_key.encode("utf-8")) < 32:
         raise ValueError("SECRET_KEY 长度必须至少为 32 字节，请设置足够强度的随机密钥")
     await init_db()
     factory = get_session_factory()
     async with factory() as session:
         await seed_preset_categories(session)
+        # 确保 AppState 与学习者画像各一行
+        from backend.services.app_state_service import ensure_singleton_rows
+
+        await ensure_singleton_rows(session)
     yield
-
-
-class _LoginBodyCacheMiddleware:
-    """
-    缓存 /auth/login 请求体，提取用户名写入 scope state 供限流 key 使用。
-    通过 wrapped_receive 把完整 body 重新交给下游，避免 FastAPI 解析失败。
-    """
-
-    def __init__(self, app: ASGIApp) -> None:
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope.get("type") != "http" or scope.get("path") != f"{settings.api_v1_prefix}/auth/login":
-            return await self.app(scope, receive, send)
-
-        body_parts: list[bytes] = []
-        more_body = True
-        while more_body:
-            message = await receive()
-            if message["type"] == "http.request":
-                body_parts.append(message.get("body", b""))
-                more_body = message.get("more_body", False)
-            else:
-                body_parts.append(b"")
-                more_body = False
-        body = b"".join(body_parts)
-
-        username = ""
-        if body:
-            try:
-                payload = json.loads(body)
-                if isinstance(payload, dict):
-                    username = payload.get("username", "") or ""
-            except Exception:
-                pass
-        scope.setdefault("state", {})["rate_limit_username"] = username
-
-        sent = False
-
-        async def wrapped_receive() -> Message:
-            nonlocal sent
-            if not sent:
-                sent = True
-                return {"type": "http.request", "body": body, "more_body": False}
-            return await receive()
-
-        await self.app(scope, wrapped_receive, send)
 
 
 app = FastAPI(title=settings.app_name, version="2.0.0", lifespan=lifespan)
@@ -98,24 +44,72 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(SlowAPIMiddleware)
-app.add_middleware(_LoginBodyCacheMiddleware)
-app.add_middleware(CsrfMiddleware)
 setup_middleware(app)
 
-api = settings.api_v1_prefix
-app.include_router(auth.router, prefix=f"{api}/auth", tags=["auth"])
-app.include_router(projects.router, prefix=api)
-app.include_router(categories.router, prefix=api)
-app.include_router(notes.router, prefix=api)
-app.include_router(graph.router, prefix=api)
-app.include_router(tags.router, prefix=api)
-app.include_router(overview.router, prefix=api)
-app.include_router(user.router, prefix=api)
-app.include_router(agent.router, prefix=api)
-app.include_router(github.router, prefix=api)
-app.include_router(settings_api.router, prefix=api)
+
+def _load_router(module_path: str) -> Callable[[], object]:
+    """延迟 import 指定 api 模块的 router。"""
+
+    def _loader() -> object:
+        mod = importlib.import_module(module_path)
+        return mod.router
+
+    return _loader
+
+
+# —— 模块容错挂载：单域失败不阻塞 app 启动（已移除 auth） ——
+_MODULES: list[tuple[str, Callable[[], object]]] = [
+    ("projects", _load_router("backend.api.projects")),
+    ("categories", _load_router("backend.api.categories")),
+    ("notes", _load_router("backend.api.notes")),
+    ("graph", _load_router("backend.api.graph")),
+    ("tags", _load_router("backend.api.tags")),
+    ("overview", _load_router("backend.api.overview")),
+    ("user", _load_router("backend.api.user")),
+    ("agent", _load_router("backend.api.agent")),
+    ("github", _load_router("backend.api.github")),
+    ("settings", _load_router("backend.api.settings")),
+]
+
+for _name, _loader in _MODULES:
+    _router = safe_load_router(_name, _loader)
+    if _router is not None:
+        app.include_router(_router, prefix=api)
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "2.0.0"}
+    """健康检查：返回各模块加载状态。"""
+    return {
+        "status": "ok",
+        "version": "2.0.0",
+        "modules": [
+            {"name": s.name, "loaded": s.loaded, "error": s.error}
+            for s in all_module_statuses()
+        ],
+    }
+
+
+# —— 模块级 503 兜底：未加载成功的域，其前缀路由统一返回 503 ——
+# include_in_schema=False：避免多 method 共用同一 operationId 污染 OpenAPI
+@app.api_route(
+    f"{api}/{{module}}/{{rest:path}}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+    include_in_schema=False,
+)
+async def module_unavailable(module: str, rest: str):
+    status = get_module_status(module)
+    if status and not status.loaded:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "detail": {
+                    "code": "MODULE_LOAD_FAILED",
+                    "message": f"模块 {module} 加载失败，服务不可用",
+                    "module": module,
+                    "error": status.error,
+                }
+            },
+        )
+    # 已加载但路径不匹配 → 走 FastAPI 默认 404
+    return JSONResponse(status_code=404, content={"detail": "Not Found"})

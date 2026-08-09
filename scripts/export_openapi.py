@@ -7,7 +7,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "services" / "api"))
+for _p in (ROOT / "services" / "api", ROOT / "services" / "agent"):
+    _s = str(_p)
+    if _s not in sys.path:
+        sys.path.insert(0, _s)
 
 # 导出时使用占位密钥，避免依赖本地 .env
 os.environ.setdefault("SECRET_KEY", "openapi-export-secret-key-32bytes!!")

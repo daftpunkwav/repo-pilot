@@ -102,7 +102,6 @@ class FakeToolRegistry:
 
 def _ctx(engine: ReActEngine, agent_def: AgentDefinition, fake_llm: FakeLLM) -> AgentRunContext:
     return AgentRunContext(
-        user_id="u1",
         session_id="s1",
         agent_id=agent_def.id,
         db=None,
@@ -321,7 +320,6 @@ def test_run_question_intercept():
         ]
     )
     ctx = AgentRunContext(
-        user_id="u1",
         session_id="s1",
         agent_id=agent_def.id,
         db=None,
@@ -372,7 +370,6 @@ def test_run_dispatch_intercept():
         ]
     )
     ctx = AgentRunContext(
-        user_id="u1",
         session_id="s1",
         agent_id="hub",
         db=None,

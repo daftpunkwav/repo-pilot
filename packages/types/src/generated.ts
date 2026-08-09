@@ -4,109 +4,6 @@
  */
 
 export interface paths {
-    "/api/v1/auth/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Register */
-        post: operations["register_api_v1_auth_register_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Login */
-        post: operations["login_api_v1_auth_login_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Refresh */
-        post: operations["refresh_api_v1_auth_refresh_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Logout */
-        post: operations["logout_api_v1_auth_logout_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Me */
-        get: operations["get_me_api_v1_auth_me_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update Me */
-        patch: operations["update_me_api_v1_auth_me_patch"];
-        trace?: never;
-    };
-    "/api/v1/auth/password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update Password */
-        put: operations["update_password_api_v1_auth_password_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/projects/": {
         parameters: {
             query?: never;
@@ -149,8 +46,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Project */
-        get: operations["get_project_api_v1_projects__project_id__get"];
+        /** Get Project Api */
+        get: operations["get_project_api_api_v1_projects__project_id__get"];
         /** Update Project */
         put: operations["update_project_api_v1_projects__project_id__put"];
         post?: never;
@@ -171,7 +68,6 @@ export interface paths {
         /**
          * Get Project Readme
          * @description 按需从 GitHub 拉取项目 README。
-         *     使用用户绑定的 PAT（若有）以提高限额与私有仓可读性。
          */
         get: operations["get_project_readme_api_v1_projects__project_id__readme_get"];
         put?: never;
@@ -443,6 +339,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/user/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Me
+         * @description 返回本机身份（从 AppState.display_name / GitHub 绑定状态）。
+         */
+        get: operations["get_me_api_v1_user_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/user/profile": {
         parameters: {
             query?: never;
@@ -472,7 +388,7 @@ export interface paths {
         put?: never;
         /**
          * Clear Memory
-         * @description 清除 Agent 关于用户的画像记忆（不删除对话会话）。
+         * @description 清除 Agent 关于学习者的画像记忆（不删除对话会话；保留自填 identity）。
          */
         post: operations["clear_memory_api_v1_user_profile_clear_memory_post"];
         delete?: never;
@@ -744,7 +660,7 @@ export interface paths {
         head?: never;
         /**
          * Patch Permissions
-         * @description 更新当前用户 Agent 工具权限（敏感能力开关）。
+         * @description 更新本机 Agent 工具权限（敏感能力开关）。
          */
         patch: operations["patch_permissions_api_v1_agent_permissions_patch"];
         trace?: never;
@@ -792,8 +708,7 @@ export interface paths {
         };
         /**
          * Get Stars
-         * @description 拉取用户全部 Stars（分页聚合）。
-         *     默认使用 6 小时缓存；?refresh=true 强制更新。
+         * @description 拉取全部 Stars；默认 6 小时缓存。
          */
         get: operations["get_stars_api_v1_github_stars_get"];
         put?: never;
@@ -921,7 +836,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Health */
+        /**
+         * Health
+         * @description 健康检查：返回各模块加载状态。
+         */
         get: operations["health_health_get"];
         put?: never;
         post?: never;
@@ -935,18 +853,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** AccessTokenOut */
-        AccessTokenOut: {
-            /** Access Token */
-            access_token: string;
-            /** Refresh Token */
-            refresh_token: string;
-            /**
-             * Token Type
-             * @default bearer
-             */
-            token_type: string;
-        };
         /** ActivityItemOut */
         ActivityItemOut: {
             /** Id */
@@ -1297,14 +1203,6 @@ export interface components {
             /** Segments */
             segments?: components["schemas"]["ContextWindowSegmentOut"][];
         };
-        /** DataResponse[AccessTokenOut] */
-        DataResponse_AccessTokenOut_: {
-            data: components["schemas"]["AccessTokenOut"];
-            /** Meta */
-            meta?: {
-                [key: string]: unknown;
-            };
-        };
         /** DataResponse[AgentPermissionsOut] */
         DataResponse_AgentPermissionsOut_: {
             data: components["schemas"]["AgentPermissionsOut"];
@@ -1385,14 +1283,6 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** DataResponse[OkData] */
-        DataResponse_OkData_: {
-            data: components["schemas"]["OkData"];
-            /** Meta */
-            meta?: {
-                [key: string]: unknown;
-            };
-        };
         /** DataResponse[ProgressUpdateOut] */
         DataResponse_ProgressUpdateOut_: {
             data: components["schemas"]["ProgressUpdateOut"];
@@ -1452,14 +1342,6 @@ export interface components {
         /** DataResponse[TagOut] */
         DataResponse_TagOut_: {
             data: components["schemas"]["TagOut"];
-            /** Meta */
-            meta?: {
-                [key: string]: unknown;
-            };
-        };
-        /** DataResponse[TokenOut] */
-        DataResponse_TokenOut_: {
-            data: components["schemas"]["TokenOut"];
             /** Meta */
             meta?: {
                 [key: string]: unknown;
@@ -1669,6 +1551,76 @@ export interface components {
             }[];
         };
         /**
+         * LearnerIdentityOut
+         * @description 本机学习者主动填写的身份信息（供 Agent 按需读取）。
+         */
+        LearnerIdentityOut: {
+            /**
+             * Preferred Name
+             * @description Agent 称呼
+             * @default
+             */
+            preferred_name: string;
+            /**
+             * Spoken Languages
+             * @description 熟练的自然语言，如 中文 / English
+             */
+            spoken_languages?: string[];
+            /**
+             * Programming Languages
+             * @description 熟练的编程语言
+             */
+            programming_languages?: string[];
+            /**
+             * Tech Stack
+             * @description 常用框架 / 工具 / 技术栈
+             */
+            tech_stack?: string[];
+            /**
+             * Interests
+             * @description 学习兴趣与方向
+             */
+            interests?: string[];
+            /**
+             * Occupation
+             * @description 身份或职业
+             * @default
+             */
+            occupation: string;
+            /**
+             * Experience Level
+             * @description 整体经验水平
+             * @default
+             * @enum {string}
+             */
+            experience_level: "" | "beginner" | "intermediate" | "advanced";
+            /**
+             * Bio
+             * @description 一句话简介
+             * @default
+             */
+            bio: string;
+        };
+        /** LearnerIdentityUpdate */
+        LearnerIdentityUpdate: {
+            /** Preferred Name */
+            preferred_name?: string | null;
+            /** Spoken Languages */
+            spoken_languages?: string[] | null;
+            /** Programming Languages */
+            programming_languages?: string[] | null;
+            /** Tech Stack */
+            tech_stack?: string[] | null;
+            /** Interests */
+            interests?: string[] | null;
+            /** Occupation */
+            occupation?: string | null;
+            /** Experience Level */
+            experience_level?: ("" | "beginner" | "intermediate" | "advanced") | null;
+            /** Bio */
+            bio?: string | null;
+        };
+        /**
          * LlmTestIn
          * @description 可选：指定测试模型；默认使用 settings 中的默认模型。
          */
@@ -1699,11 +1651,6 @@ export interface components {
              * @default
              */
             litellm_model: string;
-        };
-        /** LogoutBody */
-        LogoutBody: {
-            /** Refresh Token */
-            refresh_token?: string | null;
         };
         /** MemoryItemOut */
         MemoryItemOut: {
@@ -1808,14 +1755,6 @@ export interface components {
             /** Content */
             content?: string | null;
         };
-        /** OkData */
-        OkData: {
-            /**
-             * Success
-             * @default true
-             */
-            success: boolean;
-        };
         /** OverviewRecentNoteOut */
         OverviewRecentNoteOut: {
             /** Id */
@@ -1847,13 +1786,6 @@ export interface components {
             meta?: {
                 [key: string]: unknown;
             };
-        };
-        /** PasswordUpdate */
-        PasswordUpdate: {
-            /** Old Password */
-            old_password: string;
-            /** New Password */
-            new_password: string;
         };
         /** ProgressUpdateOut */
         ProgressUpdateOut: {
@@ -2022,14 +1954,6 @@ export interface components {
              * @enum {string}
              */
             recommended_by: "hub" | "scout" | "mentor" | "navigator" | "curator" | "scribe";
-        };
-        /**
-         * RefreshBody
-         * @description refresh_token 可选：浏览器可仅依赖 httpOnly Cookie。
-         */
-        RefreshBody: {
-            /** Refresh Token */
-            refresh_token?: string | null;
         };
         /** SessionUpdateBody */
         SessionUpdateBody: {
@@ -2219,19 +2143,6 @@ export interface components {
              */
             count: number;
         };
-        /** TokenOut */
-        TokenOut: {
-            /** Access Token */
-            access_token: string;
-            /** Refresh Token */
-            refresh_token: string;
-            /**
-             * Token Type
-             * @default bearer
-             */
-            token_type: string;
-            user: components["schemas"]["UserOut"];
-        };
         /** TrendingRepoOut */
         TrendingRepoOut: {
             /** Owner */
@@ -2269,40 +2180,15 @@ export interface components {
             /** Url */
             url?: string | null;
         };
-        /** UserCreate */
-        UserCreate: {
-            /** Username */
-            username: string;
-            /** Password */
-            password: string;
-            /** Email */
-            email?: string | null;
-        };
-        /** UserLogin */
-        UserLogin: {
-            /** Username */
-            username: string;
-            /** Password */
-            password: string;
-            /**
-             * Remember Me
-             * @default false
-             */
-            remember_me: boolean;
-        };
-        /** UserOut */
+        /**
+         * UserOut
+         * @description 本机身份；id 固定为字符串 local（非 UUID）。
+         */
         UserOut: {
-            /**
-             * Id
-             * Format: uuid
-             */
+            /** Id */
             id: string;
             /** Username */
             username: string;
-            /** Email */
-            email?: string | null;
-            /** Avatar Url */
-            avatar_url?: string | null;
             /** Github Login */
             github_login?: string | null;
             /**
@@ -2315,6 +2201,7 @@ export interface components {
         };
         /** UserProfileOut */
         UserProfileOut: {
+            identity?: components["schemas"]["LearnerIdentityOut"];
             /** Tech Proficiency */
             tech_proficiency?: {
                 [key: string]: unknown;
@@ -2341,6 +2228,7 @@ export interface components {
         };
         /** UserProfileUpdate */
         UserProfileUpdate: {
+            identity?: components["schemas"]["LearnerIdentityUpdate"] | null;
             /** Tech Proficiency */
             tech_proficiency?: {
                 [key: string]: unknown;
@@ -2359,13 +2247,6 @@ export interface components {
             extensions?: {
                 [key: string]: unknown;
             } | null;
-        };
-        /** UserUpdate */
-        UserUpdate: {
-            /** Email */
-            email?: string | null;
-            /** Avatar Url */
-            avatar_url?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -2389,224 +2270,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    register_api_v1_auth_register_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UserCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DataResponse_TokenOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    login_api_v1_auth_login_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UserLogin"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DataResponse_TokenOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    refresh_api_v1_auth_refresh_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["RefreshBody"] | null;
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DataResponse_AccessTokenOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    logout_api_v1_auth_logout_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["LogoutBody"] | null;
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DataResponse_OkData_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_me_api_v1_auth_me_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DataResponse_UserOut_"];
-                };
-            };
-        };
-    };
-    update_me_api_v1_auth_me_patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UserUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DataResponse_UserOut_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    update_password_api_v1_auth_password_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PasswordUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DataResponse_OkData_"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_projects_api_v1_projects__get: {
         parameters: {
             query?: {
@@ -2703,7 +2366,7 @@ export interface operations {
             };
         };
     };
-    get_project_api_v1_projects__project_id__get: {
+    get_project_api_api_v1_projects__project_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -3460,6 +3123,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_me_api_v1_user_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_UserOut_"];
                 };
             };
         };

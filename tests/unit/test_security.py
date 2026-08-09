@@ -1,43 +1,5 @@
-"""安全工具单元测试"""
-from backend.core.security import (
-    create_access_token,
-    create_refresh_token_value,
-    decode_token,
-    decrypt_secret,
-    encrypt_secret,
-    hash_password,
-    hash_refresh_token,
-    verify_password,
-)
-
-
-def test_hash_and_verify_password():
-    hashed = hash_password("demo1234")
-    assert hashed != "demo1234"
-    assert verify_password("demo1234", hashed)
-    assert not verify_password("wrong", hashed)
-
-
-def test_hash_password_rejects_over_72_bytes():
-    import pytest
-
-    long_pwd = "a" * 73
-    with pytest.raises(ValueError, match="72"):
-        hash_password(long_pwd)
-    assert verify_password(long_pwd, "x") is False
-
-
-def test_jwt_roundtrip():
-    token = create_access_token({"sub": "user-1"})
-    payload = decode_token(token)
-    assert payload is not None
-    assert payload["sub"] == "user-1"
-
-
-def test_refresh_token_hash_is_stable():
-    plain = create_refresh_token_value()
-    assert hash_refresh_token(plain) == hash_refresh_token(plain)
-    assert len(hash_refresh_token(plain)) == 64
+"""安全工具单元测试 —— at-rest 加密（已移除 JWT/密码哈希）。"""
+from backend.core.security import decrypt_secret, encrypt_secret
 
 
 def test_encrypt_decrypt_secret_roundtrip():
@@ -53,3 +15,7 @@ def test_decrypt_secret_plaintext_compat():
     assert decrypt_secret("ghp_legacy_plain_token") == "ghp_legacy_plain_token"
     assert decrypt_secret(None) is None
     assert decrypt_secret("") == ""
+
+
+def test_encrypt_empty_passthrough():
+    assert encrypt_secret("") == ""

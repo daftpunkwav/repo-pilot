@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { getApi } from '@/api/client';
 import type { ImportAssistContext, SelectReposEvent, SSEEvent } from '@/api/types';
+import { ApiRequestError } from '@/api/real/http';
 import { consumeAgentSSEStream } from '@/utils/agentSSEStream';
+import { formatErrorToast } from '@/utils/errorCodes';
 import { StreamRenderer } from '@/components/agent/StreamRenderer';
 import { MarkdownRenderer } from '@/components/common/MarkdownRenderer';
 import { useUIStore } from '@/stores/uiStore';
@@ -15,6 +17,13 @@ interface ChatLine {
   thinking?: string;
 }
 
+const AGENT_DOWN_CODES = new Set([
+  'AGENT_MODULE_DOWN',
+  'AGENT_LLM_UNAVAILABLE',
+  'MODULE_LOAD_FAILED',
+  'AGENT_IMPORT_ASSIST_FAILED',
+]);
+
 interface EmbedAgentChatProps {
   mode: EmbedChatMode;
   title: string;
@@ -25,6 +34,8 @@ interface EmbedAgentChatProps {
   graphNodeId?: string | null;
   placeholder?: string;
   onSelectRepos?: (event: SelectReposEvent) => void;
+  /** Agent 不可用时通知父组件隐藏面板 */
+  onUnavailable?: () => void;
 }
 
 export function EmbedAgentChat({
@@ -37,6 +48,7 @@ export function EmbedAgentChat({
   graphNodeId,
   placeholder = '向助手描述你的需求…',
   onSelectRepos,
+  onUnavailable,
 }: EmbedAgentChatProps) {
   const [lines, setLines] = useState<ChatLine[]>([
     {
@@ -55,6 +67,7 @@ export function EmbedAgentChat({
   const [tokenHint, setTokenHint] = useState({ in: 0, out: 0 });
   const [error, setError] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState<string | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
   const textAccRef = useRef('');
@@ -62,6 +75,18 @@ export function EmbedAgentChat({
   const addToast = useUIStore((s) => s.addToast);
   const importContextRef = useRef(importContext);
   importContextRef.current = importContext;
+
+  const markUnavailable = (code: string) => {
+    if (!AGENT_DOWN_CODES.has(code)) return;
+    setUnavailable(true);
+    onUnavailable?.();
+    addToast({
+      type: 'warning',
+      code,
+      message: formatErrorToast(code, 'Agent 助手不可用，已切换手动模式'),
+      duration: 5000,
+    });
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -73,6 +98,32 @@ export function EmbedAgentChat({
     },
     [],
   );
+
+  // 挂载时探测 /health，agent 未加载则立即降级
+  useEffect(() => {
+    let cancelled = false;
+    const probe = async () => {
+      try {
+        const base = import.meta.env.VITE_API_BASE_URL ?? '';
+        const res = await fetch(`${base}/health`);
+        if (!res.ok || cancelled) return;
+        const body = (await res.json()) as {
+          modules?: Array<{ name: string; loaded: boolean }>;
+        };
+        const agent = body.modules?.find((m) => m.name === 'agent');
+        if (agent && !agent.loaded && !cancelled) {
+          markUnavailable('AGENT_MODULE_DOWN');
+        }
+      } catch {
+        /* 健康检查失败不阻塞，等首次发送再降级 */
+      }
+    };
+    void probe();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅挂载探测一次
+  }, []);
 
   const abortStream = () => {
     streamAbortRef.current?.abort();
@@ -112,7 +163,7 @@ export function EmbedAgentChat({
 
   const send = async () => {
     const text = input.trim();
-    if (!text || streaming) return;
+    if (!text || streaming || unavailable) return;
     setInput('');
     setError(null);
     setLastAction(null);
@@ -211,14 +262,30 @@ export function EmbedAgentChat({
       });
 
       if (result.sawError) {
-        addToast({ type: 'error', message: result.errorMessage || '助手返回错误' });
+        const code = result.errorCode || 'AGENT_CHAT_FAILED';
+        addToast({
+          type: 'error',
+          code,
+          message: formatErrorToast(code, result.errorMessage || '助手返回错误'),
+        });
+        markUnavailable(code);
       }
     } catch (err) {
       clearFlush();
       if (ac.signal.aborted) return;
-      const message = err instanceof Error ? err.message : '连接中断，请重试';
-      setError(message);
-      addToast({ type: 'error', message });
+      if (err instanceof ApiRequestError) {
+        setError(err.message);
+        addToast({
+          type: 'error',
+          code: err.code,
+          message: formatErrorToast(err.code, err.message),
+        });
+        markUnavailable(err.code);
+      } else {
+        const message = err instanceof Error ? err.message : '连接中断，请重试';
+        setError(message);
+        addToast({ type: 'error', message });
+      }
     } finally {
       clearFlush();
       if (streamAbortRef.current === ac) {
@@ -241,6 +308,8 @@ export function EmbedAgentChat({
       abortStream();
     }
   };
+
+  if (unavailable) return null;
 
   return (
     <div className="embed-agent-chat">

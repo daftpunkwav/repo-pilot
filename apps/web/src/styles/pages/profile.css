@@ -1,6 +1,5 @@
 /* ==========================================================================
    个人资料页 (Profile Page)
-   此前缺少布局样式（无 profile.css），导致卡片全宽塌叠、输入框为原生白框。
    采用总览双层玻璃：卡片走 overview-outer（在 TSX 中追加类），本文件负责布局。
    ========================================================================== */
 
@@ -12,7 +11,7 @@
   gap: 16px;
 }
 
-/* ---------- 头部卡片：头像 + 用户名居中 ---------- */
+/* ---------- 头部卡片：称呼首字 ---------- */
 .profile-header {
   display: flex;
   flex-direction: column;
@@ -47,6 +46,10 @@
   margin: 0;
 }
 
+.profile-lead {
+  margin: -6px 0 16px;
+}
+
 /* ---------- 卡片标题 ---------- */
 .profile-page h2 {
   font-size: 16px;
@@ -54,7 +57,7 @@
   margin: 0 0 14px;
 }
 
-/* ---------- 账号信息：键值网格 ---------- */
+/* ---------- 画像预览：键值网格 ---------- */
 .profile-dl {
   display: grid;
   grid-template-columns: 120px 1fr;
@@ -92,7 +95,15 @@
   margin: 4px 0 12px;
 }
 
-/* ---------- 通用输入框 .input（此前全局未定义） ---------- */
+.profile-textarea {
+  height: auto;
+  min-height: 88px;
+  padding: 10px 14px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* ---------- 通用输入框 .input ---------- */
 .input {
   width: 100%;
   height: 40px;
@@ -112,12 +123,14 @@
   border-color: var(--brand-500);
   box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.12);
 }
+select.input {
+  cursor: pointer;
+}
 [data-theme='dark'] .input {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.16);
 }
 
-/* 卡片内直接子级按钮与上方输入拉开间距 */
 .profile-page .glass-card > .btn {
   margin-top: 12px;
 }

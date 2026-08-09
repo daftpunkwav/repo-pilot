@@ -7,27 +7,20 @@ from backend.schemas.note import NoteCreate
 from backend.schemas.project import ImportProjectsBody, ProjectCreate, ProjectUpdate
 from backend.schemas.settings import SettingsUpdate
 from backend.schemas.tag import TagCreate
-from backend.schemas.user import UserCreate, UserLogin
+from backend.schemas.profile import LearnerIdentityOut, LearnerIdentityUpdate
 
 
-def test_user_create_min_length():
-    u = UserCreate(username="abc", password="demo1234")
-    assert u.username == "abc"
+def test_learner_identity_defaults():
+    ident = LearnerIdentityOut()
+    assert ident.preferred_name == ""
+    assert ident.spoken_languages == []
+    assert ident.experience_level == ""
 
 
-def test_user_create_password_over_72_bytes():
-    with pytest.raises(ValidationError):
-        UserCreate(username="abcuser", password="a" * 73)
-
-
-def test_user_login_password_too_short():
-    with pytest.raises(ValidationError):
-        UserLogin(username="abc", password="short")
-
-
-def test_user_login_password_too_long():
-    with pytest.raises(ValidationError):
-        UserLogin(username="abc", password="x" * 129)
+def test_learner_identity_update_partial():
+    u = LearnerIdentityUpdate(preferred_name="小明", tech_stack=["React", "FastAPI"])
+    assert u.preferred_name == "小明"
+    assert u.tech_stack == ["React", "FastAPI"]
 
 
 def test_import_body_repos():

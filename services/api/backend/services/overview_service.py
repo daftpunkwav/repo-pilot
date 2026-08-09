@@ -1,6 +1,5 @@
-"""总览页数据聚合 —— 从真实数据库派生"""
+"""总览页数据聚合 —— 从真实数据库派生（本地单机）"""
 from datetime import datetime
-from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,15 +21,12 @@ def _iso(dt: datetime | None) -> str:
     return dt.isoformat() + ("Z" if not dt.tzinfo else "")
 
 
-async def list_activities(db: AsyncSession, user_id: UUID, limit: int = 20) -> list[ActivityItemOut]:
+async def list_activities(db: AsyncSession, limit: int = 20) -> list[ActivityItemOut]:
     items: list[ActivityItemOut] = []
 
     projects = (
         await db.execute(
-            select(Project)
-            .where(Project.user_id == user_id)
-            .order_by(Project.imported_at.desc())
-            .limit(limit)
+            select(Project).order_by(Project.imported_at.desc()).limit(limit)
         )
     ).scalars().all()
     for p in projects:
@@ -47,7 +43,7 @@ async def list_activities(db: AsyncSession, user_id: UUID, limit: int = 20) -> l
 
     notes = (
         await db.execute(
-            select(Note).where(Note.user_id == user_id).order_by(Note.updated_at.desc()).limit(limit)
+            select(Note).order_by(Note.updated_at.desc()).limit(limit)
         )
     ).scalars().all()
     for n in notes:
@@ -64,10 +60,7 @@ async def list_activities(db: AsyncSession, user_id: UUID, limit: int = 20) -> l
 
     sessions = (
         await db.execute(
-            select(AgentSession)
-            .where(AgentSession.user_id == user_id)
-            .order_by(AgentSession.updated_at.desc())
-            .limit(limit)
+            select(AgentSession).order_by(AgentSession.updated_at.desc()).limit(limit)
         )
     ).scalars().all()
     for s in sessions:
@@ -86,12 +79,11 @@ async def list_activities(db: AsyncSession, user_id: UUID, limit: int = 20) -> l
 
 
 async def list_recent_notes(
-    db: AsyncSession, user_id: UUID, limit: int = 5
+    db: AsyncSession, limit: int = 5
 ) -> list[OverviewRecentNoteOut]:
     result = await db.execute(
         select(Note, Project.name)
         .join(Project, Note.project_id == Project.id)
-        .where(Note.user_id == user_id)
         .order_by(Note.updated_at.desc())
         .limit(limit)
     )
@@ -110,16 +102,16 @@ async def list_recent_notes(
 
 
 async def list_recommended(
-    db: AsyncSession, user_id: UUID, limit: int = 6
+    db: AsyncSession, limit: int = 6
 ) -> list[RecommendedProjectOut]:
     result = await db.execute(
         select(Project)
-        .where(Project.user_id == user_id, Project.progress.in_(["none", "learning"]))
+        .where(Project.progress.in_(["none", "learning"]))
         .order_by(Project.stars.desc())
         .limit(limit)
     )
     items: list[RecommendedProjectOut] = []
-    for i, p in enumerate(result.scalars().all()):
+    for p in result.scalars().all():
         items.append(
             RecommendedProjectOut(
                 id=f"rec_{p.id}",

@@ -35,6 +35,7 @@ export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
   const [filters, setFilters] = useState<ImportRepoFilterState>(
     DEFAULT_IMPORT_REPO_FILTER
   );
+  const [agentAvailable, setAgentAvailable] = useState(true);
   const importMutation = useImportProjects();
   const createMutation = useCreateProject();
   const { data: projectsPage } = useProjects();
@@ -72,6 +73,7 @@ export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
       setSelected(new Set());
       setTab('paste');
       setFilters(DEFAULT_IMPORT_REPO_FILTER);
+      setAgentAvailable(true);
     }
   }, [open]);
 
@@ -211,21 +213,24 @@ export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
       subtitle="粘贴地址或搜索筛选；右侧助手可自动勾选并说明"
       size="large"
       agentPanel={
-        <EmbedAgentChat
-          mode="import"
-          title="导入助手"
-          subtitle="智能勾选 · Stars/库内对比"
-          agentInitial="S"
-          agentClassName="agent-scout"
-          importContext={{
-            mode: tab === 'search' ? 'search' : 'urls',
-            available_repo_keys: availableKeys,
-            selected_repo_keys: [...selected],
-            available_repos: availableRepos,
-            imported_projects: importedProjects,
-          }}
-          onSelectRepos={applyAgentSelection}
-        />
+        agentAvailable ? (
+          <EmbedAgentChat
+            mode="import"
+            title="导入助手"
+            subtitle="智能勾选 · Stars/库内对比"
+            agentInitial="S"
+            agentClassName="agent-scout"
+            importContext={{
+              mode: tab === 'search' ? 'search' : 'urls',
+              available_repo_keys: availableKeys,
+              selected_repo_keys: [...selected],
+              available_repos: availableRepos,
+              imported_projects: importedProjects,
+            }}
+            onSelectRepos={applyAgentSelection}
+            onUnavailable={() => setAgentAvailable(false)}
+          />
+        ) : undefined
       }
     >
       <div className="import-biz-layout">

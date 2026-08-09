@@ -13,7 +13,6 @@ import type {
   GraphData,
   ImportAssistContext,
   ImportResult,
-  LoginResponse,
   Note,
   OverviewRecentNote,
   PaginatedList,
@@ -41,16 +40,7 @@ export type { paths, components, User as ContractUser } from '@repopilot/types';
  * IApiClient — Mock 和 Real 实现的统一接口契约
  */
 export interface IApiClient {
-  register(params: { username: string; password: string }): Promise<ApiResponse<LoginResponse>>;
-  login(params: { username: string; password: string }): Promise<ApiResponse<LoginResponse>>;
-  logout(): Promise<ApiResponse<{ success: boolean }>>;
-  refresh(): Promise<ApiResponse<{ access_token: string; refresh_token?: string }>>;
   me(): Promise<ApiResponse<User>>;
-  updateProfile(data: Partial<User>): Promise<ApiResponse<User>>;
-  changePassword(params: {
-    old_password: string;
-    new_password: string;
-  }): Promise<ApiResponse<{ success: boolean }>>;
 
   listGithubAccounts(): Promise<ApiResponse<GitHubAccount[]>>;
   bindGithub(params: { username: string; pat: string }): Promise<ApiResponse<GitHubAccount>>;

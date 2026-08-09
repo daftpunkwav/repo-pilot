@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from datetime import datetime
 from typing import Any, AsyncIterator
 from uuid import UUID
@@ -14,7 +15,6 @@ from backend.agents.hub import HubService
 from backend.llm.config import build_llm_config_from_user
 from backend.memory.service import MemoryService
 from backend.models.agent import AgentMessage, AgentSession, agent_session_projects
-from backend.models.user import User
 from backend.schemas.agent import (
     AgentMessageOut,
     AgentSessionDetailOut,
@@ -23,9 +23,11 @@ from backend.schemas.agent import (
     ContextWindowStatsOut,
 )
 from backend.core import stream_cancel
-from backend.services.project_service import get_project_owned_by_user
+from backend.services.project_service import get_project
 from backend.services.sse_stream import StreamEvent, encode_stream_item, format_sse
 from backend.tools.builtin import ensure_tools_loaded
+
+logger = logging.getLogger(__name__)
 
 ensure_tools_loaded()
 
@@ -104,8 +106,6 @@ async def set_session_projects(
     db: AsyncSession,
     session: AgentSession,
     project_ids: list[UUID],
-    *,
-    user_id: UUID,
 ) -> list[UUID]:
     """整体替换会话项目绑定；校验归属；同步主 project_id。"""
     # 去重保序
@@ -120,7 +120,7 @@ async def set_session_projects(
 
     owned: list[UUID] = []
     for pid in unique:
-        p = await get_project_owned_by_user(db, pid, user_id)
+        p = await get_project(db, pid)
         if not p:
             raise ValueError("PROJECT_NOT_OWNED")
         owned.append(pid)
@@ -142,19 +142,19 @@ async def set_session_projects(
 
 
 async def add_session_project(
-    db: AsyncSession, session: AgentSession, project_id: UUID, *, user_id: UUID
+    db: AsyncSession, session: AgentSession, project_id: UUID
 ) -> list[UUID]:
     current = await get_session_project_ids(db, session.id)
     if project_id not in current:
         current.append(project_id)
-    return await set_session_projects(db, session, current, user_id=user_id)
+    return await set_session_projects(db, session, current)
 
 
 async def remove_session_project(
-    db: AsyncSession, session: AgentSession, project_id: UUID, *, user_id: UUID
+    db: AsyncSession, session: AgentSession, project_id: UUID
 ) -> list[UUID]:
     current = [p for p in await get_session_project_ids(db, session.id) if p != project_id]
-    return await set_session_projects(db, session, current, user_id=user_id)
+    return await set_session_projects(db, session, current)
 
 
 async def session_to_out(db: AsyncSession, session: AgentSession) -> AgentSessionOut:
@@ -222,10 +222,10 @@ def message_to_out(msg: AgentMessage) -> AgentMessageOut:
     )
 
 
-async def list_sessions(db: AsyncSession, user_id: UUID) -> list[AgentSessionOut]:
+async def list_sessions(db: AsyncSession) -> list[AgentSessionOut]:
     result = await db.execute(
         select(AgentSession)
-        .where(AgentSession.user_id == user_id)
+        
         .order_by(AgentSession.updated_at.desc())
     )
     sessions = list(result.scalars().all())
@@ -233,10 +233,10 @@ async def list_sessions(db: AsyncSession, user_id: UUID) -> list[AgentSessionOut
 
 
 async def get_session_detail(
-    db: AsyncSession, user_id: UUID, session_id: UUID
+    db: AsyncSession, session_id: UUID
 ) -> AgentSessionDetailOut | None:
     session = await db.get(AgentSession, session_id)
-    if not session or session.user_id != user_id:
+    if not session:
         return None
     msgs = (
         await db.execute(
@@ -254,7 +254,6 @@ async def get_session_detail(
 
 async def create_session(
     db: AsyncSession,
-    user_id: UUID,
     *,
     project_id: UUID | None = None,
     project_ids: list[UUID] | None = None,
@@ -262,8 +261,7 @@ async def create_session(
     source: str = "chat",
 ) -> AgentSessionOut:
     session = AgentSession(
-        user_id=user_id,
-        title=title,
+                title=title,
         active_agent="hub",
         project_id=None,
         source=source or "chat",
@@ -274,7 +272,7 @@ async def create_session(
     if project_id and project_id not in ids:
         ids.insert(0, project_id)
     if ids:
-        await set_session_projects(db, session, ids, user_id=user_id)
+        await set_session_projects(db, session, ids)
     await db.commit()
     await db.refresh(session)
     return await session_to_out(db, session)
@@ -282,7 +280,6 @@ async def create_session(
 
 async def update_session(
     db: AsyncSession,
-    user_id: UUID,
     session_id: UUID,
     *,
     title: str | None = None,
@@ -295,17 +292,17 @@ async def update_session(
     from backend.agents.registry import AGENT_DEFINITIONS
 
     session = await db.get(AgentSession, session_id)
-    if not session or session.user_id != user_id:
+    if not session:
         return None
     if title is not None:
         session.title = title
     if clear_project:
-        await set_session_projects(db, session, [], user_id=user_id)
+        await set_session_projects(db, session, [])
     elif project_ids is not None:
-        await set_session_projects(db, session, project_ids, user_id=user_id)
+        await set_session_projects(db, session, project_ids)
     elif project_id is not None:
         # 单项目替换：兼容旧前端点击绑定
-        await set_session_projects(db, session, [project_id], user_id=user_id)
+        await set_session_projects(db, session, [project_id])
     if active_agent is not None:
         agent_id = active_agent.strip().lower()
         if agent_id not in AGENT_DEFINITIONS:
@@ -317,9 +314,9 @@ async def update_session(
     return await session_to_out(db, session)
 
 
-async def delete_session(db: AsyncSession, user_id: UUID, session_id: UUID) -> bool:
+async def delete_session(db: AsyncSession, session_id: UUID) -> bool:
     session = await db.get(AgentSession, session_id)
-    if not session or session.user_id != user_id:
+    if not session:
         return False
     await db.execute(
         delete(agent_session_projects).where(
@@ -647,7 +644,6 @@ async def _apply_persistence_side_effects(
 
 async def stream_chat(
     db: AsyncSession,
-    user: User,
     session_id: UUID,
     message: str,
     *,
@@ -660,7 +656,7 @@ async def stream_chat(
     # 独立 Agent 进程：API 只做会话归属预检后代理；落库与 Hub 在 Agent 侧执行
     if (settings.agent_base_url or "").strip() and not force_local:
         session = await db.get(AgentSession, session_id)
-        if not session or session.user_id != user.id:
+        if not session:
             yield encode_stream_item(
                 format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"})
             )
@@ -680,15 +676,14 @@ async def stream_chat(
 
         async for raw in proxy_agent_chat_sse(
             session_id=session_id,
-            user_id=user.id,
-            message=message,
+                        message=message,
             project_id=project_id,
         ):
             yield raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
         return
 
     session = await db.get(AgentSession, session_id)
-    if not session or session.user_id != user.id:
+    if not session:
         yield encode_stream_item(
             format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"})
         )
@@ -697,7 +692,7 @@ async def stream_chat(
     # 消息级 project_id：追加到会话多项目上下文（不替换已有）
     if project_id is not None:
         try:
-            await add_session_project(db, session, project_id, user_id=user.id)
+            await add_session_project(db, session, project_id)
             await db.commit()
         except ValueError:
             yield encode_stream_item(
@@ -728,8 +723,7 @@ async def stream_chat(
 
     try:
         async for chunk in hub.handle_chat(
-            user=user,
-            session_id=session_id,
+                        session_id=session_id,
             message=message,
             project_id=primary_project_id,
         ):
@@ -768,6 +762,12 @@ async def stream_chat(
     except asyncio.CancelledError:
         # 传输层取消：已 flush 的分段保留；当前未完成段不落库
         raise
+    except Exception as e:
+        logger.exception("stream_chat 失败: %s", e)
+        yield encode_stream_item(format_sse(
+            "error",
+            {"code": "AGENT_CHAT_FAILED", "message": f"对话失败: {e}"},
+        ))
     finally:
         _end_session_stream(session_id, cancel_ev)
         try:
@@ -778,7 +778,6 @@ async def stream_chat(
 
 async def stream_question_answer(
     db: AsyncSession,
-    user: User,
     session_id: UUID,
     question_id: str,
     answers: dict[str, Any],
@@ -786,7 +785,7 @@ async def stream_question_answer(
     skipped: bool = False,
 ) -> AsyncIterator[str]:
     session = await db.get(AgentSession, session_id)
-    if not session or session.user_id != user.id:
+    if not session:
         yield encode_stream_item(format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"}))
         return
 
@@ -872,8 +871,7 @@ async def stream_question_answer(
     buf = _AgentSegmentBuffer(agent_id=session.active_agent or "hub")
 
     async for chunk in hub.handle_question_answer(
-        user=user,
-        session_id=session_id,
+                session_id=session_id,
         question_id=question_id,
         answers=answers,
         skipped=skipped,
@@ -947,92 +945,97 @@ _ANALYZE_PROMPTS: dict[str, str] = {
 
 async def stream_analyze(
     db: AsyncSession,
-    user: User,
     project_id: UUID,
     *,
     depth: str = "quick",
     agent_id: str | None = None,
 ) -> AsyncIterator[str]:
     from backend.agents.registry import get_registry
-    from backend.services.project_service import get_project_owned_by_user
+    from backend.services.project_service import get_project
 
-    project = await get_project_owned_by_user(db, project_id, user.id)
-    if not project:
+    try:
+        project = await get_project(db, project_id)
+        if not project:
+            yield encode_stream_item(format_sse(
+                "error",
+                {"code": "FORBIDDEN", "message": "项目不存在或不属于当前用户"},
+            ))
+            return
+
+        # 解析 Agent：显式 agent_id 优先；否则 depth 兼容旧客户端
+        resolved = (agent_id or "").strip().lower() or (
+            "mentor" if depth == "deep" else "scout"
+        )
+        # 禁止 hub 作为详情分析入口；未知 id 回退 scout
+        if resolved == "hub" or not get_registry().has(resolved):
+            resolved = "scout"
+
+        # 快速分析会话：标记 source=analyze，默认不在 Agent Chat 主列表展开
+        session = AgentSession(
+                        title=f"{resolved} · {project.name}",
+            active_agent=resolved,
+            project_id=project_id,
+            source="analyze",
+        )
+        db.add(session)
+        await db.flush()
+        await set_session_projects(db, session, [project_id])
+        await db.commit()
+        await db.refresh(session)
+
+        role_hint = _ANALYZE_PROMPTS.get(resolved, _ANALYZE_PROMPTS["scout"])
+        prompt = (
+            f"{role_hint}\n\n"
+            f"项目: {project.name}\n"
+            f"URL: {project.url}\n"
+            f"描述: {project.description or '无'}\n"
+            f"语言: {project.language or '未知'}\n"
+            f"Stars: {project.stars}\n"
+            f"学习进度: {project.progress}\n"
+            "请用中文简洁输出，可用 Markdown。禁止任何 emoji。"
+        )
+        await append_message(db, session, role="user", content=prompt, agent_id="hub")
+
+        # agent_switch 由 handle_direct_agent 统一发送，避免重复
+        yield encode_stream_item(format_sse(
+            "thinking",
+            {
+                "content": (
+                    f"[状态] 角色={resolved} · 项目={project.name}\n"
+                    f"[上下文] 语言={project.language or '未知'} · "
+                    f"stars={project.stars} · 进度={project.progress}\n"
+                )
+            },
+        ))
+
+        hub = HubService(db)
+        collected: list[str] = []
+        async for chunk in hub.handle_direct_agent(
+                        session_id=session.id,
+            agent_id=resolved,
+            message=prompt,
+            project_id=project_id,
+        ):
+            ev = StreamEvent.coerce(chunk)
+            if ev is not None and ev.kind == "text_delta":
+                collected.append(str(ev.data.get("content") or ""))
+            yield encode_stream_item(chunk)
+
+        reply = "".join(collected)
+        if reply:
+            await append_message(db, session, role="assistant", content=reply, agent_id=resolved)
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.exception("stream_analyze 失败: %s", e)
         yield encode_stream_item(format_sse(
             "error",
-            {"code": "FORBIDDEN", "message": "项目不存在或不属于当前用户"},
+            {"code": "AGENT_ANALYZE_FAILED", "message": f"分析失败: {e}"},
         ))
-        return
-
-    # 解析 Agent：显式 agent_id 优先；否则 depth 兼容旧客户端
-    resolved = (agent_id or "").strip().lower() or (
-        "mentor" if depth == "deep" else "scout"
-    )
-    # 禁止 hub 作为详情分析入口；未知 id 回退 scout
-    if resolved == "hub" or not get_registry().has(resolved):
-        resolved = "scout"
-
-    # 快速分析会话：标记 source=analyze，默认不在 Agent Chat 主列表展开
-    session = AgentSession(
-        user_id=user.id,
-        title=f"{resolved} · {project.name}",
-        active_agent=resolved,
-        project_id=project_id,
-        source="analyze",
-    )
-    db.add(session)
-    await db.flush()
-    await set_session_projects(db, session, [project_id], user_id=user.id)
-    await db.commit()
-    await db.refresh(session)
-
-    role_hint = _ANALYZE_PROMPTS.get(resolved, _ANALYZE_PROMPTS["scout"])
-    prompt = (
-        f"{role_hint}\n\n"
-        f"项目: {project.name}\n"
-        f"URL: {project.url}\n"
-        f"描述: {project.description or '无'}\n"
-        f"语言: {project.language or '未知'}\n"
-        f"Stars: {project.stars}\n"
-        f"学习进度: {project.progress}\n"
-        "请用中文简洁输出，可用 Markdown。禁止任何 emoji。"
-    )
-    await append_message(db, session, role="user", content=prompt, agent_id="hub")
-
-    # agent_switch 由 handle_direct_agent 统一发送，避免重复
-    yield encode_stream_item(format_sse(
-        "thinking",
-        {
-            "content": (
-                f"[状态] 角色={resolved} · 项目={project.name}\n"
-                f"[上下文] 语言={project.language or '未知'} · "
-                f"stars={project.stars} · 进度={project.progress}\n"
-            )
-        },
-    ))
-
-    hub = HubService(db)
-    collected: list[str] = []
-    async for chunk in hub.handle_direct_agent(
-        user=user,
-        session_id=session.id,
-        agent_id=resolved,
-        message=prompt,
-        project_id=project_id,
-    ):
-        ev = StreamEvent.coerce(chunk)
-        if ev is not None and ev.kind == "text_delta":
-            collected.append(str(ev.data.get("content") or ""))
-        yield encode_stream_item(chunk)
-
-    reply = "".join(collected)
-    if reply:
-        await append_message(db, session, role="assistant", content=reply, agent_id=resolved)
 
 
 async def stream_import_assist(
     db: AsyncSession,
-    user: User,
     message: str,
     context: dict[str, Any],
 ) -> AsyncIterator[str]:
@@ -1068,7 +1071,7 @@ async def stream_import_assist(
     proj_rows = (
         await db.execute(
             select(Project)
-            .where(Project.user_id == user.id)
+            
             .order_by(Project.stars.desc())
             .limit(80)
         )
@@ -1086,7 +1089,7 @@ async def stream_import_assist(
     progress_rows = (
         await db.execute(
             select(Project.progress, func.count())
-            .where(Project.user_id == user.id)
+            
             .group_by(Project.progress)
         )
     ).all()
@@ -1095,7 +1098,10 @@ async def stream_import_assist(
     # Stars 缓存（settings_json.github_stars_cache）
     stars_cache_items: list[dict] = []
     try:
-        settings_raw = json.loads(user.settings_json or "{}")
+        from backend.services.app_state_service import get_or_create_app_state
+
+        state = await get_or_create_app_state(db)
+        settings_raw = json.loads(state.settings_json or "{}")
         cache = settings_raw.get("github_stars_cache") if isinstance(settings_raw, dict) else None
         if isinstance(cache, dict) and isinstance(cache.get("items"), list):
             stars_cache_items = cache["items"][:120]
@@ -1143,8 +1149,15 @@ async def stream_import_assist(
     ):
         n = len(available)
         n_imp = len(imported_projects)
+        display = "local"
+        try:
+            from backend.services.app_state_service import get_or_create_app_state
+
+            display = (await get_or_create_app_state(db)).display_name or "local"
+        except Exception:
+            pass
         text = (
-            f"你好！我是导入助手（用户 **{user.username}**）。\n\n"
+            f"你好！我是导入助手（用户 **{display}**）。\n\n"
             f"左侧候选 **{n}** 个仓库；你库中已导入 **{n_imp}** 个项目。\n"
             "你可以直接说：\n"
             "- 「我 star 的项目都是什么类型」\n"
@@ -1158,7 +1171,7 @@ async def stream_import_assist(
         return
 
     # —— 无 LLM：规则降级 ——
-    llm_cfg = await build_llm_config_from_user(db, user.id)
+    llm_cfg = await build_llm_config_from_user(db)
     if not llm_cfg:
         hits = _keyword_hits()
         if not hits and available:
@@ -1192,8 +1205,7 @@ async def stream_import_assist(
 
     # —— LLM 路径：仅允许 select_import_repos，避免 fetch_github 超时导致空响应 ——
     session = AgentSession(
-        user_id=user.id,
-        title="导入助手",
+                title="导入助手",
         active_agent="curator",
     )
     db.add(session)
@@ -1210,9 +1222,11 @@ async def stream_import_assist(
         lang_counter[str(lang)] = lang_counter.get(str(lang), 0) + 1
     top_langs = sorted(lang_counter.items(), key=lambda x: -x[1])[:12]
 
+    from backend.services.app_state_service import get_or_create_app_state
+
     ctx_text = json.dumps(
         {
-            "user": {"username": user.username},
+            "user": {"username": (await get_or_create_app_state(db)).display_name or "local"},
             "mode": mode,
             "available_count": len(available),
             "available_repo_keys_preview": preview_keys,
@@ -1261,8 +1275,7 @@ async def stream_import_assist(
             slim_reg.register(t)
 
     ctx = await builder.build_run_context(
-        user_id=user.id,
-        session_id=session.id,
+                session_id=session.id,
         agent_id="curator",
         llm=llm,
         llm_config=llm_cfg,
@@ -1312,8 +1325,11 @@ async def stream_import_assist(
                 had_text = True
             yield item
     except Exception as e:
-        logger = __import__("logging").getLogger(__name__)
         logger.exception("import assist failed")
+        yield encode_stream_item(format_sse(
+            "error",
+            {"code": "AGENT_IMPORT_ASSIST_FAILED", "message": f"导入助手失败: {e}"},
+        ))
         err = f"导入助手出错：{e}"
         for chunk in _emit_text(err):
             yield encode_stream_item(chunk)
@@ -1351,7 +1367,6 @@ async def stream_import_assist(
 
 async def stream_graph_guide(
     db: AsyncSession,
-    user: User,
     message: str,
     *,
     selected_node_id: str | None = None,
@@ -1359,8 +1374,7 @@ async def stream_graph_guide(
     from backend.services.sse_stream import format_sse
 
     session = AgentSession(
-        user_id=user.id,
-        title="图谱向导",
+                title="图谱向导",
         active_agent="atlas",
     )
     db.add(session)
@@ -1382,8 +1396,7 @@ async def stream_graph_guide(
     had_text = False
     try:
         async for chunk in hub.handle_direct_agent(
-            user=user,
-            session_id=session.id,
+                        session_id=session.id,
             agent_id="atlas",
             message=prompt,
             project_id=project_uuid,
@@ -1410,111 +1423,133 @@ async def stream_graph_guide(
 
 async def stream_trending_scout(
     db: AsyncSession,
-    user: User,
     params: dict[str, Any],
 ) -> AsyncIterator[str]:
-    session = AgentSession(
-        user_id=user.id,
-        title="Trending Scout",
-        active_agent="scout",
-    )
-    db.add(session)
-    await db.commit()
-    await db.refresh(session)
+    try:
+        session = AgentSession(
+                        title="Trending Scout",
+            active_agent="scout",
+        )
+        db.add(session)
+        await db.commit()
+        await db.refresh(session)
 
-    name = params.get("full_name") or params.get("name") or "unknown"
-    prompt = (
-        f"用 Scout 风格快速介绍 trending 仓库 {name}。\n"
-        f"描述: {params.get('description') or '无'}\n"
-        f"语言: {params.get('language') or '未知'} Stars: {params.get('stars') or 0}\n"
-        f"URL: {params.get('url') or ''}\n"
-        "说明是否值得加入用户学习库。"
-    )
-    hub = HubService(db)
-    async for chunk in hub.handle_direct_agent(
-        user=user,
-        session_id=session.id,
-        agent_id="scout",
-        message=prompt,
-    ):
-        yield encode_stream_item(chunk)
+        name = params.get("full_name") or params.get("name") or "unknown"
+        prompt = (
+            f"用 Scout 风格快速介绍 trending 仓库 {name}。\n"
+            f"描述: {params.get('description') or '无'}\n"
+            f"语言: {params.get('language') or '未知'} Stars: {params.get('stars') or 0}\n"
+            f"URL: {params.get('url') or ''}\n"
+            "说明是否值得加入用户学习库。"
+        )
+        hub = HubService(db)
+        async for chunk in hub.handle_direct_agent(
+                        session_id=session.id,
+            agent_id="scout",
+            message=prompt,
+        ):
+            yield encode_stream_item(chunk)
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.exception("stream_trending_scout 失败: %s", e)
+        yield encode_stream_item(format_sse(
+            "error",
+            {"code": "AGENT_TRENDING_FAILED", "message": f"趋势扫描失败: {e}"},
+        ))
+
+
 async def stream_classify_project(
     db: AsyncSession,
-    user: User,
     project_id: UUID,
     *,
     user_hint: str | None = None,
 ) -> AsyncIterator[str]:
     """Curator 分类落库入口（prompt 留在 service，路由不拼字符串）。"""
-    project = await get_project_owned_by_user(db, project_id, user.id)
-    if not project:
+    try:
+        project = await get_project(db, project_id)
+        if not project:
+            yield encode_stream_item(format_sse(
+                "error",
+                {"code": "FORBIDDEN", "message": "Project not found"},
+            ))
+            return
+
+        session = await create_session(db, project_id=project_id, title=f"分类 {project.name}"
+        )
+        hint = user_hint or ""
+        prompt = (
+            f"请为项目 {project.name} ({project.url}) 完成分类并落库。"
+            f"描述: {project.description or ''} 语言: {project.language or ''}。"
+            f"用户提示: {hint}。"
+            f"project_id={project_id}。"
+            "必须调用 set_project_category（必要时 set_project_tags）真正写入，"
+            "不要只 suggest；最后用一两句话说明结果与分类名。"
+        )
+        hub = HubService(db)
+        async for chunk in hub.handle_direct_agent(
+                        session_id=session.id,
+            agent_id="curator",
+            message=prompt,
+            project_id=project_id,
+        ):
+            yield encode_stream_item(chunk)
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.exception("stream_classify_project 失败: %s", e)
         yield encode_stream_item(format_sse(
             "error",
-            {"code": "FORBIDDEN", "message": "Project not found"},
+            {"code": "AGENT_CLASSIFY_FAILED", "message": f"分类失败: {e}"},
         ))
-        return
 
-    session = await create_session(
-        db, user.id, project_id=project_id, title=f"分类 {project.name}"
-    )
-    hint = user_hint or ""
-    prompt = (
-        f"请为项目 {project.name} ({project.url}) 完成分类并落库。"
-        f"描述: {project.description or ''} 语言: {project.language or ''}。"
-        f"用户提示: {hint}。"
-        f"project_id={project_id}。"
-        "必须调用 set_project_category（必要时 set_project_tags）真正写入，"
-        "不要只 suggest；最后用一两句话说明结果与分类名。"
-    )
-    hub = HubService(db)
-    async for chunk in hub.handle_direct_agent(
-        user=user,
-        session_id=session.id,
-        agent_id="curator",
-        message=prompt,
-        project_id=project_id,
-    ):
-        yield encode_stream_item(chunk)
+
 async def stream_generate_note(
     db: AsyncSession,
-    user: User,
     project_id: UUID,
     *,
     mode: str = "project",
     topic: str | None = None,
 ) -> AsyncIterator[str]:
     """Scribe 笔记生成落库入口。"""
-    project = await get_project_owned_by_user(db, project_id, user.id)
-    if not project:
+    try:
+        project = await get_project(db, project_id)
+        if not project:
+            yield encode_stream_item(format_sse(
+                "error",
+                {"code": "FORBIDDEN", "message": "Project not found"},
+            ))
+            return
+
+        session = await create_session(db, project_id=project_id, title=f"笔记 {project.name}"
+        )
+        mode_norm = mode if mode in ("project", "standalone") else "project"
+        topic_text = topic or project.name
+        prompt = (
+            f"请以 Scribe {mode_norm} 模式为项目 {project.name} 生成学习笔记并保存到系统。"
+            f"主题: {topic_text}。URL: {project.url}。project_id={project_id}。"
+            f"{'检索相似已学项目做对比（仅当相似度高时），compare_project_ids 传入对比项' if mode_norm == 'project' else '独立成文，不对比'}。"
+            "必须调用 create_note 写入数据库（title + 完整 Markdown content），"
+            "不要只输出草稿；落库后简述笔记标题与已保存。"
+        )
+        hub = HubService(db)
+        async for chunk in hub.handle_direct_agent(
+                        session_id=session.id,
+            agent_id="scribe",
+            message=prompt,
+            project_id=project_id,
+        ):
+            yield encode_stream_item(chunk)
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        logger.exception("stream_generate_note 失败: %s", e)
         yield encode_stream_item(format_sse(
             "error",
-            {"code": "FORBIDDEN", "message": "Project not found"},
+            {"code": "AGENT_NOTE_FAILED", "message": f"笔记生成失败: {e}"},
         ))
-        return
-
-    session = await create_session(
-        db, user.id, project_id=project_id, title=f"笔记 {project.name}"
-    )
-    mode_norm = mode if mode in ("project", "standalone") else "project"
-    topic_text = topic or project.name
-    prompt = (
-        f"请以 Scribe {mode_norm} 模式为项目 {project.name} 生成学习笔记并保存到系统。"
-        f"主题: {topic_text}。URL: {project.url}。project_id={project_id}。"
-        f"{'检索相似已学项目做对比（仅当相似度高时），compare_project_ids 传入对比项' if mode_norm == 'project' else '独立成文，不对比'}。"
-        "必须调用 create_note 写入数据库（title + 完整 Markdown content），"
-        "不要只输出草稿；落库后简述笔记标题与已保存。"
-    )
-    hub = HubService(db)
-    async for chunk in hub.handle_direct_agent(
-        user=user,
-        session_id=session.id,
-        agent_id="scribe",
-        message=prompt,
-        project_id=project_id,
-    ):
-        yield encode_stream_item(chunk)
 async def get_context_window(
-    db: AsyncSession, user_id: UUID, session_id: UUID | None
+    db: AsyncSession, session_id: UUID | None
 ) -> ContextWindowStatsOut:
     memory = MemoryService(db)
     total = 0
@@ -1524,17 +1559,17 @@ async def get_context_window(
     model = "gpt-4o"
     limit = 128_000
 
-    llm_cfg = await build_llm_config_from_user(db, user_id)
+    llm_cfg = await build_llm_config_from_user(db)
     if llm_cfg:
         model = llm_cfg.model
         limit = llm_cfg.max_context_tokens
 
     if session_id:
         session = await db.get(AgentSession, session_id)
-        if session and session.user_id == user_id:
+        if session:
             msgs = await memory.list_recent_messages(session_id, limit=100)
             total = sum(memory.estimate_tokens(m.content or "") for m in msgs)
-            long_mem = await memory.get_long_memory(user_id)
+            long_mem = await memory.get_long_memory()
             memory_tokens = sum(
                 memory.estimate_tokens(str(m.get("content", ""))) for m in long_mem
             )

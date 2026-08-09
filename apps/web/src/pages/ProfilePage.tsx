@@ -1,268 +1,259 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useAuthStore } from '@/stores/authStore';
 import { getApi } from '@/api/client';
-import { formatDateTime } from '@/utils/date';
-import {
-  validatePassword,
-  validateAvatarUrl,
-  validatePasswordChange,
-} from '@/utils/validators';
+import type { LearnerIdentity, UserProfile } from '@/api/types';
 import { GlassCard } from '@/components/common/GlassCard';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
 
-export function ProfilePage() {
-  const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
-  const setUser = useAuthStore((s) => s.setUser);
-  const navigate = useNavigate();
-  const addToast = useUIStore((s) => s.addToast);
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url ?? '');
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [summaryDraft, setSummaryDraft] = useState('');
+const EMPTY_IDENTITY: LearnerIdentity = {
+  preferred_name: '',
+  spoken_languages: [],
+  programming_languages: [],
+  tech_stack: [],
+  interests: [],
+  occupation: '',
+  experience_level: '',
+  bio: '',
+};
 
-  const { data: learningProfile, refetch: refetchProfile } = useQuery({
+const EXPERIENCE_OPTIONS: Array<{ value: LearnerIdentity['experience_level']; label: string }> = [
+  { value: '', label: '未设置' },
+  { value: 'beginner', label: '入门' },
+  { value: 'intermediate', label: '中级' },
+  { value: 'advanced', label: '进阶' },
+];
+
+function listToText(items: string[] | undefined): string {
+  return (items ?? []).join(', ');
+}
+
+function textToList(text: string): string[] {
+  return text
+    .split(/[,，、\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 32);
+}
+
+export function ProfilePage() {
+  const fetchMe = useAuthStore((s) => s.fetchMe);
+  const addToast = useUIStore((s) => s.addToast);
+  const [draft, setDraft] = useState<LearnerIdentity>(EMPTY_IDENTITY);
+  const [saving, setSaving] = useState(false);
+
+  const { data: learningProfile, isLoading, refetch: refetchProfile } = useQuery({
     queryKey: ['userProfile'],
     queryFn: async () => (await getApi().getUserProfile()).data,
   });
 
-  if (!user) return <LoadingSpinner />;
+  useEffect(() => {
+    if (!learningProfile?.identity) return;
+    setDraft({ ...EMPTY_IDENTITY, ...learningProfile.identity });
+  }, [learningProfile]);
 
-  const saveAvatar = async () => {
-    const v = validateAvatarUrl(avatarUrl);
-    if (!v.valid) {
-      addToast({ type: 'error', message: v.message ?? '头像 URL 不合法' });
-      return;
-    }
+  if (isLoading && !learningProfile) return <LoadingSpinner />;
+
+  const displayName = draft.preferred_name.trim() || '学习者';
+  const initial = displayName.charAt(0).toUpperCase();
+
+  const saveIdentity = async () => {
     setSaving(true);
     try {
-      const res = await getApi().updateProfile({ avatar_url: avatarUrl || undefined });
-      setUser(res.data);
-      addToast({ type: 'success', message: '头像已更新' });
+      await getApi().updateUserProfile({
+        identity: {
+          preferred_name: draft.preferred_name.trim(),
+          spoken_languages: draft.spoken_languages,
+          programming_languages: draft.programming_languages,
+          tech_stack: draft.tech_stack,
+          interests: draft.interests,
+          occupation: draft.occupation.trim(),
+          experience_level: draft.experience_level || '',
+          bio: draft.bio.trim(),
+        },
+      });
+      await refetchProfile();
+      await fetchMe();
+      addToast({ type: 'success', message: '个人信息已保存' });
     } catch {
-      addToast({ type: 'error', message: '更新失败' });
+      addToast({ type: 'error', message: '保存失败' });
     } finally {
       setSaving(false);
     }
   };
 
-  const changePassword = async () => {
-    const v = validatePasswordChange(oldPassword, newPassword, confirmPassword);
-    if (!v.valid) {
-      addToast({ type: 'error', message: v.message ?? '密码不符合要求' });
-      return;
-    }
-    try {
-      await getApi().changePassword({ old_password: oldPassword, new_password: newPassword });
-      await logout();
-      navigate('/login', { replace: true });
-      addToast({ type: 'success', message: '密码已修改，请重新登录' });
-    } catch {
-      addToast({ type: 'error', message: '旧密码不正确' });
-    }
+  const setListField = (
+    key: 'spoken_languages' | 'programming_languages' | 'tech_stack' | 'interests',
+    text: string
+  ) => {
+    setDraft((prev) => ({ ...prev, [key]: textToList(text) }));
   };
-
-  const copyId = () => {
-    void navigator.clipboard.writeText(user.id);
-    addToast({ type: 'info', message: '已复制用户 ID' });
-  };
-
-  const initial = user.username.charAt(0).toUpperCase();
 
   return (
     <div className="page profile-page">
       <GlassCard className="profile-header glass-card--overview-outer">
-        {avatarUrl || user.avatar_url ? (
-          <img
-            src={(avatarUrl || user.avatar_url) ?? undefined}
-            alt=""
-            className="profile-header__avatar"
+        <span className="profile-header__avatar profile-header__avatar--placeholder" aria-hidden>
+          {initial}
+        </span>
+        <h1>{displayName}</h1>
+        <p className="profile-header__hint">本机学习者信息 · Agent 按需读取</p>
+      </GlassCard>
+
+      <GlassCard className="glass-card--overview-outer">
+        <h2>个人信息补充</h2>
+        <p className="muted small profile-lead">
+          填写后 Agent 不会自动加载全部内容；仅在对话需要时按字段拉取（如称呼、技术栈）。
+        </p>
+
+        <label className="form-field">
+          称呼（Agent 怎么叫你）
+          <input
+            className="input"
+            value={draft.preferred_name}
+            onChange={(e) => setDraft((p) => ({ ...p, preferred_name: e.target.value }))}
+            placeholder="例如：小明 / Alex"
+            maxLength={64}
           />
-        ) : (
-          <span className="profile-header__avatar profile-header__avatar--placeholder">
-            {initial}
-          </span>
-        )}
-        <h1>{user.username}</h1>
-        <p className="profile-header__hint">v1.0 用户名注册后不可修改</p>
-      </GlassCard>
+        </label>
 
-      <GlassCard className="glass-card--overview-outer">
-        <h2>账号信息</h2>
-        <dl className="profile-dl">
-          <dt>用户 ID</dt>
-          <dd className="font-mono">
-            {user.id}
-            <button type="button" className="btn btn-ghost btn-sm" onClick={copyId}>
-              复制
-            </button>
-          </dd>
-          {user.email && (
-            <>
-              <dt>邮箱</dt>
-              <dd>{user.email}</dd>
-            </>
-          )}
-          {user.github_login && (
-            <>
-              <dt>GitHub</dt>
-              <dd>{user.github_login}</dd>
-            </>
-          )}
-          <dt>注册时间</dt>
-          <dd>{formatDateTime(user.created_at)}</dd>
-        </dl>
-      </GlassCard>
+        <label className="form-field">
+          身份 / 职业
+          <input
+            className="input"
+            value={draft.occupation}
+            onChange={(e) => setDraft((p) => ({ ...p, occupation: e.target.value }))}
+            placeholder="例如：在校学生、前端工程师"
+            maxLength={64}
+          />
+        </label>
 
-      <GlassCard className="glass-card--overview-outer">
-        <h2>头像 URL</h2>
-        <input
-          className="input"
-          value={avatarUrl}
-          onChange={(e) => setAvatarUrl(e.target.value)}
-          placeholder="https://avatars.githubusercontent.com/…"
-        />
+        <label className="form-field">
+          经验水平
+          <select
+            className="input"
+            value={draft.experience_level || ''}
+            onChange={(e) =>
+              setDraft((p) => ({
+                ...p,
+                experience_level: e.target.value as LearnerIdentity['experience_level'],
+              }))
+            }
+          >
+            {EXPERIENCE_OPTIONS.map((opt) => (
+              <option key={opt.value || 'unset'} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="form-field">
+          熟练自然语言
+          <input
+            className="input"
+            value={listToText(draft.spoken_languages)}
+            onChange={(e) => setListField('spoken_languages', e.target.value)}
+            placeholder="用逗号分隔，例如：中文, English"
+          />
+        </label>
+
+        <label className="form-field">
+          熟练编程语言
+          <input
+            className="input"
+            value={listToText(draft.programming_languages)}
+            onChange={(e) => setListField('programming_languages', e.target.value)}
+            placeholder="例如：TypeScript, Python, Go"
+          />
+        </label>
+
+        <label className="form-field">
+          技术栈 / 工具
+          <input
+            className="input"
+            value={listToText(draft.tech_stack)}
+            onChange={(e) => setListField('tech_stack', e.target.value)}
+            placeholder="例如：React, FastAPI, PostgreSQL"
+          />
+        </label>
+
+        <label className="form-field">
+          兴趣方向
+          <input
+            className="input"
+            value={listToText(draft.interests)}
+            onChange={(e) => setListField('interests', e.target.value)}
+            placeholder="例如：系统设计, 开源学习路径, Agent"
+          />
+        </label>
+
+        <label className="form-field">
+          一句话简介
+          <textarea
+            className="input profile-textarea"
+            rows={3}
+            value={draft.bio}
+            onChange={(e) => setDraft((p) => ({ ...p, bio: e.target.value }))}
+            placeholder="简单介绍学习背景或当前目标…"
+            maxLength={500}
+          />
+        </label>
+
         <button
           type="button"
           className="btn btn-primary"
           disabled={saving}
-          onClick={() => void saveAvatar()}
+          onClick={() => void saveIdentity()}
         >
-          更新头像
+          {saving ? '保存中…' : '保存个人信息'}
         </button>
       </GlassCard>
 
       <GlassCard className="glass-card--overview-outer">
-        <h2>学习画像（Agent 共享）</h2>
+        <h2>Agent 共享记忆（只读预览）</h2>
         <p className="muted small">
-          由 Hub 统筹维护：各 Agent 提交提案，证据加权合并后写入。可在此查看与补充摘要。
+          由 Hub 统筹维护：对话中推断的熟练度、目标与长期记忆。清除记忆不会删除上方自填信息。
         </p>
-        {learningProfile ? (
-          <>
-            <dl className="profile-dl">
-              <dt>历史摘要</dt>
-              <dd>{learningProfile.history_summary || '暂无'}</dd>
-              <dt>技术熟练度</dt>
-              <dd>
-                {Object.keys(learningProfile.tech_proficiency || {}).length === 0
-                  ? '暂无'
-                  : Object.entries(learningProfile.tech_proficiency ?? {})
-                      .map(([k, v]) => `${k}: ${String(v)}`)
-                      .join(' · ')}
-              </dd>
-              <dt>学习偏好</dt>
-              <dd>
-                {Object.keys(learningProfile.learning_preferences || {}).length === 0
-                  ? '暂无'
-                  : JSON.stringify(learningProfile.learning_preferences)}
-              </dd>
-              <dt>目标</dt>
-              <dd>
-                {(learningProfile.goals ?? []).length === 0
-                  ? '暂无'
-                  : (learningProfile.goals ?? []).map((g) => g.title).join('；')}
-              </dd>
-              <dt>长期记忆</dt>
-              <dd>
-                {(() => {
-                  const items = learningProfile.memory_items ?? [];
-                  return items.length === 0
-                    ? '暂无'
-                    : items
-                        .slice(0, 8)
-                        .map((m) => m.content)
-                        .join(' · ');
-                })()}
-              </dd>
-            </dl>
-            <label className="form-field">
-              更新历史摘要
-              <textarea
-                className="input"
-                rows={3}
-                value={summaryDraft || learningProfile.history_summary || ''}
-                onChange={(e) => setSummaryDraft(e.target.value)}
-                placeholder="描述你的学习背景与目标…"
-              />
-            </label>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={async () => {
-                try {
-                  await getApi().updateUserProfile({
-                    history_summary: summaryDraft || learningProfile.history_summary,
-                  });
-                  void refetchProfile();
-                  addToast({ type: 'success', message: '学习画像已更新' });
-                } catch {
-                  addToast({ type: 'error', message: '更新失败' });
-                }
-              }}
-            >
-              保存画像
-            </button>
-          </>
-        ) : (
+        {learningProfile ? <AgentMemoryPreview profile={learningProfile} /> : (
           <p className="muted">加载中…</p>
         )}
       </GlassCard>
-
-      <GlassCard className="glass-card--overview-outer">
-        <h2>修改密码</h2>
-        <label className="form-field">
-          旧密码
-          <input
-            className="input"
-            type="password"
-            value={oldPassword}
-            onChange={(e) => setOldPassword(e.target.value)}
-          />
-        </label>
-        <label className="form-field">
-          新密码
-          <input
-            className="input"
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-          />
-        </label>
-        <label className="form-field">
-          确认新密码
-          <input
-            className="input"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-          />
-        </label>
-        {newPassword && !validatePassword(newPassword).valid && (
-          <p className="form-hint">{validatePassword(newPassword).message}</p>
-        )}
-        <button type="button" className="btn btn-primary" onClick={() => void changePassword()}>
-          修改密码
-        </button>
-      </GlassCard>
-
-      <GlassCard className="danger-zone">
-        <h2>危险区</h2>
-        <button
-          type="button"
-          className="btn btn-danger"
-          onClick={async () => {
-            await logout();
-            navigate('/login', { replace: true });
-          }}
-        >
-          退出登录
-        </button>
-      </GlassCard>
     </div>
+  );
+}
+
+function AgentMemoryPreview({ profile }: { profile: UserProfile }) {
+  const tech = profile.tech_proficiency ?? {};
+  const prefs = profile.learning_preferences ?? {};
+  const goals = profile.goals ?? [];
+  const memory = profile.memory_items ?? [];
+
+  return (
+    <dl className="profile-dl">
+      <dt>历史摘要</dt>
+      <dd>{profile.history_summary || '暂无'}</dd>
+      <dt>技术熟练度</dt>
+      <dd>
+        {Object.keys(tech).length === 0
+          ? '暂无'
+          : Object.entries(tech)
+              .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
+              .join(' · ')}
+      </dd>
+      <dt>学习偏好</dt>
+      <dd>{Object.keys(prefs).length === 0 ? '暂无' : JSON.stringify(prefs)}</dd>
+      <dt>目标</dt>
+      <dd>{goals.length === 0 ? '暂无' : goals.map((g) => g.title).join('；')}</dd>
+      <dt>长期记忆</dt>
+      <dd>
+        {memory.length === 0
+          ? '暂无'
+          : memory
+              .slice(0, 8)
+              .map((m) => m.content)
+              .join(' · ')}
+      </dd>
+    </dl>
   );
 }

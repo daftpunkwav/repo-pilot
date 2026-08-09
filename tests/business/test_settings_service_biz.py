@@ -1,48 +1,43 @@
-"""settings_service 业务测试 — §4.1.11 T-02 扩充
+"""settings_service 业务测试
 
 覆盖：默认设置、API Key 加解密、update 合并、mask 行为。
 """
 import os
-import pytest
-from uuid import uuid4
 
+import pytest
+
+from backend.config import get_settings as get_app_settings
 from backend.database import get_session_factory, init_db, reset_database
-from backend.models.user import User
-from backend.core.security import hash_password
+from backend.schemas.settings import SettingsUpdate
+from backend.services.app_state_service import get_or_create_app_state
 from backend.services.settings_service import (
     AGENT_IDS,
     _mask_api_key,
-    _normalize_agent_llm_configs,
     _normalize_agent_guidelines,
-    save_llm_api_key,
-    settings_to_out,
-    update_settings,
+    _normalize_agent_llm_configs,
     get_settings,
+    save_llm_api_key,
+    update_settings,
 )
-from backend.schemas.settings import SettingsUpdate
-from backend.config import get_settings as get_app_settings
 
 
 @pytest.fixture
 async def db_session(tmp_path):
-    os.environ["DATABASE_URL"] = f"sqlite:///{tmp_path / "sett.db"}"
+    os.environ["DATABASE_URL"] = f"sqlite:///{tmp_path / 'sett.db'}"
     get_app_settings.cache_clear()
     reset_database()
     await init_db()
     factory = get_session_factory()
     async with factory() as session:
-        user = User(username="settuser", password_hash=hash_password("demo1234"))
-        session.add(user)
-        await session.commit()
-        await session.refresh(user)
-        yield session, user
+        await get_or_create_app_state(session)
+        yield session
 
 
 @pytest.mark.asyncio
 async def test_get_settings_default(db_session):
     """首次获取应返回默认 7 个 agent 配置。"""
-    session, user = db_session
-    s = await get_settings(session, user.id)
+    session = db_session
+    s = await get_settings(session)
     assert len(s.agent_llm_configs) == len(AGENT_IDS)
     assert {c.agent_id for c in s.agent_llm_configs} == set(AGENT_IDS)
     assert s.llm_configured is False
@@ -51,22 +46,23 @@ async def test_get_settings_default(db_session):
 @pytest.mark.asyncio
 async def test_save_api_key_encrypts_and_masks(db_session):
     """save_llm_api_key 加密落库，输出仅是 mask。"""
-    session, user = db_session
-    mask = await save_llm_api_key(session, user.id, "sk-abc1234567890xyz")
+    session = db_session
+    mask = await save_llm_api_key(session, "sk-abc1234567890xyz")
     assert mask and "****" in mask
     assert "sk-abc1234567890xyz" not in mask
-    # 落库是 enc:v1 密文
     import json as _json
-    raw = _json.loads(user.settings_json)
+
+    state = await get_or_create_app_state(session)
+    raw = _json.loads(state.settings_json)
     assert raw["llm_api_key"].startswith("enc:v1:")
 
 
 @pytest.mark.asyncio
 async def test_get_settings_after_save_returns_masked(db_session):
     """保存后再 get_settings，应看到 mask 但不看到明文。"""
-    session, user = db_session
-    await save_llm_api_key(session, user.id, "sk-abcdef1234567890XY")
-    s = await get_settings(session, user.id)
+    session = db_session
+    await save_llm_api_key(session, "sk-abcdef1234567890XY")
+    s = await get_settings(session)
     assert s.llm_configured is True
     assert s.llm_api_key_masked and "****" in s.llm_api_key_masked
     assert "sk-abcdef1234567890XY" not in s.llm_api_key_masked
@@ -77,7 +73,7 @@ def test_mask_api_key_short_key_returns_mask():
     assert _mask_api_key(None) is None
     assert _mask_api_key("") is None
     assert _mask_api_key("short") == "sk-****"
-    assert _mask_api_key("sk-longerkey") == "sk-****rkey"  # 前 3 + **** + 后 4
+    assert _mask_api_key("sk-longerkey") == "sk-****rkey"
 
 
 def test_normalize_llm_configs_merges_unknown_agent():
@@ -101,11 +97,9 @@ def test_normalize_guidelines_truncates_long():
 @pytest.mark.asyncio
 async def test_update_settings_merges_payload(db_session):
     """update 不破坏既有 llm_api_key。"""
-    session, user = db_session
-    await save_llm_api_key(session, user.id, "sk-originalkey1234")
-    # update 主题色
+    session = db_session
+    await save_llm_api_key(session, "sk-originalkey1234")
     payload = SettingsUpdate(theme="light")
-    out = await update_settings(session, user.id, payload)
+    out = await update_settings(session, payload)
     assert out.llm_configured is True
-    # API Key 仍存在（未受影响）
     assert out.llm_api_key_masked and "****" in out.llm_api_key_masked

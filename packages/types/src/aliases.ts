@@ -6,7 +6,6 @@ import type { components } from './generated';
 
 export type Schemas = components['schemas'];
 
-export type AccessToken = Schemas['AccessTokenOut'];
 export type ActivityItem = Schemas['ActivityItemOut'];
 export type AgentChatBody = Schemas['AgentChatBody'];
 export type AgentChatRequest = Schemas['AgentChatRequest'];
@@ -47,7 +46,6 @@ export type ImportRepoItem = Schemas['ImportRepoItem'];
 export type ImportResult = Schemas['ImportResult'];
 export type LlmTestIn = Schemas['LlmTestIn'];
 export type LlmTestResult = Schemas['LlmTestOut'];
-export type LogoutBody = Schemas['LogoutBody'];
 export type MemoryItem = Schemas['MemoryItemOut'];
 export type MemoryProposal = Schemas['MemoryProposalOut'];
 
@@ -63,7 +61,6 @@ export type NoteCreate = Schemas['NoteCreate'];
 export type NoteUpdate = Schemas['NoteUpdate'];
 export type NoteGenerateBody = Schemas['NoteGenerateBody'];
 export type OverviewRecentNote = Schemas['OverviewRecentNoteOut'];
-export type PasswordUpdate = Schemas['PasswordUpdate'];
 export type ProgressUpdate = Schemas['ProgressUpdateOut'];
 
 /** 项目：契约 + mock 兼容字段 */
@@ -99,7 +96,6 @@ export type RecommendedProject = Omit<
     | 'scribe'
     | 'atlas';
 };
-export type RefreshBody = Schemas['RefreshBody'];
 export type SessionUpdateBody = Schemas['SessionUpdateBody'];
 export type SetProjectTagsBody = Schemas['SetProjectTagsBody'];
 export type SetProjectTagsResult = Schemas['SetProjectTagsOut'];
@@ -126,25 +122,13 @@ export type StarsList = Omit<Schemas['StarsListOut'], 'cache_ttl_hours'> & {
 export type Tag = Schemas['TagOut'];
 export type TagCreate = Schemas['TagCreate'];
 
-export type LoginResponse = {
-  access_token?: string | null;
-  refresh_token?: string | null;
-  token_type?: string;
-  user: User;
-};
-export type AuthTokens = {
-  access_token?: string | null;
-  refresh_token?: string | null;
-};
-export type TokenOut = Schemas['TokenOut'];
 export type TrendingRepo = Schemas['TrendingRepoOut'];
 export type TrendingScoutBody = Schemas['TrendingScoutBody'];
 export type User = Schemas['UserOut'];
-export type UserCreate = Schemas['UserCreate'];
-export type UserLogin = Schemas['UserLogin'];
-export type UserUpdate = Schemas['UserUpdate'];
 export type UserProfile = Schemas['UserProfileOut'];
 export type UserProfileUpdate = Schemas['UserProfileUpdate'];
+export type LearnerIdentity = Schemas['LearnerIdentityOut'];
+export type LearnerIdentityUpdate = Schemas['LearnerIdentityUpdate'];
 
 export type ProjectProgress = Project['progress'];
 export type ProjectSource = Project['source'];

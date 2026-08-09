@@ -14,10 +14,6 @@ from agent_core.tools.registry import tool
 logger = logging.getLogger(__name__)
 
 
-def _uid(context) -> UUID:
-    return context.user_id
-
-
 def _ports(context):
     """优先用注入的 ToolPorts；测试兜底从 db 构建。"""
     ports = getattr(context, "ports", None)
@@ -99,8 +95,7 @@ async def query_user_projects(
     **kw,
 ):
     rows = await _ports(context).projects.search(
-        _uid(context),
-        query=query or "",
+                query=query or "",
         language=language or "",
         progress=progress or "",
         limit=min(limit or 20, 50),
@@ -169,7 +164,7 @@ async def get_project_detail(project_id: str, context=None, **kw):
         owner, repo = _parse_owner_repo(full_name=raw)
         if owner and repo:
             full_name = f"{owner}/{repo}"
-            p = await ports.projects.get_by_name(_uid(context), full_name)
+            p = await ports.projects.get_by_name(full_name)
             if p:
                 return _project_detail_payload(p)
             return {
@@ -185,7 +180,7 @@ async def get_project_detail(project_id: str, context=None, **kw):
             "hint": "project_id 须为 UUID；库外仓库用 fetch_github_repo / fetch_readme 的 full_name",
         }
 
-    p = await ports.projects.get_owned(pid, _uid(context))
+    p = await ports.projects.get_owned(pid)
     if not p:
         return {"error": "项目不存在"}
     return _project_detail_payload(p)
@@ -306,8 +301,7 @@ async def query_knowledge_graph(
     **kw,
 ):
     graph = await _ports(context).graph.build(
-        _uid(context),
-        min_similarity=min_similarity,
+                min_similarity=min_similarity,
         max_edges=limit or 20,
     )
     if project_id:
@@ -335,7 +329,7 @@ async def query_knowledge_graph(
     allowed_agents=["curator", "hub", "navigator", "scout"],
 )
 async def list_categories(context=None, **kw):
-    cats = await _ports(context).categories.list_visible(_uid(context))
+    cats = await _ports(context).categories.list_visible()
     return {
         "categories": [
             {"id": str(c.id), "name": c.name, "is_preset": bool(c.is_preset)}
@@ -402,7 +396,7 @@ async def list_notes(context=None, project_id: str = "", limit: int = 10, **kw):
         except ValueError:
             return {"error": "无效 project_id"}
     rows = await _ports(context).notes.list_for_user(
-        _uid(context), project_id=pid, limit=lim
+        project_id=pid, limit=lim
     )
     return {
         "notes": [
@@ -602,14 +596,14 @@ async def manage_session_projects(
         except ValueError:
             return {"error": f"无效 project_id: {s}"}
 
-    session = await ports.sessions.get_owned(context.session_id, context.user_id)
+    session = await ports.sessions.get_owned(context.session_id)
     if not session:
         return {"error": "会话不存在"}
 
     act = (action or "add").strip().lower()
     try:
         ids = await ports.sessions.mutate_projects(
-            session, context.user_id, act, parsed
+            session, act, parsed
         )
         await ports.commit()
     except ValueError:
@@ -663,8 +657,7 @@ async def propose_memory(
     **kw,
 ):
     proposal = await context.memory.propose_memory(
-        _uid(context),
-        agent_id=context.agent_id,
+                agent_id=context.agent_id,
         value=value,
         confidence=confidence,
         evidence=evidence or [],
@@ -685,6 +678,51 @@ async def propose_memory(
 
 
 @tool(
+    name="get_learner_info",
+    description=(
+        "按需获取本机学习者信息。仅在回答需要称呼、语言、技术栈、兴趣等时调用；"
+        "fields 只填当前必要字段，禁止一次请求全部字段。"
+        "可用: preferred_name, spoken_languages, programming_languages, tech_stack, "
+        "interests, occupation, experience_level, bio, learning_preferences, "
+        "tech_proficiency, goals, history_summary。"
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "fields": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "需要返回的字段名列表",
+                "minItems": 1,
+            }
+        },
+        "required": ["fields"],
+    },
+    allowed_agents=["scout", "mentor", "navigator", "curator", "scribe", "hub", "atlas"],
+    timeout_ms=5_000,
+)
+async def get_learner_info(fields: list[str] | None = None, context=None, **kw):
+    from backend.services.profile_service import (
+        LEARNER_INFO_FIELDS,
+        get_user_profile,
+        select_learner_info,
+    )
+
+    requested = fields or []
+    if isinstance(requested, str):
+        requested = [requested]
+    if not isinstance(requested, list) or not requested:
+        return {
+            "error": "fields 必填且至少一项",
+            "available_fields": sorted(LEARNER_INFO_FIELDS),
+        }
+    # 限制单次请求字段数，避免「假装按需实则全拉」
+    capped = [str(f).strip() for f in requested if str(f).strip()][:6]
+    profile = await get_user_profile(context.db)
+    return select_learner_info(profile, capped)
+
+
+@tool(
     name="get_learning_stats",
     description="获取用户学习统计：项目数、进度分布、笔记数等。",
     parameters={"type": "object", "properties": {}},
@@ -692,9 +730,8 @@ async def propose_memory(
 )
 async def get_learning_stats(context=None, **kw):
     ports = _ports(context)
-    uid = _uid(context)
-    projects = await ports.projects.list_for_user(uid, limit=10_000)
-    note_count = await ports.notes.count_for_user(uid)
+    projects = await ports.projects.list_for_user(limit=10_000)
+    note_count = await ports.notes.count_for_user()
     progress_dist: dict[str, int] = {}
     lang_dist: dict[str, int] = {}
     for p in projects:
@@ -867,7 +904,7 @@ async def _get_owned_project_or_error(context, project_id: str):
         pid = UUID(str(project_id).strip())
     except ValueError:
         return None, {"error": "无效 project_id"}
-    project = await _ports(context).projects.get_owned(pid, _uid(context))
+    project = await _ports(context).projects.get_owned(pid)
     if not project:
         return None, {"error": "项目不存在或无权访问"}
     return project, None
@@ -926,13 +963,12 @@ async def create_note_tool(
             cid = UUID(s)
         except ValueError:
             return {"error": f"无效 compare_project_id: {s}"}
-        other = await ports.projects.get_owned(cid, _uid(context))
+        other = await ports.projects.get_owned(cid)
         if not other:
             return {"error": f"对比项目不存在或无权访问: {s}"}
         compare_ids.append(str(cid))
 
     note = await ports.notes.create(
-        user_id=_uid(context),
         project_id=project.id,
         title=title_s[:256],
         content=body,
@@ -999,7 +1035,7 @@ async def update_note_tool(
         from datetime import datetime
 
         fields["updated_at"] = datetime.utcnow()
-    note = await ports.notes.update(nid, _uid(context), **fields)
+    note = await ports.notes.update(nid, **fields)
     if not note:
         return {"error": "笔记不存在或无权访问"}
     await ports.commit()
@@ -1044,8 +1080,7 @@ async def ensure_category(
         return {"error": "分类名称不能为空"}
     ports = _ports(context)
     cat, created = await ports.categories.ensure(
-        _uid(context),
-        name_s,
+                name_s,
         icon=(icon or None) or None,
         color=(color or None) or None,
     )
@@ -1094,18 +1129,17 @@ async def set_project_category(
     project, err = await _get_owned_project_or_error(context, project_id)
     if err:
         return err
-    uid = _uid(context)
     cat = None
     if category_id:
         try:
             cid = UUID(str(category_id).strip())
         except ValueError:
             return {"error": "无效 category_id"}
-        cat = await ports.categories.get_visible(uid, cid)
+        cat = await ports.categories.get_visible(cid)
         if not cat:
             return {"error": "分类不存在或无权使用"}
     elif category_name:
-        cat, _created = await ports.categories.ensure(uid, category_name.strip())
+        cat, _created = await ports.categories.ensure(category_name.strip())
     else:
         return {"error": "需提供 category_id 或 category_name"}
 
@@ -1132,7 +1166,7 @@ async def set_project_category(
     allowed_agents=["curator", "hub", "navigator", "scribe"],
 )
 async def list_tags(context=None, **kw):
-    tags = await _ports(context).tags.list_with_counts(_uid(context))
+    tags = await _ports(context).tags.list_with_counts()
     return {
         "tags": [{"id": str(t.id), "name": t.name, "count": t.count} for t in tags],
         "count": len(tags),
@@ -1160,9 +1194,9 @@ async def ensure_tags(context=None, names: list | None = None, **kw):
     wanted = [str(n).strip() for n in (names or []) if str(n).strip()]
     if not wanted:
         return {"error": "names 不能为空"}
-    existing = await ports.tags.list_for_user(_uid(context))
+    existing = await ports.tags.list_for_user()
     before = {t.name for t in existing}
-    tags = await ports.tags.ensure_many(_uid(context), wanted)
+    tags = await ports.tags.ensure_many(wanted)
     await ports.commit()
     created = [t.name for t in tags if t.name not in before]
     out = [{"id": str(t.id), "name": t.name} for t in tags]
@@ -1206,7 +1240,6 @@ async def set_project_tags_tool(
     project, err = await _get_owned_project_or_error(context, project_id)
     if err:
         return err
-    uid = _uid(context)
     resolved: list[UUID] = []
     from_ids: list[UUID] = []
 
@@ -1217,7 +1250,7 @@ async def set_project_tags_tool(
             return {"error": f"无效 tag_id: {raw}"}
 
     if from_ids:
-        valid = await ports.tags.validate_owned_ids(uid, from_ids)
+        valid = await ports.tags.validate_owned_ids(from_ids)
         valid_set = set(valid)
         invalid = [str(tid) for tid in from_ids if tid not in valid_set]
         if invalid:
@@ -1228,7 +1261,7 @@ async def set_project_tags_tool(
 
     names = [str(n).strip() for n in (tag_names or []) if str(n).strip()]
     if names:
-        for tag in await ports.tags.ensure_many(uid, names):
+        for tag in await ports.tags.ensure_many(names):
             if tag.id not in resolved:
                 resolved.append(tag.id)
 
@@ -1240,13 +1273,13 @@ async def set_project_tags_tool(
                 resolved.append(tid)
 
     # set_on_project 内部会 commit
-    result = await ports.tags.set_on_project(uid, project.id, resolved)
+    result = await ports.tags.set_on_project(project.id, resolved)
     if result is None:
         return {"error": "设置标签失败"}
 
     tag_rows = []
     if result.tag_ids:
-        by_id = {t.id: t for t in await ports.tags.list_for_user(uid)}
+        by_id = {t.id: t for t in await ports.tags.list_for_user()}
         tag_rows = [
             {"id": str(tid), "name": by_id[tid].name}
             for tid in result.tag_ids
@@ -1396,7 +1429,7 @@ async def import_github_repos(
         return {"error": "repos 不能为空"}
 
     # import_repos 内部会 commit
-    result = await ports.projects.import_repos(_uid(context), items)
+    result = await ports.projects.import_repos(items)
     return _action_result(
         "repos_imported",
         summary=result.summary,

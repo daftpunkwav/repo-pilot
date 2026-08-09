@@ -5,20 +5,15 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_propose_then_accept_via_api(client: AsyncClient, auth_headers: dict):
-    from uuid import UUID
-
     from backend.database import get_session_factory
     from backend.memory.service import MemoryService
 
-    me = await client.get("/api/v1/auth/me", headers=auth_headers)
+    me = await client.get("/api/v1/user/me", headers=auth_headers)
     assert me.status_code == 200
-    uid = UUID(me.json()["data"]["id"])
-
     factory = get_session_factory()
     async with factory() as db:
         mem = MemoryService(db)
         out = await mem.propose_memory(
-            uid,
             agent_id="mentor",
             value="偏好源码走读",
             confidence=0.9,
@@ -48,19 +43,14 @@ async def test_propose_then_accept_via_api(client: AsyncClient, auth_headers: di
 
 @pytest.mark.asyncio
 async def test_reject_memory_proposal(client: AsyncClient, auth_headers: dict):
-    from uuid import UUID
-
     from backend.database import get_session_factory
     from backend.memory.service import MemoryService
 
-    me = await client.get("/api/v1/auth/me", headers=auth_headers)
-    uid = UUID(me.json()["data"]["id"])
-
+    me = await client.get("/api/v1/user/me", headers=auth_headers)
     factory = get_session_factory()
     async with factory() as db:
         mem = MemoryService(db)
         out = await mem.propose_memory(
-            uid,
             agent_id="scout",
             value="应被拒绝的提案",
             confidence=0.5,

@@ -1,4 +1,4 @@
-"""标签业务逻辑"""
+"""标签业务逻辑（本地单机，无 user 维度）"""
 from uuid import UUID
 
 from sqlalchemy import delete, func, insert, select
@@ -8,8 +8,8 @@ from backend.models.project import Project, Tag, project_tags
 from backend.schemas.tag import SetProjectTagsOut, TagOut
 
 
-async def list_user_tags(db: AsyncSession, user_id: UUID) -> list[TagOut]:
-    result = await db.execute(select(Tag).where(Tag.user_id == user_id))
+async def list_user_tags(db: AsyncSession) -> list[TagOut]:
+    result = await db.execute(select(Tag))
     tags = result.scalars().all()
     items: list[TagOut] = []
     for tag in tags:
@@ -21,17 +21,17 @@ async def list_user_tags(db: AsyncSession, user_id: UUID) -> list[TagOut]:
     return items
 
 
-async def create_tag(db: AsyncSession, user_id: UUID, name: str) -> TagOut:
-    tag = Tag(user_id=user_id, name=name)
+async def create_tag(db: AsyncSession, name: str) -> TagOut:
+    tag = Tag(name=name)
     db.add(tag)
     await db.commit()
     await db.refresh(tag)
     return TagOut(id=tag.id, name=tag.name, count=0)
 
 
-async def delete_tag(db: AsyncSession, user_id: UUID, tag_id: UUID) -> bool:
+async def delete_tag(db: AsyncSession, tag_id: UUID) -> bool:
     tag = await db.get(Tag, tag_id)
-    if not tag or tag.user_id != user_id:
+    if not tag:
         return False
     await db.execute(delete(project_tags).where(project_tags.c.tag_id == tag_id))
     await db.delete(tag)
@@ -40,15 +40,13 @@ async def delete_tag(db: AsyncSession, user_id: UUID, tag_id: UUID) -> bool:
 
 
 async def set_project_tags(
-    db: AsyncSession, user_id: UUID, project_id: UUID, tag_ids: list[UUID]
+    db: AsyncSession, project_id: UUID, tag_ids: list[UUID]
 ) -> SetProjectTagsOut | None:
     project = await db.get(Project, project_id)
-    if not project or project.user_id != user_id:
+    if not project:
         return None
     if tag_ids:
-        owned = await db.execute(
-            select(Tag.id).where(Tag.user_id == user_id, Tag.id.in_(tag_ids))
-        )
+        owned = await db.execute(select(Tag.id).where(Tag.id.in_(tag_ids)))
         valid_ids = {row[0] for row in owned.all()}
         tag_ids = [tid for tid in tag_ids if tid in valid_ids]
     await db.execute(delete(project_tags).where(project_tags.c.project_id == project_id))

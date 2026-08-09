@@ -1,5 +1,5 @@
 ﻿"""
-ORM 模型 —— Agent 相关
+ORM 模型 —— Agent 相关（本地单机；画像为单例，会话无 user 维度）
 """
 import uuid
 from datetime import datetime
@@ -10,6 +10,9 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
+
+# 单例学习者画像固定主键
+LEARNER_PROFILE_ID = 1
 
 # 会话与项目多对多：一个对话可绑定多个项目上下文
 agent_session_projects = Table(
@@ -31,17 +34,21 @@ agent_session_projects = Table(
 
 
 class UserProfile(Base):
+    """本机单例学习者画像（表名保留 user_profiles，PK 固定为 1）。"""
+
     __tablename__ = "user_profiles"
 
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), primary_key=True
-    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=LEARNER_PROFILE_ID)
+    # 本机填写的称呼 / 语言 / 技术栈等（JSON，见 LearnerIdentityOut）
+    identity_json: Mapped[Optional[str]] = mapped_column(Text, default="{}")
     tech_profile: Mapped[Optional[str]] = mapped_column(Text, default="{}")  # JSON
     preferences: Mapped[Optional[str]] = mapped_column(Text, default="{}")  # JSON
     goals: Mapped[Optional[str]] = mapped_column(Text, default="[]")  # JSON
     history_summary: Mapped[Optional[str]] = mapped_column(Text, default="")
     agent_prefs: Mapped[Optional[str]] = mapped_column(Text, default="{}")  # JSON
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=datetime.utcnow, nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, onupdate=datetime.utcnow, nullable=True
+    )
 
 
 class AgentSession(Base):
@@ -50,13 +57,8 @@ class AgentSession(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    # §4.1.8: 会话按 user 维度查询；与 f4542a1f742b 迁移一致
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
-    )
     title: Mapped[Optional[str]] = mapped_column(String(255), default="新对话")
     # 主项目（兼容旧逻辑）；完整列表见 agent_session_projects
-    # §4.1.8: 项目维度查询；与 f4542a1f742b 迁移一致
     project_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("projects.id"), nullable=True, index=True
     )
@@ -65,7 +67,10 @@ class AgentSession(Base):
     active_agent: Mapped[Optional[str]] = mapped_column(String(32), default="hub")
     status: Mapped[Optional[str]] = mapped_column(String(16), default="active")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime, onupdate=datetime.utcnow, nullable=True)
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, onupdate=datetime.utcnow, nullable=True
+    )
+
 
 # 跨 worker 会话流取消信号：每会话至多一行；流开始时 upsert 并 set 旧 token。
 class AgentSessionCancelToken(Base):
@@ -82,13 +87,13 @@ class AgentSessionCancelToken(Base):
         DateTime, onupdate=datetime.utcnow, default=datetime.utcnow, nullable=True
     )
 
+
 class AgentMessage(Base):
     __tablename__ = "agent_messages"
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    # §4.1.8: 消息按 session 维度查询；与 f4542a1f742b 迁移一致
     session_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("agent_sessions.id"), nullable=False, index=True
     )
@@ -106,7 +111,6 @@ class ProjectAnalysis(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    # §4.1.8: 分析按 project 维度查询；与 f4542a1f742b 迁移一致
     project_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("projects.id"), nullable=False, index=True
     )

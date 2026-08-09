@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 async def proxy_agent_chat_sse(
     *,
     session_id: UUID,
-    user_id: UUID,
     message: str,
     project_id: UUID | None = None,
 ) -> AsyncIterator[bytes]:
@@ -33,13 +32,11 @@ async def proxy_agent_chat_sse(
         "Content-Type": "application/json",
     }
     payload: dict[str, Any] = {
-        "user_id": str(user_id),
         "message": message,
     }
     if project_id is not None:
         payload["project_id"] = str(project_id)
 
-    # SSE 透传允许较长间隔，但不能无限；120s 无任何数据视为上游故障并抛 ReadTimeout。
     timeout = httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
         async with client.stream("POST", url, json=payload, headers=headers) as resp:

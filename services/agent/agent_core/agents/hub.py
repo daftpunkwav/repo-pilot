@@ -21,10 +21,10 @@ from agent_core.llm.config import (
     get_agent_model_override,
     get_agent_speaking_style,
 )
+from backend.services.app_state_service import get_or_create_app_state
 from agent_core.llm.provider import LLMProvider
 from agent_core.memory.context import ContextBuilder
 from agent_core.memory.service import MemoryService
-from backend.models.user import User
 from agent_core.agents.stream_events import StreamEvent
 from backend.services.sse_stream import format_sse
 from agent_core.tools.builtin import ensure_tools_loaded
@@ -352,31 +352,27 @@ class HubService:
     """对话管家。"""
 
     async def _load_user_bundle(
-        self, user: User
+        self,
     ) -> tuple[LLMProvider, LLMConfig | None, str, dict[str, Any], dict[str, Any]]:
         """一次加载 LLM 配置 + key 状态 + settings + permissions（统一三个入口）。
 
-        build_llm_bundle_from_user 一次查库拿 config/key_status/settings；
-        permissions 尽量 refresh 后解析，解析失败记日志回落空 dict。
+        从 AppState 单行读取 settings / agent_permissions。
         """
-        from agent_core.llm.config import build_llm_bundle_from_user
+        from agent_core.llm.config import build_llm_bundle_from_app
 
-        llm_config, key_status, raw_settings = await build_llm_bundle_from_user(
-            self.db, user.id
-        )
+        llm_config, key_status, raw_settings = await build_llm_bundle_from_app(self.db)
         llm = LLMProvider(llm_config)
         permissions = {}
         try:
-            # permissions 也尽量刷新
-            await self.db.refresh(user, attribute_names=["agent_permissions"])
-            permissions = json.loads(user.agent_permissions or "{}")
+            state = await get_or_create_app_state(self.db)
+            await self.db.refresh(state, attribute_names=["agent_permissions"])
+            permissions = json.loads(state.agent_permissions or "{}")
         except Exception:
             try:
-                permissions = json.loads(user.agent_permissions or "{}")
+                state = await get_or_create_app_state(self.db)
+                permissions = json.loads(state.agent_permissions or "{}")
             except json.JSONDecodeError:
-                logger.warning(
-                    "user agent_permissions parse failed: user=%s", user.id
-                )
+                logger.warning("app_state agent_permissions parse failed")
                 permissions = {}
         return llm, llm_config, key_status, raw_settings, permissions
 
@@ -393,7 +389,6 @@ class HubService:
     async def handle_chat(
         self,
         *,
-        user: User,
         session_id: UUID,
         message: str,
         project_id: UUID | None = None,
@@ -401,7 +396,7 @@ class HubService:
     ) -> AsyncIterator[str]:
         """主对话入口，yield SSE 字符串。"""
         llm, llm_config, _key_status, raw_settings, permissions = (
-            await self._load_user_bundle(user)
+            await self._load_user_bundle()
         )
         classifier = IntentClassifier(llm if llm.available else None)
 
@@ -427,8 +422,7 @@ class HubService:
 
         if intent.is_multi and intent.sub_intents and not force_agent:
             async for chunk in self._orchestrate_multi(
-                user=user,
-                session_id=session_id,
+                                session_id=session_id,
                 message=message,
                 intent=intent,
                 llm=llm,
@@ -489,8 +483,7 @@ class HubService:
         result_text_parts: list[str] = []
         async for item in self._run_agent(
             agent_id=target,
-            user=user,
-            session_id=session_id,
+                        session_id=session_id,
             message=run_message,
             llm=llm,
             llm_config=llm_config,
@@ -507,8 +500,7 @@ class HubService:
                 if item.dispatches:
                     async for chunk in self._dispatch_evaluate_loop(
                         dispatches=item.dispatches,
-                        user=user,
-                        session_id=session_id,
+                                                session_id=session_id,
                         original_message=message,
                         llm=llm,
                         llm_config=llm_config,
@@ -526,16 +518,13 @@ class HubService:
                 yield _yield_sse(item)
 
         # 更新短期记忆
-        await self.memory.append_short_memory(
-            user.id,
-            target,
+        await self.memory.append_short_memory(target,
             {"summary": (message[:80] + " → " + ("".join(result_text_parts)[:120]))},
         )
 
     async def handle_question_answer(
         self,
         *,
-        user: User,
         session_id: UUID,
         question_id: str,
         answers: dict[str, Any],
@@ -544,7 +533,7 @@ class HubService:
     ) -> AsyncIterator[str]:
         """用户回答反问后继续对话。"""
         llm, llm_config, _key_status, raw_settings, permissions = (
-            await self._load_user_bundle(user)
+            await self._load_user_bundle()
         )
 
         summary = "用户跳过了反问" if skipped else f"用户反问回答: {json.dumps(answers, ensure_ascii=False)}"
@@ -556,9 +545,7 @@ class HubService:
                 for k, v in answers.items()
                 if isinstance(k, str)
             }
-            await self.memory.propose_memory(
-                user.id,
-                agent_id="hub",
+            await self.memory.propose_memory(agent_id="hub",
                 value=json.dumps(extracted, ensure_ascii=False)[:500],
                 confidence=0.75,
                 evidence=[f"question:{question_id}"],
@@ -583,8 +570,7 @@ class HubService:
         )
         async for item in self._run_agent(
             agent_id="hub",
-            user=user,
-            session_id=session_id,
+                        session_id=session_id,
             message=followup,
             llm=llm,
             llm_config=llm_config,
@@ -599,8 +585,7 @@ class HubService:
                 if item.dispatches:
                     async for chunk in self._dispatch_evaluate_loop(
                         dispatches=item.dispatches,
-                        user=user,
-                        session_id=session_id,
+                                                session_id=session_id,
                         original_message=followup,
                         llm=llm,
                         llm_config=llm_config,
@@ -618,7 +603,6 @@ class HubService:
     async def handle_direct_agent(
         self,
         *,
-        user: User,
         session_id: UUID,
         agent_id: str,
         message: str,
@@ -634,7 +618,7 @@ class HubService:
 
         # 配置/诊断/override 同源：一次查库
         llm, llm_config, key_status, raw_settings, permissions = (
-            await self._load_user_bundle(user)
+            await self._load_user_bundle()
         )
 
         if not llm.available:
@@ -667,8 +651,7 @@ class HubService:
         )
         async for item in self._run_agent(
             agent_id=agent_id,
-            user=user,
-            session_id=session_id,
+                        session_id=session_id,
             message=message,
             llm=llm,
             llm_config=llm_config,
@@ -686,7 +669,6 @@ class HubService:
     async def _orchestrate_multi(
         self,
         *,
-        user: User,
         session_id: UUID,
         message: str,
         intent: IntentResult,
@@ -751,8 +733,7 @@ class HubService:
             text_parts: list[str] = []
             async for item in self._run_agent(
                 agent_id=sub.agent_id,
-                user=user,
-                session_id=session_id,
+                                session_id=session_id,
                 message=sub.message or message,
                 llm=llm,
                 llm_config=llm_config,
@@ -821,9 +802,7 @@ class HubService:
         if should_skip_hub_merge(expert_results):
             # 兼容保留：当前恒为 False
             agent_id, _ = expert_results[0]
-            await self.memory.append_short_memory(
-                user.id,
-                "hub",
+            await self.memory.append_short_memory("hub",
                 {
                     "summary": (
                         message[:80] + f" → {agent_id} 直出（跳过汇总）"
@@ -850,8 +829,7 @@ class HubService:
             merge_msg = self._merge_prompt(summaries, message)
             async for item in self._run_agent(
                 agent_id="hub",
-                user=user,
-                session_id=session_id,
+                                session_id=session_id,
                 message=merge_msg,
                 llm=llm,
                 llm_config=llm_config,
@@ -887,7 +865,6 @@ class HubService:
         self,
         *,
         dispatches: list[dict[str, Any]],
-        user: User,
         session_id: UUID,
         original_message: str,
         llm: LLMProvider,
@@ -920,8 +897,7 @@ class HubService:
             bag = DispatchRoundOutcome()
             async for chunk in self._handle_dispatches(
                 dispatches=fresh,
-                user=user,
-                session_id=session_id,
+                                session_id=session_id,
                 original_message=original_message,
                 llm=llm,
                 llm_config=llm_config,
@@ -947,9 +923,7 @@ class HubService:
             if bag.nested_expert and len(results) == 1:
                 target = results[0][0]
                 expert_text = (results[0][1] or "").strip()
-                await self.memory.append_short_memory(
-                    user.id,
-                    "hub",
+                await self.memory.append_short_memory("hub",
                     {
                         "summary": (
                             original_message[:80]
@@ -962,8 +936,7 @@ class HubService:
                         summaries=all_summaries or [
                             structure_expert_summary(target, expert_text)
                         ],
-                        user=user,
-                        session_id=session_id,
+                                                session_id=session_id,
                         original_message=original_message,
                         llm=llm,
                         llm_config=llm_config,
@@ -991,9 +964,7 @@ class HubService:
                         },
                     )
                 else:
-                    await self.memory.append_short_memory(
-                        user.id,
-                        "hub",
+                    await self.memory.append_short_memory("hub",
                         {
                             "summary": (
                                 original_message[:80]
@@ -1038,8 +1009,7 @@ class HubService:
             eval_result: EngineResult | None = None
             async for item in self._run_agent(
                 agent_id="hub",
-                user=user,
-                session_id=session_id,
+                                session_id=session_id,
                 message=eval_msg,
                 llm=llm,
                 llm_config=llm_config,
@@ -1052,9 +1022,7 @@ class HubService:
                 if isinstance(item, EngineResult):
                     eval_result = item
                     if item.question:
-                        await self.memory.append_short_memory(
-                            user.id,
-                            "hub",
+                        await self.memory.append_short_memory("hub",
                             {
                                 "summary": (
                                     original_message[:80]
@@ -1092,9 +1060,7 @@ class HubService:
                 mem = " | ".join(
                     s.split("\n", 1)[0] for s in all_summaries[:3]
                 )
-                await self.memory.append_short_memory(
-                    user.id,
-                    "hub",
+                await self.memory.append_short_memory("hub",
                     {
                         "summary": (
                             original_message[:80] + " → " + mem[:200]
@@ -1109,9 +1075,7 @@ class HubService:
                 and not had_extra_rounds
                 and len(all_summaries) == 1
             ):
-                await self.memory.append_short_memory(
-                    user.id,
-                    "hub",
+                await self.memory.append_short_memory("hub",
                     {
                         "summary": (
                             original_message[:80]
@@ -1135,8 +1099,7 @@ class HubService:
         if all_summaries:
             async for chunk in self._run_merge_finalize(
                 summaries=all_summaries,
-                user=user,
-                session_id=session_id,
+                                session_id=session_id,
                 original_message=original_message,
                 llm=llm,
                 llm_config=llm_config,
@@ -1156,7 +1119,6 @@ class HubService:
         self,
         *,
         summaries: list[str],
-        user: User,
         session_id: UUID,
         original_message: str,
         llm: LLMProvider,
@@ -1173,8 +1135,7 @@ class HubService:
         merge = self._merge_prompt(summaries, original_message)
         async for item in self._run_agent(
             agent_id="hub",
-            user=user,
-            session_id=session_id,
+                        session_id=session_id,
             message=merge,
             llm=llm,
             llm_config=llm_config,
@@ -1203,9 +1164,7 @@ class HubService:
             yield _yield_sse(item)
 
         mem = " | ".join(s.split("\n", 1)[0] for s in summaries[:3])
-        await self.memory.append_short_memory(
-            user.id,
-            "hub",
+        await self.memory.append_short_memory("hub",
             {"summary": (original_message[:80] + " → " + mem[:200])},
         )
 
@@ -1227,7 +1186,6 @@ class HubService:
         self,
         *,
         dispatches: list[dict[str, Any]],
-        user: User,
         session_id: UUID,
         original_message: str,
         llm: LLMProvider,
@@ -1293,7 +1251,7 @@ class HubService:
             )
 
         async def _dispatch_one(
-            *, d, user, session_id, original_message, llm, llm_config,
+            *, d, session_id, original_message, llm, llm_config,
             raw_settings, permissions, project_id, history, prior_summary,
             stream_to_subagent: bool,
         ) -> AsyncIterator[tuple | str]:
@@ -1313,8 +1271,7 @@ class HubService:
             text_parts: list[str] = []
             async for item in self._run_agent(
                 agent_id=target,
-                user=user,
-                session_id=session_id,
+                                session_id=session_id,
                 message=task,
                 llm=llm,
                 llm_config=llm_config,
@@ -1382,8 +1339,7 @@ class HubService:
             question = None
             async for item in _dispatch_one(
                 d=d,
-                user=user,
-                session_id=session_id,
+                                session_id=session_id,
                 original_message=original_message,
                 llm=llm,
                 llm_config=llm_config,
@@ -1407,9 +1363,7 @@ class HubService:
                 )
                 if result_bag is not None:
                     result_bag.had_question = True
-                await self.memory.append_short_memory(
-                    user.id,
-                    "hub",
+                await self.memory.append_short_memory("hub",
                     {
                         "summary": (
                             original_message[:80]
@@ -1435,9 +1389,7 @@ class HubService:
                 result_bag.nested_expert = True
             if not finalize:
                 return
-            await self.memory.append_short_memory(
-                user.id,
-                "hub",
+            await self.memory.append_short_memory("hub",
                 {
                     "summary": (
                         original_message[:80]
@@ -1447,8 +1399,7 @@ class HubService:
             )
             async for chunk in self._run_merge_finalize(
                 summaries=summaries,
-                user=user,
-                session_id=session_id,
+                                session_id=session_id,
                 original_message=original_message,
                 llm=llm,
                 llm_config=llm_config,
@@ -1473,8 +1424,7 @@ class HubService:
                 text = ""
                 async for item in _dispatch_one(
                     d=d,
-                    user=user,
-                    session_id=session_id,
+                                        session_id=session_id,
                     original_message=original_message,
                     llm=llm,
                     llm_config=llm_config,
@@ -1493,9 +1443,7 @@ class HubService:
                             yield format_subagent_done(target, "question")
                             if result_bag is not None:
                                 result_bag.had_question = True
-                            await self.memory.append_short_memory(
-                                user.id,
-                                "hub",
+                            await self.memory.append_short_memory("hub",
                                 {
                                     "summary": (
                                         original_message[:80]
@@ -1518,8 +1466,7 @@ class HubService:
                 outcome: tuple | None = None
                 async for item in _dispatch_one(
                     d=d,
-                    user=user,
-                    session_id=session_id,
+                                        session_id=session_id,
                     original_message=original_message,
                     llm=llm,
                     llm_config=llm_config,
@@ -1556,9 +1503,7 @@ class HubService:
                 if question:
                     if result_bag is not None:
                         result_bag.had_question = True
-                    await self.memory.append_short_memory(
-                        user.id,
-                        "hub",
+                    await self.memory.append_short_memory("hub",
                         {
                             "summary": (
                                 original_message[:80] + " → pending_question"
@@ -1579,8 +1524,7 @@ class HubService:
         if summaries:
             async for chunk in self._run_merge_finalize(
                 summaries=summaries,
-                user=user,
-                session_id=session_id,
+                                session_id=session_id,
                 original_message=original_message,
                 llm=llm,
                 llm_config=llm_config,
@@ -1609,7 +1553,6 @@ class HubService:
         self,
         *,
         agent_id: str,
-        user: User,
         session_id: UUID,
         message: str,
         llm: LLMProvider,
@@ -1642,8 +1585,7 @@ class HubService:
 
         style = get_agent_speaking_style(raw_settings, agent_id)
         ctx = await self.context_builder.build_run_context(
-            user_id=user.id,
-            session_id=session_id,
+                        session_id=session_id,
             agent_id=agent_id,
             llm=llm,
             llm_config=llm_config,

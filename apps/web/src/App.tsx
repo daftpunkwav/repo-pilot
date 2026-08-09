@@ -5,18 +5,11 @@ import {
   RouterProvider,
 } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { AppShell, AgentShell, NotesShell } from '@/components/layout/AppShell';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { useAuthStore } from '@/stores/authStore';
 
-const LoginPage = lazy(() =>
-  import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage }))
-);
-const RegisterPage = lazy(() =>
-  import('@/pages/RegisterPage').then((m) => ({ default: m.RegisterPage }))
-);
 const OverviewPage = lazy(() =>
   import('@/pages/OverviewPage').then((m) => ({ default: m.OverviewPage }))
 );
@@ -59,28 +52,8 @@ function Lazy({ children }: { children: React.ReactNode }) {
 
 const router = createBrowserRouter([
   {
-    path: '/login',
-    element: (
-      <Lazy>
-        <LoginPage />
-      </Lazy>
-    ),
-  },
-  {
-    path: '/register',
-    element: (
-      <Lazy>
-        <RegisterPage />
-      </Lazy>
-    ),
-  },
-  {
     path: '/',
-    element: (
-      <ProtectedRoute>
-        <AppShell />
-      </ProtectedRoute>
-    ),
+    element: <AppShell />,
     children: [
       {
         index: true,
@@ -134,11 +107,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/agent',
-    element: (
-      <ProtectedRoute>
-        <AgentShell />
-      </ProtectedRoute>
-    ),
+    element: <AgentShell />,
     children: [
       {
         index: true,
@@ -160,11 +129,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/notes',
-    element: (
-      <ProtectedRoute>
-        <NotesShell />
-      </ProtectedRoute>
-    ),
+    element: <NotesShell />,
     children: [
       {
         index: true,
@@ -179,7 +144,7 @@ const router = createBrowserRouter([
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
 
-function AuthBootstrap({ children }: { children: React.ReactNode }) {
+function LocalUserBootstrap({ children }: { children: React.ReactNode }) {
   const fetchMe = useAuthStore((s) => s.fetchMe);
   useEffect(() => {
     void fetchMe();
@@ -191,9 +156,9 @@ export function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthBootstrap>
+        <LocalUserBootstrap>
           <RouterProvider router={router} />
-        </AuthBootstrap>
+        </LocalUserBootstrap>
       </QueryClientProvider>
     </ErrorBoundary>
   );

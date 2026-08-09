@@ -1,21 +1,18 @@
-/** HTTP 客户端 —— 真实后端请求；凭证走 httpOnly Cookie + credentials */
+/** HTTP 客户端 —— 真实后端请求（本地单机无认证） */
 import type { ApiResponse } from '@repopilot/types';
 
 const API_PREFIX = '/api/v1';
 
-/** @deprecated 历史 localStorage 键；仅用于清理遗留数据，不再写入 */
-export const TOKEN_KEY = 'rp_token';
-/** @deprecated 历史 localStorage 键；仅用于清理遗留数据，不再写入 */
-export const REFRESH_KEY = 'rp_refresh';
-
-/** 统一的 API 错误类，便于 ErrorBoundary / Sentry 捕获 */
+/** 统一的 API 错误类；保留后端 detail.code */
 export class ApiRequestError extends Error {
   code: string;
+  status: number;
 
-  constructor(code: string, message: string) {
+  constructor(code: string, message: string, status: number = 0) {
     super(message);
     this.name = 'ApiRequestError';
     this.code = code;
+    this.status = status;
   }
 }
 
@@ -33,102 +30,61 @@ function buildUrl(path: string, params?: Record<string, string | number | undefi
   return url.toString();
 }
 
-/** 清除历史 localStorage 凭证（迁移后不应再依赖） */
+/** 清除历史 localStorage 凭证（升级后遗留清理，一次性） */
 export function clearLegacyTokenStorage(): void {
   try {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_KEY);
+    localStorage.removeItem('rp_token');
+    localStorage.removeItem('rp_refresh');
   } catch {
     /* 隐私模式等 */
   }
 }
 
-/** 解析 FastAPI / 统一错误体 */
-function extractApiErrorMessage(json: unknown): string {
-  if (typeof json !== 'object' || json === null) return '请求失败';
-  const obj = json as Record<string, unknown>;
-  const err = obj.error;
-  if (typeof err === 'object' && err !== null && 'message' in err) {
-    return String((err as { message: unknown }).message);
+/** 从错误体提取 code + message（保留后端 detail.code） */
+export function extractApiError(res: Response, body: unknown): ApiRequestError {
+  if (typeof body === 'object' && body !== null) {
+    const obj = body as Record<string, unknown>;
+    const detail = obj.detail;
+    if (typeof detail === 'object' && detail !== null) {
+      const d = detail as { code?: unknown; message?: unknown };
+      if (typeof d.code === 'string' && typeof d.message === 'string') {
+        return new ApiRequestError(d.code, d.message, res.status);
+      }
+      if (typeof d.message === 'string') {
+        return new ApiRequestError('API_ERROR', d.message, res.status);
+      }
+    }
+    const err = obj.error;
+    if (typeof err === 'object' && err !== null) {
+      const e = err as { code?: unknown; message?: unknown };
+      if (typeof e.code === 'string' && typeof e.message === 'string') {
+        return new ApiRequestError(e.code, e.message, res.status);
+      }
+      if (typeof e.message === 'string') {
+        return new ApiRequestError('API_ERROR', e.message, res.status);
+      }
+    }
+    if (Array.isArray(detail) && detail.length) {
+      const first = detail[0] as { msg?: string };
+      return new ApiRequestError(
+        'VALIDATION_ERROR',
+        first?.msg ?? '参数校验失败',
+        res.status,
+      );
+    }
+    if (typeof detail === 'string') {
+      return new ApiRequestError('API_ERROR', detail, res.status);
+    }
   }
-  const detail = obj.detail;
-  if (typeof detail === 'object' && detail !== null && 'message' in detail) {
-    return String((detail as { message: unknown }).message);
-  }
-  if (Array.isArray(detail) && detail[0] && typeof detail[0] === 'object') {
-    const first = detail[0] as { msg?: string };
-    if (first.msg) return first.msg;
-  }
-  if (typeof detail === 'string') return detail;
-  return '请求失败';
+  return new ApiRequestError('API_ERROR', '请求失败', res.status);
 }
 
 async function parseJson<T>(res: Response): Promise<ApiResponse<T>> {
   const json: unknown = await res.json();
   if (!res.ok) {
-    throw new ApiRequestError('API_ERROR', extractApiErrorMessage(json));
+    throw extractApiError(res, json);
   }
   return json as ApiResponse<T>;
-}
-
-/** 全局 refresh 锁，防止并发 401 触发多次 refresh */
-let refreshPromise: Promise<boolean> | null = null;
-
-async function doRefreshAccessToken(): Promise<boolean> {
-  try {
-    // 依赖 httpOnly Cookie；body 可空
-    const res = await fetch(buildUrl('/auth/refresh'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-      credentials: 'include',
-    });
-    if (!res.ok) {
-      clearLegacyTokenStorage();
-      return false;
-    }
-    clearLegacyTokenStorage();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function refreshAccessToken(): Promise<boolean> {
-  if (refreshPromise) return refreshPromise;
-  refreshPromise = doRefreshAccessToken().finally(() => {
-    refreshPromise = null;
-  });
-  return refreshPromise;
-}
-
-function readCsrfToken(): string | null {
-  try {
-    const match = document.cookie.match(/(?:^|;\s*)rp_csrf=([^;]*)/);
-    const raw = match?.[1];
-    return raw ? decodeURIComponent(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function attachCsrf(headers: Headers): void {
-  const csrf = readCsrfToken();
-  if (csrf && !headers.has('X-CSRF-Token')) {
-    headers.set('X-CSRF-Token', csrf);
-  }
-}
-
-function buildRequestInit(options: RequestInit, headers: Headers): RequestInit {
-  const method = (options.method || 'GET').toUpperCase();
-  if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) {
-    attachCsrf(headers);
-  }
-  return {
-    ...options,
-    headers,
-    credentials: 'include',
-  };
 }
 
 export async function apiRequest<T>(
@@ -141,17 +97,10 @@ export async function apiRequest<T>(
     headers.set('Content-Type', 'application/json');
   }
 
-  let res = await fetch(buildUrl(path, params), buildRequestInit(options, headers));
-  if (res.status === 401 && path !== '/auth/refresh' && (await refreshAccessToken())) {
-    const retryHeaders = new Headers(options.headers);
-    if (options.body && !retryHeaders.has('Content-Type')) {
-      retryHeaders.set('Content-Type', 'application/json');
-    }
-    res = await fetch(buildUrl(path, params), buildRequestInit(options, retryHeaders));
-  }
-  if (res.status === 401) {
-    clearLegacyTokenStorage();
-  }
+  const res = await fetch(buildUrl(path, params), {
+    ...options,
+    headers,
+  });
   return parseJson<T>(res);
 }
 
@@ -160,46 +109,27 @@ export async function apiSSE(
   body: unknown,
   signal?: AbortSignal
 ): Promise<Response> {
-  const buildHeaders = (): Headers => {
-    const headers = new Headers({
-      'Content-Type': 'application/json',
-      Accept: 'text/event-stream',
-    });
-    attachCsrf(headers);
-    return headers;
-  };
-
-  let res = await fetch(buildUrl(path), {
-    method: 'POST',
-    headers: buildHeaders(),
-    body: JSON.stringify(body),
-    signal,
-    credentials: 'include',
+  const headers = new Headers({
+    'Content-Type': 'application/json',
+    Accept: 'text/event-stream',
   });
 
-  // 与 apiRequest 对齐：401 时单飞 refresh 后重试一次
-  if (res.status === 401 && (await refreshAccessToken())) {
-    res = await fetch(buildUrl(path), {
-      method: 'POST',
-      headers: buildHeaders(),
-      body: JSON.stringify(body),
-      signal,
-      credentials: 'include',
-    });
-  }
+  const res = await fetch(buildUrl(path), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+    signal,
+  });
 
   if (!res.ok) {
-    let message = '请求失败';
+    let err = new ApiRequestError('API_ERROR', '请求失败', res.status);
     try {
       const json = await res.json();
-      message = extractApiErrorMessage(json);
+      err = extractApiError(res, json);
     } catch {
       /* 非 JSON 错误体 */
     }
-    if (res.status === 401) {
-      clearLegacyTokenStorage();
-    }
-    throw new ApiRequestError('API_ERROR', message);
+    throw err;
   }
   return res;
 }

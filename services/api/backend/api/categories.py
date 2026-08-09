@@ -1,17 +1,16 @@
 """
-分类 API —— 预设 + 自定义分类管理
+分类 API —— 预设 + 自定义分类管理（本地单机）
 """
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.deps import get_current_user, get_db
+from backend.api.deps import get_db
 from backend.core.responses import wrap_data
 from backend.models.category import Category
-from backend.models.user import User
 from backend.schemas.category import CategoryCreate, CategoryUpdate
 from backend.schemas.common import DataResponse
 
@@ -27,15 +26,8 @@ class CategoryOut(BaseModel):
 
 
 @router.get("/", response_model=DataResponse[list[CategoryOut]])
-async def list_categories(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(
-        select(Category).where(
-            or_(Category.is_preset.is_(True), Category.user_id == current_user.id)
-        )
-    )
+async def list_categories(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Category))
     items = [
         CategoryOut(
             id=c.id,
@@ -52,10 +44,9 @@ async def list_categories(
 @router.post("/", response_model=DataResponse[CategoryOut])
 async def create_category(
     data: CategoryCreate,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    category = Category(user_id=current_user.id, name=data.name, is_preset=False)
+    category = Category(name=data.name, is_preset=False)
     db.add(category)
     await db.commit()
     await db.refresh(category)
@@ -74,11 +65,10 @@ async def create_category(
 async def update_category(
     category_id: UUID,
     data: CategoryUpdate,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     category = await db.get(Category, category_id)
-    if not category or category.is_preset or category.user_id != current_user.id:
+    if not category or category.is_preset:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Category not found"},
@@ -100,11 +90,10 @@ async def update_category(
 @router.delete("/{category_id}", response_model=DataResponse[dict])
 async def delete_category(
     category_id: UUID,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     category = await db.get(Category, category_id)
-    if not category or category.is_preset or category.user_id != current_user.id:
+    if not category or category.is_preset:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Category not found"},

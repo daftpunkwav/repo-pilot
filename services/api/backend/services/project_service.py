@@ -1,5 +1,5 @@
 """
-项目业务逻辑 —— 筛选、序列化、导入
+项目业务逻辑 —— 筛选、序列化、导入（本地单机，无 user 维度）
 """
 from uuid import UUID
 
@@ -92,7 +92,6 @@ def apply_sort(query, sort: str):
 
 async def list_user_projects(
     db: AsyncSession,
-    user_id: UUID,
     *,
     keyword: str = "",
     lang: str = "",
@@ -105,7 +104,7 @@ async def list_user_projects(
     page: int = 1,
     page_size: int = 20,
 ) -> tuple[list[ProjectOut], int]:
-    base = select(Project).where(Project.user_id == user_id)
+    base = select(Project)
     base = apply_project_filters(
         base,
         keyword=keyword,
@@ -157,8 +156,8 @@ _LANG_CATEGORY = {
 }
 
 
-async def _resolve_category_id(db: AsyncSession, user_id: UUID, language: str | None):
-    """按语言匹配预设/用户分类，找不到则返回 None。"""
+async def _resolve_category_id(db: AsyncSession, language: str | None):
+    """按语言匹配预设/自定义分类，找不到则返回 None。"""
     if not language:
         return None
     cat_name = _LANG_CATEGORY.get(language)
@@ -166,19 +165,13 @@ async def _resolve_category_id(db: AsyncSession, user_id: UUID, language: str | 
         return None
     from backend.models.category import Category
 
-    result = await db.execute(
-        select(Category).where(
-            (Category.name == cat_name)
-            & ((Category.user_id == user_id) | (Category.is_preset == True))  # noqa: E712
-        )
-    )
+    result = await db.execute(select(Category).where(Category.name == cat_name))
     cat = result.scalars().first()
     return cat.id if cat else None
 
 
 async def import_repos(
     db: AsyncSession,
-    user_id: UUID,
     repos: list[ImportRepoItem],
 ) -> ImportResult:
     from backend.services.github_client import fetch_repo_info
@@ -186,7 +179,7 @@ async def import_repos(
     succeeded = 0
     failed = 0
     errors: list[dict] = []
-    existing = await db.execute(select(Project.url).where(Project.user_id == user_id))
+    existing = await db.execute(select(Project.url))
     known_urls = {row[0] for row in existing.all()}
 
     for repo in repos:
@@ -204,10 +197,9 @@ async def import_repos(
         language = None if meta.get("error") else meta.get("language")
         description = None if meta.get("error") else meta.get("description")
         stars = 0 if meta.get("error") else int(meta.get("stars") or 0)
-        category_id = await _resolve_category_id(db, user_id, language)
+        category_id = await _resolve_category_id(db, language)
 
         project = Project(
-            user_id=user_id,
             name=f"{repo.owner}/{repo.repo}",
             url=repo.url,
             source="github",
@@ -228,8 +220,8 @@ async def import_repos(
     return ImportResult(succeeded=succeeded, failed=failed, summary=summary, errors=errors)
 
 
-async def project_stats(db: AsyncSession, user_id: UUID) -> ProjectStats:
-    result = await db.execute(select(Project).where(Project.user_id == user_id))
+async def project_stats(db: AsyncSession) -> ProjectStats:
+    result = await db.execute(select(Project))
     projects = result.scalars().all()
     by_progress: dict[str, int] = {}
     by_language: dict[str, int] = {}
@@ -248,16 +240,15 @@ async def project_stats(db: AsyncSession, user_id: UUID) -> ProjectStats:
     )
 
 
-def build_project_from_create(user_id: UUID, data: ProjectCreate) -> Project:
+def build_project_from_create(data: ProjectCreate) -> Project:
     payload = data.model_dump(exclude={"tags"})
-    return Project(user_id=user_id, **payload)
+    return Project(**payload)
 
 
-async def get_project_owned_by_user(
-    db: AsyncSession, project_id: UUID, user_id: UUID
-) -> Project | None:
-    """查询指定用户拥有的项目，不存在或不属于该用户时返回 None。"""
-    project = await db.get(Project, project_id)
-    if not project or project.user_id != user_id:
-        return None
-    return project
+async def get_project(db: AsyncSession, project_id: UUID) -> Project | None:
+    """按 id 查询项目；不存在返回 None。"""
+    return await db.get(Project, project_id)
+
+
+# 兼容旧名
+get_project_owned_by_user = get_project

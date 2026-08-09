@@ -40,28 +40,18 @@ class Settings(BaseSettings):
     # 数据库
     database_url: str = f"sqlite:///{DATA_DIR / 'repopilot.db'}"
 
-    # 认证
+    # 密钥：SECRET_KEY 必填；敏感字段 at-rest 加密可另设 SECRETS_ENCRYPTION_KEY
     secret_key: str = Field(
         ...,
-        description="JWT 签名密钥，必须通过 SECRET_KEY 环境变量设置，长度不少于 32 字节",
+        description="应用密钥，必须通过 SECRET_KEY 环境变量设置，长度不少于 32 字节",
     )
-    # 敏感字段 at-rest 加密密钥；未设置时回退 SECRET_KEY（兼容旧部署）
     secrets_encryption_key: Optional[str] = Field(
         default=None,
-        description="Fernet 派生用密钥，环境变量 SECRETS_ENCRYPTION_KEY；建议与 JWT 分离",
+        description="Fernet 派生用密钥，环境变量 SECRETS_ENCRYPTION_KEY；未设则回退 SECRET_KEY",
     )
-    # Access 默认 60 分钟；过长会扩大被盗 token 窗口（refresh 仍可轮换续期）
-    access_token_expire_minutes: int = 60
-    refresh_token_expire_days: int = 30
-    # 认证 Cookie：None=按 debug/生产策略自动选择；跨域可设 AUTH_COOKIE_SAMESITE=none
-    auth_cookie_secure: Optional[bool] = None
-    auth_cookie_samesite: Optional[str] = None
 
     # 速率限制
     rate_limit_enabled: bool = True
-    rate_limit_login: str = "5/minute"
-    rate_limit_register: str = "3/hour"
-    rate_limit_refresh: str = "20/minute"
     # Agent SSE 端点(chat/analyze/classify 等)每次触发多轮 LLM 调用,按用户限频
     rate_limit_agent: str = "20/minute"
 

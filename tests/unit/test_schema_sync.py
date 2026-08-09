@@ -22,7 +22,8 @@ def test_alembic_upgrade_creates_core_tables(tmp_path: Path):
 
     engine = create_engine(f"sqlite:///{db_path}")
     tables = set(inspect(engine).get_table_names())
-    assert "users" in tables
+    assert "app_state" in tables
+    assert "users" not in tables
     assert "projects" in tables
     assert "agent_sessions" in tables
     assert "alembic_version" in tables

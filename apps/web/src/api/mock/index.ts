@@ -12,7 +12,6 @@ import type {
   GitHubAccount,
   GraphData,
   ImportResult,
-  LoginResponse,
   Note,
   OverviewRecentNote,
   PaginatedList,
@@ -40,7 +39,6 @@ import { buildMockRecommendedProjects } from './data/recommendations';
 import {
   getOverviewScenario,
   persistOverviewMockRound,
-  readOverviewMockRound,
   type OverviewMockRound,
 } from './data/overviewScenarios';
 import { MOCK_CATEGORIES } from './data/categories';
@@ -59,7 +57,7 @@ import { DEFAULT_SETTINGS } from './data/settings';
 import { DEFAULT_USER_PROFILE } from './data/profile';
 import { MOCK_TAGS } from './data/tags';
 import { getTrendingRepos } from './data/trending';
-import { findMockUser, MOCK_USERS } from './data/users';
+import { MOCK_LOCAL_USER } from './data/users';
 import { deepClone } from '@/utils/clone';
 import {
   mockAfterQuestionAnswer,
@@ -70,27 +68,6 @@ import {
 
 const MIN_DELAY = 200;
 const MAX_DELAY = 500;
-const TOKEN_KEY = 'rp_token';
-const REFRESH_KEY = 'rp_refresh';
-// 用内存 Map 存储 mock 端的 token，与 real 走 httpOnly cookie 的安全设计对齐：
-// 在 XSS 场景下 localStorage 中敏感凭据可被读取，内存则随 JS 上下文消失。
-const _memStore = new Map<string, string>();
-function memGet(key: string): string | null {
-  return _memStore.get(key) ?? null;
-}
-function memSet(key: string, val: string): void {
-  _memStore.set(key, val);
-}
-function memDel(key: string): void {
-  _memStore.delete(key);
-}
-// 测试入口：暴露给 e2e 清状态，避免依赖 localStorage 跨页持久化。
-if (typeof window !== 'undefined') {
-  (window as unknown as { __mockAuth?: { clear: () => void; get: (k: string) => string | null } }).__mockAuth = {
-    clear: () => _memStore.clear(),
-    get: (k: string) => _memStore.get(k) ?? null,
-  };
-}
 
 function delay(ms?: number): Promise<void> {
   const duration = ms ?? MIN_DELAY + Math.random() * (MAX_DELAY - MIN_DELAY);
@@ -109,11 +86,6 @@ function throwError(code: string, message: string): never {
   throw err;
 }
 
-function requireAuth(): void {
-  if (!memGet(TOKEN_KEY)) {
-    throwError('UNAUTHORIZED', '请先登录');
-  }
-}
 
 function newId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -144,11 +116,8 @@ export class MockApiClient implements IApiClient {
   private appliedOverviewRound: OverviewMockRound | null = null;
 
   constructor() {
-    const token = memGet(TOKEN_KEY);
-    if (token) {
-      const main = MOCK_USERS[0];
-      if (main) this.currentUser = { ...main.user };
-    }
+    // 本地单机：构造即就绪默认学习者
+    this.currentUser = { ...MOCK_LOCAL_USER };
     // 不在构造时应用 scenario：由 main.tsx / OverviewMockRoundSync 在 URL 同步后统一加载
   }
 
@@ -184,109 +153,20 @@ export class MockApiClient implements IApiClient {
     }
   }
 
-  // ─── Auth ─────────────────────────────────────────────
-
-  async register(params: {
-    username: string;
-    password: string;
-  }): Promise<ApiResponse<LoginResponse>> {
-    await delay();
-    if (findMockUser(params.username)) {
-      throwError('USERNAME_EXISTS', '用户名已存在');
-    }
-    const user: User = {
-      id: newId('usr'),
-      username: params.username,
-      github_bound: false,
-      created_at: new Date().toISOString(),
-    };
-    MOCK_USERS.push({ user, password: params.password });
-    return this.issueTokens(user);
-  }
-
-  async login(params: {
-    username: string;
-    password: string;
-  }): Promise<ApiResponse<LoginResponse>> {
-    await delay();
-    const record = findMockUser(params.username);
-    if (!record || record.password !== params.password) {
-      throwError('AUTH_FAILED', '用户名或密码错误');
-    }
-    return this.issueTokens(record.user);
-  }
-
-  private async issueTokens(user: User): Promise<ApiResponse<LoginResponse>> {
-    const access = `mock_token_${Date.now()}`;
-    const refresh = `mock_refresh_${Date.now()}`;
-    memSet(TOKEN_KEY, access);
-    memSet(REFRESH_KEY, refresh);
-    this.currentUser = { ...user };
-    this.applyOverviewScenario(readOverviewMockRound());
-    return wrapResponse({ access_token: access, refresh_token: refresh, user });
-  }
-
-  async logout(): Promise<ApiResponse<{ success: boolean }>> {
-    await delay(100);
-    memDel(TOKEN_KEY);
-    memDel(REFRESH_KEY);
-    this.currentUser = null;
-    return wrapResponse({ success: true });
-  }
-
-  async refresh(): Promise<
-    ApiResponse<{ access_token: string; refresh_token?: string }>
-  > {
-    await delay(100);
-    const refresh = memGet(REFRESH_KEY);
-    if (!refresh) throwError('AUTH_FAILED', 'Refresh token 无效');
-    const access = `mock_token_${Date.now()}`;
-    const nextRefresh = `mock_refresh_${Date.now()}`;
-    memSet(TOKEN_KEY, access);
-    memSet(REFRESH_KEY, nextRefresh);
-    return wrapResponse({ access_token: access, refresh_token: nextRefresh });
-  }
+  // ─── Local user ───────────────────────────────────────
 
   async me(): Promise<ApiResponse<User>> {
     await delay(100);
-    requireAuth();
-    if (!this.currentUser) throwError('UNAUTHORIZED', '未登录');
-    return wrapResponse(this.currentUser);
-  }
-
-  async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
-    await delay();
-    requireAuth();
-    if (!this.currentUser) throwError('UNAUTHORIZED', '未登录');
-    this.currentUser = { ...this.currentUser, ...data };
-    const idx = MOCK_USERS.findIndex((u) => u.user.id === this.currentUser?.id);
-    if (idx >= 0 && MOCK_USERS[idx]) {
-      MOCK_USERS[idx].user = { ...this.currentUser };
+    if (!this.currentUser) {
+      this.currentUser = { ...MOCK_LOCAL_USER };
     }
     return wrapResponse(this.currentUser);
-  }
-
-  async changePassword(params: {
-    old_password: string;
-    new_password: string;
-  }): Promise<ApiResponse<{ success: boolean }>> {
-    await delay();
-    requireAuth();
-    if (!this.currentUser) throwError('UNAUTHORIZED', '未登录');
-    const record = MOCK_USERS.find((u) => u.user.id === this.currentUser?.id);
-    if (!record || record.password !== params.old_password) {
-      throwError('AUTH_FAILED', '旧密码不正确');
-    }
-    record.password = params.new_password;
-    await this.logout();
-    return wrapResponse({ success: true });
   }
 
   // ─── GitHub ───────────────────────────────────────────
 
   async listGithubAccounts(): Promise<ApiResponse<GitHubAccount[]>> {
     await delay();
-    requireAuth();
     return wrapResponse([...this.githubAccounts]);
   }
 
@@ -295,7 +175,6 @@ export class MockApiClient implements IApiClient {
     pat: string;
   }): Promise<ApiResponse<GitHubAccount>> {
     await delay();
-    requireAuth();
     void params.pat;
     const account: GitHubAccount = {
       id: newId('gh'),
@@ -312,7 +191,6 @@ export class MockApiClient implements IApiClient {
 
   async unbindGithub(id: string): Promise<ApiResponse<{ success: boolean }>> {
     await delay();
-    requireAuth();
     this.githubAccounts = this.githubAccounts.filter((a) => a.id !== id);
     if (this.githubAccounts.length === 0 && this.currentUser) {
       this.currentUser.github_bound = false;
@@ -334,7 +212,6 @@ export class MockApiClient implements IApiClient {
     }>
   > {
     await delay(params?.refresh ? 600 : 200);
-    requireAuth();
     const importedNames = new Set(this.projects.map((p) => p.name));
     const fromProjects: StarRepo[] = this.projects.slice(0, 5).map((p) => {
       const [owner = '', repo = ''] = p.name.split('/');
@@ -366,7 +243,6 @@ export class MockApiClient implements IApiClient {
     repos: Array<{ owner: string; repo: string; url: string }>
   ): Promise<ApiResponse<ImportResult>> {
     await delay(400);
-    requireAuth();
     let succeeded = 0;
     let failed = 0;
     const errors: Array<{ repo: string; reason: string }> = [];
@@ -419,7 +295,6 @@ export class MockApiClient implements IApiClient {
     params?: ProjectListParams
   ): Promise<ApiResponse<PaginatedList<Project>>> {
     await delay();
-    requireAuth();
     let items = [...this.projects];
     const search = params?.search?.toLowerCase();
     if (search) {
@@ -471,7 +346,6 @@ export class MockApiClient implements IApiClient {
 
   async getProject(id: string): Promise<ApiResponse<Project>> {
     await delay();
-    requireAuth();
     const project = this.projects.find((p) => p.id === id);
     if (!project) throwError('NOT_FOUND', '项目不存在');
     return wrapResponse(project);
@@ -479,7 +353,6 @@ export class MockApiClient implements IApiClient {
 
   async getProjectReadme(id: string): Promise<ApiResponse<import('../types').ProjectReadme>> {
     await delay();
-    requireAuth();
     const project = this.projects.find((p) => p.id === id);
     if (!project) throwError('NOT_FOUND', '项目不存在');
     if (project.readme) {
@@ -499,7 +372,6 @@ export class MockApiClient implements IApiClient {
 
   async createProject(data: CreateProjectInput): Promise<ApiResponse<Project>> {
     await delay();
-    requireAuth();
     if (this.projects.some((p) => p.url === data.url)) {
       throwError('DUPLICATE_URL', '该 URL 已存在');
     }
@@ -525,7 +397,6 @@ export class MockApiClient implements IApiClient {
     data: Partial<Project>
   ): Promise<ApiResponse<Project>> {
     await delay();
-    requireAuth();
     const idx = this.projects.findIndex((p) => p.id === id);
     if (idx < 0) throwError('NOT_FOUND', '项目不存在');
     const existing = this.projects[idx];
@@ -542,7 +413,6 @@ export class MockApiClient implements IApiClient {
 
   async deleteProject(id: string): Promise<ApiResponse<{ success: boolean }>> {
     await delay();
-    requireAuth();
     const idx = this.projects.findIndex((p) => p.id === id);
     if (idx < 0) throwError('NOT_FOUND', '项目不存在');
     this.projects.splice(idx, 1);
@@ -555,7 +425,6 @@ export class MockApiClient implements IApiClient {
     progress: ProjectProgress
   ): Promise<ApiResponse<{ id: string; progress: string }>> {
     await delay();
-    requireAuth();
     const project = this.projects.find((p) => p.id === id);
     if (!project) throwError('NOT_FOUND', '项目不存在');
     project.progress = progress;
@@ -577,7 +446,6 @@ export class MockApiClient implements IApiClient {
 
   async getProjectStats(): Promise<ApiResponse<ProjectStats>> {
     await delay();
-    requireAuth();
     const by_progress: Record<ProjectProgress, number> = {
       none: 0,
       learning: 0,
@@ -607,7 +475,6 @@ export class MockApiClient implements IApiClient {
 
   async exportProjects(): Promise<ApiResponse<Project[]>> {
     await delay(300);
-    requireAuth();
     return wrapResponse([...this.projects]);
   }
 
@@ -615,13 +482,11 @@ export class MockApiClient implements IApiClient {
 
   async listCategories(): Promise<ApiResponse<Category[]>> {
     await delay();
-    requireAuth();
     return wrapResponse([...this.categories]);
   }
 
   async createCategory(data: { name: string }): Promise<ApiResponse<Category>> {
     await delay();
-    requireAuth();
     const cat: Category = {
       id: newId('cat'),
       name: data.name,
@@ -636,7 +501,6 @@ export class MockApiClient implements IApiClient {
     data: { name: string }
   ): Promise<ApiResponse<Category>> {
     await delay();
-    requireAuth();
     const cat = this.categories.find((c) => c.id === id);
     if (!cat) throwError('NOT_FOUND', '分类不存在');
     cat.name = data.name;
@@ -645,7 +509,6 @@ export class MockApiClient implements IApiClient {
 
   async deleteCategory(id: string): Promise<ApiResponse<{ success: boolean }>> {
     await delay();
-    requireAuth();
     const cat = this.categories.find((c) => c.id === id);
     if (!cat) throwError('NOT_FOUND', '分类不存在');
     if (cat.is_preset) throwError('FORBIDDEN', '预设分类不可删除');
@@ -655,13 +518,11 @@ export class MockApiClient implements IApiClient {
 
   async listTags(): Promise<ApiResponse<Tag[]>> {
     await delay();
-    requireAuth();
     return wrapResponse([...this.tags]);
   }
 
   async createTag(data: { name: string }): Promise<ApiResponse<Tag>> {
     await delay();
-    requireAuth();
     const tag: Tag = { id: newId('tag'), name: data.name, count: 0 };
     this.tags.push(tag);
     return wrapResponse(tag);
@@ -669,7 +530,6 @@ export class MockApiClient implements IApiClient {
 
   async deleteTag(id: string): Promise<ApiResponse<{ success: boolean }>> {
     await delay();
-    requireAuth();
     this.tags = this.tags.filter((t) => t.id !== id);
     for (const p of this.projects) {
       p.tags = (p.tags ?? []).filter((tid) => tid !== id);
@@ -682,7 +542,6 @@ export class MockApiClient implements IApiClient {
     tagIds: string[]
   ): Promise<ApiResponse<{ project_id: string; tag_ids: string[] }>> {
     await delay();
-    requireAuth();
     const project = this.projects.find((p) => p.id === projectId);
     if (!project) throwError('NOT_FOUND', '项目不存在');
     project.tags = [...tagIds];
@@ -694,19 +553,16 @@ export class MockApiClient implements IApiClient {
 
   async listNotes(projectId: string): Promise<ApiResponse<Note[]>> {
     await delay();
-    requireAuth();
     return wrapResponse(this.notes.filter((n) => n.project_id === projectId));
   }
 
   async listAllNotes(): Promise<ApiResponse<Note[]>> {
     await delay();
-    requireAuth();
     return wrapResponse([...this.notes]);
   }
 
   async getNote(id: string): Promise<ApiResponse<Note>> {
     await delay();
-    requireAuth();
     const note = this.notes.find((n) => n.id === id);
     if (!note) throwError('NOT_FOUND', '笔记不存在');
     return wrapResponse(note);
@@ -717,7 +573,6 @@ export class MockApiClient implements IApiClient {
     data: { title: string; content: string }
   ): Promise<ApiResponse<Note>> {
     await delay();
-    requireAuth();
     const now = new Date().toISOString();
     const note: Note = {
       id: newId('n'),
@@ -743,7 +598,6 @@ export class MockApiClient implements IApiClient {
     data: Partial<Note>
   ): Promise<ApiResponse<Note>> {
     await delay();
-    requireAuth();
     const idx = this.notes.findIndex((n) => n.id === id);
     if (idx < 0) throwError('NOT_FOUND', '笔记不存在');
     const existing = this.notes[idx];
@@ -767,7 +621,6 @@ export class MockApiClient implements IApiClient {
 
   async deleteNote(id: string): Promise<ApiResponse<{ success: boolean }>> {
     await delay();
-    requireAuth();
     this.notes = this.notes.filter((n) => n.id !== id);
     return wrapResponse({ success: true });
   }
@@ -779,7 +632,6 @@ export class MockApiClient implements IApiClient {
     max_edges?: number;
   }): Promise<ApiResponse<GraphData>> {
     await delay(300);
-    requireAuth();
     const minSim = params?.min_similarity ?? 0.1;
     const maxEdges = params?.max_edges ?? 500;
     const nodeIds = new Set(this.projects.map((p) => p.id));
@@ -804,7 +656,6 @@ export class MockApiClient implements IApiClient {
 
   async getSettings(): Promise<ApiResponse<Settings>> {
     await delay();
-    requireAuth();
     if (this._llmApiKey) {
       this.settings.llm_api_key_masked = this.maskApiKey(this._llmApiKey);
       this.settings.llm_configured = true;
@@ -814,7 +665,6 @@ export class MockApiClient implements IApiClient {
 
   async updateSettings(data: Partial<Settings>): Promise<ApiResponse<Settings>> {
     await delay();
-    requireAuth();
     const next = { ...this.settings, ...data };
     if (data.llm_default_model !== undefined) {
       next.llm_model = data.llm_default_model;
@@ -836,7 +686,6 @@ export class MockApiClient implements IApiClient {
 
   async saveLlmApiKey(apiKey: string): Promise<ApiResponse<{ masked: string }>> {
     await delay();
-    requireAuth();
     this._llmApiKey = apiKey;
     this.settings.llm_api_key_masked = this.maskApiKey(apiKey);
     this.settings.llm_configured = true;
@@ -856,7 +705,6 @@ export class MockApiClient implements IApiClient {
     }>
   > {
     await delay(800);
-    requireAuth();
     const latency = 350 + Math.floor(Math.random() * 200);
     const model = params?.model || this.settings.llm_model;
     this.settings.llm_last_test = new Date().toISOString();
@@ -878,7 +726,6 @@ export class MockApiClient implements IApiClient {
     language?: string;
   }): Promise<ApiResponse<TrendingRepo[]>> {
     await delay();
-    requireAuth();
     const period = params?.period ?? 'daily';
     const language = params?.language;
     if (this.scenarioTrendingWeekly && period === 'weekly') {
@@ -894,7 +741,6 @@ export class MockApiClient implements IApiClient {
     params: TrendingScoutIntroParams,
     _signal?: AbortSignal,
   ): AsyncGenerator<SSEEvent> {
-    requireAuth();
     const period = params.period ?? 'weekly';
     const repos = getTrendingRepos(period);
     const repo: TrendingRepo =
@@ -909,7 +755,6 @@ export class MockApiClient implements IApiClient {
 
   async listActivities(): Promise<ApiResponse<ActivityItem[]>> {
     await delay();
-    requireAuth();
     return wrapResponse([...this.activities]);
   }
 
@@ -917,7 +762,6 @@ export class MockApiClient implements IApiClient {
     limit?: number;
   }): Promise<ApiResponse<RecommendedProject[]>> {
     await delay();
-    requireAuth();
     const limit = params?.limit ?? 5;
     if (this.scenarioRecommendations) {
       return wrapResponse(this.scenarioRecommendations.slice(0, limit));
@@ -929,7 +773,6 @@ export class MockApiClient implements IApiClient {
     limit?: number;
   }): Promise<ApiResponse<OverviewRecentNote[]>> {
     await delay();
-    requireAuth();
     const limit = params?.limit ?? 4;
     const projectNameById = new Map(this.projects.map((p) => [p.id, p.name]));
     const items: OverviewRecentNote[] = [...this.notes]
@@ -949,7 +792,6 @@ export class MockApiClient implements IApiClient {
 
   async listAgentSessions(): Promise<ApiResponse<AgentSession[]>> {
     await delay();
-    requireAuth();
     return wrapResponse([...this.sessions]);
   }
 
@@ -957,7 +799,6 @@ export class MockApiClient implements IApiClient {
     id: string
   ): Promise<ApiResponse<AgentSession & { messages: AgentMessage[] }>> {
     await delay();
-    requireAuth();
     const session = this.sessions.find((s) => s.id === id);
     if (!session) throwError('NOT_FOUND', '会话不存在');
     const msgs = this.messages[id] ?? [];
@@ -966,7 +807,6 @@ export class MockApiClient implements IApiClient {
 
   async createAgentSession(): Promise<ApiResponse<AgentSession>> {
     await delay();
-    requireAuth();
     const session: AgentSession = {
       id: newId('sess'),
       title: '新对话',
@@ -983,7 +823,6 @@ export class MockApiClient implements IApiClient {
 
   async deleteAgentSession(id: string): Promise<ApiResponse<{ success: boolean }>> {
     await delay();
-    requireAuth();
     this.sessions = this.sessions.filter((s) => s.id !== id);
     delete this.messages[id];
     return wrapResponse({ success: true });
@@ -994,7 +833,6 @@ export class MockApiClient implements IApiClient {
     data: { title?: string; project_id?: string | null; project_ids?: string[] }
   ): Promise<ApiResponse<AgentSession>> {
     await delay();
-    requireAuth();
     const session = this.sessions.find((s) => s.id === id);
     if (!session) throw { error: { code: 'NOT_FOUND', message: '会话不存在' } };
     if (data.title !== undefined) session.title = data.title;
@@ -1011,13 +849,11 @@ export class MockApiClient implements IApiClient {
 
   async getAgentProfiles(): Promise<ApiResponse<AgentProfile[]>> {
     await delay();
-    requireAuth();
     return wrapResponse([...MOCK_AGENT_PROFILES]);
   }
 
   async getUserProfile(): Promise<ApiResponse<UserProfile>> {
     await delay();
-    requireAuth();
     return wrapResponse(deepClone(this.userProfile));
   }
 
@@ -1025,40 +861,43 @@ export class MockApiClient implements IApiClient {
     data: Partial<UserProfile>
   ): Promise<ApiResponse<UserProfile>> {
     await delay();
-    requireAuth();
-    this.userProfile = { ...this.userProfile, ...data };
+    this.userProfile = {
+      ...this.userProfile,
+      ...data,
+      identity: data.identity
+        ? { ...this.userProfile.identity, ...data.identity }
+        : this.userProfile.identity,
+    };
     if (data.memory_items) {
       this.userProfile.memory_items = data.memory_items;
     }
     if (data.goals) {
       this.userProfile.goals = data.goals;
     }
+    const name = this.userProfile.identity?.preferred_name?.trim();
+    if (name && this.currentUser) {
+      this.currentUser = { ...this.currentUser, username: name };
+    }
     return wrapResponse(deepClone(this.userProfile));
   }
 
   async clearUserMemory(): Promise<ApiResponse<UserProfile>> {
     await delay();
-    requireAuth();
     this.userProfile = {
       ...this.userProfile,
       tech_proficiency: {},
-      learning_preferences: {
-        style: 'hands_on',
-        depth_first: false,
-        verbosity: 'balanced',
-        language: 'zh-CN',
-      },
+      learning_preferences: {},
       goals: [],
       history_summary: '',
       memory_items: [],
       pending_memory_proposals: [],
+      // 保留自填 identity
     };
     return wrapResponse(deepClone(this.userProfile));
   }
 
   async acceptMemoryProposal(proposalId: string): Promise<ApiResponse<UserProfile>> {
     await delay();
-    requireAuth();
     const pending = this.userProfile.pending_memory_proposals ?? [];
     const found = pending.find((p) => p.id === proposalId);
     if (!found) throw new Error('提案不存在');
@@ -1079,7 +918,6 @@ export class MockApiClient implements IApiClient {
 
   async rejectMemoryProposal(proposalId: string): Promise<ApiResponse<UserProfile>> {
     await delay();
-    requireAuth();
     const pending = this.userProfile.pending_memory_proposals ?? [];
     this.userProfile = {
       ...this.userProfile,
@@ -1090,7 +928,6 @@ export class MockApiClient implements IApiClient {
 
   async getPermissions(): Promise<ApiResponse<AgentPermissions>> {
     await delay();
-    requireAuth();
     return wrapResponse({
       allow_web_search: true,
       allow_github_api: true,
@@ -1107,7 +944,6 @@ export class MockApiClient implements IApiClient {
     message: string,
     _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
-    requireAuth();
     const session = this.sessions.find((s) => s.id === sessionId);
     if (!session) {
       yield { event: 'error', data: { code: 'NOT_FOUND', message: '会话不存在' } };
@@ -1141,7 +977,6 @@ export class MockApiClient implements IApiClient {
     _signal?: AbortSignal,
     _skipped?: boolean
   ): AsyncGenerator<SSEEvent> {
-    requireAuth();
     yield* mockAfterQuestionAnswer();
   }
 
@@ -1150,7 +985,6 @@ export class MockApiClient implements IApiClient {
     agent?: AgentId,
     _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
-    requireAuth();
     const project = this.projects.find((p) => p.id === projectId);
     const name = project?.name ?? projectId;
     yield* mockProjectAnalysis(name, agent ?? 'scout');
@@ -1161,7 +995,6 @@ export class MockApiClient implements IApiClient {
     params?: { mode?: 'project' | 'standalone'; topic?: string },
     _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
-    requireAuth();
     const project = this.projects.find((p) => p.id === projectId);
     const name = params?.topic || project?.name || projectId;
     const md = `# ${name} 学习笔记\n\n## 1. 项目定位\n\n## 2. 核心概念\n\n## 3. 上手路径\n\n## 4. 与已学项目对比\n\n> mode=${params?.mode ?? 'project'}\n`;
@@ -1175,7 +1008,6 @@ export class MockApiClient implements IApiClient {
     sessionId?: string | null
   ): Promise<ApiResponse<ContextWindowStats>> {
     await delay(100);
-    requireAuth();
     const msgs = sessionId ? (this.messages[sessionId] ?? []) : [];
     const msgTokens = msgs.reduce((n, m) => n + (m.content?.length ?? 0) / 4, 0);
     return wrapResponse({
@@ -1197,7 +1029,6 @@ export class MockApiClient implements IApiClient {
 
   async searchGithubRepos(query: string): Promise<ApiResponse<StarRepo[]>> {
     await delay(300);
-    requireAuth();
     const q = query.toLowerCase().trim();
     const pool: StarRepo[] = [
       ...MOCK_UNIMPORTED_STARS.map((s) => ({ ...s, already_imported: false })),
@@ -1229,7 +1060,6 @@ export class MockApiClient implements IApiClient {
     context: ImportAssistContext,
     _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
-    requireAuth();
     const lower = message.toLowerCase();
     const keys = context.available_repo_keys ?? [];
     let picks = keys.filter((k) => {
@@ -1275,7 +1105,6 @@ export class MockApiClient implements IApiClient {
     context?: { selected_node_id?: string | null },
     _signal?: AbortSignal
   ): AsyncGenerator<SSEEvent> {
-    requireAuth();
     const nodeId = context?.selected_node_id;
     const project = nodeId ? this.projects.find((p) => p.id === nodeId) : undefined;
     const reply = project

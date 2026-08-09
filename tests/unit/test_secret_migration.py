@@ -1,13 +1,12 @@
 """历史明文密钥读路径 re-encrypt 迁移测试"""
 import json
-from uuid import uuid4
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.core.security import ensure_encrypted_secret, is_encrypted_secret
-from backend.models.user import User
-from backend.services.settings_service import get_settings, settings_to_out
+from backend.models.app_state import AppState
+from backend.services.settings_service import get_settings
 
 
 def test_ensure_encrypted_secret_migrates_plaintext():
@@ -15,7 +14,6 @@ def test_ensure_encrypted_secret_migrates_plaintext():
     stored, migrated = ensure_encrypted_secret(plain)
     assert migrated is True
     assert is_encrypted_secret(stored)
-    # 已加密则不再迁移
     again, migrated2 = ensure_encrypted_secret(stored)
     assert migrated2 is False
     assert again == stored
@@ -33,6 +31,7 @@ async def test_get_settings_reencrypts_plain_llm_key(tmp_path, monkeypatch):
     from backend.config import get_settings as gs
     from backend.core.security import decrypt_secret
     from backend.database import get_session_factory, init_db, reset_database
+    from backend.services.app_state_service import get_or_create_app_state
 
     os.environ["DATABASE_URL"] = f"sqlite:///{tmp_path / 'migrate.db'}"
     os.environ.setdefault("SECRET_KEY", "pytest-secret-key-do-not-use-in-prod")
@@ -41,40 +40,33 @@ async def test_get_settings_reencrypts_plain_llm_key(tmp_path, monkeypatch):
     await init_db()
     factory = get_session_factory()
     async with factory() as session:  # type: AsyncSession
-        user = User(
-            username="migrate_user",
-            password_hash="x",
-            settings_json=json.dumps({"llm_api_key": "sk-plain-legacy-key"}),
-        )
-        session.add(user)
+        state = await get_or_create_app_state(session)
+        state.settings_json = json.dumps({"llm_api_key": "sk-plain-legacy-key"})
         await session.commit()
-        await session.refresh(user)
-        uid = user.id
+        await session.refresh(state)
 
-        out = await get_settings(session, uid)
+        out = await get_settings(session)
         assert out.llm_configured is True
 
-        await session.refresh(user)
-        raw = json.loads(user.settings_json)
+        await session.refresh(state)
+        raw = json.loads(state.settings_json)
         assert is_encrypted_secret(raw.get("llm_api_key"))
         assert decrypt_secret(raw.get("llm_api_key")) == "sk-plain-legacy-key"
 
 
 def test_github_migrate_plaintext_pats():
-    from backend.api.github import _load_accounts, _migrate_plaintext_pats
     from backend.core.security import decrypt_secret
+    from backend.services.github_accounts import load_accounts, migrate_plaintext_pats
 
-    user = User(
-        id=uuid4(),
-        username="gh",
-        password_hash="x",
+    state = AppState(
+        id=1,
+        display_name="gh",
         github_accounts=json.dumps(
             [{"id": "1", "username": "octocat", "pat": "ghp_plain_token_xyz"}]
         ),
     )
-    assert _migrate_plaintext_pats(user) is True
-    accounts = _load_accounts(user)
+    assert migrate_plaintext_pats(state) is True
+    accounts = load_accounts(state)
     assert is_encrypted_secret(accounts[0]["pat"])
     assert decrypt_secret(accounts[0]["pat"]) == "ghp_plain_token_xyz"
-    # 二次迁移应 no-op
-    assert _migrate_plaintext_pats(user) is False
+    assert migrate_plaintext_pats(state) is False

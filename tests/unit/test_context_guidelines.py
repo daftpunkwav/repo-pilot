@@ -12,7 +12,6 @@ def test_build_system_prompt_injects_guidelines():
         soul={"core": "核心人格", "default": "默认风格"},
     )
     ctx = AgentRunContext(
-        user_id=uuid4(),
         session_id=uuid4(),
         agent_id="hub",
         db=None,  # type: ignore[arg-type]
@@ -29,6 +28,33 @@ def test_build_system_prompt_injects_guidelines():
     assert "优先调度 Mentor" in prompt
 
 
+def test_build_system_prompt_points_to_get_learner_info():
+    builder = ContextBuilder(db=None, memory=None)  # type: ignore[arg-type]
+    agent_def = SimpleNamespace(
+        system_prompt="你是测试 Agent。",
+        soul={"core": "核心人格", "default": "默认风格"},
+    )
+    ctx = AgentRunContext(
+        session_id=uuid4(),
+        agent_id="hub",
+        db=None,  # type: ignore[arg-type]
+        llm=None,  # type: ignore[arg-type]
+        llm_config=None,
+        memory=None,  # type: ignore[arg-type]
+        user_profile={
+            "identity": {"preferred_name": "阿城"},
+            "tech_proficiency": {"Python": {"level": "advanced"}},
+        },
+    )
+    prompt = builder.build_system_prompt(agent_def, ctx)
+    assert "## 学习者信息" in prompt
+    assert "get_learner_info" in prompt
+    assert "阿城" in prompt
+    # 默认不注入完整熟练度明细
+    assert '"level": "advanced"' not in prompt
+    assert "技术熟练度:" not in prompt
+
+
 def test_build_system_prompt_skips_empty_guidelines():
     builder = ContextBuilder(db=None, memory=None)  # type: ignore[arg-type]
     agent_def = SimpleNamespace(
@@ -36,7 +62,6 @@ def test_build_system_prompt_skips_empty_guidelines():
         soul={"core": "核心人格", "default": "默认风格"},
     )
     ctx = AgentRunContext(
-        user_id=uuid4(),
         session_id=uuid4(),
         agent_id="hub",
         db=None,  # type: ignore[arg-type]

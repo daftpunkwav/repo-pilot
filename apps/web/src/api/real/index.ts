@@ -1,12 +1,12 @@
 /**
- * RealApiClient ¡ª ÕæÊµºó¶Ë IApiClient ÊµÏÖ,°´ÒµÎñÓò²ð·ÖºóÍ¨¹ý 7 ¸ö Api ×ÓÀàÎ¯ÍÐ (¡ì4.2.17)
+ * RealApiClient ï¿½ï¿½ ï¿½ï¿½Êµï¿½ï¿½ï¿½ IApiClient Êµï¿½ï¿½,ï¿½ï¿½Òµï¿½ï¿½ï¿½ï¿½ï¿½Öºï¿½Í¨ï¿½ï¿½ 7 ï¿½ï¿½ Api ï¿½ï¿½ï¿½ï¿½Î¯ï¿½ï¿½ (ï¿½ï¿½4.2.17)
  *
- * Î¯ÍÐ(¶ø·Ç¼Ì³Ð)µÄºÃ´¦:
- *   1. Ã¿¸ö×ÓÓò¶ÀÁ¢Î¬»¤¡¢¿Éµ¥²â;Ö÷Ìå½ö±£Áô 7 ¸ö readonly Óò×Ö¶Î¡£
- *   2. ÀàÐÍ°²È«:methods Ö±½Ó×ª·¢µ½ `this.{auth,projects,...}`,
- *      TS ÔÚ±àÒëÆÚÑéÖ¤ IApiClient È«²¿Ç©Ãû(·ñÔò implements Ê§°Ü)¡£
- *   3. ¼æÈÝ IApiClient:`import { RealApiClient } from '@/api/real'` Â·¾¶¡¢
- *      `new RealApiClient()` ÐÎÌ¬¡¢`getApi().login(p)` µ÷ÓÃÈ«²¿²»±ä¡£
+ * Î¯ï¿½ï¿½(ï¿½ï¿½ï¿½Ç¼Ì³ï¿½)ï¿½ÄºÃ´ï¿½:
+ *   1. Ã¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î¬ï¿½ï¿½ï¿½ï¿½ï¿½Éµï¿½ï¿½ï¿½;ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 7 ï¿½ï¿½ readonly ï¿½ï¿½ï¿½Ö¶Î¡ï¿½
+ *   2. ï¿½ï¿½ï¿½Í°ï¿½È«:methods Ö±ï¿½ï¿½×ªï¿½ï¿½ï¿½ï¿½ `this.{auth,projects,...}`,
+ *      TS ï¿½Ú±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¤ IApiClient È«ï¿½ï¿½Ç©ï¿½ï¿½(ï¿½ï¿½ï¿½ï¿½ implements Ê§ï¿½ï¿½)ï¿½ï¿½
+ *   3. ï¿½ï¿½ï¿½ï¿½ IApiClient:`import { RealApiClient } from '@/api/real'` Â·ï¿½ï¿½ï¿½ï¿½
+ *      `new RealApiClient()` å®žä¾‹ï¼›`getApi().me()` ç­‰èµ°å…¨å±€å®¢æˆ·ç«¯ã€‚
  */
 import type { IApiClient } from '@/api/client';
 import {
@@ -18,7 +18,7 @@ import {
   ProjectsApi,
   SettingsApi,
 } from './domain';
-import { apiRequest, apiSSE, clearLegacyTokenStorage } from './http';
+import { apiRequest, apiSSE } from './http';
 
 export class RealApiClient implements IApiClient {
   readonly auth: AuthApi;
@@ -30,7 +30,7 @@ export class RealApiClient implements IApiClient {
   readonly agent: AgentApi;
 
   constructor() {
-    const ctx = { apiRequest, apiSSE, clearLegacyTokenStorage };
+    const ctx = { apiRequest, apiSSE };
     this.auth = new AuthApi(ctx);
     this.projects = new ProjectsApi(ctx);
     this.notes = new NotesApi(ctx);
@@ -40,14 +40,8 @@ export class RealApiClient implements IApiClient {
     this.agent = new AgentApi(ctx);
   }
 
-  // ------- Auth (11) -------
-  register(p: Parameters<IApiClient['register']>[0]) { return this.auth.register(p); }
-  login(p: Parameters<IApiClient['login']>[0]) { return this.auth.login(p); }
-  logout() { return this.auth.logout(); }
-  refresh() { return this.auth.refresh(); }
+  // ------- Local user / GitHub -------
   me() { return this.auth.me(); }
-  updateProfile(d: Parameters<IApiClient['updateProfile']>[0]) { return this.auth.updateProfile(d); }
-  changePassword(p: Parameters<IApiClient['changePassword']>[0]) { return this.auth.changePassword(p); }
   listGithubAccounts() { return this.auth.listGithubAccounts(); }
   bindGithub(p: Parameters<IApiClient['bindGithub']>[0]) { return this.auth.bindGithub(p); }
   unbindGithub(id: string) { return this.auth.unbindGithub(id); }

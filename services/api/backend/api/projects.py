@@ -1,5 +1,5 @@
 """
-项目管理 API —— CRUD、导入、进度、统计
+项目管理 API —— CRUD、导入、进度、统计（本地单机）
 """
 from urllib.parse import urlparse
 from uuid import UUID
@@ -7,10 +7,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.api.deps import get_current_user, get_db
+from backend.api.deps import get_db
 from backend.core.responses import wrap_data, wrap_paginated
 from backend.models.project import Project
-from backend.models.user import User
 from backend.schemas.common import DataResponse, PaginatedResponse
 from backend.schemas.project import (
     ImportProjectsBody,
@@ -23,10 +22,12 @@ from backend.schemas.project import (
     ProjectStats,
     ProjectUpdate,
 )
+from backend.services.app_state_service import get_or_create_app_state
 from backend.services.github_accounts import primary_token
 from backend.services.github_client import fetch_readme_text
 from backend.services.project_service import (
     build_project_from_create,
+    get_project,
     import_repos,
     list_user_projects,
     load_tags_map,
@@ -52,7 +53,6 @@ async def list_projects(
     progress: str = Query(""),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     kw = keyword or search
@@ -60,7 +60,6 @@ async def list_projects(
     sort_key = sort or sort_by
     items, total = await list_user_projects(
         db,
-        current_user.id,
         keyword=kw,
         lang=lg,
         star_min=star_min,
@@ -76,25 +75,25 @@ async def list_projects(
 
 
 @router.get("/stats", response_model=DataResponse[ProjectStats])
-async def get_stats(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    stats = await project_stats(db, current_user.id)
+async def get_stats(db: AsyncSession = Depends(get_db)):
+    stats = await project_stats(db)
     return wrap_data(stats)
 
 
 @router.post("/", response_model=DataResponse[ProjectOut])
 async def create_project(
     data: ProjectCreate,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    project = build_project_from_create(current_user.id, data)
+    project = build_project_from_create(data)
     db.add(project)
     await db.commit()
     await db.refresh(project)
-    return wrap_data(project_to_out(project, (await load_tags_map(db, [project.id])).get(project.id, [])))
+    return wrap_data(
+        project_to_out(
+            project, (await load_tags_map(db, [project.id])).get(project.id, [])
+        )
+    )
 
 
 def _parse_github_owner_repo(project: Project) -> tuple[str, str] | None:
@@ -119,32 +118,31 @@ def _parse_github_owner_repo(project: Project) -> tuple[str, str] | None:
 
 
 @router.get("/{project_id}", response_model=DataResponse[ProjectOut])
-async def get_project(
+async def get_project_api(
     project_id: UUID,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    project = await db.get(Project, project_id)
-    if not project or project.user_id != current_user.id:
+    project = await get_project(db, project_id)
+    if not project:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Project not found"},
         )
-    return wrap_data(project_to_out(project, (await load_tags_map(db, [project.id])).get(project.id, [])))
+    return wrap_data(
+        project_to_out(
+            project, (await load_tags_map(db, [project.id])).get(project.id, [])
+        )
+    )
 
 
 @router.get("/{project_id}/readme", response_model=DataResponse[ProjectReadmeOut])
 async def get_project_readme(
     project_id: UUID,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    按需从 GitHub 拉取项目 README。
-    使用用户绑定的 PAT（若有）以提高限额与私有仓可读性。
-    """
-    project = await db.get(Project, project_id)
-    if not project or project.user_id != current_user.id:
+    """按需从 GitHub 拉取项目 README。"""
+    project = await get_project(db, project_id)
+    if not project:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Project not found"},
@@ -159,8 +157,8 @@ async def get_project_readme(
             )
         )
     owner, repo = coords
-    _, token = primary_token(current_user)
-    # 迁移明文 PAT 时可能改了 user，需要落库
+    state = await get_or_create_app_state(db)
+    _, token = primary_token(state)
     await db.commit()
     try:
         text = await fetch_readme_text(owner, repo, token=token)
@@ -198,11 +196,10 @@ async def get_project_readme(
 async def update_project(
     project_id: UUID,
     data: ProjectUpdate,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    project = await db.get(Project, project_id)
-    if not project or project.user_id != current_user.id:
+    project = await get_project(db, project_id)
+    if not project:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Project not found"},
@@ -211,17 +208,20 @@ async def update_project(
         setattr(project, key, value)
     await db.commit()
     await db.refresh(project)
-    return wrap_data(project_to_out(project, (await load_tags_map(db, [project.id])).get(project.id, [])))
+    return wrap_data(
+        project_to_out(
+            project, (await load_tags_map(db, [project.id])).get(project.id, [])
+        )
+    )
 
 
 @router.delete("/{project_id}", response_model=DataResponse[dict])
 async def delete_project(
     project_id: UUID,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    project = await db.get(Project, project_id)
-    if not project or project.user_id != current_user.id:
+    project = await get_project(db, project_id)
+    if not project:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Project not found"},
@@ -234,10 +234,9 @@ async def delete_project(
 @router.post("/import", response_model=DataResponse[ImportResult])
 async def import_projects(
     body: ImportProjectsBody,
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await import_repos(db, current_user.id, body.repos)
+    result = await import_repos(db, body.repos)
     return wrap_data(result)
 
 
@@ -245,11 +244,10 @@ async def import_projects(
 async def update_progress(
     project_id: UUID,
     progress: ProjectProgress = Query(...),
-    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    project = await db.get(Project, project_id)
-    if not project or project.user_id != current_user.id:
+    project = await get_project(db, project_id)
+    if not project:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             detail={"code": "NOT_FOUND", "message": "Project not found"},

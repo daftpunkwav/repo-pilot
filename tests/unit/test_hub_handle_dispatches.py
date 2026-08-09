@@ -25,8 +25,8 @@ class FakeMemory:
     def __init__(self):
         self.short_memory_calls: list[dict] = []
 
-    async def append_short_memory(self, user_id, agent_id, payload: dict):
-        self.short_memory_calls.append({"user_id": user_id, "agent_id": agent_id, **payload})
+    async def append_short_memory(self, agent_id, payload: dict):
+        self.short_memory_calls.append({"agent_id": agent_id, **payload})
 
 
 def make_service(monkeypatch, *, run_agent_result: EngineResult | None = None):
@@ -54,7 +54,6 @@ def run_dispatches(service, dispatches, *, finalize=False, bag=None):
     async def iterate():
         async for c in service._handle_dispatches(
             dispatches=dispatches,
-            user=type("U", (), {"id": "u1"})(),
             session_id="s1",
             original_message="原始问题",
             llm=None,

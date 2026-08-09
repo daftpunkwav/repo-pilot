@@ -148,7 +148,7 @@ export function OverviewPage() {
 
   const username = user?.username ?? '同学';
   const heroLede = user
-    ? `上次登录 ${formatDateTime(user.created_at)} · GitHub 已绑定（@${user.github_login ?? 'unknown'}）`
+    ? `本地学习者 · 创建于 ${formatDateTime(user.created_at)} · GitHub 已绑定（@${user.github_login ?? 'unknown'}）`
     : `你的项目库有 ${total} 个项目等待探索`;
 
   const MIN_TREND_W = 38;

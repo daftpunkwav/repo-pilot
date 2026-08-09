@@ -37,6 +37,7 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
   const addToast = useUIStore((s) => s.addToast);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [refreshing, setRefreshing] = useState(false);
+  const [agentAvailable, setAgentAvailable] = useState(true);
   const [filters, setFilters] = useState<ImportRepoFilterState>(
     DEFAULT_IMPORT_REPO_FILTER
   );
@@ -60,6 +61,7 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
     if (!open) {
       setSelected(new Set());
       setFilters(DEFAULT_IMPORT_REPO_FILTER);
+      setAgentAvailable(true);
     }
   }, [open]);
 
@@ -191,21 +193,24 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
       title="同步 GitHub Stars"
       subtitle="左侧筛选并勾选仓库；右侧导入助手可自动勾选并说明推荐"
       agentPanel={
-        <EmbedAgentChat
-          mode="import"
-          title="导入助手"
-          subtitle="智能勾选 · 说明清单"
-          agentInitial="C"
-          agentClassName="agent-curator"
-          importContext={{
-            mode: 'stars',
-            available_repo_keys: repoKeys,
-            selected_repo_keys: [...selected],
-            available_repos: availableRepos,
-            imported_projects: importedProjects,
-          }}
-          onSelectRepos={applyAgentSelection}
-        />
+        agentAvailable ? (
+          <EmbedAgentChat
+            mode="import"
+            title="导入助手"
+            subtitle="智能勾选 · 说明清单"
+            agentInitial="C"
+            agentClassName="agent-curator"
+            importContext={{
+              mode: 'stars',
+              available_repo_keys: repoKeys,
+              selected_repo_keys: [...selected],
+              available_repos: availableRepos,
+              imported_projects: importedProjects,
+            }}
+            onSelectRepos={applyAgentSelection}
+            onUnavailable={() => setAgentAvailable(false)}
+          />
+        ) : undefined
       }
     >
       {!githubBound ? (

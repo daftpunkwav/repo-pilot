@@ -1,75 +1,18 @@
 """
-安全工具 —— JWT + 密码哈希 + 敏感字段 at-rest 加密
+安全工具 —— 敏感字段 at-rest 加密（Fernet）
+
+本地单机已移除 JWT / 密码哈希；保留 encrypt/decrypt 供 GitHub PAT、LLM Key 使用。
 """
 import base64
 import hashlib
-import secrets
-from datetime import datetime, timedelta
 from functools import lru_cache
-from typing import Optional
 
-import bcrypt
 from cryptography.fernet import Fernet, InvalidToken
-# §4.2.12: python-jose → pyjwt 迁移
-import jwt
-from jwt import PyJWTError as JWTError
 
 from backend.config import get_settings
 
-settings = get_settings()
-
 # 落库密文前缀；无此前缀视为历史明文（兼容旧数据）
 _SECRET_PREFIX = "enc:v1:"
-
-
-# bcrypt 仅使用前 72 字节；超长会静默截断，须在哈希前拒绝
-BCRYPT_MAX_PASSWORD_BYTES = 72
-
-
-def _password_bytes(password: str) -> bytes:
-    raw = password.encode("utf-8")
-    if len(raw) > BCRYPT_MAX_PASSWORD_BYTES:
-        raise ValueError(
-            f"密码编码后不得超过 {BCRYPT_MAX_PASSWORD_BYTES} 字节（bcrypt 限制）"
-        )
-    return raw
-
-
-def hash_password(password: str) -> str:
-    return bcrypt.hashpw(_password_bytes(password), bcrypt.gensalt()).decode("utf-8")
-
-
-def verify_password(password: str, hashed: str) -> bool:
-    try:
-        raw = _password_bytes(password)
-    except ValueError:
-        return False
-    return bcrypt.checkpw(raw, hashed.encode("utf-8"))
-
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (
-        expires_delta or timedelta(minutes=settings.access_token_expire_minutes)
-    )
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, settings.secret_key, algorithm="HS256")
-
-
-def decode_token(token: str) -> Optional[dict]:
-    try:
-        return jwt.decode(token, settings.secret_key, algorithms=["HS256"])
-    except JWTError:
-        return None
-
-
-def create_refresh_token_value() -> str:
-    """生成明文 refresh token（仅存哈希）。"""
-    return secrets.token_urlsafe(48)
-
-
-def hash_refresh_token(token: str) -> str:
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 @lru_cache(maxsize=8)

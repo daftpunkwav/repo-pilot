@@ -25,11 +25,8 @@ class MemoryService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_session(self, session_id: UUID, user_id: UUID) -> AgentSession | None:
-        session = await self.db.get(AgentSession, session_id)
-        if not session or session.user_id != user_id:
-            return None
-        return session
+    async def get_session(self, session_id: UUID) -> AgentSession | None:
+        return await self.db.get(AgentSession, session_id)
 
     async def list_recent_messages(
         self, session_id: UUID, limit: int = 30
@@ -44,14 +41,14 @@ class MemoryService:
         msgs.reverse()
         return msgs
 
-    async def get_user_profile_dict(self, user_id: UUID) -> dict[str, Any]:
-        row = await get_or_create_profile(self.db, user_id)
+    async def get_user_profile_dict(self) -> dict[str, Any]:
+        row = await get_or_create_profile(self.db)
         out = profile_to_out(row)
         return out.model_dump()
 
-    async def get_short_memory(self, user_id: UUID, agent_id: str) -> list[dict]:
+    async def get_short_memory(self, agent_id: str) -> list[dict]:
         """Agent 私有短期记忆（存于 user_profiles.agent_prefs）。"""
-        row = await get_or_create_profile(self.db, user_id)
+        row = await get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         short = prefs.get("short_memory", {})
         if not isinstance(short, dict):
@@ -60,9 +57,9 @@ class MemoryService:
         return items if isinstance(items, list) else []
 
     async def append_short_memory(
-        self, user_id: UUID, agent_id: str, entry: dict[str, Any], max_items: int = 12
+        self, agent_id: str, entry: dict[str, Any], max_items: int = 12
     ) -> None:
-        row = await get_or_create_profile(self.db, user_id)
+        row = await get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         if not isinstance(prefs, dict):
             prefs = {}
@@ -76,15 +73,14 @@ class MemoryService:
         row.agent_prefs = json.dumps(prefs, ensure_ascii=False)
         await self.db.commit()
 
-    async def get_long_memory(self, user_id: UUID) -> list[dict]:
-        row = await get_or_create_profile(self.db, user_id)
+    async def get_long_memory(self) -> list[dict]:
+        row = await get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         items = prefs.get("memory_items", []) if isinstance(prefs, dict) else []
         return items if isinstance(items, list) else []
 
     async def propose_memory(
         self,
-        user_id: UUID,
         *,
         agent_id: str,
         value: str,
@@ -115,16 +111,16 @@ class MemoryService:
             return {**proposal, "status": "rejected", "applied": False, "error": "empty"}
 
         if not apply:
-            await self._enqueue_pending_proposal(user_id, proposal)
+            await self._enqueue_pending_proposal(proposal)
             return {**proposal, "status": "pending", "applied": False}
 
-        await self._apply_proposal(user_id, proposal)
+        await self._apply_proposal(proposal)
         return {**proposal, "status": "applied", "applied": True}
 
     async def _enqueue_pending_proposal(
-        self, user_id: UUID, proposal: dict[str, Any]
+        self, proposal: dict[str, Any]
     ) -> None:
-        row = await get_or_create_profile(self.db, user_id)
+        row = await get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         if not isinstance(prefs, dict):
             prefs = {}
@@ -142,10 +138,10 @@ class MemoryService:
         await self.db.commit()
 
     async def accept_memory_proposal(
-        self, user_id: UUID, proposal_id: str
+        self, proposal_id: str
     ) -> dict[str, Any]:
         """用户确认后合并提案。"""
-        row = await get_or_create_profile(self.db, user_id)
+        row = await get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         if not isinstance(prefs, dict):
             prefs = {}
@@ -162,14 +158,14 @@ class MemoryService:
         prefs["pending_memory_proposals"] = rest
         row.agent_prefs = json.dumps(prefs, ensure_ascii=False)
         await self.db.commit()
-        await self._apply_proposal(user_id, found)
+        await self._apply_proposal(found)
         return {"ok": True, "applied": True, "proposal": found}
 
     async def reject_memory_proposal(
-        self, user_id: UUID, proposal_id: str
+        self, proposal_id: str
     ) -> dict[str, Any]:
         """用户拒绝提案。"""
-        row = await get_or_create_profile(self.db, user_id)
+        row = await get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         if not isinstance(prefs, dict):
             prefs = {}
@@ -186,17 +182,17 @@ class MemoryService:
         await self.db.commit()
         return {"ok": True, "applied": False}
 
-    async def _apply_proposal(self, user_id: UUID, proposal: dict[str, Any]) -> None:
+    async def _apply_proposal(self, proposal: dict[str, Any]) -> None:
         kind = str(proposal.get("kind") or "long_memory")
         if kind == "long_memory":
-            await self._merge_long_memory(user_id, proposal)
+            await self._merge_long_memory(proposal)
         elif kind == "profile_tech":
-            await self._merge_tech_profile(user_id, proposal)
+            await self._merge_tech_profile(proposal)
         elif kind == "preference":
-            await self._merge_preference(user_id, proposal)
+            await self._merge_preference(proposal)
 
-    async def _merge_long_memory(self, user_id: UUID, proposal: dict) -> None:
-        row = await get_or_create_profile(self.db, user_id)
+    async def _merge_long_memory(self, proposal: dict) -> None:
+        row = await get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         if not isinstance(prefs, dict):
             prefs = {}
@@ -237,9 +233,9 @@ class MemoryService:
             row.history_summary = value[:200]
         await self.db.commit()
 
-    async def _merge_tech_profile(self, user_id: UUID, proposal: dict) -> None:
+    async def _merge_tech_profile(self, proposal: dict) -> None:
         """技术熟练度：证据加权，并同步到侧栏 tech memory_items。"""
-        row = await get_or_create_profile(self.db, user_id)
+        row = await get_or_create_profile(self.db)
         tech = self._parse(row.tech_profile, {})
         if not isinstance(tech, dict):
             tech = {}
@@ -296,8 +292,8 @@ class MemoryService:
         row.agent_prefs = json.dumps(prefs, ensure_ascii=False)
         await self.db.commit()
 
-    async def _merge_preference(self, user_id: UUID, proposal: dict) -> None:
-        row = await get_or_create_profile(self.db, user_id)
+    async def _merge_preference(self, proposal: dict) -> None:
+        row = await get_or_create_profile(self.db)
         prefs_data = self._parse(row.preferences, {})
         if not isinstance(prefs_data, dict):
             prefs_data = {}

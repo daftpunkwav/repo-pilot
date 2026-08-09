@@ -27,12 +27,8 @@ async function main() {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
 
-  // Mock login: set token + reload
-  await page.goto(`${BASE_URL}/login`);
-  await page.evaluate(() => {
-    localStorage.setItem('rp_token', 'demo');
-    localStorage.setItem('rp_refresh', 'demo');
-  });
+  // 本地单机：直接进入目标页
+  await page.goto(`${BASE_URL}/`);
 
   for (const shot of shots) {
     await page.goto(`${BASE_URL}${shot.path}`);

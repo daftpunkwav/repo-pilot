@@ -1,74 +1,14 @@
 /**
- * Auth ”Ú °™ register / login / logout / refresh / me / profile / GitHub ’À∫≈ / Stars
- * ∂‘”¶ IApiClient µƒ«∞ 11 ∏ˆ∑Ω∑®
+ * Êú¨Êú∫Ë∫´‰ªΩ / GitHub ‚Äî‚Äî me / GitHub Ë¥¶Âè∑ / Stars
  */
-import type { ApiResponse, GitHubAccount, LoginResponse, StarsListResult, User } from '@/api/types';
+import type { ApiResponse, GitHubAccount, StarsListResult, User } from '@/api/types';
 import type { HttpCtx } from './http-ctx';
 
 export class AuthApi {
   constructor(private readonly ctx: HttpCtx) {}
 
-  async register(params: { username: string; password: string }): Promise<ApiResponse<LoginResponse>> {
-    const res = await this.ctx.apiRequest<LoginResponse>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(params),
-    });
-    // ∆æ÷§”…∑˛ŒÒ∂À Set-Cookie (httpOnly);«Â¿Ì¿˙ ∑ localStorage
-    this.ctx.clearLegacyTokenStorage();
-    return res;
-  }
-
-  async login(params: { username: string; password: string }): Promise<ApiResponse<LoginResponse>> {
-    const res = await this.ctx.apiRequest<LoginResponse>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(params),
-    });
-    this.ctx.clearLegacyTokenStorage();
-    return res;
-  }
-
-  async logout(): Promise<ApiResponse<{ success: boolean }>> {
-    try {
-      // Cookie ÷–µƒ refresh ”…∑˛ŒÒ∂À∂¡»°≤¢µıœ˙
-      await this.ctx.apiRequest('/auth/logout', {
-        method: 'POST',
-        body: JSON.stringify({}),
-      });
-    } finally {
-      this.ctx.clearLegacyTokenStorage();
-    }
-    return { data: { success: true }, meta: { ts: Date.now() } };
-  }
-
-  async refresh(): Promise<ApiResponse<{ access_token: string; refresh_token?: string }>> {
-    const res = await this.ctx.apiRequest<{ access_token: string; refresh_token?: string }>(
-      '/auth/refresh',
-      {
-        method: 'POST',
-        body: JSON.stringify({}),
-      }
-    );
-    this.ctx.clearLegacyTokenStorage();
-    return res;
-  }
-
   async me(): Promise<ApiResponse<User>> {
-    return this.ctx.apiRequest<User>('/auth/me');
-  }
-
-  async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
-    return this.ctx.apiRequest<User>('/auth/me', {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async changePassword(params: { old_password: string; new_password: string }): Promise<ApiResponse<{ success: boolean }>> {
-    await this.ctx.apiRequest('/auth/password', {
-      method: 'PUT',
-      body: JSON.stringify(params),
-    });
-    return { data: { success: true }, meta: { ts: Date.now() } };
+    return this.ctx.apiRequest<User>('/user/me');
   }
 
   async listGithubAccounts(): Promise<ApiResponse<GitHubAccount[]>> {

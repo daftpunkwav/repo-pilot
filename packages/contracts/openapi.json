@@ -5,300 +5,6 @@
     "version": "2.0.0"
   },
   "paths": {
-    "/api/v1/auth/register": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Register",
-        "operationId": "register_api_v1_auth_register_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DataResponse_TokenOut_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/login": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Login",
-        "operationId": "login_api_v1_auth_login_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserLogin"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DataResponse_TokenOut_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/refresh": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Refresh",
-        "operationId": "refresh_api_v1_auth_refresh_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/RefreshBody"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Data"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DataResponse_AccessTokenOut_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/logout": {
-      "post": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Logout",
-        "operationId": "logout_api_v1_auth_logout_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/LogoutBody"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "title": "Data"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DataResponse_OkData_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/auth/me": {
-      "get": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Get Me",
-        "operationId": "get_me_api_v1_auth_me_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DataResponse_UserOut_"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
-      },
-      "patch": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Update Me",
-        "operationId": "update_me_api_v1_auth_me_patch",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DataResponse_UserOut_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
-      }
-    },
-    "/api/v1/auth/password": {
-      "put": {
-        "tags": [
-          "auth"
-        ],
-        "summary": "Update Password",
-        "operationId": "update_password_api_v1_auth_password_put",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PasswordUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DataResponse_OkData_"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
-      }
-    },
     "/api/v1/projects/": {
       "get": {
         "tags": [
@@ -306,11 +12,6 @@
         ],
         "summary": "List Projects",
         "operationId": "list_projects_api_v1_projects__get",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "keyword",
@@ -495,11 +196,6 @@
         ],
         "summary": "Create Project",
         "operationId": "create_project_api_v1_projects__post",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -552,12 +248,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/projects/{project_id}": {
@@ -565,13 +256,8 @@
         "tags": [
           "projects"
         ],
-        "summary": "Get Project",
-        "operationId": "get_project_api_v1_projects__project_id__get",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
+        "summary": "Get Project Api",
+        "operationId": "get_project_api_api_v1_projects__project_id__get",
         "parameters": [
           {
             "name": "project_id",
@@ -613,11 +299,6 @@
         ],
         "summary": "Update Project",
         "operationId": "update_project_api_v1_projects__project_id__put",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "project_id",
@@ -669,11 +350,6 @@
         ],
         "summary": "Delete Project",
         "operationId": "delete_project_api_v1_projects__project_id__delete",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "project_id",
@@ -716,13 +392,8 @@
           "projects"
         ],
         "summary": "Get Project Readme",
-        "description": "按需从 GitHub 拉取项目 README。\n使用用户绑定的 PAT（若有）以提高限额与私有仓可读性。",
+        "description": "按需从 GitHub 拉取项目 README。",
         "operationId": "get_project_readme_api_v1_projects__project_id__readme_get",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "project_id",
@@ -797,12 +468,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/projects/{project_id}/progress": {
@@ -812,11 +478,6 @@
         ],
         "summary": "Update Progress",
         "operationId": "update_progress_api_v1_projects__project_id__progress_put",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "project_id",
@@ -886,12 +547,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       },
       "post": {
         "tags": [
@@ -930,12 +586,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/categories/{category_id}": {
@@ -945,11 +596,6 @@
         ],
         "summary": "Update Category",
         "operationId": "update_category_api_v1_categories__category_id__put",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "category_id",
@@ -1001,11 +647,6 @@
         ],
         "summary": "Delete Category",
         "operationId": "delete_category_api_v1_categories__category_id__delete",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "category_id",
@@ -1060,12 +701,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/notes/projects/{project_id}/notes": {
@@ -1075,11 +711,6 @@
         ],
         "summary": "List Notes",
         "operationId": "list_notes_api_v1_notes_projects__project_id__notes_get",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "project_id",
@@ -1121,11 +752,6 @@
         ],
         "summary": "Create Note",
         "operationId": "create_note_api_v1_notes_projects__project_id__notes_post",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "project_id",
@@ -1179,11 +805,6 @@
         ],
         "summary": "Get Note",
         "operationId": "get_note_api_v1_notes__note_id__get",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "note_id",
@@ -1225,11 +846,6 @@
         ],
         "summary": "Update Note",
         "operationId": "update_note_api_v1_notes__note_id__put",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "note_id",
@@ -1281,11 +897,6 @@
         ],
         "summary": "Delete Note",
         "operationId": "delete_note_api_v1_notes__note_id__delete",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "note_id",
@@ -1329,11 +940,6 @@
         ],
         "summary": "Get Graph",
         "operationId": "get_graph_api_v1_graph__get",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "min_similarity",
@@ -1402,12 +1008,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       },
       "post": {
         "tags": [
@@ -1446,12 +1047,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/tags/{tag_id}": {
@@ -1461,11 +1057,6 @@
         ],
         "summary": "Delete Tag Api",
         "operationId": "delete_tag_api_api_v1_tags__tag_id__delete",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "tag_id",
@@ -1509,11 +1100,6 @@
         ],
         "summary": "Set Project Tags Api",
         "operationId": "set_project_tags_api_api_v1_tags_projects__project_id__put",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "project_id",
@@ -1578,12 +1164,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/overview/recent-notes": {
@@ -1593,11 +1174,6 @@
         ],
         "summary": "Get Recent Notes",
         "operationId": "get_recent_notes_api_v1_overview_recent_notes_get",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "limit",
@@ -1643,11 +1219,6 @@
         ],
         "summary": "Get Recommended",
         "operationId": "get_recommended_api_v1_overview_recommended_get",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "limit",
@@ -1739,6 +1310,28 @@
         }
       }
     },
+    "/api/v1/user/me": {
+      "get": {
+        "tags": [
+          "user"
+        ],
+        "summary": "Get Me",
+        "description": "返回本机身份（从 AppState.display_name / GitHub 绑定状态）。",
+        "operationId": "get_me_api_v1_user_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_UserOut_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/user/profile": {
       "get": {
         "tags": [
@@ -1757,12 +1350,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       },
       "patch": {
         "tags": [
@@ -1801,12 +1389,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/user/profile/clear-memory": {
@@ -1815,7 +1398,7 @@
           "user"
         ],
         "summary": "Clear Memory",
-        "description": "清除 Agent 关于用户的画像记忆（不删除对话会话）。",
+        "description": "清除 Agent 关于学习者的画像记忆（不删除对话会话；保留自填 identity）。",
         "operationId": "clear_memory_api_v1_user_profile_clear_memory_post",
         "responses": {
           "200": {
@@ -1828,12 +1411,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/user/profile/memory-proposals/{proposal_id}/accept": {
@@ -1844,11 +1422,6 @@
         "summary": "Accept Memory Proposal",
         "description": "确认并写入一条待处理记忆提案。",
         "operationId": "accept_memory_proposal_api_v1_user_profile_memory_proposals__proposal_id__accept_post",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "proposal_id",
@@ -1892,11 +1465,6 @@
         "summary": "Reject Memory Proposal",
         "description": "拒绝一条待处理记忆提案。",
         "operationId": "reject_memory_proposal_api_v1_user_profile_memory_proposals__proposal_id__reject_post",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "proposal_id",
@@ -1950,12 +1518,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       },
       "post": {
         "tags": [
@@ -1974,12 +1537,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/agent/sessions/{session_id}": {
@@ -1989,11 +1547,6 @@
         ],
         "summary": "Get Agent Session",
         "operationId": "get_agent_session_api_v1_agent_sessions__session_id__get",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "session_id",
@@ -2035,11 +1588,6 @@
         ],
         "summary": "Delete Agent Session",
         "operationId": "delete_agent_session_api_v1_agent_sessions__session_id__delete",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "session_id",
@@ -2081,11 +1629,6 @@
         ],
         "summary": "Patch Agent Session",
         "operationId": "patch_agent_session_api_v1_agent_sessions__session_id__patch",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "session_id",
@@ -2139,11 +1682,6 @@
         ],
         "summary": "Chat In Session",
         "operationId": "chat_in_session_api_v1_agent_sessions__session_id__chat_post",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "session_id",
@@ -2224,12 +1762,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/agent/question": {
@@ -2239,11 +1772,6 @@
         ],
         "summary": "Answer Question",
         "operationId": "answer_question_api_v1_agent_question_post",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "session_id",
@@ -2304,11 +1832,6 @@
         ],
         "summary": "Analyze Project",
         "operationId": "analyze_project_api_v1_agent_analyze__project_id__post",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "project_id",
@@ -2396,12 +1919,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/agent/graph-guide": {
@@ -2440,12 +1958,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/agent/trending-scout": {
@@ -2484,12 +1997,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/agent/classify": {
@@ -2528,12 +2036,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/agent/note/generate": {
@@ -2572,12 +2075,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/agent/profiles": {
@@ -2619,19 +2117,14 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       },
       "patch": {
         "tags": [
           "agent"
         ],
         "summary": "Patch Permissions",
-        "description": "更新当前用户 Agent 工具权限（敏感能力开关）。",
+        "description": "更新本机 Agent 工具权限（敏感能力开关）。",
         "operationId": "patch_permissions_api_v1_agent_permissions_patch",
         "requestBody": {
           "content": {
@@ -2664,12 +2157,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/agent/context-window": {
@@ -2679,11 +2167,6 @@
         ],
         "summary": "Context Window",
         "operationId": "context_window_api_v1_agent_context_window_get",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "session_id",
@@ -2745,12 +2228,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/github/stars": {
@@ -2759,13 +2237,8 @@
           "github"
         ],
         "summary": "Get Stars",
-        "description": "拉取用户全部 Stars（分页聚合）。\n默认使用 6 小时缓存；?refresh=true 强制更新。",
+        "description": "拉取全部 Stars；默认 6 小时缓存。",
         "operationId": "get_stars_api_v1_github_stars_get",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "username",
@@ -2858,12 +2331,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/github/accounts/{account_id}": {
@@ -2873,11 +2341,6 @@
         ],
         "summary": "Unbind Account",
         "operationId": "unbind_account_api_v1_github_accounts__account_id__delete",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "account_id",
@@ -2920,11 +2383,6 @@
         ],
         "summary": "Search Repos",
         "operationId": "search_repos_api_v1_github_search_get",
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "q",
@@ -2979,12 +2437,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       },
       "put": {
         "tags": [
@@ -3023,12 +2476,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/settings/test-llm": {
@@ -3077,12 +2525,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/v1/settings/api-key": {
@@ -3124,17 +2567,13 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "OptionalAuthBearer": []
-          }
-        ]
+        }
       }
     },
     "/health": {
       "get": {
         "summary": "Health",
+        "description": "健康检查：返回各模块加载状态。",
         "operationId": "health_health_get",
         "responses": {
           "200": {
@@ -3151,29 +2590,6 @@
   },
   "components": {
     "schemas": {
-      "AccessTokenOut": {
-        "properties": {
-          "access_token": {
-            "type": "string",
-            "title": "Access Token"
-          },
-          "refresh_token": {
-            "type": "string",
-            "title": "Refresh Token"
-          },
-          "token_type": {
-            "type": "string",
-            "title": "Token Type",
-            "default": "bearer"
-          }
-        },
-        "type": "object",
-        "required": [
-          "access_token",
-          "refresh_token"
-        ],
-        "title": "AccessTokenOut"
-      },
       "ActivityItemOut": {
         "properties": {
           "id": {
@@ -4076,23 +3492,6 @@
         ],
         "title": "ContextWindowStatsOut"
       },
-      "DataResponse_AccessTokenOut_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/AccessTokenOut"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Meta"
-          }
-        },
-        "type": "object",
-        "required": [
-          "data"
-        ],
-        "title": "DataResponse[AccessTokenOut]"
-      },
       "DataResponse_AgentPermissionsOut_": {
         "properties": {
           "data": {
@@ -4263,23 +3662,6 @@
         ],
         "title": "DataResponse[NoteOut]"
       },
-      "DataResponse_OkData_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/OkData"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Meta"
-          }
-        },
-        "type": "object",
-        "required": [
-          "data"
-        ],
-        "title": "DataResponse[OkData]"
-      },
       "DataResponse_ProgressUpdateOut_": {
         "properties": {
           "data": {
@@ -4415,23 +3797,6 @@
           "data"
         ],
         "title": "DataResponse[TagOut]"
-      },
-      "DataResponse_TokenOut_": {
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/TokenOut"
-          },
-          "meta": {
-            "additionalProperties": true,
-            "type": "object",
-            "title": "Meta"
-          }
-        },
-        "type": "object",
-        "required": [
-          "data"
-        ],
-        "title": "DataResponse[TokenOut]"
       },
       "DataResponse_UserOut_": {
         "properties": {
@@ -4919,6 +4284,193 @@
         ],
         "title": "ImportResult"
       },
+      "LearnerIdentityOut": {
+        "properties": {
+          "preferred_name": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Preferred Name",
+            "description": "Agent 称呼",
+            "default": ""
+          },
+          "spoken_languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Spoken Languages",
+            "description": "熟练的自然语言，如 中文 / English"
+          },
+          "programming_languages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Programming Languages",
+            "description": "熟练的编程语言"
+          },
+          "tech_stack": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tech Stack",
+            "description": "常用框架 / 工具 / 技术栈"
+          },
+          "interests": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Interests",
+            "description": "学习兴趣与方向"
+          },
+          "occupation": {
+            "type": "string",
+            "maxLength": 64,
+            "title": "Occupation",
+            "description": "身份或职业",
+            "default": ""
+          },
+          "experience_level": {
+            "type": "string",
+            "enum": [
+              "",
+              "beginner",
+              "intermediate",
+              "advanced"
+            ],
+            "title": "Experience Level",
+            "description": "整体经验水平",
+            "default": ""
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 500,
+            "title": "Bio",
+            "description": "一句话简介",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "LearnerIdentityOut",
+        "description": "本机学习者主动填写的身份信息（供 Agent 按需读取）。"
+      },
+      "LearnerIdentityUpdate": {
+        "properties": {
+          "preferred_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferred Name"
+          },
+          "spoken_languages": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spoken Languages"
+          },
+          "programming_languages": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Programming Languages"
+          },
+          "tech_stack": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tech Stack"
+          },
+          "interests": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interests"
+          },
+          "occupation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occupation"
+          },
+          "experience_level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "",
+                  "beginner",
+                  "intermediate",
+                  "advanced"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Experience Level"
+          },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          }
+        },
+        "type": "object",
+        "title": "LearnerIdentityUpdate"
+      },
       "LlmTestIn": {
         "properties": {
           "model": {
@@ -4975,23 +4527,6 @@
           "model"
         ],
         "title": "LlmTestOut"
-      },
-      "LogoutBody": {
-        "properties": {
-          "refresh_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Refresh Token"
-          }
-        },
-        "type": "object",
-        "title": "LogoutBody"
       },
       "MemoryItemOut": {
         "properties": {
@@ -5240,17 +4775,6 @@
         "type": "object",
         "title": "NoteUpdate"
       },
-      "OkData": {
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "title": "Success",
-            "default": true
-          }
-        },
-        "type": "object",
-        "title": "OkData"
-      },
       "OverviewRecentNoteOut": {
         "properties": {
           "id": {
@@ -5331,26 +4855,6 @@
           "data"
         ],
         "title": "PaginatedResponse[ProjectOut]"
-      },
-      "PasswordUpdate": {
-        "properties": {
-          "old_password": {
-            "type": "string",
-            "title": "Old Password"
-          },
-          "new_password": {
-            "type": "string",
-            "maxLength": 72,
-            "minLength": 8,
-            "title": "New Password"
-          }
-        },
-        "type": "object",
-        "required": [
-          "old_password",
-          "new_password"
-        ],
-        "title": "PasswordUpdate"
       },
       "ProgressUpdateOut": {
         "properties": {
@@ -5852,24 +5356,6 @@
           "reason"
         ],
         "title": "RecommendedProjectOut"
-      },
-      "RefreshBody": {
-        "properties": {
-          "refresh_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Refresh Token"
-          }
-        },
-        "type": "object",
-        "title": "RefreshBody",
-        "description": "refresh_token 可选：浏览器可仅依赖 httpOnly Cookie。"
       },
       "SessionUpdateBody": {
         "properties": {
@@ -6408,33 +5894,6 @@
         ],
         "title": "TagOut"
       },
-      "TokenOut": {
-        "properties": {
-          "access_token": {
-            "type": "string",
-            "title": "Access Token"
-          },
-          "refresh_token": {
-            "type": "string",
-            "title": "Refresh Token"
-          },
-          "token_type": {
-            "type": "string",
-            "title": "Token Type",
-            "default": "bearer"
-          },
-          "user": {
-            "$ref": "#/components/schemas/UserOut"
-          }
-        },
-        "type": "object",
-        "required": [
-          "access_token",
-          "refresh_token",
-          "user"
-        ],
-        "title": "TokenOut"
-      },
       "TrendingRepoOut": {
         "properties": {
           "owner": {
@@ -6579,97 +6038,15 @@
         "type": "object",
         "title": "TrendingScoutBody"
       },
-      "UserCreate": {
-        "properties": {
-          "username": {
-            "type": "string",
-            "maxLength": 32,
-            "minLength": 3,
-            "title": "Username"
-          },
-          "password": {
-            "type": "string",
-            "maxLength": 72,
-            "minLength": 8,
-            "title": "Password"
-          },
-          "email": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "email"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email"
-          }
-        },
-        "type": "object",
-        "required": [
-          "username",
-          "password"
-        ],
-        "title": "UserCreate"
-      },
-      "UserLogin": {
-        "properties": {
-          "username": {
-            "type": "string",
-            "title": "Username"
-          },
-          "password": {
-            "type": "string",
-            "maxLength": 72,
-            "minLength": 8,
-            "title": "Password"
-          },
-          "remember_me": {
-            "type": "boolean",
-            "title": "Remember Me",
-            "default": false
-          }
-        },
-        "type": "object",
-        "required": [
-          "username",
-          "password"
-        ],
-        "title": "UserLogin"
-      },
       "UserOut": {
         "properties": {
           "id": {
             "type": "string",
-            "format": "uuid",
             "title": "Id"
           },
           "username": {
             "type": "string",
             "title": "Username"
-          },
-          "email": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email"
-          },
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
           },
           "github_login": {
             "anyOf": [
@@ -6705,10 +6082,14 @@
           "id",
           "username"
         ],
-        "title": "UserOut"
+        "title": "UserOut",
+        "description": "本机身份；id 固定为字符串 local（非 UUID）。"
       },
       "UserProfileOut": {
         "properties": {
+          "identity": {
+            "$ref": "#/components/schemas/LearnerIdentityOut"
+          },
           "tech_proficiency": {
             "additionalProperties": true,
             "type": "object",
@@ -6756,6 +6137,16 @@
       },
       "UserProfileUpdate": {
         "properties": {
+          "identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LearnerIdentityUpdate"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "tech_proficiency": {
             "anyOf": [
               {
@@ -6835,35 +6226,6 @@
         "type": "object",
         "title": "UserProfileUpdate"
       },
-      "UserUpdate": {
-        "properties": {
-          "email": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "email"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email"
-          },
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
-          }
-        },
-        "type": "object",
-        "title": "UserUpdate"
-      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -6903,12 +6265,6 @@
           "type"
         ],
         "title": "ValidationError"
-      }
-    },
-    "securitySchemes": {
-      "OptionalAuthBearer": {
-        "type": "http",
-        "scheme": "bearer"
       }
     }
   }
