@@ -47,7 +47,7 @@ async def test_get_settings_default(db_session):
 async def test_save_api_key_encrypts_and_masks(db_session):
     """save_llm_api_key 加密落库，输出仅是 mask。"""
     session = db_session
-    mask = await save_llm_api_key(session, "sk-abc1234567890xyz")
+    mask, _provider_id = await save_llm_api_key(session, "sk-abc1234567890xyz")
     assert mask and "****" in mask
     assert "sk-abc1234567890xyz" not in mask
     import json as _json

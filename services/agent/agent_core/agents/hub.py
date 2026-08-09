@@ -1570,7 +1570,13 @@ class HubService:
         from dataclasses import replace
 
         agent_def = self.registry.get(agent_id)
-        # per-agent model override
+        # per-agent provider + model
+        from agent_core.llm.config import build_llm_config_from_settings
+
+        agent_cfg = build_llm_config_from_settings(raw_settings, agent_id=agent_id)
+        agent_llm = LLMProvider(agent_cfg) if agent_cfg else llm
+        effective_config = agent_cfg or llm_config
+
         override = get_agent_model_override(raw_settings, agent_id)
         if override:
             agent_def = replace(agent_def, model_override=override)
@@ -1587,8 +1593,8 @@ class HubService:
         ctx = await self.context_builder.build_run_context(
                         session_id=session_id,
             agent_id=agent_id,
-            llm=llm,
-            llm_config=llm_config,
+            llm=agent_llm,
+            llm_config=effective_config,
             project_id=project_id,
             speaking_style=style,
             permissions=permissions,

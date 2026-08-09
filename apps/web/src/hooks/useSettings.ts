@@ -7,6 +7,7 @@ export function useSettings() {
   const isLoading = useSettingsStore((s) => s.isLoading);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const updateSettings = useSettingsStore((s) => s.updateSettings);
+  const saveLlmApiKey = useSettingsStore((s) => s.saveLlmApiKey);
   const testLLM = useSettingsStore((s) => s.testLLM);
   const isTestingLLM = useSettingsStore((s) => s.isTestingLLM);
   const testResult = useSettingsStore((s) => s.testResult);
@@ -20,6 +21,7 @@ export function useSettings() {
     isLoading,
     loadSettings,
     updateSettings,
+    saveLlmApiKey,
     testLLM,
     isTestingLLM,
     testResult,

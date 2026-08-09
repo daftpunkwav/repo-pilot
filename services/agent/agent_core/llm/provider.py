@@ -83,13 +83,23 @@ class LLMProvider:
         }
         api_base = self.config.normalized_api_base()
         if api_base:
-            # 出站前二次 SSRF 校验（DNS TOCTOU：保存时安全不代表请求时仍安全）
-            from backend.core.url_safety import assert_safe_outbound_https_url
+            fmt = (self.config.api_format or "openai").lower()
+            # Ollama 本机：跳过公网 HTTPS SSRF 校验
+            from urllib.parse import urlparse
 
-            try:
-                api_base = assert_safe_outbound_https_url(api_base)
-            except ValueError as exc:
-                raise RuntimeError(f"LLM_API_BASE_BLOCKED: {exc}") from exc
+            host = (urlparse(api_base).hostname or "").lower()
+            is_local_ollama = fmt == "ollama" and host in (
+                "localhost",
+                "127.0.0.1",
+                "::1",
+            )
+            if not is_local_ollama:
+                from backend.core.url_safety import assert_safe_outbound_https_url
+
+                try:
+                    api_base = assert_safe_outbound_https_url(api_base)
+                except ValueError as exc:
+                    raise RuntimeError(f"LLM_API_BASE_BLOCKED: {exc}") from exc
             if api_base:
                 kw["api_base"] = api_base
         # 按前缀显式指定 provider，避免 LiteLLM 无法识别自定义端点
@@ -190,14 +200,17 @@ class LLMProvider:
         if not text and reasoning and not tool_calls:
             text = reasoning
             kept_reasoning = ""
-        usage = {}
-        if getattr(resp, "usage", None):
-            usage = {
-                "prompt_tokens": getattr(resp.usage, "prompt_tokens", 0) or 0,
-                "completion_tokens": getattr(resp.usage, "completion_tokens", 0) or 0,
-                "total_tokens": getattr(resp.usage, "total_tokens", 0) or 0,
-            }
-        _maybe_record_usage(usage, model=call_kw.get("model") or "")
+        usage = _normalize_usage(getattr(resp, "usage", None))
+        record_model = (
+            (self.config.model if self.config else "")
+            or call_kw.get("model")
+            or ""
+        )
+        _maybe_record_usage(
+            usage,
+            model=record_model,
+            provider=(self.config.provider if self.config else "") or "",
+        )
         return LLMCompleteResult(
             text=text,
             tool_calls=tool_calls,
@@ -212,6 +225,7 @@ class LLMProvider:
 
     async def _stream(self, litellm: Any, call_kw: dict) -> AsyncIterator[LLMChunk]:
         call_kw["stream"] = True
+        provider_name = (self.config.provider if self.config else "") or ""
         if call_kw.get("tools"):
             result = await self._complete_once(litellm, {**call_kw, "stream": False})
             if result.tool_calls:
@@ -221,27 +235,45 @@ class LLMProvider:
                 step = 24
                 for i in range(0, len(result.text), step):
                     yield LLMChunk(type="text", text=result.text[i : i + step])
-            _maybe_record_usage(result.usage, model=call_kw.get("model") or "")
+            # _complete_once 已落库，此处不再重复
             yield LLMChunk(type="done", usage=result.usage)
             return
 
         try:
             import asyncio
 
+            # OpenAI 兼容流式：请求最终 chunk 带 usage
+            fmt = (self.config.api_format if self.config else "openai") or "openai"
+            if fmt in ("openai", "custom", "ollama"):
+                call_kw.setdefault("stream_options", {"include_usage": True})
+
             resp = await asyncio.wait_for(
                 litellm.acompletion(**call_kw),
                 timeout=120,
             )
+            usage: dict[str, int] = {}
             async for chunk in resp:
-                delta = chunk.choices[0].delta
+                chunk_usage = getattr(chunk, "usage", None)
+                if chunk_usage is not None:
+                    usage = _normalize_usage(chunk_usage)
+                choices = getattr(chunk, "choices", None) or []
+                if not choices:
+                    continue
+                delta = choices[0].delta
                 content = getattr(delta, "content", None)
                 if content:
                     yield LLMChunk(type="text", text=content)
-                # 部分推理模型会在 delta 中带 reasoning_content
                 reasoning = getattr(delta, "reasoning_content", None)
                 if isinstance(reasoning, str) and reasoning:
                     yield LLMChunk(type="thinking", text=reasoning)
-            yield LLMChunk(type="done", usage={})
+            _maybe_record_usage(
+                usage,
+                model=(self.config.model if self.config else "")
+                or call_kw.get("model")
+                or "",
+                provider=provider_name,
+            )
+            yield LLMChunk(type="done", usage=usage)
         except asyncio.TimeoutError:
             logger.exception("LLM stream timeout")
             yield LLMChunk(type="error", error="LLM 调用超时（120s）")
@@ -412,19 +444,72 @@ def _coerce_content(content: Any) -> str:
     return str(content)
 
 
-def _maybe_record_usage(usage: dict[str, int] | None, *, model: str) -> None:
+def _normalize_usage(raw: Any) -> dict[str, int]:
+    """将 LiteLLM / 厂商 usage 归一化为含命中字段的 dict。"""
+    try:
+        from backend.services.llm_usage_parse import parse_usage_details
+
+        return parse_usage_details(raw)
+    except Exception:
+        if not raw:
+            return {}
+        return {
+            "prompt_tokens": int(getattr(raw, "prompt_tokens", 0) or 0)
+            if not isinstance(raw, dict)
+            else int(raw.get("prompt_tokens") or 0),
+            "completion_tokens": int(getattr(raw, "completion_tokens", 0) or 0)
+            if not isinstance(raw, dict)
+            else int(raw.get("completion_tokens") or 0),
+            "total_tokens": int(getattr(raw, "total_tokens", 0) or 0)
+            if not isinstance(raw, dict)
+            else int(raw.get("total_tokens") or 0),
+            "prompt_cached_tokens": 0,
+            "prompt_uncached_tokens": 0,
+        }
+
+
+def _strip_litellm_model_prefix(model: str) -> str:
+    """去掉 litellm 路由前缀（anthropic/openai/…），保留真实模型名。"""
+    m = (model or "").strip()
+    if not m or "/" not in m:
+        return m
+    known = {
+        "openai",
+        "anthropic",
+        "gemini",
+        "ollama",
+        "deepseek",
+        "minimax",
+        "azure",
+        "bedrock",
+        "vertex_ai",
+    }
+    left, right = m.split("/", 1)
+    if left.lower() in known and right:
+        return right
+    return m
+
+
+def _maybe_record_usage(
+    usage: dict[str, int] | None,
+    *,
+    model: str,
+    provider: str = "",
+) -> None:
     """尽力记录用量；任何失败都吞掉，不影响主路径。"""
     if not usage:
         return
     try:
-        from backend.services.llm_usage_service import record_usage_fire_and_forget
+        from backend.services.llm_usage_service import record_parsed_usage_fire_and_forget
 
-        record_usage_fire_and_forget(
-            model=model,
-            provider="litellm",
-            prompt_tokens=int(usage.get("prompt_tokens") or 0),
-            completion_tokens=int(usage.get("completion_tokens") or 0),
-            total_tokens=int(usage.get("total_tokens") or 0),
+        display_model = _strip_litellm_model_prefix(model)
+        prov = (provider or "").strip()
+        if prov.lower() == "litellm":
+            prov = "unknown"
+        record_parsed_usage_fire_and_forget(
+            usage,
+            model=display_model or model,
+            provider=(prov or "unknown")[:64],
         )
     except Exception:
         logger.debug("用量记录跳过", exc_info=True)

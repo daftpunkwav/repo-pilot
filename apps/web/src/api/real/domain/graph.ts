@@ -127,14 +127,7 @@ export class GraphApi {
     });
   }
 
-  async getLlmUsage(days = 30): Promise<ApiResponse<{
-    total_input_tokens: number;
-    total_output_tokens: number;
-    total_cost_usd: number;
-    by_model: Array<{ model: string; input_tokens: number; output_tokens: number; cost_usd: number }>;
-    by_day: Array<{ date: string; input_tokens: number; output_tokens: number }>;
-    recent_calls: Array<{ ts: string; model: string; input_tokens: number; output_tokens: number; agent?: string }>;
-  }>> {
+  async getLlmUsage(days = 30): Promise<ApiResponse<import('@/api/types').LlmUsageSummary>> {
     return this.ctx.apiRequest('/usage/llm', {}, { days });
   }
 

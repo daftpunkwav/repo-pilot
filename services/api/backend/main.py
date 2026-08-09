@@ -1,6 +1,10 @@
 """
 FastAPI 应用入口 —— v2.0（模块容错挂载 + 本地单机无认证）
 """
+from backend.path_setup import ensure_service_paths
+
+ensure_service_paths()
+
 import asyncio
 import importlib
 from contextlib import asynccontextmanager
@@ -75,12 +79,27 @@ async def _rate_limited_handler(request, exc):  # noqa: ANN001
 
 async def _validation_error_handler(request: Request, exc: RequestValidationError):
     """参数校验 → VALIDATION_ERROR；llm_api_base SSRF → SETTINGS_LLM_BASE_INVALID。"""
-    errors = exc.errors()
+
+    def _json_safe(obj: object) -> object:
+        if isinstance(obj, dict):
+            return {k: _json_safe(v) for k, v in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            return [_json_safe(v) for v in obj]
+        if isinstance(obj, BaseException):
+            return str(obj)
+        return obj
+
+    errors = _json_safe(exc.errors())
+    assert isinstance(errors, list)
     for err in errors:
+        if not isinstance(err, dict):
+            continue
         loc = err.get("loc") or ()
-        if "llm_api_base" in loc:
+        if "llm_api_base" in loc or any(
+            isinstance(x, str) and "api_base" in x for x in (loc if isinstance(loc, (list, tuple)) else ())
+        ):
             return JSONResponse(
-                status_code=400,
+                status_code=422,
                 content={
                     "detail": {
                         "code": EC.SETTINGS_LLM_BASE_INVALID,

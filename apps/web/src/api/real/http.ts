@@ -80,7 +80,20 @@ export function extractApiError(res: Response, body: unknown): ApiRequestError {
 }
 
 async function parseJson<T>(res: Response): Promise<ApiResponse<T>> {
-  const json: unknown = await res.json();
+  const text = await res.text();
+  let json: unknown = null;
+  if (text) {
+    try {
+      json = JSON.parse(text) as unknown;
+    } catch {
+      const snippet = text.replace(/\s+/g, ' ').trim().slice(0, 240);
+      throw new ApiRequestError(
+        'API_ERROR',
+        snippet || `请求失败（HTTP ${res.status}）`,
+        res.status,
+      );
+    }
+  }
   if (!res.ok) {
     throw extractApiError(res, json);
   }

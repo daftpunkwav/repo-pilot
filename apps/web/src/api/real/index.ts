@@ -108,7 +108,9 @@ export class RealApiClient implements IApiClient {
   // ------- Settings (4) -------
   getSettings() { return this.settings.getSettings(); }
   updateSettings(d: Parameters<IApiClient['updateSettings']>[0]) { return this.settings.updateSettings(d); }
-  saveLlmApiKey(k: string) { return this.settings.saveLlmApiKey(k); }
+  saveLlmApiKey(k: string, providerId?: string) {
+    return this.settings.saveLlmApiKey(k, providerId);
+  }
   testLLM(p?: Parameters<IApiClient['testLLM']>[0]) { return this.settings.testLLM(p); }
 
   // ------- Overview (5) -------

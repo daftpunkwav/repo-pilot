@@ -26,6 +26,8 @@ class LlmUsageEvent(Base):
     session_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     agent_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     prompt_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    prompt_cached_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    prompt_uncached_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     completion_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     meta_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

@@ -10,6 +10,7 @@ export interface LlmTestResult {
   reply?: string;
   error?: string;
   litellm_model?: string;
+  provider_id?: string | null;
 }
 
 interface SettingsState {
@@ -20,7 +21,8 @@ interface SettingsState {
   error: string | null;
   loadSettings: () => Promise<void>;
   updateSettings: (data: Partial<Settings>) => Promise<void>;
-  testLLM: (model?: string) => Promise<void>;
+  saveLlmApiKey: (apiKey: string, providerId?: string) => Promise<void>;
+  testLLM: (model?: string, providerId?: string) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -41,6 +43,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           ...data,
           agent_code_of_conduct: data.agent_code_of_conduct ?? '',
           agent_guidelines: data.agent_guidelines ?? [],
+          llm_providers: data.llm_providers ?? [],
+          llm_default_provider_id: data.llm_default_provider_id ?? null,
         },
         isLoading: false,
       });
@@ -69,18 +73,27 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
   },
 
-  testLLM: async (model) => {
+  saveLlmApiKey: async (apiKey, providerId) => {
+    const api = getApi();
+    await api.saveLlmApiKey(apiKey, providerId);
+    await get().loadSettings();
+  },
+
+  testLLM: async (model, providerId) => {
     set({ isTestingLLM: true, testResult: null, error: null });
     const started = performance.now();
     try {
       const api = getApi();
+      const settings = get().settings;
       const target =
         model ||
-        get().settings?.llm_default_model ||
-        get().settings?.llm_model;
-      const response = await api.testLLM({ model: target });
+        settings?.llm_default_model ||
+        settings?.llm_model;
+      const response = await api.testLLM({
+        model: target,
+        provider_id: providerId,
+      });
       const clientMs = Math.round(performance.now() - started);
-      // 优先用服务端耗时；若异常偏小则回退客户端墙钟时间
       const serverMs = response.data.latency_ms;
       const latency_ms =
         typeof serverMs === 'number' && serverMs >= 50 ? serverMs : clientMs;
@@ -93,9 +106,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           reply: response.data.reply,
           error: response.data.error,
           litellm_model: response.data.litellm_model,
+          provider_id: response.data.provider_id ?? providerId,
         },
       });
-      // 刷新设置，但保留本次 testResult
       const prevResult = get().testResult;
       await get().loadSettings();
       if (prevResult) set({ testResult: prevResult });
@@ -108,6 +121,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           latency_ms: clientMs,
           model,
           error: extractErrorMessage(err),
+          provider_id: providerId,
         },
         error: extractErrorMessage(err),
       });

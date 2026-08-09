@@ -1,5 +1,5 @@
 /**
- * Settings Óò ¡ª ÓÃ»§ÉèÖÃ + LLM API Key + ×Ô²â
+ * Settings ï¿½ï¿½ ï¿½ï¿½ ï¿½Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ + LLM API Key + ï¿½Ô²ï¿½
  */
 import type { ApiResponse, Settings } from '@/api/types';
 import type { HttpCtx } from './http-ctx';
@@ -18,15 +18,22 @@ export class SettingsApi {
     });
   }
 
-  async saveLlmApiKey(apiKey: string): Promise<ApiResponse<{ masked: string }>> {
-    return this.ctx.apiRequest<{ masked: string }>('/settings/api-key', {
-      method: 'POST',
-      body: JSON.stringify({ api_key: apiKey }),
-    });
+  async saveLlmApiKey(
+    apiKey: string,
+    providerId?: string,
+  ): Promise<ApiResponse<{ masked: string; provider_id?: string | null }>> {
+    return this.ctx.apiRequest<{ masked: string; provider_id?: string | null }>(
+      '/settings/api-key',
+      {
+        method: 'POST',
+        body: JSON.stringify({ api_key: apiKey, provider_id: providerId ?? null }),
+      },
+    );
   }
 
   async testLLM(params?: {
     model?: string;
+    provider_id?: string;
   }): Promise<
     ApiResponse<{
       success: boolean;
@@ -35,11 +42,15 @@ export class SettingsApi {
       reply?: string;
       error?: string;
       litellm_model?: string;
+      provider_id?: string | null;
     }>
   > {
     return this.ctx.apiRequest('/settings/test-llm', {
       method: 'POST',
-      body: JSON.stringify({ model: params?.model }),
+      body: JSON.stringify({
+        model: params?.model,
+        provider_id: params?.provider_id,
+      }),
     });
   }
 }

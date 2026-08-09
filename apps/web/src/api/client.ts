@@ -32,6 +32,7 @@ import type {
   TrendingScoutIntroParams,
   User,
   UserProfile,
+  LlmUsageSummary,
 } from './types';
 // 契约类型权威源：@repopilot/types（经 ./types 再导出）
 export type { paths, components, User as ContractUser } from '@repopilot/types';
@@ -143,22 +144,17 @@ export interface IApiClient {
     mode?: 'fast' | 'moderate' | 'full',
   ): Promise<ApiResponse<{ queued: string[]; failed: string[] }>>;
 
-  getLlmUsage(days?: number): Promise<
-    ApiResponse<{
-      total_input_tokens: number;
-      total_output_tokens: number;
-      total_cost_usd: number;
-      by_model: Array<{ model: string; input_tokens: number; output_tokens: number; cost_usd: number }>;
-      by_day: Array<{ date: string; input_tokens: number; output_tokens: number }>;
-      recent_calls: Array<{ ts: string; model: string; input_tokens: number; output_tokens: number; agent?: string }>;
-    }>
-  >;
+  getLlmUsage(days?: number): Promise<ApiResponse<LlmUsageSummary>>;
 
   getSettings(): Promise<ApiResponse<Settings>>;
   updateSettings(data: Partial<Settings>): Promise<ApiResponse<Settings>>;
-  saveLlmApiKey(apiKey: string): Promise<ApiResponse<{ masked: string }>>;
+  saveLlmApiKey(
+    apiKey: string,
+    providerId?: string,
+  ): Promise<ApiResponse<{ masked: string; provider_id?: string | null }>>;
   testLLM(params?: {
     model?: string;
+    provider_id?: string;
   }): Promise<
     ApiResponse<{
       success: boolean;
@@ -167,6 +163,7 @@ export interface IApiClient {
       reply?: string;
       error?: string;
       litellm_model?: string;
+      provider_id?: string | null;
     }>
   >;
 

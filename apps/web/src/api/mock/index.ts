@@ -730,30 +730,138 @@ export class MockApiClient implements IApiClient {
     return wrapResponse({ queued: [...projectIds], failed: [] });
   }
 
-  async getLlmUsage(days = 30) {
+  async getLlmUsage(days = 30): Promise<ApiResponse<import('@/api/types').LlmUsageSummary>> {
     await delay();
     const now = Date.now();
-    const by_day = Array.from({ length: Math.min(days, 7) }, (_, i) => {
-      const d = new Date(now - (6 - i) * 86400000);
+    const dayCount = Math.min(days, 30);
+    const models = [
+      'deepseek-v4-flash',
+      'MiniMax-M3',
+      'glm-5.2',
+      'gpt-5.6-luna',
+      'step-3.7-flash',
+    ];
+    const providers = ['deepseek', 'minimax', 'zhipu', 'opencode', 'stepfun'];
+    const by_day = Array.from({ length: dayCount }, (_, i) => {
+      const d = new Date(now - (dayCount - 1 - i) * 86400000);
+      const date = d.toISOString().slice(0, 10);
+      const cached = 800_000 + Math.floor(Math.random() * 2_000_000);
+      const uncached = 1_200_000 + Math.floor(Math.random() * 3_000_000);
+      const completion = 400_000 + Math.floor(Math.random() * 900_000);
+      const calls = Math.floor(Math.random() * 12);
       return {
-        date: d.toISOString().slice(0, 10),
-        input_tokens: 1200 + Math.floor(Math.random() * 2400),
-        output_tokens: 400 + Math.floor(Math.random() * 800),
+        date,
+        prompt_cached_tokens: cached,
+        prompt_uncached_tokens: uncached,
+        completion_tokens: completion,
+        total_tokens: cached + uncached + completion,
+        calls,
+        by_model: models.slice(0, 4).map((model, mi) => ({
+          model,
+          total_tokens: Math.floor((cached + uncached + completion) * (0.4 - mi * 0.08)),
+        })),
       };
     });
+    const totals = by_day.reduce(
+      (acc, d) => {
+        acc.prompt_cached_tokens += d.prompt_cached_tokens;
+        acc.prompt_uncached_tokens += d.prompt_uncached_tokens;
+        acc.completion_tokens += d.completion_tokens;
+        acc.total_tokens += d.total_tokens;
+        acc.calls += d.calls;
+        return acc;
+      },
+      {
+        prompt_tokens: 0,
+        prompt_cached_tokens: 0,
+        prompt_uncached_tokens: 0,
+        completion_tokens: 0,
+        total_tokens: 0,
+        calls: 0,
+      },
+    );
+    totals.prompt_tokens = totals.prompt_cached_tokens + totals.prompt_uncached_tokens;
+    const maxCalls = Math.max(...by_day.map((d) => d.calls), 1);
+    const heatmap = by_day.map((d) => ({
+      date: d.date,
+      calls: d.calls,
+      intensity: Number((d.calls / maxCalls).toFixed(4)),
+    }));
+    const shares = [0.49, 0.33, 0.055, 0.051, 0.028];
+    const by_model = models.map((model, i) => {
+      const share = shares[i] ?? 0.02;
+      const total = Math.floor(totals.total_tokens * share);
+      const cached = Math.floor(total * 0.25);
+      const completion = Math.floor(total * 0.2);
+      const uncached = total - cached - completion;
+      const provider = providers[i] ?? 'unknown';
+      return {
+        model,
+        label: `${provider}/${model}`,
+        prompt_tokens: cached + uncached,
+        prompt_cached_tokens: cached,
+        prompt_uncached_tokens: uncached,
+        completion_tokens: completion,
+        total_tokens: total,
+        calls: Math.floor(totals.calls * share),
+      };
+    });
+    const by_provider = providers.map((provider, i) => {
+      const row = by_model[Math.min(i, by_model.length - 1)]!;
+      return {
+        provider,
+        prompt_tokens: row.prompt_tokens,
+        prompt_cached_tokens: row.prompt_cached_tokens,
+        prompt_uncached_tokens: row.prompt_uncached_tokens,
+        completion_tokens: row.completion_tokens,
+        total_tokens: row.total_tokens,
+        calls: row.calls,
+      };
+    });
+    const topRow = by_model[0]!;
+    const top = {
+      provider: providers[0]!,
+      model: topRow.model,
+      label: topRow.label,
+      total_tokens: topRow.total_tokens,
+      calls: topRow.calls,
+      share: totals.total_tokens ? topRow.total_tokens / totals.total_tokens : 0,
+    };
     return wrapResponse({
-      total_input_tokens: 18400,
-      total_output_tokens: 5200,
-      total_cost_usd: 0.043,
-      by_model: [
-        { model: 'gpt-4o', input_tokens: 12000, output_tokens: 3200, cost_usd: 0.031 },
-        { model: 'gpt-4o-mini', input_tokens: 6400, output_tokens: 2000, cost_usd: 0.012 },
-      ],
+      days,
+      totals,
+      top,
+      by_model,
+      by_provider,
       by_day,
-      recent_calls: [
-        { ts: new Date(now - 60000).toISOString(), model: 'gpt-4o', input_tokens: 820, output_tokens: 340, agent: 'scout' },
-        { ts: new Date(now - 300000).toISOString(), model: 'gpt-4o-mini', input_tokens: 420, output_tokens: 180, agent: 'atlas' },
-        { ts: new Date(now - 900000).toISOString(), model: 'gpt-4o', input_tokens: 1100, output_tokens: 480, agent: 'mentor' },
+      heatmap,
+      recent: [
+        {
+          id: '1',
+          created_at: new Date(now - 60000).toISOString(),
+          model: models[0]!,
+          provider: providers[0]!,
+          label: `${providers[0]!}/${models[0]!}`,
+          agent_id: 'scout',
+          prompt_tokens: 1200,
+          prompt_cached_tokens: 400,
+          prompt_uncached_tokens: 800,
+          completion_tokens: 340,
+          total_tokens: 1540,
+        },
+        {
+          id: '2',
+          created_at: new Date(now - 300000).toISOString(),
+          model: models[1]!,
+          provider: providers[1]!,
+          label: `${providers[1]!}/${models[1]!}`,
+          agent_id: 'atlas',
+          prompt_tokens: 900,
+          prompt_cached_tokens: 100,
+          prompt_uncached_tokens: 800,
+          completion_tokens: 180,
+          total_tokens: 1080,
+        },
       ],
     });
   }
@@ -792,20 +900,56 @@ export class MockApiClient implements IApiClient {
     if (data.agent_code_of_conduct !== undefined) {
       next.agent_code_of_conduct = data.agent_code_of_conduct;
     }
+    if (data.llm_providers) {
+      next.llm_providers = data.llm_providers.map((p) => ({
+        ...p,
+        configured: Boolean(p.configured || p.api_key_masked),
+        api_key_masked: p.api_key_masked ?? null,
+      }));
+      const def =
+        next.llm_providers.find((p) => p.id === next.llm_default_provider_id) ??
+        next.llm_providers[0];
+      if (def) {
+        next.llm_provider = def.preset_id;
+        next.llm_provider_display_name = def.display_name;
+        next.llm_api_base = def.api_base;
+        next.llm_api_format = def.api_format;
+        next.llm_available_models = def.available_models;
+        next.llm_default_model = def.default_model;
+        next.llm_model = def.default_model;
+        next.llm_configured = next.llm_providers.some((p) => p.configured);
+      }
+    }
+    if (data.llm_default_provider_id !== undefined) {
+      next.llm_default_provider_id = data.llm_default_provider_id;
+    }
     this.settings = next;
     return wrapResponse({ ...this.settings });
   }
 
-  async saveLlmApiKey(apiKey: string): Promise<ApiResponse<{ masked: string }>> {
+  async saveLlmApiKey(
+    apiKey: string,
+    providerId?: string,
+  ): Promise<ApiResponse<{ masked: string; provider_id?: string | null }>> {
     await delay();
     this._llmApiKey = apiKey;
-    this.settings.llm_api_key_masked = this.maskApiKey(apiKey);
+    const masked = this.maskApiKey(apiKey);
+    this.settings.llm_api_key_masked = masked;
     this.settings.llm_configured = true;
-    return wrapResponse({ masked: this.settings.llm_api_key_masked });
+    const pid = providerId || this.settings.llm_default_provider_id;
+    if (pid && this.settings.llm_providers?.length) {
+      this.settings.llm_providers = this.settings.llm_providers.map((p) =>
+        p.id === pid
+          ? { ...p, api_key_masked: masked, configured: true }
+          : p,
+      );
+    }
+    return wrapResponse({ masked, provider_id: pid });
   }
 
   async testLLM(params?: {
     model?: string;
+    provider_id?: string;
   }): Promise<
     ApiResponse<{
       success: boolean;
@@ -814,11 +958,18 @@ export class MockApiClient implements IApiClient {
       reply?: string;
       error?: string;
       litellm_model?: string;
+      provider_id?: string | null;
     }>
   > {
     await delay(800);
     const latency = 350 + Math.floor(Math.random() * 200);
-    const model = params?.model || this.settings.llm_model;
+    const provider = this.settings.llm_providers?.find(
+      (p) => p.id === params?.provider_id,
+    );
+    const model =
+      params?.model ||
+      provider?.default_model ||
+      this.settings.llm_model;
     this.settings.llm_last_test = new Date().toISOString();
     this.settings.llm_latency_ms = latency;
     this.settings.llm_configured = true;
@@ -828,6 +979,7 @@ export class MockApiClient implements IApiClient {
       model,
       reply: 'OK',
       litellm_model: model,
+      provider_id: params?.provider_id ?? this.settings.llm_default_provider_id,
     });
   }
 

@@ -22,7 +22,7 @@ const NAV: { id: Section; label: string; icon: string }[] = [
 ];
 
 export function SettingsPage() {
-  const { settings, isLoading, loadSettings, updateSettings, testLLM, isTestingLLM, testResult } =
+  const { settings, isLoading, updateSettings, saveLlmApiKey, testLLM, isTestingLLM, testResult } =
     useSettings();
   const { theme, setTheme, fontScale, setFontScale } = useTheme();
   const { data: accounts = [], refetch: refetchAccounts } = useGithubAccounts();
@@ -204,10 +204,9 @@ export function SettingsPage() {
               testLLM={testLLM}
               isTestingLLM={isTestingLLM}
               testResult={testResult}
-              onSaveApiKey={async (key) => {
+              onSaveApiKey={async (key, providerId) => {
                 try {
-                  await getApi().saveLlmApiKey(key);
-                  await loadSettings();
+                  await saveLlmApiKey(key, providerId);
                   addToast({ type: 'success', message: 'API Key 已保存' });
                 } catch {
                   addToast({ type: 'error', message: 'API Key 保存失败' });

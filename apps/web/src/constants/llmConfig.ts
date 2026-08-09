@@ -76,7 +76,6 @@ export const LLM_PROVIDER_PRESETS: LlmProviderPreset[] = [
   {
     id: 'minimax',
     display_name: 'MiniMax',
-    // 国内 Anthropic 兼容端点（国际站多为 api.minimax.io）
     default_base_url: 'https://api.minimaxi.com/anthropic',
     api_format: 'anthropic',
     available_models: [
@@ -109,10 +108,39 @@ export function findProviderPreset(id: string): LlmProviderPreset | undefined {
   return LLM_PROVIDER_PRESETS.find((p) => p.id === id);
 }
 
-/** 为全部 Agent 生成默认 LLM 配置（不覆盖默认模型，仅风格默认） */
+/** 新建供应商草稿（本地 id，保存时由后端保留） */
+export function createProviderFromPreset(presetId: string): {
+  id: string;
+  preset_id: string;
+  display_name: string;
+  enabled: boolean;
+  api_base: string | null;
+  api_format: LlmApiFormat;
+  available_models: string[];
+  default_model: string;
+  configured: boolean;
+  api_key_masked: string | null;
+} {
+  const preset = findProviderPreset(presetId) ?? findProviderPreset('custom')!;
+  return {
+    id: crypto.randomUUID(),
+    preset_id: preset.id,
+    display_name: preset.display_name,
+    enabled: true,
+    api_base: preset.default_base_url || null,
+    api_format: preset.api_format,
+    available_models: [...preset.available_models],
+    default_model: preset.default_model,
+    configured: false,
+    api_key_masked: null,
+  };
+}
+
+/** 为全部 Agent 生成默认 LLM 配置 */
 export function createDefaultAgentLlmConfigs(): AgentLlmConfig[] {
   return AGENT_CATALOG.map((a) => ({
     agent_id: a.id,
+    provider_id: null,
     model_override: null,
     speaking_style: 'default' as AgentSpeakingStyle,
   }));

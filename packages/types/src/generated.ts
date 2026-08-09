@@ -906,6 +906,8 @@ export interface components {
         AgentLlmConfigOut: {
             /** Agent Id */
             agent_id: string;
+            /** Provider Id */
+            provider_id?: string | null;
             /** Model Override */
             model_override?: string | null;
             /**

@@ -453,10 +453,174 @@
     }
 
     /* ---------- LLM 配置扩展 ---------- */
+    /* 去掉液态玻璃灰色 drop-shadow，仅保留 inset 高光 */
+    .llm-settings .glass-card.glass-card--overview-outer,
+    .llm-settings .glass-card.glass-card--overview-inner,
+    .settings-page .glass-card.glass-card--overview-outer,
+    .settings-page .glass-card.glass-card--overview-inner {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.55),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+        inset 0 0 2px 1px rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme='dark'] .llm-settings .glass-card.glass-card--overview-outer,
+    [data-theme='dark'] .llm-settings .glass-card.glass-card--overview-inner,
+    [data-theme='dark'] .settings-page .glass-card.glass-card--overview-outer,
+    [data-theme='dark'] .settings-page .glass-card.glass-card--overview-inner {
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.06),
+        inset 0 0 2px 1px rgba(255, 255, 255, 0.06);
+    }
+
     .llm-settings {
       display: flex;
       flex-direction: column;
       gap: 16px;
+    }
+    .llm-multi-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+    .llm-provider-rail {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 70vh;
+      overflow: auto;
+    }
+    .llm-provider-rail-title {
+      font-size: 12px;
+      color: var(--text-500);
+      font-weight: 600;
+    }
+    .llm-provider-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .llm-provider-item {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 0;
+      cursor: pointer;
+      text-align: left;
+      color: inherit;
+      background: transparent;
+    }
+    .llm-provider-item.is-active {
+      outline: 1px solid rgba(91, 141, 239, 0.45);
+    }
+    .llm-provider-item-name {
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+    }
+    .llm-provider-status {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      flex-shrink: 0;
+    }
+    .llm-provider-status.is-on {
+      background: #34c759;
+    }
+    .llm-provider-add {
+      width: 100%;
+    }
+    .llm-provider-detail {
+      padding: 16px 18px;
+    }
+    .llm-provider-detail-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .llm-provider-detail-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .llm-provider-enable-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .llm-enable-pill {
+      border: 0;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-300);
+    }
+    .llm-enable-pill.is-on {
+      background: #34c759;
+      color: #0a0a0a;
+      font-weight: 600;
+    }
+    .llm-enable-pill.is-off {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .llm-provider-default-tag {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 999px;
+      background: rgba(91, 141, 239, 0.2);
+      color: var(--brand-500, #5b8def);
+      font-weight: 600;
+    }
+    .llm-format-list {
+      list-style: none;
+      margin: 0;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .llm-format-item {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      text-align: left;
+      font-size: 13px;
+    }
+    .llm-format-item.is-selected {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .llm-key-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .llm-key-row .field {
+      flex: 1;
     }
     .llm-settings-block {
       padding: 18px 20px;
@@ -506,6 +670,11 @@
     .llm-test-result--fail {
       background: rgba(255, 55, 95, 0.1);
       border: 1px solid rgba(255, 55, 95, 0.3);
+    }
+    @media (max-width: 1000px) {
+      .llm-multi-layout {
+        grid-template-columns: 1fr;
+      }
     }
     .llm-test-result__head {
       display: flex;

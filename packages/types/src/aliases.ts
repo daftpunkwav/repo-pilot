@@ -10,8 +10,76 @@ export type ActivityItem = Schemas['ActivityItemOut'];
 export type AgentChatBody = Schemas['AgentChatBody'];
 export type AgentChatRequest = Schemas['AgentChatRequest'];
 export type AgentGuideline = Schemas['AgentGuidelineOut'];
-export type AgentLlmConfig = Schemas['AgentLlmConfigOut'];
-/** 原始 API 消息；前端气泡请用 apps/web AgentMessage */
+/** Agent LLM 覆盖：供应商 + 模型 + 风格 */
+export type AgentLlmConfig = Omit<Schemas['AgentLlmConfigOut'], 'provider_id'> & {
+  provider_id?: string | null;
+  model_override?: string | null;
+  speaking_style: string;
+};
+
+/** 多供应商配置（OpenAPI 再生前由别名手写对齐） */
+export interface LlmProviderConfig {
+  id: string;
+  preset_id: string;
+  display_name: string;
+  enabled: boolean;
+  api_base: string | null;
+  api_format: 'openai' | 'anthropic' | 'google' | 'ollama' | 'custom';
+  available_models: string[];
+  default_model: string;
+  api_key_masked?: string | null;
+  configured: boolean;
+}
+
+/** 用量 Token 分桶 */
+export interface LlmTokenBreakdown {
+  prompt_tokens: number;
+  prompt_cached_tokens: number;
+  prompt_uncached_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  calls: number;
+}
+
+export interface LlmUsageSummary {
+  days: number;
+  totals: LlmTokenBreakdown;
+  /** 最常用：提供商/模型 */
+  top?: {
+    provider: string;
+    model: string;
+    label: string;
+    total_tokens: number;
+    calls: number;
+    share?: number;
+  } | null;
+  by_model: Array<LlmTokenBreakdown & { model: string; label?: string }>;
+  by_provider: Array<LlmTokenBreakdown & { provider: string }>;
+  by_day: Array<{
+    date: string;
+    prompt_cached_tokens: number;
+    prompt_uncached_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+    calls: number;
+    by_model?: Array<{ model: string; total_tokens: number }>;
+  }>;
+  heatmap: Array<{ date: string; intensity: number; calls: number }>;
+  recent: Array<{
+    id: string;
+    created_at: string | null;
+    model: string;
+    provider: string;
+    label?: string;
+    session_id?: string | null;
+    agent_id?: string | null;
+    prompt_tokens: number;
+    prompt_cached_tokens: number;
+    prompt_uncached_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  }>;
+}
 export type AgentMessageOut = Schemas['AgentMessageOut'];
 export type AgentPermissions = Schemas['AgentPermissionsOut'];
 export type AgentPermissionsUpdate = Schemas['AgentPermissionsUpdate'];
@@ -107,14 +175,21 @@ export type Settings = Omit<
   | 'agent_guidelines'
   | 'llm_api_base'
   | 'agent_code_of_conduct'
+  | 'llm_providers'
+  | 'llm_default_provider_id'
 > & {
   llm_available_models: string[];
   agent_llm_configs: AgentLlmConfig[];
   agent_guidelines: AgentGuideline[];
   llm_api_base: string | null;
   agent_code_of_conduct: string;
+  llm_providers: LlmProviderConfig[];
+  llm_default_provider_id: string | null;
 };
-export type SettingsUpdate = Schemas['SettingsUpdate'];
+export type SettingsUpdate = Schemas['SettingsUpdate'] & {
+  llm_providers?: Array<Partial<LlmProviderConfig> & { id?: string; api_key?: string | null }>;
+  llm_default_provider_id?: string | null;
+};
 export type StarRepo = Schemas['StarRepoOut'];
 export type StarsList = Omit<Schemas['StarsListOut'], 'cache_ttl_hours'> & {
   cache_ttl_hours?: number;
