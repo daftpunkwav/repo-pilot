@@ -25,6 +25,9 @@ const AgentPage = lazy(() =>
 const GraphPage = lazy(() =>
   import('@/pages/GraphPage').then((m) => ({ default: m.GraphPage }))
 );
+const CodeGraphPage = lazy(() =>
+  import('@/pages/CodeGraphPage').then((m) => ({ default: m.CodeGraphPage }))
+);
 const NotesPage = lazy(() =>
   import('@/pages/NotesPage').then((m) => ({ default: m.NotesPage }))
 );
@@ -84,6 +87,14 @@ const router = createBrowserRouter([
         element: (
           <Lazy>
             <GraphPage />
+          </Lazy>
+        ),
+      },
+      {
+        path: 'graph/projects/:id',
+        element: (
+          <Lazy>
+            <CodeGraphPage />
           </Lazy>
         ),
       },

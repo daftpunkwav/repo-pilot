@@ -1,0 +1,64 @@
+name: Build Graph Engine
+
+on:
+  push:
+    paths:
+      - "services/graph_engine/**"
+      - ".github/workflows/build-graph-engine.yml"
+  pull_request:
+    paths:
+      - "services/graph_engine/**"
+      - ".github/workflows/build-graph-engine.yml"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: services/graph_engine
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure CMake (Release)
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build Release
+        run: cmake --build build --config Release
+
+      - name: Stage artifacts (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Get-ChildItem -Path build -Recurse -File |
+            Where-Object { $_.Name -in @('rp-graph-engine.exe', 'rp_layout.dll') } |
+            ForEach-Object { Copy-Item $_.FullName -Destination dist -Force }
+          if (-not (Test-Path dist/rp-graph-engine.exe)) {
+            throw "未找到 rp-graph-engine.exe"
+          }
+          if (-not (Test-Path dist/rp_layout.dll)) {
+            throw "未找到 rp_layout.dll"
+          }
+          Get-ChildItem dist
+
+      - name: Stage artifacts (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p dist
+          find build -type f \( -name 'rp-graph-engine' -o -name 'librp_layout.so' -o -name 'rp_layout.so' \) \
+            -exec cp -t dist {} +
+          test -f dist/rp-graph-engine
+          test -f dist/librp_layout.so -o -f dist/rp_layout.so
+          ls -la dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rp-graph-engine-${{ matrix.os }}
+          path: services/graph_engine/dist/
+          if-no-files-found: error

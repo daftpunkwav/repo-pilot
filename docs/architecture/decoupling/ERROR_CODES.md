@@ -79,6 +79,7 @@ HTTP 列为典型状态；SSE 流内错误固定走 `event: error`，HTTP 仍为
 | `LLM_REQUEST_FAILED` | 200(SSE)/502 | error | LLM 请求失败 | 上游 4xx/5xx、超时、模型不存在；查 LiteLLM 日志与 `llm_api_base` |
 | `LLM_TIMEOUT` | 504 | warning | LLM 超时 | 增大超时或换更快模型 |
 | `LLM_RATE_LIMITED` | 429 | warning | LLM 上游限流 | 供应商配额用尽；稍后重试或换 Key |
+| `LLM_USAGE_MODULE_DOWN` | 503 | warning | LLM 用量模块未就绪 | llm_usage 域加载失败；用量统计不可用；查 `/health` |
 
 ---
 
@@ -87,6 +88,8 @@ HTTP 列为典型状态；SSE 流内错误固定走 `event: error`，HTTP 仍为
 | 码 | HTTP | 严重度 | 标题 | 排查提示 |
 |----|------|--------|------|---------|
 | `GRAPH_MODULE_DOWN` | 503 | warning | 图谱模块未就绪 | graph 域加载失败；不影响项目/笔记 |
+| `GRAPH_L1_MODULE_DOWN` | 503 | error | 图谱 L1 模块未就绪 | L1（索引/引擎）路由加载失败；查 `/health` 与 `graph_l1` |
+| `GRAPH_ENGINE_UNAVAILABLE` | 503 | error | 图谱引擎不可用 | 进程内 `rp_graph` 异常，或 sidecar `RP_GRAPH_ENGINE_URL` 不可达；查引擎进程与 `RP_GRAPH_ALLOWED_ROOT` |
 | `GRAPH_NOT_INDEXED` | 409 | info | 项目尚未索引 | 先触发索引；见 `docs/architecture/graph/` |
 | `GRAPH_INDEX_FAILED` | 500 | error | 图谱索引失败 | 索引管线异常；查索引日志 |
 | `GRAPH_QUERY_FAILED` | 500 | error | 图谱查询失败 | 相似度/邻居查询异常 |

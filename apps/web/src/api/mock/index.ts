@@ -646,6 +646,96 @@ export class MockApiClient implements IApiClient {
     return wrapResponse({ nodes, edges });
   }
 
+  async getCrossEdges() {
+    await delay();
+    return wrapResponse({ edges: [], stats: { edge_count: 0 } });
+  }
+
+  async getCodeGraphStatus(projectId: string) {
+    await delay();
+    return wrapResponse({
+      project_id: projectId,
+      engine_project: '',
+      status: 'NONE' as const,
+      index_mode: 'moderate' as const,
+    });
+  }
+
+  async triggerCodeGraphIndex(projectId: string, _body?: { mode?: 'fast' | 'moderate' | 'full' }) {
+    await delay();
+    return wrapResponse({
+      project_id: projectId,
+      engine_project: 'mock',
+      status: 'QUEUED' as const,
+      index_mode: 'moderate' as const,
+    });
+  }
+
+  async refreshCodeGraphIndex(projectId: string, body?: { mode?: 'fast' | 'moderate' | 'full' }) {
+    return this.triggerCodeGraphIndex(projectId, body);
+  }
+
+  async deleteCodeGraphIndex(projectId: string) {
+    return this.getCodeGraphStatus(projectId);
+  }
+
+  async getCodeGraph(_projectId: string, _params?: { max_nodes?: number }) {
+    await delay();
+    return wrapResponse({
+      nodes: [],
+      edges: [],
+      stats: { node_count: 0, edge_count: 0, total_nodes: 0 },
+    });
+  }
+
+  async getCodeArchitecture(_projectId: string) {
+    await delay();
+    return wrapResponse({ packages: [], clusters: [], layers: [] });
+  }
+
+  async traceCodeGraph(_projectId: string, _body: { symbol: string }) {
+    await delay();
+    return wrapResponse({ paths: [] });
+  }
+
+  async searchCodeGraph(_projectId: string, _body: { query: string }) {
+    await delay();
+    return wrapResponse({ results: [] });
+  }
+
+  async batchIndexCodeGraph(projectIds: string[], _mode?: string) {
+    await delay();
+    return wrapResponse({ queued: [...projectIds], failed: [] });
+  }
+
+  async getLlmUsage(days = 30) {
+    await delay();
+    const now = Date.now();
+    const by_day = Array.from({ length: Math.min(days, 7) }, (_, i) => {
+      const d = new Date(now - (6 - i) * 86400000);
+      return {
+        date: d.toISOString().slice(0, 10),
+        input_tokens: 1200 + Math.floor(Math.random() * 2400),
+        output_tokens: 400 + Math.floor(Math.random() * 800),
+      };
+    });
+    return wrapResponse({
+      total_input_tokens: 18400,
+      total_output_tokens: 5200,
+      total_cost_usd: 0.043,
+      by_model: [
+        { model: 'gpt-4o', input_tokens: 12000, output_tokens: 3200, cost_usd: 0.031 },
+        { model: 'gpt-4o-mini', input_tokens: 6400, output_tokens: 2000, cost_usd: 0.012 },
+      ],
+      by_day,
+      recent_calls: [
+        { ts: new Date(now - 60000).toISOString(), model: 'gpt-4o', input_tokens: 820, output_tokens: 340, agent: 'scout' },
+        { ts: new Date(now - 300000).toISOString(), model: 'gpt-4o-mini', input_tokens: 420, output_tokens: 180, agent: 'atlas' },
+        { ts: new Date(now - 900000).toISOString(), model: 'gpt-4o', input_tokens: 1100, output_tokens: 480, agent: 'mentor' },
+      ],
+    });
+  }
+
   // ─── Settings ─────────────────────────────────────────
 
   private maskApiKey(key: string): string {

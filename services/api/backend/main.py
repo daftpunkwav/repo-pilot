@@ -1,6 +1,7 @@
 """
 FastAPI 应用入口 —— v2.0（模块容错挂载 + 本地单机无认证）
 """
+import asyncio
 import importlib
 from contextlib import asynccontextmanager
 from typing import Callable
@@ -36,7 +37,22 @@ async def lifespan(_app: FastAPI):
         from backend.services.app_state_service import ensure_singleton_rows
 
         await ensure_singleton_rows(session)
-    yield
+        # 中断的索引任务标记失败，供用户重试
+        try:
+            from backend.services.index_pipeline import recover_interrupted_jobs
+
+            await recover_interrupted_jobs(session)
+        except Exception:
+            pass
+
+    # 常驻索引 worker：在 lifespan 内 create_task，脱离 HTTP 请求 cancel scope
+    from backend.services.index_pipeline import start_index_worker, stop_index_worker
+
+    await start_index_worker()
+    try:
+        yield
+    finally:
+        await stop_index_worker()
 
 
 app = FastAPI(title=settings.app_name, version="2.0.0", lifespan=lifespan)
@@ -107,7 +123,10 @@ _MODULES: list[tuple[str, Callable[[], object]]] = [
     ("projects", _load_router("backend.api.projects")),
     ("categories", _load_router("backend.api.categories")),
     ("notes", _load_router("backend.api.notes")),
-    ("graph", _load_router("backend.api.graph")),
+    # L0 / L1 分域挂载：graph_l1 失败不影响 graph_l0
+    ("graph_l0", _load_router("backend.api.graph_l0")),
+    ("graph_l1", _load_router("backend.api.graph_l1")),
+    ("usage", _load_router("backend.api.llm_usage")),
     ("tags", _load_router("backend.api.tags")),
     ("overview", _load_router("backend.api.overview")),
     ("user", _load_router("backend.api.user")),

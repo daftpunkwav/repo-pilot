@@ -8,6 +8,8 @@ from backend.models.agent import (
 )
 from backend.models.app_state import AppState
 from backend.models.category import Category
+from backend.models.graph_index import GraphIndexStatus
+from backend.models.llm_usage import LlmUsageEvent
 from backend.models.note import Note
 from backend.models.project import Project, Tag, project_tags
 
@@ -23,4 +25,6 @@ __all__ = [
     "AgentMessage",
     "ProjectAnalysis",
     "agent_session_projects",
+    "GraphIndexStatus",
+    "LlmUsageEvent",
 ]

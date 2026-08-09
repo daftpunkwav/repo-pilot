@@ -109,6 +109,9 @@ export interface GraphEdge {
   source: string;
   target: string;
   similarity: number;
+  relation?: string;
+  reasons?: string[];
+  edge_type?: string;
 }
 
 export type TrendingPeriod = 'daily' | 'weekly' | 'monthly';

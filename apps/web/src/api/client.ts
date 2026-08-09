@@ -93,6 +93,50 @@ export interface IApiClient {
     max_edges?: number;
   }): Promise<ApiResponse<GraphData>>;
 
+  getCrossEdges(): Promise<
+    ApiResponse<{ edges: Array<Record<string, unknown>>; stats: { edge_count: number } }>
+  >;
+  getCodeGraphStatus(projectId: string): Promise<ApiResponse<import('@/components/code-graph/types').GraphIndexStatus>>;
+  triggerCodeGraphIndex(
+    projectId: string,
+    body?: { mode?: 'fast' | 'moderate' | 'full' },
+  ): Promise<ApiResponse<import('@/components/code-graph/types').GraphIndexStatus>>;
+  refreshCodeGraphIndex(
+    projectId: string,
+    body?: { mode?: 'fast' | 'moderate' | 'full' },
+  ): Promise<ApiResponse<import('@/components/code-graph/types').GraphIndexStatus>>;
+  deleteCodeGraphIndex(
+    projectId: string,
+  ): Promise<ApiResponse<import('@/components/code-graph/types').GraphIndexStatus>>;
+  getCodeGraph(
+    projectId: string,
+    params?: { max_nodes?: number },
+  ): Promise<ApiResponse<Record<string, unknown>>>;
+  getCodeArchitecture(projectId: string): Promise<ApiResponse<Record<string, unknown>>>;
+  traceCodeGraph(
+    projectId: string,
+    body: { symbol: string; direction?: string; depth?: number },
+  ): Promise<ApiResponse<Record<string, unknown>>>;
+  searchCodeGraph(
+    projectId: string,
+    body: { query: string; label?: string; limit?: number },
+  ): Promise<ApiResponse<Record<string, unknown>>>;
+  batchIndexCodeGraph(
+    projectIds: string[],
+    mode?: 'fast' | 'moderate' | 'full',
+  ): Promise<ApiResponse<{ queued: string[]; failed: string[] }>>;
+
+  getLlmUsage(days?: number): Promise<
+    ApiResponse<{
+      total_input_tokens: number;
+      total_output_tokens: number;
+      total_cost_usd: number;
+      by_model: Array<{ model: string; input_tokens: number; output_tokens: number; cost_usd: number }>;
+      by_day: Array<{ date: string; input_tokens: number; output_tokens: number }>;
+      recent_calls: Array<{ ts: string; model: string; input_tokens: number; output_tokens: number; agent?: string }>;
+    }>
+  >;
+
   getSettings(): Promise<ApiResponse<Settings>>;
   updateSettings(data: Partial<Settings>): Promise<ApiResponse<Settings>>;
   saveLlmApiKey(apiKey: string): Promise<ApiResponse<{ masked: string }>>;

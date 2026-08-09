@@ -92,8 +92,10 @@ async def build_graph(
                         "source": str(a.id),
                         "target": str(b.id),
                         "similarity": round(sim, 3),
-                        "relation": reasons[0] if reasons else "related",
-                        "reasons": reasons,
+                        "relation": reasons[0] if reasons else "similarity",
+                        "reasons": reasons or ["similarity"],
+                        # 兼容 L0 边类型筛选：语义相似统一标为 similarity
+                        "edge_type": "similarity",
                     }
                 )
     edges.sort(key=lambda e: e["similarity"], reverse=True)
@@ -152,3 +154,71 @@ def _similarity_detailed(
 def _similarity(a: Project, b: Project) -> float:
     sim, _ = _similarity_detailed(a, b, _doc_vector(a), _doc_vector(b))
     return sim
+
+
+async def build_cross_edges(db: AsyncSession) -> list[dict]:
+    """从已 READY 项目跑/读取跨仓边；引擎不可用时返回空列表（不影响 L0 相似度）。"""
+    from backend.models.graph_index import GraphIndexStatus
+    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+
+    result = await db.execute(
+        select(GraphIndexStatus).where(GraphIndexStatus.status == "READY")
+    )
+    rows = list(result.scalars().all())
+    if len(rows) < 2:
+        return []
+
+    engine_to_project = {
+        r.engine_project: str(r.project_id) for r in rows if r.engine_project
+    }
+    names = list(engine_to_project.keys())
+    client = RpGraphClient()
+    if not await client.health():
+        return []
+
+    first_path = next((r.local_path for r in rows if r.local_path), ".") or "."
+    try:
+        raw = await client.index_repository(
+            first_path,
+            mode="cross-repo-intelligence",
+            target_projects=names,
+        )
+    except RpGraphError:
+        return []
+
+    edges: list[dict] = []
+    raw_edges = raw.get("edges") if isinstance(raw, dict) else None
+    if not isinstance(raw_edges, list):
+        try:
+            raw_edges = await client.list_cross_edges()
+        except Exception:
+            raw_edges = []
+
+    for row in raw_edges or []:
+        if not isinstance(row, dict):
+            continue
+        src_e = str(row.get("source_engine") or "")
+        dst_e = str(row.get("target_engine") or "")
+        rel = str(row.get("type") or row.get("relation") or "CROSS_SHARED_SYMBOL")
+        relation = "cross_shared"
+        if "HTTP" in rel:
+            relation = "cross_http"
+        elif "ASYNC" in rel:
+            relation = "cross_async"
+        elif "CHANNEL" in rel:
+            relation = "cross_channel"
+        edges.append(
+            {
+                "source": engine_to_project.get(src_e, src_e),
+                "target": engine_to_project.get(dst_e, dst_e),
+                "source_engine": src_e,
+                "target_engine": dst_e,
+                "relation": relation,
+                "weight": float(row.get("weight") or 1.0),
+                "reasons": [rel, str(row.get("source_symbol") or ""), str(row.get("target_symbol") or "")],
+                "source_symbol": row.get("source_symbol"),
+                "target_symbol": row.get("target_symbol"),
+                "similarity": 1.0,
+            }
+        )
+    return edges

@@ -74,3 +74,12 @@ tmp/
 
 # Mimosa å®‰å…¨æ‰«æäº§ç‰©(æœ¬åœ° finding ledger / hook stateï¼Œå«ä¼šè¯çº§ç¼“å­˜)
 .mimosa/
+# ÁÙÊ±²Î¿¼²Ö£¨Í¼Æ×¿ª·¢ÓÃ£¬Éó²éºóÉ¾³ı£©
+vendor/
+
+# ???????????????????
+data/repo-cache/
+data/graph-db/
+data/*.bak*
+data/repopilot.db.bak*
+

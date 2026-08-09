@@ -1,9 +1,13 @@
 import type { GraphData, GraphNode } from '@/api/types';
 import { useGraphStore } from '@/stores/graphStore';
+import type { GraphLayoutMode, GraphViewMode } from '@/stores/graphStore';
 
 interface GraphControlsProps {
-  nodeCount: number;
-  edgeCount: number;
+  /** 仅宇宙图模式显示布局算法切换，避免与「展示形态」语义撞车 */
+  showLayout?: boolean;
+  viewModes?: { id: GraphViewMode; label: string }[];
+  viewMode?: GraphViewMode;
+  onViewModeChange?: (mode: GraphViewMode) => void;
 }
 
 const LEGEND = [
@@ -15,20 +19,29 @@ const LEGEND = [
   { color: '#6e6e73', label: '工具 / 库' },
 ];
 
-export function GraphControls({ nodeCount, edgeCount }: GraphControlsProps) {
+const LAYOUTS: { id: GraphLayoutMode; label: string }[] = [
+  { id: 'force', label: '力导向' },
+  { id: 'tree', label: '树状' },
+  { id: 'radial', label: '径向' },
+];
+
+export function GraphControls({
+  showLayout = true,
+  viewModes,
+  viewMode,
+  onViewModeChange,
+}: GraphControlsProps) {
   const searchQuery = useGraphStore((s) => s.searchQuery);
   const setSearchQuery = useGraphStore((s) => s.setSearchQuery);
   const zoomLevel = useGraphStore((s) => s.zoomLevel);
   const minSimilarity = useGraphStore((s) => s.minSimilarity);
   const setMinSimilarity = useGraphStore((s) => s.setMinSimilarity);
   const requestZoom = useGraphStore((s) => s.requestZoom);
+  const layoutMode = useGraphStore((s) => s.layoutMode);
+  const setLayoutMode = useGraphStore((s) => s.setLayoutMode);
 
   return (
     <div className="graph-toolbar">
-      <div className="graph-title">
-        <h1>项目关系图谱</h1>
-        <p>基于 TF-IDF 相似度的项目网络 · 自动收敛中</p>
-      </div>
       <div className="graph-controls">
         <label className="graph-search">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -36,34 +49,41 @@ export function GraphControls({ nodeCount, edgeCount }: GraphControlsProps) {
             <path d="M21 21l-4.3-4.3" />
           </svg>
           <input
-            placeholder="搜索项目名（owner/repo）"
+            placeholder="搜索 owner/repo"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </label>
-        <div className="zoom-group" role="group" aria-label="缩放控件">
-          <button
-            type="button"
-            className="zoom-btn"
-            title="缩小"
-            onClick={() => requestZoom('out')}
-          >
-            −
-          </button>
-          <span className="zoom-label">{Math.round(zoomLevel * 100)}%</span>
-          <button
-            type="button"
-            className="zoom-btn"
-            title="放大"
-            onClick={() => requestZoom('in')}
-          >
-            +
-          </button>
-        </div>
-        <label
-          className="graph-threshold"
-          title="仅显示相似度 ≥ 此值的边"
-        >
+        {viewModes && viewMode && onViewModeChange && (
+          <div className="view-switch" role="group" aria-label="展示形态">
+            {viewModes.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className={viewMode === m.id ? 'active' : undefined}
+                onClick={() => onViewModeChange(m.id)}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {showLayout && (
+          <div className="layout-switch" role="group" aria-label="三维布局算法">
+            <span className="layout-switch__label">布局</span>
+            {LAYOUTS.map((l) => (
+              <button
+                key={l.id}
+                type="button"
+                className={layoutMode === l.id ? 'active' : undefined}
+                onClick={() => setLayoutMode(l.id)}
+              >
+                {l.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <label className="graph-threshold" title="仅显示相似度 ≥ 此值的边">
           <span className="graph-threshold__label">阈值</span>
           <input
             type="range"
@@ -76,28 +96,34 @@ export function GraphControls({ nodeCount, edgeCount }: GraphControlsProps) {
           />
           <span className="graph-threshold__value">{minSimilarity.toFixed(2)}</span>
         </label>
-        <div className="layout-switch" role="group" aria-label="布局切换">
-          <button type="button" className="active">
-            力导向
-          </button>
-          <button type="button" disabled title="树状布局尚未实现">
-            树状
-          </button>
-          <button type="button" disabled title="径向布局尚未实现">
-            径向
-          </button>
-        </div>
+        {showLayout && (
+          <div className="zoom-group" role="group" aria-label="缩放控件">
+            <button
+              type="button"
+              className="zoom-btn"
+              title="缩小"
+              onClick={() => requestZoom('out')}
+            >
+              −
+            </button>
+            <span className="zoom-label">{Math.round(zoomLevel * 100)}%</span>
+            <button
+              type="button"
+              className="zoom-btn"
+              title="放大"
+              onClick={() => requestZoom('in')}
+            >
+              +
+            </button>
+          </div>
+        )}
       </div>
-      <div className="graph-legend">
+      <div className="graph-legend" aria-label="分类图例">
         {LEGEND.map((l) => (
-          <span key={l.label} className="legend-item">
+          <span key={l.label} className="legend-item" title={l.label}>
             <span className="legend-dot" style={{ background: l.color }} />
-            {l.label}
           </span>
         ))}
-        <span className="legend-badge">
-          <strong>{nodeCount}</strong>&nbsp;节点&nbsp;/&nbsp;<strong>{edgeCount}</strong>&nbsp;连线
-        </span>
       </div>
     </div>
   );

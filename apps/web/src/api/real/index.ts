@@ -75,9 +75,32 @@ export class RealApiClient implements IApiClient {
   updateNote(id: string, d: Parameters<IApiClient['updateNote']>[1]) { return this.notes.updateNote(id, d); }
   deleteNote(id: string) { return this.notes.deleteNote(id); }
 
-  // ------- Graph / Search (2) -------
+  // ------- Graph / Search -------
   getGraph(p?: Parameters<IApiClient['getGraph']>[0]) { return this.graph.getGraph(p); }
+  getCrossEdges() { return this.graph.getCrossEdges(); }
+  getCodeGraphStatus(id: string) { return this.graph.getCodeGraphStatus(id); }
+  triggerCodeGraphIndex(id: string, b?: Parameters<IApiClient['triggerCodeGraphIndex']>[1]) {
+    return this.graph.triggerCodeGraphIndex(id, b);
+  }
+  refreshCodeGraphIndex(id: string, b?: Parameters<IApiClient['refreshCodeGraphIndex']>[1]) {
+    return this.graph.refreshCodeGraphIndex(id, b);
+  }
+  deleteCodeGraphIndex(id: string) { return this.graph.deleteCodeGraphIndex(id); }
+  getCodeGraph(id: string, p?: Parameters<IApiClient['getCodeGraph']>[1]) {
+    return this.graph.getCodeGraph(id, p);
+  }
+  getCodeArchitecture(id: string) { return this.graph.getCodeArchitecture(id); }
+  traceCodeGraph(id: string, b: Parameters<IApiClient['traceCodeGraph']>[1]) {
+    return this.graph.traceCodeGraph(id, b);
+  }
+  searchCodeGraph(id: string, b: Parameters<IApiClient['searchCodeGraph']>[1]) {
+    return this.graph.searchCodeGraph(id, b);
+  }
   searchGithubRepos(q: string) { return this.graph.searchGithubRepos(q); }
+  batchIndexCodeGraph(ids: string[], mode?: Parameters<IApiClient['batchIndexCodeGraph']>[1]) {
+    return this.graph.batchIndexCodeGraph(ids, mode);
+  }
+  getLlmUsage(days?: Parameters<IApiClient['getLlmUsage']>[0]) { return this.graph.getLlmUsage(days); }
 
   // ------- Settings (4) -------
   getSettings() { return this.settings.getSettings(); }

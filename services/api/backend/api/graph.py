@@ -1,26 +1,15 @@
 """
-图谱 API —— 项目关系图谱数据
+旧单体 graph 路由已拆分为 graph_l0 / graph_l1。
+保留本文件以免文档外链瞬间 404；请勿再挂载。
 """
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
+from backend.api.graph_l0 import router as l0_router
+from backend.api.graph_l1 import router as l1_router
 
-from backend.api.deps import get_db
-from backend.core.responses import wrap_data
-from backend.schemas.common import DataResponse
-from backend.services.graph_service import build_graph
+# 兼容测试：合并路由（生产 main 分域挂载）
+from fastapi import APIRouter
 
-router = APIRouter(prefix="/graph", tags=["graph"])
+router = APIRouter()
+router.include_router(l0_router)
+router.include_router(l1_router)
 
-
-@router.get("/", response_model=DataResponse[dict])
-async def get_graph(
-    min_similarity: float = Query(0.3, ge=0, le=1),
-    max_edges: int = Query(200, ge=1, le=1000),
-    db: AsyncSession = Depends(get_db),
-):
-    graph = await build_graph(
-        db,
-        min_similarity=min_similarity,
-        max_edges=max_edges,
-    )
-    return wrap_data(graph)
+__all__ = ["router", "l0_router", "l1_router"]

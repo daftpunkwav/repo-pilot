@@ -3,6 +3,7 @@ import { Sidebar, type SidebarPageKey } from './Sidebar';
 import { Topbar } from './Topbar';
 import { ToastContainer } from '@/components/common/ToastContainer';
 import { useOverviewMockRoundSync } from '@/hooks/useOverviewMockRoundSync';
+import { useUIStore } from '@/stores/uiStore';
 
 function resolveActivePage(pathname: string): SidebarPageKey {
   if (pathname === '/') return 'overview';
@@ -19,10 +20,11 @@ function resolveActivePage(pathname: string): SidebarPageKey {
 export function AppShell() {
   const { pathname } = useLocation();
   const activePage = resolveActivePage(pathname);
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   useOverviewMockRoundSync();
 
   return (
-    <div className="app">
+    <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <Sidebar activePage={activePage} />
       <div className="main">
         <Topbar />
@@ -37,8 +39,9 @@ export function AppShell() {
 
 /** Agent 页专用壳：四栏 grid，无顶栏 */
 export function AgentShell() {
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   return (
-    <div className="agent-shell">
+    <div className={`agent-shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <Sidebar activePage="agent" />
       <Outlet />
       <ToastContainer />
@@ -48,8 +51,9 @@ export function AgentShell() {
 
 /** 笔记页专用壳：侧栏 + notes-main，无标准顶栏 */
 export function NotesShell() {
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   return (
-    <div className="app">
+    <div className={`app${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <Sidebar activePage="notes" />
       <div className="notes-main">
         <Outlet />

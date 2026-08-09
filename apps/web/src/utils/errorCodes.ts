@@ -189,6 +189,21 @@ export const ERROR_CODES: Record<string, ErrorCodeDesc> = {
     hint: '相似度或邻居查询异常',
     severity: 'error',
   },
+  GRAPH_ENGINE_UNAVAILABLE: {
+    title: '图谱引擎不可用',
+    hint: '自托管图谱引擎未启动或连接失败，请检查 graph_engine 服务',
+    severity: 'error',
+  },
+  GRAPH_L1_MODULE_DOWN: {
+    title: 'L1 代码图谱模块未就绪',
+    hint: 'L1 索引/渲染管线异常，请查看 graph_engine 日志',
+    severity: 'error',
+  },
+  LLM_USAGE_MODULE_DOWN: {
+    title: 'LLM 用量统计模块不可用',
+    hint: '用量统计服务异常，不影响 Agent 功能，请查看后端日志',
+    severity: 'warning',
+  },
 
   // Project / Note / Category / Tag
   PROJECT_NOT_FOUND: {

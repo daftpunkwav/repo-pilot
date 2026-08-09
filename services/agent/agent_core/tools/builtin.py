@@ -323,6 +323,325 @@ async def query_knowledge_graph(
 
 
 @tool(
+    name="trigger_code_index",
+    description="触发项目代码图谱索引（浅克隆 + RepoPilot 自研引擎）。返回索引状态。学习场景请先索引再 search/architecture/trace。",
+    parameters={
+        "type": "object",
+        "properties": {
+            "project_id": {"type": "string"},
+            "mode": {
+                "type": "string",
+                "enum": ["fast", "moderate", "full", "cross-repo-intelligence"],
+                "default": "moderate",
+            },
+        },
+        "required": ["project_id"],
+    },
+    allowed_agents=["atlas", "hub", "scout", "navigator"],
+)
+async def trigger_code_index(
+    context=None,
+    project_id: str = "",
+    mode: str = "moderate",
+    **kw,
+):
+    from backend.services import index_pipeline as pipeline
+
+    try:
+        pid = UUID(project_id)
+    except Exception:
+        return {"error": "invalid project_id"}
+    return await pipeline.trigger_index(context.db, pid, mode=mode or "moderate")
+
+
+@tool(
+    name="search_code_graph",
+    description="在已索引代码图谱中搜索符号（search_graph：BM25+结构加权）。",
+    parameters={
+        "type": "object",
+        "properties": {
+            "project_id": {"type": "string"},
+            "query": {"type": "string"},
+            "name_pattern": {"type": "string"},
+            "semantic_query": {"type": "string"},
+            "label": {"type": "string"},
+            "limit": {"type": "integer", "default": 200},
+            "offset": {"type": "integer", "default": 0},
+        },
+        "required": ["project_id"],
+    },
+    allowed_agents=["atlas", "hub", "navigator", "scout", "mentor"],
+)
+async def search_code_graph(
+    context=None,
+    project_id: str = "",
+    query: str = "",
+    name_pattern: str = "",
+    semantic_query: str = "",
+    label: str = "",
+    limit: int = 200,
+    offset: int = 0,
+    **kw,
+):
+    from backend.services import index_pipeline as pipeline
+    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+
+    try:
+        pid = UUID(project_id)
+    except Exception:
+        return {"error": "invalid project_id", "code": "VALIDATION_ERROR"}
+    status = await pipeline.get_status_out(context.db, pid)
+    if status["status"] != "READY":
+        return {
+            "error": "项目尚未索引就绪",
+            "code": "GRAPH_NOT_INDEXED",
+            "status": status["status"],
+            "hint": "先调用 trigger_code_index",
+        }
+    client = RpGraphClient()
+    try:
+        return await client.search_graph(
+            status["engine_project"],
+            query=query or "",
+            name_pattern=name_pattern or "",
+            semantic_query=semantic_query or "",
+            label=label or None,
+            limit=limit or 200,
+            offset=offset or 0,
+        )
+    except RpGraphError as exc:
+        return {"error": exc.message, "code": exc.code}
+
+
+@tool(
+    name="search_code",
+    description="grep 增强搜索：命中归并到函数并按重要度排序。",
+    parameters={
+        "type": "object",
+        "properties": {
+            "project_id": {"type": "string"},
+            "pattern": {"type": "string"},
+            "limit": {"type": "integer", "default": 50},
+        },
+        "required": ["project_id", "pattern"],
+    },
+    allowed_agents=["atlas", "hub", "navigator", "scout", "mentor"],
+)
+async def search_code(
+    context=None,
+    project_id: str = "",
+    pattern: str = "",
+    limit: int = 50,
+    **kw,
+):
+    from backend.services import index_pipeline as pipeline
+    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+
+    try:
+        pid = UUID(project_id)
+    except Exception:
+        return {"error": "invalid project_id", "code": "VALIDATION_ERROR"}
+    status = await pipeline.get_status_out(context.db, pid)
+    if status["status"] != "READY":
+        return {"error": "项目尚未索引就绪", "code": "GRAPH_NOT_INDEXED", "status": status["status"]}
+    client = RpGraphClient()
+    try:
+        return await client.search_code(
+            status["engine_project"], pattern=pattern, limit=limit or 50
+        )
+    except RpGraphError as exc:
+        return {"error": exc.message, "code": exc.code}
+
+
+@tool(
+    name="trace_calls",
+    description="追踪代码图谱路径（trace_path）：calls / data_flow / cross_service，含风险分级。",
+    parameters={
+        "type": "object",
+        "properties": {
+            "project_id": {"type": "string"},
+            "symbol": {"type": "string"},
+            "direction": {
+                "type": "string",
+                "enum": ["upstream", "downstream", "both"],
+                "default": "both",
+            },
+            "depth": {"type": "integer", "default": 3},
+            "kind": {
+                "type": "string",
+                "enum": ["calls", "data_flow", "cross_service"],
+                "default": "calls",
+            },
+        },
+        "required": ["project_id", "symbol"],
+    },
+    allowed_agents=["atlas", "hub", "navigator"],
+)
+async def trace_calls(
+    context=None,
+    project_id: str = "",
+    symbol: str = "",
+    direction: str = "both",
+    depth: int = 3,
+    kind: str = "calls",
+    **kw,
+):
+    from backend.services import index_pipeline as pipeline
+    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+
+    try:
+        pid = UUID(project_id)
+    except Exception:
+        return {"error": "invalid project_id", "code": "VALIDATION_ERROR"}
+    status = await pipeline.get_status_out(context.db, pid)
+    if status["status"] != "READY":
+        return {"error": "项目尚未索引就绪", "code": "GRAPH_NOT_INDEXED", "status": status["status"]}
+    client = RpGraphClient()
+    try:
+        return await client.trace_path(
+            status["engine_project"],
+            symbol=symbol,
+            direction=direction or "both",
+            depth=depth or 3,
+            kind=kind or "calls",
+        )
+    except RpGraphError as exc:
+        return {"error": exc.message, "code": exc.code}
+
+
+@tool(
+    name="query_graph",
+    description="对代码图谱执行 Cypher 子集查询（硬上限 10 万行）。可查复杂度字段如 cyclomatic_complexity。",
+    parameters={
+        "type": "object",
+        "properties": {
+            "project_id": {"type": "string"},
+            "query": {"type": "string"},
+            "limit": {"type": "integer", "default": 1000},
+        },
+        "required": ["project_id", "query"],
+    },
+    allowed_agents=["atlas", "hub", "navigator"],
+)
+async def query_graph(
+    context=None,
+    project_id: str = "",
+    query: str = "",
+    limit: int = 1000,
+    **kw,
+):
+    from backend.services import index_pipeline as pipeline
+    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+
+    try:
+        pid = UUID(project_id)
+    except Exception:
+        return {"error": "invalid project_id", "code": "VALIDATION_ERROR"}
+    status = await pipeline.get_status_out(context.db, pid)
+    if status["status"] != "READY":
+        return {"error": "项目尚未索引就绪", "code": "GRAPH_NOT_INDEXED", "status": status["status"]}
+    client = RpGraphClient()
+    try:
+        return await client.query_graph(
+            status["engine_project"], query, limit=min(limit or 1000, 100_000)
+        )
+    except RpGraphError as exc:
+        return {"error": exc.message, "code": exc.code}
+
+
+@tool(
+    name="get_graph_schema",
+    description="获取代码图谱 schema：节点标签与边类型计数。",
+    parameters={
+        "type": "object",
+        "properties": {"project_id": {"type": "string"}},
+        "required": ["project_id"],
+    },
+    allowed_agents=["atlas", "hub", "navigator", "scout"],
+)
+async def get_graph_schema_tool(context=None, project_id: str = "", **kw):
+    from backend.services import index_pipeline as pipeline
+    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+
+    try:
+        pid = UUID(project_id)
+    except Exception:
+        return {"error": "invalid project_id", "code": "VALIDATION_ERROR"}
+    status = await pipeline.get_status_out(context.db, pid)
+    if status["status"] != "READY":
+        return {"error": "项目尚未索引就绪", "code": "GRAPH_NOT_INDEXED", "status": status["status"]}
+    client = RpGraphClient()
+    try:
+        return await client.get_graph_schema(status["engine_project"])
+    except RpGraphError as exc:
+        return {"error": exc.message, "code": exc.code}
+
+
+@tool(
+    name="get_project_architecture",
+    description="获取已索引项目的架构视图：packages/clusters/layers/hotspots/boundaries。",
+    parameters={
+        "type": "object",
+        "properties": {"project_id": {"type": "string"}},
+        "required": ["project_id"],
+    },
+    allowed_agents=["atlas", "hub", "scout", "navigator"],
+)
+async def get_project_architecture(context=None, project_id: str = "", **kw):
+    from backend.services import index_pipeline as pipeline
+    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+
+    try:
+        pid = UUID(project_id)
+    except Exception:
+        return {"error": "invalid project_id", "code": "VALIDATION_ERROR"}
+    status = await pipeline.get_status_out(context.db, pid)
+    if status["status"] != "READY":
+        return {"error": "项目尚未索引就绪", "code": "GRAPH_NOT_INDEXED", "status": status["status"]}
+    client = RpGraphClient()
+    try:
+        return await client.get_architecture(status["engine_project"])
+    except RpGraphError as exc:
+        return {"error": exc.message, "code": exc.code}
+
+
+@tool(
+    name="get_code_snippet_from_graph",
+    description="按 qualified_name 从代码图谱取符号源码片段（get_code_snippet）。",
+    parameters={
+        "type": "object",
+        "properties": {
+            "project_id": {"type": "string"},
+            "qualified_name": {"type": "string"},
+        },
+        "required": ["project_id", "qualified_name"],
+    },
+    allowed_agents=["atlas", "hub", "navigator", "mentor"],
+)
+async def get_code_snippet_from_graph(
+    context=None,
+    project_id: str = "",
+    qualified_name: str = "",
+    **kw,
+):
+    from backend.services import index_pipeline as pipeline
+    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+
+    try:
+        pid = UUID(project_id)
+    except Exception:
+        return {"error": "invalid project_id", "code": "VALIDATION_ERROR"}
+    status = await pipeline.get_status_out(context.db, pid)
+    if status["status"] != "READY":
+        return {"error": "项目尚未索引就绪", "code": "GRAPH_NOT_INDEXED", "status": status["status"]}
+    client = RpGraphClient()
+    try:
+        return await client.get_code_snippet(status["engine_project"], qualified_name)
+    except RpGraphError as exc:
+        return {"error": exc.message, "code": exc.code}
+
+
+@tool(
     name="list_categories",
     description="列出用户的项目分类。",
     parameters={"type": "object", "properties": {}},

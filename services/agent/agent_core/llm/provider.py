@@ -197,6 +197,7 @@ class LLMProvider:
                 "completion_tokens": getattr(resp.usage, "completion_tokens", 0) or 0,
                 "total_tokens": getattr(resp.usage, "total_tokens", 0) or 0,
             }
+        _maybe_record_usage(usage, model=call_kw.get("model") or "")
         return LLMCompleteResult(
             text=text,
             tool_calls=tool_calls,
@@ -220,6 +221,7 @@ class LLMProvider:
                 step = 24
                 for i in range(0, len(result.text), step):
                     yield LLMChunk(type="text", text=result.text[i : i + step])
+            _maybe_record_usage(result.usage, model=call_kw.get("model") or "")
             yield LLMChunk(type="done", usage=result.usage)
             return
 
@@ -408,3 +410,22 @@ def _coerce_content(content: Any) -> str:
                     parts.append(str(text))
         return "".join(parts)
     return str(content)
+
+
+def _maybe_record_usage(usage: dict[str, int] | None, *, model: str) -> None:
+    """尽力记录用量；任何失败都吞掉，不影响主路径。"""
+    if not usage:
+        return
+    try:
+        from backend.services.llm_usage_service import record_usage_fire_and_forget
+
+        record_usage_fire_and_forget(
+            model=model,
+            provider="litellm",
+            prompt_tokens=int(usage.get("prompt_tokens") or 0),
+            completion_tokens=int(usage.get("completion_tokens") or 0),
+            total_tokens=int(usage.get("total_tokens") or 0),
+        )
+    except Exception:
+        logger.debug("用量记录跳过", exc_info=True)
+

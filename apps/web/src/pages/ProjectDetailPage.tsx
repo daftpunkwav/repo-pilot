@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useIndexStatus, useTriggerIndex } from '@/hooks/useCodeGraph';
 import { useProjectNotes } from '@/hooks/useNotes';
 import {
   useCategories,
@@ -36,6 +37,101 @@ import {
   ProjectAiPanel,
   type ProjectAiLine,
 } from '@/components/project/ProjectAiPanel';
+
+const INDEX_MODE_LABELS: Record<string, string> = {
+  fast: '快速',
+  moderate: '均衡',
+  full: '完整',
+};
+
+const INDEX_STATUS_LABELS: Record<string, string> = {
+  NONE: '未索引',
+  QUEUED: '队列中',
+  CLONING: '克隆中',
+  INDEXING: '索引中',
+  READY: '就绪',
+  STALE: '过期',
+  CLONE_FAILED: '克隆失败',
+  INDEX_FAILED: '索引失败',
+};
+
+function CodeGraphIndexCard({ projectId }: { projectId: string }) {
+  const statusQ = useIndexStatus(projectId);
+  const trigger = useTriggerIndex(projectId);
+  const [mode, setMode] = useState<'fast' | 'moderate' | 'full'>('moderate');
+  const status = statusQ.data?.data;
+
+  const isReady = status?.status === 'READY';
+  const isBusy = ['QUEUED', 'CLONING', 'INDEXING'].includes(status?.status ?? '');
+  const isFailed = ['CLONE_FAILED', 'INDEX_FAILED'].includes(status?.status ?? '');
+
+  return (
+    <div className={OVERVIEW_OUTER_GLASS} style={{ marginTop: 12 }}>
+      <div className="card-header">
+        <div className="card-title">代码图谱索引</div>
+        {status && (
+          <span
+            className={`badge ${isReady ? 'badge--success' : isFailed ? 'badge--error' : isBusy ? 'badge--warn' : ''}`}
+            style={{ fontSize: 11 }}
+          >
+            {INDEX_STATUS_LABELS[status.status] ?? status.status}
+          </span>
+        )}
+      </div>
+
+      {status && (
+        <div style={{ padding: '0 16px 8px', fontSize: 12, color: 'var(--text-500)' }}>
+          {status.node_count != null && (
+            <span>{status.node_count} 节点 · {status.edge_count ?? 0} 边</span>
+          )}
+          {status.index_mode && (
+            <span style={{ marginLeft: 8 }}>模式：{INDEX_MODE_LABELS[status.index_mode] ?? status.index_mode}</span>
+          )}
+        </div>
+      )}
+
+      {isFailed && (
+        <div style={{ margin: '0 16px 8px', padding: 8, background: 'var(--error-bg, rgba(239,68,68,.08))', borderRadius: 6, fontSize: 12, color: 'var(--error)' }}>
+          [{status?.status}] {status?.error?.trim() || '未返回详细错误。请重试；若仍失败请查看 API 日志。'}
+        </div>
+      )}
+
+      <div style={{ padding: '0 16px 12px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <select
+          className="field input"
+          style={{ height: 28, fontSize: 12, flex: '0 0 auto', minWidth: 72 }}
+          value={mode}
+          disabled={isBusy || trigger.isPending}
+          onChange={(e) => setMode(e.target.value as 'fast' | 'moderate' | 'full')}
+        >
+          <option value="fast">快速</option>
+          <option value="moderate">均衡</option>
+          <option value="full">完整</option>
+        </select>
+
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          disabled={isBusy || trigger.isPending}
+          onClick={() => trigger.mutate(mode)}
+          style={{ height: 28, fontSize: 12 }}
+        >
+          {isBusy ? '索引中…' : (status?.status === 'NONE' || !status) ? '开始索引' : '重新索引'}
+        </button>
+
+        {isReady && (
+          <Link
+            to={`/graph/projects/${projectId}`}
+            className={`btn btn-sm ${OVERVIEW_INNER_GLASS}`}
+            style={{ height: 28, fontSize: 12 }}
+          >
+            查看代码图谱 →
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const PD_PROGRESS: { id: ProjectProgress; label: string; className: string }[] = [
   { id: 'none', label: '待开始', className: 'progress-none' },
@@ -733,6 +829,8 @@ export function ProjectDetailPage() {
             ))}
           </div>
         </div>
+
+        <CodeGraphIndexCard projectId={id!} />
 
       </aside>
 

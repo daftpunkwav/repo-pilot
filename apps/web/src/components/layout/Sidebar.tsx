@@ -5,6 +5,7 @@ import { useProjectStats } from '@/hooks/useProjects';
 import { useAllNotes } from '@/hooks/useNotes';
 import { NavIcons } from '@/components/icons/NavIcons';
 import { userInitials } from '@/utils/user';
+import { useUIStore } from '@/stores/uiStore';
 
 /** 与 archive/sidebar.js NAV_ITEMS 顺序一致 */
 const NAV_ITEMS = [
@@ -28,17 +29,33 @@ export function Sidebar({ activePage }: SidebarProps) {
   const { data: stats } = useProjectStats();
   const { data: notes } = useAllNotes();
   const initials = userInitials(user?.username);
+  const collapsed = useUIStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${collapsed ? ' is-collapsed' : ''}`}>
       <div className="sidebar-brand">
-        <div className="sidebar-logo">RP</div>
-        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-          <span className="sidebar-name">RepoPilot</span>
-          <span style={{ fontSize: 10, color: 'var(--text-400)', letterSpacing: '0.06em' }}>
-            v1.0.0
-          </span>
+        <div className="sidebar-logo" title="RepoPilot">
+          RP
         </div>
+        {!collapsed && (
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+            <span className="sidebar-name">RepoPilot</span>
+            <span style={{ fontSize: 10, color: 'var(--text-400)', letterSpacing: '0.06em' }}>
+              v1.0.0
+            </span>
+          </div>
+        )}
+        <button
+          type="button"
+          className="sidebar-collapse-btn"
+          title={collapsed ? '展开导航' : '折叠导航'}
+          aria-label={collapsed ? '展开导航' : '折叠导航'}
+          aria-expanded={!collapsed}
+          onClick={toggleSidebar}
+        >
+          {collapsed ? '⟩' : '⟨'}
+        </button>
       </div>
 
       {NAV_ITEMS.map((item) => {
@@ -49,6 +66,7 @@ export function Sidebar({ activePage }: SidebarProps) {
             key={item.key}
             to={item.path}
             end={item.path === '/'}
+            title={item.label}
             className={({ isActive }) => {
               const active = isActive || isProjectDetail;
               const classes = ['nav-item'];
@@ -59,12 +77,12 @@ export function Sidebar({ activePage }: SidebarProps) {
             data-nav-key={item.key}
           >
             <Icon />
-            <span>{item.label}</span>
-            {item.badge === 'AI' && <span className="nav-badge">AI</span>}
-            {item.badge === 'count' && stats && (
+            {!collapsed && <span>{item.label}</span>}
+            {!collapsed && item.badge === 'AI' && <span className="nav-badge">AI</span>}
+            {!collapsed && item.badge === 'count' && stats && (
               <span className="nav-badge">{stats.total}</span>
             )}
-            {item.badge === 'notes' && notes && (
+            {!collapsed && item.badge === 'notes' && notes && (
               <span className="nav-badge">{notes.length}</span>
             )}
           </NavLink>
@@ -72,16 +90,23 @@ export function Sidebar({ activePage }: SidebarProps) {
       })}
 
       <div className="sidebar-footer">
-        <Link className="nav-item" to="/settings" style={{ padding: '8px 10px' }}>
+        <Link
+          className="nav-item"
+          to="/settings"
+          title={user?.username ?? '访客'}
+          style={{ padding: '8px 10px' }}
+        >
           <div className="avatar" style={{ width: 28, height: 28, fontSize: 11 }}>
             {initials}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2, flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>{user?.username ?? '访客'}</span>
-            <span style={{ fontSize: 10, color: 'var(--text-400)' }}>
-              Pro · {stats?.total ?? 0} / ∞
-            </span>
-          </div>
+          {!collapsed && (
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2, flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 12, fontWeight: 600 }}>{user?.username ?? '访客'}</span>
+              <span style={{ fontSize: 10, color: 'var(--text-400)' }}>
+                Pro · {stats?.total ?? 0} / ∞
+              </span>
+            </div>
+          )}
         </Link>
       </div>
     </aside>

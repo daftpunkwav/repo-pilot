@@ -80,6 +80,29 @@ class Settings(BaseSettings):
     llm_api_base: Optional[str] = None
     llm_model: str = "gpt-4o-mini"
 
+    # 自研图谱引擎（rp-graph-engine）
+    rp_graph_allowed_root: str = Field(
+        default_factory=lambda: str(DATA_DIR),
+        description="RP_GRAPH_ALLOWED_ROOT：引擎可索引根；仓库缓存落其下 repo-cache/",
+    )
+    rp_graph_engine_url: str = Field(
+        default="",
+        description="可选 sidecar HTTP 基址（空则进程内引擎）；例 http://127.0.0.1:9750",
+    )
+    # 兼容旧环境变量名（勿在新代码中直接依赖）
+    cbm_allowed_root: str = Field(
+        default_factory=lambda: str(DATA_DIR),
+        description="[deprecated] 请改用 RP_GRAPH_ALLOWED_ROOT",
+    )
+    cbm_ui_base_url: str = Field(
+        default="",
+        description="[deprecated] 已切断外部 CBM",
+    )
+    repo_cache_quota_gb: float = Field(
+        default=2.0,
+        description="data/repo-cache 总配额（GB）",
+    )
+
 
 @lru_cache()
 def get_settings() -> Settings:

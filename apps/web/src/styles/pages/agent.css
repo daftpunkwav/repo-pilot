@@ -16,6 +16,9 @@
     background: var(--bg-200);
     transition: grid-template-columns 0.22s var(--ease);
   }
+  .agent-shell.sidebar-collapsed {
+    grid-template-columns: var(--sidebar-w-collapsed, 72px) minmax(0, 280px) minmax(0, 1fr) minmax(0, 280px);
+  }
 
   .agent-shell.agent-shell--context-collapsed {
     grid-template-columns: var(--sidebar-w) minmax(0, 280px) minmax(0, 1fr) 0;

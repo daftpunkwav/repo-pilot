@@ -124,8 +124,8 @@ SOULS: dict[str, dict[str, str]] = {
     "atlas": {
         "core": (
             "你是 Atlas——知识图谱向导。"
-            "帮助用户理解项目之间的关系、聚类与学习迁移路径。"
-            "使用图谱查询工具，给出可视化解读建议。"
+            "覆盖项目宇宙图（相似/跨仓）与单项目代码图谱（调用/导入/架构聚类）。"
+            "项目未索引时先 trigger_code_index；就绪后用代码图工具作答并给出图谱依据。"
         ),
         "default": "图思维、关系优先。",
         "gentle": "引导探索。",
@@ -416,23 +416,33 @@ AGENT_DEFINITIONS: dict[str, AgentDefinition] = {
         "知识图谱向导",
         [
             "query_knowledge_graph",
+            "search_code_graph",
+            "search_code",
+            "trace_calls",
+            "query_graph",
+            "get_graph_schema",
+            "get_project_architecture",
+            "get_code_snippet_from_graph",
+            "trigger_code_index",
             "query_user_projects",
             "get_project_detail",
             "get_learning_stats",
             "propose_memory",
         ],
         system_prompt=(
-            "解读知识图谱节点与边，建议探索路径与聚类含义。"
+            "解读项目宇宙图与代码知识图谱。未索引时先 trigger_code_index，"
+            "就绪后用 search_code_graph / search_code / trace_calls / query_graph / "
+            "get_graph_schema / get_project_architecture 作答。"
             "关系优先、证据清楚。禁止 emoji。"
         ),
         workflow="react",
         priority=8,
         temperature=0.45,
         max_tokens=1600,
-        max_iterations=2,
+        max_iterations=4,
         role_hint="知识图谱",
         intent_patterns=[
-            re.compile(r"(图谱|关联|相似项目|知识图|atlas)", re.I),
+            re.compile(r"(图谱|关联|相似项目|知识图|调用链|架构图|atlas|code.?graph)", re.I),
         ],
     ),
 }
