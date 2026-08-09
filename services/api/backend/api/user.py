@@ -60,7 +60,13 @@ async def accept_memory_proposal(
     mem = MemoryService(db)
     result = await mem.accept_memory_proposal(proposal_id)
     if not result.get("ok"):
-        raise HTTPException(status_code=404, detail=result.get("error") or "提案不存在")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "MEMORY_PROPOSAL_NOT_FOUND",
+                "message": result.get("error") or "记忆提案不存在",
+            },
+        )
     profile = await get_user_profile(db)
     return wrap_data(profile)
 
@@ -77,6 +83,12 @@ async def reject_memory_proposal(
     mem = MemoryService(db)
     result = await mem.reject_memory_proposal(proposal_id)
     if not result.get("ok"):
-        raise HTTPException(status_code=404, detail=result.get("error") or "提案不存在")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "MEMORY_PROPOSAL_NOT_FOUND",
+                "message": result.get("error") or "记忆提案不存在",
+            },
+        )
     profile = await get_user_profile(db)
     return wrap_data(profile)

@@ -46,7 +46,7 @@ def _require_internal_token(token: str | None) -> None:
     if not token or token.strip() != expected:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
-            detail={"code": "UNAUTHORIZED", "message": "无效内部令牌"},
+            detail={"code": "AGENT_UNAUTHORIZED", "message": "无效内部令牌"},
         )
 
 

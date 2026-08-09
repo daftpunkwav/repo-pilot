@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_db
@@ -87,7 +88,14 @@ async def create_project(
 ):
     project = build_project_from_create(data)
     db.add(project)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={"code": "PROJECT_URL_DUPLICATE", "message": "该仓库 URL 已导入"},
+        ) from exc
     await db.refresh(project)
     return wrap_data(
         project_to_out(
@@ -126,7 +134,7 @@ async def get_project_api(
     if not project:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Project not found"},
+            detail={"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
         )
     return wrap_data(
         project_to_out(
@@ -145,7 +153,7 @@ async def get_project_readme(
     if not project:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Project not found"},
+            detail={"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
         )
     coords = _parse_github_owner_repo(project)
     if not coords:
@@ -202,7 +210,7 @@ async def update_project(
     if not project:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Project not found"},
+            detail={"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
         )
     for key, value in data.model_dump(exclude_unset=True, exclude={"tags"}).items():
         setattr(project, key, value)
@@ -224,7 +232,7 @@ async def delete_project(
     if not project:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Project not found"},
+            detail={"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
         )
     await db.delete(project)
     await db.commit()
@@ -250,7 +258,7 @@ async def update_progress(
     if not project:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Project not found"},
+            detail={"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
         )
     project.progress = progress
     await db.commit()

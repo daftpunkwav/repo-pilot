@@ -12,6 +12,16 @@ logger = logging.getLogger(__name__)
 GITHUB_API = "https://api.github.com"
 
 
+class GithubClientError(Exception):
+    """GitHub 客户端可映射到登记报错码的异常。"""
+
+    def __init__(self, code: str, message: str, status: int = 502):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.status = status
+
+
 async def _request(
     path: str,
     *,
@@ -174,6 +184,28 @@ async def list_user_stars(
                     "list_user_stars failed status=%s body=%s",
                     status,
                     str(data)[:200],
+                )
+                msg = (
+                    data.get("message")
+                    if isinstance(data, dict)
+                    else f"GitHub API {status}"
+                )
+                if status in (403, 429):
+                    raise GithubClientError(
+                        "GITHUB_API_RATE_LIMIT",
+                        str(msg) or "GitHub API 限流",
+                        status=502,
+                    )
+                if status in (401, 404):
+                    raise GithubClientError(
+                        "GITHUB_PAT_INVALID",
+                        str(msg) or "GitHub 鉴权失败或用户不存在",
+                        status=400,
+                    )
+                raise GithubClientError(
+                    "GITHUB_STARS_FETCH_FAILED",
+                    str(msg) or "Stars 拉取失败",
+                    status=502,
                 )
             break
         for r in data:

@@ -22,7 +22,7 @@ async def _get_project(db: AsyncSession, project_id: UUID) -> Project:
     if not project:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Project not found"},
+            detail={"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
         )
     return project
 
@@ -32,7 +32,7 @@ async def _get_note(db: AsyncSession, note_id: UUID) -> Note:
     if not note:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Note not found"},
+            detail={"code": "NOTE_NOT_FOUND", "message": "笔记不存在"},
         )
     return note
 

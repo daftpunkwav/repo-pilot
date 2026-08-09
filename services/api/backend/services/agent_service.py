@@ -658,7 +658,7 @@ async def stream_chat(
         session = await db.get(AgentSession, session_id)
         if not session:
             yield encode_stream_item(
-                format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"})
+                format_sse("error", {"code": "AGENT_SESSION_NOT_FOUND", "message": "会话不存在"})
             )
             return
         if not (settings.agent_internal_token or "").strip():
@@ -685,7 +685,7 @@ async def stream_chat(
     session = await db.get(AgentSession, session_id)
     if not session:
         yield encode_stream_item(
-            format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"})
+            format_sse("error", {"code": "AGENT_SESSION_NOT_FOUND", "message": "会话不存在"})
         )
         return
 
@@ -698,7 +698,7 @@ async def stream_chat(
             yield encode_stream_item(
                 format_sse(
                     "error",
-                    {"code": "FORBIDDEN", "message": "无权绑定该项目到会话"},
+                    {"code": "AGENT_SESSION_PROJECT_DENIED", "message": "无权绑定该项目到会话"},
                 )
             )
             return
@@ -786,7 +786,7 @@ async def stream_question_answer(
 ) -> AsyncIterator[str]:
     session = await db.get(AgentSession, session_id)
     if not session:
-        yield encode_stream_item(format_sse("error", {"code": "NOT_FOUND", "message": "会话不存在"}))
+        yield encode_stream_item(format_sse("error", {"code": "AGENT_SESSION_NOT_FOUND", "message": "会话不存在"}))
         return
 
     # 找回原始反问结构，便于历史卡片展示
@@ -958,7 +958,7 @@ async def stream_analyze(
         if not project:
             yield encode_stream_item(format_sse(
                 "error",
-                {"code": "FORBIDDEN", "message": "项目不存在或不属于当前用户"},
+                {"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
             ))
             return
 
@@ -1471,7 +1471,7 @@ async def stream_classify_project(
         if not project:
             yield encode_stream_item(format_sse(
                 "error",
-                {"code": "FORBIDDEN", "message": "Project not found"},
+                {"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
             ))
             return
 
@@ -1517,7 +1517,7 @@ async def stream_generate_note(
         if not project:
             yield encode_stream_item(format_sse(
                 "error",
-                {"code": "FORBIDDEN", "message": "Project not found"},
+                {"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
             ))
             return
 

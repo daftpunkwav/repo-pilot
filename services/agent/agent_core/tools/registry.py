@@ -94,15 +94,22 @@ class ToolRegistry:
     ) -> Any:
         tool = self._tools.get(name)
         if not tool:
-            return {"error": f"工具 {name} 不存在"}
+            return {
+                "code": "AGENT_TOOL_FAILED",
+                "error": f"工具 {name} 不存在",
+            }
         agent_id = getattr(context, "agent_id", None)
         if agent_id and agent_id not in tool.allowed_agents and "*" not in tool.allowed_agents:
-            return {"error": f"Agent {agent_id} 无权使用工具 {name}"}
+            return {
+                "code": "AGENT_TOOL_DENIED",
+                "error": f"Agent {agent_id} 无权使用工具 {name}",
+            }
         perm_key = tool.required_permission or TOOL_PERMISSION_MAP.get(name)
         if perm_key:
             permissions = getattr(context, "permissions", None) or {}
             if not _permission_allowed(permissions, perm_key):
                 return {
+                    "code": "AGENT_TOOL_DENIED",
                     "error": f"权限不足：当前设置禁止 {perm_key}，无法调用工具 {name}",
                 }
         timeout = tool.timeout_ms / 1000.0
@@ -112,10 +119,10 @@ class ToolRegistry:
                 timeout=timeout,
             )
         except asyncio.TimeoutError:
-            return {"error": f"工具 {name} 超时"}
+            return {"code": "AGENT_TOOL_TIMEOUT", "error": f"工具 {name} 超时"}
         except Exception as e:
             logger.exception("Tool %s failed", name)
-            return {"error": f"工具 {name} 失败: {e}"}
+            return {"code": "AGENT_TOOL_FAILED", "error": f"工具 {name} 失败: {e}"}
 
 
 # 全局单例，builtin 工具在模块导入时注册

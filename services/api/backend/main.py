@@ -5,13 +5,14 @@ import importlib
 from contextlib import asynccontextmanager
 from typing import Callable
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from backend.config import get_settings
+from backend.core import error_codes as EC
 from backend.core.limiter import limiter
 from backend.core.middleware import setup_middleware
 from backend.core.module_registry import all_module_statuses, get_module_status, safe_load_router
@@ -41,7 +42,51 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title=settings.app_name, version="2.0.0", lifespan=lifespan)
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+async def _rate_limited_handler(request, exc):  # noqa: ANN001
+    """限流响应统一带 RATE_LIMITED 码。"""
+    return JSONResponse(
+        status_code=429,
+        content={
+            "detail": {
+                "code": EC.RATE_LIMITED,
+                "message": "请求过于频繁，请稍后重试",
+            }
+        },
+    )
+
+
+async def _validation_error_handler(request: Request, exc: RequestValidationError):
+    """参数校验 → VALIDATION_ERROR；llm_api_base SSRF → SETTINGS_LLM_BASE_INVALID。"""
+    errors = exc.errors()
+    for err in errors:
+        loc = err.get("loc") or ()
+        if "llm_api_base" in loc:
+            return JSONResponse(
+                status_code=400,
+                content={
+                    "detail": {
+                        "code": EC.SETTINGS_LLM_BASE_INVALID,
+                        "message": err.get("msg") or "LLM API Base 不安全",
+                        "details": errors,
+                    }
+                },
+            )
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": {
+                "code": EC.VALIDATION_ERROR,
+                "message": "参数校验失败",
+                "details": errors,
+            }
+        },
+    )
+
+
+app.add_exception_handler(RateLimitExceeded, _rate_limited_handler)
+app.add_exception_handler(RequestValidationError, _validation_error_handler)
 
 app.add_middleware(SlowAPIMiddleware)
 setup_middleware(app)
@@ -104,7 +149,7 @@ async def module_unavailable(module: str, rest: str):
             status_code=503,
             content={
                 "detail": {
-                    "code": "MODULE_LOAD_FAILED",
+                    "code": EC.MODULE_LOAD_FAILED,
                     "message": f"模块 {module} 加载失败，服务不可用",
                     "module": module,
                     "error": status.error,

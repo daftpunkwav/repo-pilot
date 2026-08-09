@@ -612,7 +612,7 @@ class HubService:
         if not self.registry.has(agent_id):
             yield format_sse(
                 "error",
-                {"code": "AGENT_NOT_FOUND", "message": f"未知 Agent: {agent_id}"},
+                {"code": "AGENT_INVALID_ID", "message": f"未知 Agent: {agent_id}"},
             )
             return
 
@@ -629,7 +629,7 @@ class HubService:
                 )
             else:
                 msg = "未配置 LLM API Key，请到设置页填写并保存后再试。"
-            yield format_sse("error", {"code": "LLM_NOT_CONFIGURED", "message": msg})
+            yield format_sse("error", {"code": "LLM_KEY_MISSING", "message": msg})
             yield format_sse(
                 "text_delta",
                 {"content": f"【{agent_id}】{msg}"},
@@ -1493,7 +1493,7 @@ class HubService:
                     logger.exception("并行调度失败: %s", r)
                     yield format_sse(
                         "error",
-                        {"code": "DISPATCH_ERROR", "message": str(r)},
+                        {"code": "AGENT_DISPATCH_FAILED", "message": str(r)},
                     )
                     continue
                 target, text, question, chunks, _think, _body = r

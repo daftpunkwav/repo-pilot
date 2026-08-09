@@ -1,31 +1,48 @@
 """
-自定义异常
+自定义异常 —— 使用登记的报错码（见 error_codes / ERROR_CODES.md）
 """
 from typing import Optional
 
 from fastapi import HTTPException, status
 
+from backend.core import error_codes as EC
+
 
 class AppException(HTTPException):
-    def __init__(self, status_code: int, code: str, message: str, details: Optional[list[dict]] = None):
-        super().__init__(status_code=status_code, detail={"code": code, "message": message, "details": details})
+    def __init__(
+        self,
+        status_code: int,
+        code: str,
+        message: str,
+        details: Optional[list[dict]] = None,
+    ):
+        super().__init__(
+            status_code=status_code,
+            detail={"code": code, "message": message, "details": details},
+        )
 
 
 class NotFoundError(AppException):
-    def __init__(self, resource: str):
-        super().__init__(status.HTTP_404_NOT_FOUND, "NOT_FOUND", f"{resource} not found")
+    def __init__(self, message: str, code: str):
+        """code 必须为资源专用码（如 PROJECT_NOT_FOUND），禁止泛化 NOT_FOUND。"""
+        super().__init__(status.HTTP_404_NOT_FOUND, code, message)
 
 
 class ConflictError(AppException):
-    def __init__(self, message: str):
-        super().__init__(status.HTTP_409_CONFLICT, "CONFLICT", message)
+    def __init__(self, message: str, code: str):
+        """code 必须为冲突专用码（如 PROJECT_URL_DUPLICATE）。"""
+        super().__init__(status.HTTP_409_CONFLICT, code, message)
 
 
-class ValidationError(AppException):
-    def __init__(self, details: list[dict]):
-        super().__init__(status.HTTP_422_UNPROCESSABLE_ENTITY, "VALIDATION_ERROR", "Validation failed", details)
+class ValidationAppError(AppException):
+    def __init__(self, details: list[dict] | None = None, message: str = "参数校验失败"):
+        super().__init__(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            EC.VALIDATION_ERROR,
+            message,
+            details,
+        )
 
 
-class UnauthorizedError(AppException):
-    def __init__(self):
-        super().__init__(status.HTTP_401_UNAUTHORIZED, "UNAUTHORIZED", "Not authenticated")
+# 兼容旧名
+ValidationError = ValidationAppError

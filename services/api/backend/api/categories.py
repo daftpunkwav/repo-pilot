@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_db
@@ -23,6 +23,15 @@ class CategoryOut(BaseModel):
     icon: str | None = None
     color: str | None = None
     is_preset: bool
+
+
+async def _name_taken(
+    db: AsyncSession, name: str, *, exclude_id: UUID | None = None
+) -> bool:
+    q = select(Category.id).where(func.lower(Category.name) == name.strip().lower())
+    if exclude_id is not None:
+        q = q.where(Category.id != exclude_id)
+    return (await db.execute(q.limit(1))).scalar_one_or_none() is not None
 
 
 @router.get("/", response_model=DataResponse[list[CategoryOut]])
@@ -46,6 +55,11 @@ async def create_category(
     data: CategoryCreate,
     db: AsyncSession = Depends(get_db),
 ):
+    if await _name_taken(db, data.name):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={"code": "CATEGORY_NAME_DUPLICATE", "message": "分类名已存在"},
+        )
     category = Category(name=data.name, is_preset=False)
     db.add(category)
     await db.commit()
@@ -68,10 +82,23 @@ async def update_category(
     db: AsyncSession = Depends(get_db),
 ):
     category = await db.get(Category, category_id)
-    if not category or category.is_preset:
+    if not category:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Category not found"},
+            detail={"code": "CATEGORY_NOT_FOUND", "message": "分类不存在"},
+        )
+    if category.is_preset:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "CATEGORY_PRESET_IMMUTABLE",
+                "message": "预设分类不可重命名",
+            },
+        )
+    if await _name_taken(db, data.name, exclude_id=category_id):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={"code": "CATEGORY_NAME_DUPLICATE", "message": "分类名已存在"},
         )
     category.name = data.name
     await db.commit()
@@ -93,10 +120,18 @@ async def delete_category(
     db: AsyncSession = Depends(get_db),
 ):
     category = await db.get(Category, category_id)
-    if not category or category.is_preset:
+    if not category:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Category not found"},
+            detail={"code": "CATEGORY_NOT_FOUND", "message": "分类不存在"},
+        )
+    if category.is_preset:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "CATEGORY_PRESET_IMMUTABLE",
+                "message": "预设分类不可删除",
+            },
         )
     await db.delete(category)
     await db.commit()

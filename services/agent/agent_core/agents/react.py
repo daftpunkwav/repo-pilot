@@ -136,15 +136,21 @@ class ReActEngine:
                     usage = chunk.usage or {}
                 elif chunk.type == "error":
                     err = chunk.error or "LLM 流式错误"
+                    code = (
+                        "LLM_TIMEOUT"
+                        if "超时" in err
+                        else "LLM_REQUEST_FAILED"
+                    )
                     if emit_sse:
-                        yield format_sse("error", {"code": "LLM_ERROR", "message": err})
+                        yield format_sse("error", {"code": code, "message": err})
                     yield LCR(text=full or err, usage=usage, failed=True)
                     return
         except Exception as e:
             logger.exception("LLM stream error in engine")
             err = f"LLM 调用失败：{e}"
+            code = "LLM_TIMEOUT" if "超时" in str(e) else "LLM_REQUEST_FAILED"
             if emit_sse:
-                yield format_sse("error", {"code": "LLM_ERROR", "message": err})
+                yield format_sse("error", {"code": code, "message": err})
             yield LCR(text=full or err, usage=usage, failed=True)
             return
         yield LCR(text=full, usage=usage, failed=False)
@@ -662,8 +668,9 @@ class ReActEngine:
             except Exception as e:
                 logger.exception("LLM error in ReAct")
                 err = f"LLM 调用失败：{e}"
+                code = "LLM_TIMEOUT" if "超时" in str(e) else "LLM_REQUEST_FAILED"
                 if emit_sse:
-                    yield format_sse("error", {"code": "LLM_ERROR", "message": err})
+                    yield format_sse("error", {"code": code, "message": err})
                 yield EngineResult(text=err, agent_id=agent_def.id, iterations=iteration)
                 yield ("__abort__",)
                 return
@@ -1249,7 +1256,8 @@ _DISPATCH_NEGATION_RE = re.compile(
 # 有实质交付结构时，不因提到「调度」就当空承诺
 _DELIVERY_STRUCTURE_RE = re.compile(
     r"(?m)^#{1,3}\s|\n[-*]\s+\S|```|\|.+\|",
-)
+)
+
 
 # §4.2.7: is_plan_announcement 长度阈值（魔数收敛）
 _HUB_LONG_PLAN_MAX_CHARS = 1200        # Hub 长计划 + 多 dispatch 视为实交付

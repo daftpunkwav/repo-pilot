@@ -2,10 +2,12 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.api.deps import get_db
 from backend.core.responses import wrap_data
+from backend.models.project import Tag
 from backend.schemas.common import DataResponse
 from backend.schemas.tag import SetProjectTagsBody, SetProjectTagsOut, TagCreate, TagOut
 from backend.services.tag_service import (
@@ -28,6 +30,16 @@ async def create_tag_api(
     data: TagCreate,
     db: AsyncSession = Depends(get_db),
 ):
+    taken = await db.execute(
+        select(Tag.id)
+        .where(func.lower(Tag.name) == data.name.strip().lower())
+        .limit(1)
+    )
+    if taken.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail={"code": "TAG_NAME_DUPLICATE", "message": "标签名已存在"},
+        )
     tag = await create_tag(db, data.name)
     return wrap_data(tag)
 
@@ -41,7 +53,7 @@ async def delete_tag_api(
     if not ok:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Tag not found"},
+            detail={"code": "TAG_NOT_FOUND", "message": "标签不存在"},
         )
     return wrap_data({"success": True})
 
@@ -56,6 +68,6 @@ async def set_project_tags_api(
     if result is None:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Project not found"},
+            detail={"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
         )
     return wrap_data(result)

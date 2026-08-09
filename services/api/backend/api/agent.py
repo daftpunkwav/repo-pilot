@@ -103,7 +103,7 @@ async def get_agent_session(
     if not detail:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Session not found"},
+            detail={"code": "AGENT_SESSION_NOT_FOUND", "message": "会话不存在"},
         )
     return wrap_data(detail)
 
@@ -117,7 +117,7 @@ async def delete_agent_session(
     if not ok:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Session not found"},
+            detail={"code": "AGENT_SESSION_NOT_FOUND", "message": "会话不存在"},
         )
     return wrap_data({"success": True})
 
@@ -148,7 +148,7 @@ async def patch_agent_session(
             raise HTTPException(
                 status.HTTP_403_FORBIDDEN,
                 detail={
-                    "code": "FORBIDDEN",
+                    "code": "AGENT_SESSION_PROJECT_DENIED",
                     "message": "无权绑定该项目到会话",
                 },
             ) from exc
@@ -156,7 +156,7 @@ async def patch_agent_session(
             raise HTTPException(
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail={
-                    "code": "INVALID_ACTIVE_AGENT",
+                    "code": "AGENT_INVALID_ID",
                     "message": "未知的 active_agent",
                 },
             ) from exc
@@ -164,7 +164,7 @@ async def patch_agent_session(
     if not updated:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "Session not found"},
+            detail={"code": "AGENT_SESSION_NOT_FOUND", "message": "会话不存在"},
         )
     return wrap_data(updated)
 
@@ -279,7 +279,7 @@ async def analyze_project(
     if not project:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            detail={"code": "FORBIDDEN", "message": "Project does not belong to current user"},
+            detail={"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
         )
     depth = (body.depth if body else "quick") or "quick"
     agent_id = (body.agent_id if body else None) or None

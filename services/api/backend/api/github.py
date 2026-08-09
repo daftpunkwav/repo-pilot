@@ -193,7 +193,18 @@ async def get_stars(
             cached = True
 
     if not cached:
-        raw_items = await list_user_stars(uname, token=token, per_page=100, max_pages=30)
+        from backend.services.github_client import GithubClientError
+
+        try:
+            raw_items = await list_user_stars(
+                uname, token=token, per_page=100, max_pages=30
+            )
+        except GithubClientError as exc:
+            await db.commit()
+            raise HTTPException(
+                exc.status,
+                detail={"code": exc.code, "message": exc.message},
+            ) from exc
         fetched_at = _write_stars_cache(state, uname, raw_items)
         await db.commit()
     else:
@@ -224,7 +235,7 @@ async def bind_account(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
             detail={
-                "code": "GITHUB_AUTH_FAILED",
+                "code": "GITHUB_PAT_INVALID",
                 "message": "GitHub PAT 无效或权限不足",
             },
         )
@@ -270,7 +281,7 @@ async def unbind_account(
     if len(new_accounts) == len(accounts):
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
-            detail={"code": "NOT_FOUND", "message": "账号不存在"},
+            detail={"code": "GITHUB_ACCOUNT_NOT_FOUND", "message": "GitHub 账号记录不存在"},
         )
     _save_accounts(state, new_accounts)
     settings = _load_settings(state)

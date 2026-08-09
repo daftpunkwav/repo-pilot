@@ -32,6 +32,7 @@ async def test_execute_blocks_github_when_permission_denied():
     )
     result = await reg.execute("fetch_github_repo", {}, ctx)
     assert "error" in result
+    assert result.get("code") == "AGENT_TOOL_DENIED"
     assert "allow_github_api" in result["error"]
 
 

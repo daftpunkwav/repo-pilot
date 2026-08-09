@@ -347,14 +347,14 @@ export class MockApiClient implements IApiClient {
   async getProject(id: string): Promise<ApiResponse<Project>> {
     await delay();
     const project = this.projects.find((p) => p.id === id);
-    if (!project) throwError('NOT_FOUND', '项目不存在');
+    if (!project) throwError('PROJECT_NOT_FOUND', '项目不存在');
     return wrapResponse(project);
   }
 
   async getProjectReadme(id: string): Promise<ApiResponse<import('../types').ProjectReadme>> {
     await delay();
     const project = this.projects.find((p) => p.id === id);
-    if (!project) throwError('NOT_FOUND', '项目不存在');
+    if (!project) throwError('PROJECT_NOT_FOUND', '项目不存在');
     if (project.readme) {
       return wrapResponse({
         content: project.readme,
@@ -373,7 +373,7 @@ export class MockApiClient implements IApiClient {
   async createProject(data: CreateProjectInput): Promise<ApiResponse<Project>> {
     await delay();
     if (this.projects.some((p) => p.url === data.url)) {
-      throwError('DUPLICATE_URL', '该 URL 已存在');
+      throwError('PROJECT_URL_DUPLICATE', '该 URL 已存在');
     }
     const project: Project = {
       id: newId('p'),
@@ -398,9 +398,9 @@ export class MockApiClient implements IApiClient {
   ): Promise<ApiResponse<Project>> {
     await delay();
     const idx = this.projects.findIndex((p) => p.id === id);
-    if (idx < 0) throwError('NOT_FOUND', '项目不存在');
+    if (idx < 0) throwError('PROJECT_NOT_FOUND', '项目不存在');
     const existing = this.projects[idx];
-    if (!existing) throwError('NOT_FOUND', '项目不存在');
+    if (!existing) throwError('PROJECT_NOT_FOUND', '项目不存在');
     const updated: Project = {
       ...existing,
       ...data,
@@ -414,7 +414,7 @@ export class MockApiClient implements IApiClient {
   async deleteProject(id: string): Promise<ApiResponse<{ success: boolean }>> {
     await delay();
     const idx = this.projects.findIndex((p) => p.id === id);
-    if (idx < 0) throwError('NOT_FOUND', '项目不存在');
+    if (idx < 0) throwError('PROJECT_NOT_FOUND', '项目不存在');
     this.projects.splice(idx, 1);
     this.notes = this.notes.filter((n) => n.project_id !== id);
     return wrapResponse({ success: true });
@@ -426,7 +426,7 @@ export class MockApiClient implements IApiClient {
   ): Promise<ApiResponse<{ id: string; progress: string }>> {
     await delay();
     const project = this.projects.find((p) => p.id === id);
-    if (!project) throwError('NOT_FOUND', '项目不存在');
+    if (!project) throwError('PROJECT_NOT_FOUND', '项目不存在');
     project.progress = progress;
     project.updated_at = new Date().toISOString();
     const progressLabel: Record<ProjectProgress, string> = {
@@ -502,7 +502,7 @@ export class MockApiClient implements IApiClient {
   ): Promise<ApiResponse<Category>> {
     await delay();
     const cat = this.categories.find((c) => c.id === id);
-    if (!cat) throwError('NOT_FOUND', '分类不存在');
+    if (!cat) throwError('CATEGORY_NOT_FOUND', '分类不存在');
     cat.name = data.name;
     return wrapResponse(cat);
   }
@@ -510,8 +510,8 @@ export class MockApiClient implements IApiClient {
   async deleteCategory(id: string): Promise<ApiResponse<{ success: boolean }>> {
     await delay();
     const cat = this.categories.find((c) => c.id === id);
-    if (!cat) throwError('NOT_FOUND', '分类不存在');
-    if (cat.is_preset) throwError('FORBIDDEN', '预设分类不可删除');
+    if (!cat) throwError('CATEGORY_NOT_FOUND', '分类不存在');
+    if (cat.is_preset) throwError('CATEGORY_PRESET_IMMUTABLE', '预设分类不可删除');
     this.categories = this.categories.filter((c) => c.id !== id);
     return wrapResponse({ success: true });
   }
@@ -543,7 +543,7 @@ export class MockApiClient implements IApiClient {
   ): Promise<ApiResponse<{ project_id: string; tag_ids: string[] }>> {
     await delay();
     const project = this.projects.find((p) => p.id === projectId);
-    if (!project) throwError('NOT_FOUND', '项目不存在');
+    if (!project) throwError('PROJECT_NOT_FOUND', '项目不存在');
     project.tags = [...tagIds];
     project.updated_at = new Date().toISOString();
     return wrapResponse({ project_id: projectId, tag_ids: tagIds });
@@ -564,7 +564,7 @@ export class MockApiClient implements IApiClient {
   async getNote(id: string): Promise<ApiResponse<Note>> {
     await delay();
     const note = this.notes.find((n) => n.id === id);
-    if (!note) throwError('NOT_FOUND', '笔记不存在');
+    if (!note) throwError('NOTE_NOT_FOUND', '笔记不存在');
     return wrapResponse(note);
   }
 
@@ -599,9 +599,9 @@ export class MockApiClient implements IApiClient {
   ): Promise<ApiResponse<Note>> {
     await delay();
     const idx = this.notes.findIndex((n) => n.id === id);
-    if (idx < 0) throwError('NOT_FOUND', '笔记不存在');
+    if (idx < 0) throwError('NOTE_NOT_FOUND', '笔记不存在');
     const existing = this.notes[idx];
-    if (!existing) throwError('NOT_FOUND', '笔记不存在');
+    if (!existing) throwError('NOTE_NOT_FOUND', '笔记不存在');
     const updated: Note = {
       ...existing,
       ...data,
@@ -800,7 +800,7 @@ export class MockApiClient implements IApiClient {
   ): Promise<ApiResponse<AgentSession & { messages: AgentMessage[] }>> {
     await delay();
     const session = this.sessions.find((s) => s.id === id);
-    if (!session) throwError('NOT_FOUND', '会话不存在');
+    if (!session) throwError('AGENT_SESSION_NOT_FOUND', '会话不存在');
     const msgs = this.messages[id] ?? [];
     return wrapResponse({ ...session, messages: [...msgs] });
   }
@@ -834,7 +834,7 @@ export class MockApiClient implements IApiClient {
   ): Promise<ApiResponse<AgentSession>> {
     await delay();
     const session = this.sessions.find((s) => s.id === id);
-    if (!session) throw { error: { code: 'NOT_FOUND', message: '会话不存在' } };
+    if (!session) throw { error: { code: 'AGENT_SESSION_NOT_FOUND', message: '会话不存在' } };
     if (data.title !== undefined) session.title = data.title;
     if (data.project_ids !== undefined) {
       session.project_ids = data.project_ids;
@@ -946,7 +946,7 @@ export class MockApiClient implements IApiClient {
   ): AsyncGenerator<SSEEvent> {
     const session = this.sessions.find((s) => s.id === sessionId);
     if (!session) {
-      yield { event: 'error', data: { code: 'NOT_FOUND', message: '会话不存在' } };
+      yield { event: 'error', data: { code: 'AGENT_SESSION_NOT_FOUND', message: '会话不存在' } };
       return;
     }
 

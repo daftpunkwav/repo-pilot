@@ -161,7 +161,7 @@ from backend.api import (
 
 ### 4.1 命名规范
 
-`<域>_<原因>`，全大写下划线。域前缀：`AGENT` / `GRAPH` / `PROJECT` / `NOTE` / `AUTH` / `SYSTEM` / `LLM` / `GITHUB`。
+`<域>_<原因>`，全大写下划线。域前缀见 [`ERROR_CODES.md`](./ERROR_CODES.md)。完整码表**仅**维护在该文件与同步实现中，勿在本报告复制。
 
 ### 4.2 后端错误响应统一格式
 
@@ -797,30 +797,14 @@ async def import_assist(...):
 
 ## 9. 报错码表
 
-> 用户与开发者凭此表排查。维护位置：`docs/architecture/decoupling/ERROR_CODES.md`（同步前端 `errorCodes.ts`）。
-
-| 码 | HTTP | 严重度 | 标题 | 排查提示 |
-|----|------|--------|------|---------|
-| `MODULE_LOAD_FAILED` | 503 | error | 模块加载失败 | 某后端模块 import 异常；查 `/health` 看哪个模块 loaded=false；查后端日志的 traceback |
-| `AGENT_MODULE_DOWN` | 503 | error | Agent 模块未就绪 | agent 域加载失败；查日志确认 agent_core/agent_service import 是否报错；常见为 litellm 缺失 |
-| `AGENT_LLM_UNAVAILABLE` | 503 | warning | Agent LLM 不可用 | 未配置 LLM API Key 或连接失败；去设置页配置 Key；检查 llm_api_base |
-| `AGENT_ANALYZE_FAILED` | 200(SSE) | error | 项目分析失败 | stream_analyze 异常；查后端日志；常见为 HubService 调度失败或 LLM 超时 |
-| `AGENT_CHAT_FAILED` | 200(SSE) | error | 对话失败 | stream_chat 异常；查 HubService 日志 |
-| `AGENT_IMPORT_ASSIST_FAILED` | 200(SSE) | warning | 导入助手失败 | stream_import_assist 异常；已有规则降级，仍失败查日志 |
-| `AGENT_TRENDING_FAILED` | 200(SSE) | error | 趋势扫描失败 | stream_trending_scout 异常；GitHub API 限流或 LLM 失败 |
-| `AGENT_CLASSIFY_FAILED` | 200(SSE) | error | 分类失败 | stream_classify_project 异常；查 HubService |
-| `AGENT_NOTE_FAILED` | 200(SSE) | error | 笔记生成失败 | stream_generate_note 异常 |
-| `GRAPH_MODULE_DOWN` | 503 | warning | 图谱模块未就绪 | graph 域加载失败；不影响项目/笔记 |
-| `GRAPH_NOT_INDEXED` | 409 | info | 项目尚未索引 | L1 图谱需先触发索引；见 graph 文档 |
-| `PROJECT_NOT_FOUND` | 404 | error | 项目不存在 | project_id 错误或不属于当前用户 |
-| `NOTE_NOT_FOUND` | 404 | error | 笔记不存在 | note_id 错误 |
-| `VALIDATION_ERROR` | 422 | warning | 参数校验失败 | 请求体不符合 schema；查 detail 字段 |
-| `RATE_LIMITED` | 429 | warning | 请求过于频繁 | 触发限流；稍后重试 |
-| `GITHUB_API_RATE_LIMIT` | 502 | warning | GitHub API 限流 | 匿名请求超额；配置 GitHub PAT 提升配额 |
-| `GITHUB_PAT_INVALID` | 400 | error | GitHub PAT 无效 | PAT 已过期或无权限；重新绑定 |
-| `LLM_KEY_MISSING` | 400 | warning | 未配置 LLM Key | 去设置页配置 API Key |
-| `LLM_DECRYPT_FAILED` | 500 | error | LLM Key 解密失败 | SECRET_KEY 变更导致历史密文无法解密；重新配置 Key |
-| `SYSTEM_SECRET_KEY_WEAK` | 500 | error | 密钥强度不足 | SECRET_KEY < 32 字节；生成强随机密钥 |
+> **单一权威源**：[`ERROR_CODES.md`](./ERROR_CODES.md)  
+> 同步实现：
+> - `apps/web/src/utils/errorCodes.ts`
+> - `services/api/backend/core/error_codes.py`
+>
+> 本节不再维护副本。新增/改名码时改上述三处，并跑 `tests/unit/test_error_codes_sync.py`。
+>
+> 命名：`<域>_<原因>`。禁止业务路径再使用泛化码 `NOT_FOUND` / `FORBIDDEN` / `LLM_ERROR`（见 ERROR_CODES.md「弃用 / 兼容」）。
 
 ---
 
