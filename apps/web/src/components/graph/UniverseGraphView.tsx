@@ -6,7 +6,11 @@ import type { GraphData, GraphNode } from '@/api/types';
 import { GraphScene, computeCameraTarget } from '@/components/graph-viz';
 import type { CameraTarget, CodeGraphNode } from '@/components/graph-viz';
 import { useGraphStore } from '@/stores/graphStore';
-import { projectGraphToScene, projectIdFromSceneNode } from './l0Layout3d';
+import {
+  applySelectionRelatedness,
+  projectGraphToScene,
+  projectIdFromSceneNode,
+} from './l0Layout3d';
 import {
   DEFAULT_DISPLAY_SETTINGS,
   type DisplaySettings,
@@ -34,9 +38,14 @@ export function UniverseGraphView({
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId);
   const highlightNodeId = useGraphStore((s) => s.highlightNodeId);
 
-  const sceneData = useMemo(
+  const baseScene = useMemo(
     () => projectGraphToScene(data, layoutMode),
     [data, layoutMode],
+  );
+
+  const sceneData = useMemo(
+    () => applySelectionRelatedness(baseScene, data, selectedNodeId),
+    [baseScene, data, selectedNodeId],
   );
 
   const highlightedIds = useMemo(() => {
@@ -84,7 +93,6 @@ export function UniverseGraphView({
         data={sceneData}
         highlightedIds={highlightedIds}
         cameraTarget={cameraTarget}
-        /* 始终显示仓库名；邻域高亮时标签优先聚焦 */
         showLabels
         enableBloom
         forceDarkBackground

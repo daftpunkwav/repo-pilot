@@ -58,8 +58,16 @@ export function NodeTooltip({ node }: NodeTooltipProps) {
             <span>{node.status}</span>
           </div>
         )}
-        {typeof node.in_calls === 'number' && node.in_calls > 0 && (
-          <p className="code-graph-tooltip__meta">关联度 {node.in_calls}</p>
+        {typeof node.relatedness === 'number' && (
+          <p className="code-graph-tooltip__meta">
+            关联度 {node.relatedness.toFixed(2)}
+          </p>
+        )}
+        {typeof node.relatedness !== 'number' &&
+          !isProject &&
+          typeof node.in_calls === 'number' &&
+          node.in_calls > 0 && (
+          <p className="code-graph-tooltip__meta">入度 {node.in_calls}</p>
         )}
         <p className="code-graph-tooltip__hint">
           {isProject ? '单击选中 · 双击进入代码图谱' : '单击查看详情'}

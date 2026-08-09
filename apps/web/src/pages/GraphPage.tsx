@@ -131,7 +131,9 @@ export function GraphPage() {
     (n) => n.id === selectedNodeId,
   );
 
-  const similarNodes = selectedNode ? getSimilarNodes(data, selectedNode.id) : [];
+  const similarNodes = selectedNode
+    ? getSimilarNodes(filteredData, selectedNode.id)
+    : [];
 
   if (isLoading) return <LoadingSpinner fullScreen />;
 
@@ -258,7 +260,7 @@ export function GraphPage() {
                 <span>{filteredData.nodes.length} 个项目</span>
               </div>
               {filteredData.nodes.map((n, idx) => {
-                const similar = getSimilarNodes(data, n.id).slice(0, 3);
+                const similar = getSimilarNodes(filteredData, n.id).slice(0, 3);
                 return (
                   <button
                     key={n.id}

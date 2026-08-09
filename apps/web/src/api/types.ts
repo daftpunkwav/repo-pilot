@@ -103,6 +103,14 @@ export interface GraphNode {
   stars: number;
   category_id?: string | null;
   progress?: ProjectProgress;
+  /** 域内基础度 0..1（启发式；可被 LLM 覆盖） */
+  foundation_score?: number;
+  /** 全局枢纽度 0..1（径向布局用） */
+  hubness?: number;
+  /** 领域社区 id */
+  cluster_id?: string | null;
+  cluster_size?: number;
+  description?: string | null;
 }
 
 export interface GraphEdge {

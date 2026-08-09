@@ -26,6 +26,8 @@ export interface CodeGraphNode {
   color: string;
   status?: NodeStatus;
   in_calls?: number;
+  /** L0：相对选中节点的关联度；未选中时为 undefined */
+  relatedness?: number;
 }
 
 export interface CodeGraphEdge {

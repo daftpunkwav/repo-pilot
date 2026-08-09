@@ -3,7 +3,7 @@ import type { GraphData, GraphNode } from '@/api/types';
 export function getSimilarNodes(
   data: GraphData | undefined,
   nodeId: string,
-  limit = 3,
+  limit = 12,
 ): { node: GraphNode; similarity: number }[] {
   if (!data) return [];
   const nodeById = new Map(data.nodes.map((n) => [n.id, n]));
