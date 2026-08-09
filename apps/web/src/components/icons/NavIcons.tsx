@@ -48,6 +48,15 @@ export const NavIcons = {
       <path d="M8 7l8 0M7.5 8L11 16M16.5 8L13 16" />
     </IconBase>
   ),
+  usage: (props: IconProps) => (
+    <IconBase {...props}>
+      <path d="M4 19V5" />
+      <path d="M4 19h16" />
+      <path d="M8 17V11" />
+      <path d="M12 17V7" />
+      <path d="M16 17v-4" />
+    </IconBase>
+  ),
   notes: (props: IconProps) => (
     <IconBase {...props}>
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />

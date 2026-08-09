@@ -101,10 +101,23 @@ class GraphStore:
         with self._lock:
             nodes = list(self.nodes.values())
             total = len(nodes)
-            # 按入度优先保留热点
-            nodes.sort(key=lambda n: n.in_calls, reverse=True)
-            nodes = nodes[:max_nodes]
-            keep = {n.id for n in nodes}
+            # 配额：保留结构节点（File/Folder/Module…），避免只剩 Function 导致单色
+            structural = [
+                n
+                for n in nodes
+                if n.label in ("File", "Folder", "Module", "Package", "Project", "Section")
+            ]
+            others = [
+                n
+                for n in nodes
+                if n.label not in ("File", "Folder", "Module", "Package", "Project", "Section")
+            ]
+            others.sort(key=lambda n: n.in_calls, reverse=True)
+            struct_budget = min(len(structural), max(80, max_nodes // 5))
+            rest_budget = max(0, max_nodes - struct_budget)
+            structural.sort(key=lambda n: n.in_calls, reverse=True)
+            picked = structural[:struct_budget] + others[:rest_budget]
+            keep = {n.id for n in picked}
             edges = [e for e in self.edges if e.source in keep and e.target in keep]
             return {
                 "nodes": [
@@ -124,7 +137,7 @@ class GraphStore:
                         "in_calls": n.in_calls,
                         **n.attrs,
                     }
-                    for n in nodes
+                    for n in picked
                 ],
                 "edges": [
                     {

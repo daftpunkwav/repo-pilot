@@ -38,3 +38,25 @@ async def get_cross_edges(db: AsyncSession = Depends(get_db)):
     except Exception:
         edges = []
     return wrap_data({"edges": edges, "stats": {"edge_count": len(edges)}})
+
+
+@router.get("/recommend-edges", response_model=DataResponse[dict])
+async def get_recommend_edges(db: AsyncSession = Depends(get_db)):
+    """
+    Agent 推荐学习边（预留）。
+
+    约定：项目导入且索引稳定后，由 Agent 写入推荐关系；当前返回空列表，
+    前端已按 edge_type=recommend_learn 分色渲染。
+    """
+    _ = db
+    return wrap_data(
+        {
+            "edges": [],
+            "stats": {"edge_count": 0},
+            "meta": {
+                "source": "agent_recommend",
+                "status": "reserved",
+                "note": "导入稳定后由 Agent 更新 recommend_learn 边",
+            },
+        }
+    )

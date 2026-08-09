@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { key: 'projects', label: '项目库', path: '/projects', badge: 'count' as const },
   { key: 'agent', label: 'Agent Chat', path: '/agent', badge: 'AI' as const },
   { key: 'graph', label: '图谱', path: '/graph', badge: null },
+  { key: 'usage', label: '用量', path: '/usage', badge: null },
   { key: 'notes', label: '笔记', path: '/notes', badge: 'notes' as const },
   { key: 'settings', label: '设置', path: '/settings', badge: null },
 ] as const;

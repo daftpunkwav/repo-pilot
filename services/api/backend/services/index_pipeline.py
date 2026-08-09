@@ -28,6 +28,8 @@ _INDEX_LOCK = asyncio.Lock()
 _BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
 _INDEX_QUEUE: asyncio.Queue[tuple[UUID, str, str, str, bool]] | None = None
 _INDEX_WORKER: asyncio.Task[Any] | None = None
+# 用户取消请求：worker 在阶段边界检查
+_CANCEL_REQUESTED: set[UUID] = set()
 _OWNER_REPO_RE = re.compile(
     r"github\.com[/:](?P<owner>[^/]+)/(?P<repo>[^/.]+?)(?:\.git)?/?$",
     re.I,
@@ -68,6 +70,57 @@ async def stop_index_worker() -> None:
             pass
     _INDEX_WORKER = None
     _INDEX_QUEUE = None
+
+
+def classify_index_error(error: str | None) -> str:
+    """将错误文案归类为 network / service / cancelled / unknown，供 UI 展示。"""
+    if not error:
+        return "unknown"
+    low = error.lower()
+    if "取消" in error or "cancel" in low:
+        return "cancelled"
+    if any(
+        k in low
+        for k in (
+            "timeout",
+            "timed out",
+            "connection",
+            "network",
+            "dns",
+            "unreachable",
+            "ssl",
+            "proxy",
+            "getaddrinfo",
+            "failed to connect",
+            "could not resolve",
+            "连接",
+            "网络",
+            "超时",
+        )
+    ):
+        return "network"
+    if any(
+        k in low
+        for k in (
+            "engine",
+            "rp_graph",
+            "502",
+            "503",
+            "500",
+            "internal",
+            "sqlite",
+            "disk",
+            "quota",
+            "permission",
+            "already exists",
+            "not an empty directory",
+            "服务",
+            "引擎",
+            "命令失败",
+        )
+    ):
+        return "service"
+    return "unknown"
 
 
 def _format_pipeline_error(exc: BaseException) -> str:
@@ -159,8 +212,9 @@ async def get_status_out(db: AsyncSession, project_id: UUID) -> dict:
 
 
 def _status_dict(row: GraphIndexStatus) -> dict:
+    err = row.error
     return {
-        "project_id": row.project_id,
+        "project_id": str(row.project_id),
         "engine_project": row.engine_project or "",
         "local_path": row.local_path,
         "head_sha": row.head_sha,
@@ -169,9 +223,45 @@ def _status_dict(row: GraphIndexStatus) -> dict:
         "index_mode": row.index_mode,
         "node_count": row.node_count,
         "edge_count": row.edge_count,
-        "indexed_at": row.indexed_at,
-        "error": row.error,
+        "indexed_at": row.indexed_at.isoformat() if row.indexed_at else None,
+        "error": err,
+        "error_kind": classify_index_error(err),
+        "cancel_requested": row.project_id in _CANCEL_REQUESTED,
     }
+
+
+async def list_index_statuses(db: AsyncSession) -> list[dict]:
+    """全部项目索引状态（图谱页进度条）。"""
+    result = await db.execute(select(GraphIndexStatus))
+    rows = result.scalars().all()
+    return [_status_dict(r) for r in rows]
+
+
+def _raise_if_cancelled(project_id: UUID) -> None:
+    if project_id in _CANCEL_REQUESTED:
+        raise asyncio.CancelledError("用户取消索引")
+
+
+async def cancel_index(db: AsyncSession, project_id: UUID) -> dict:
+    """取消排队中或进行中的索引；已完成则 no-op。"""
+    project = await db.get(Project, project_id)
+    if not project:
+        raise NotFoundError("项目不存在", EC.PROJECT_NOT_FOUND)
+    row = await get_or_create_status(db, project_id)
+    if row.status not in ("QUEUED", "CLONING", "INDEXING"):
+        return _status_dict(row)
+
+    _CANCEL_REQUESTED.add(project_id)
+    # 排队中：直接落库，worker 取到后会立刻退出
+    if row.status == "QUEUED":
+        row.status = "INDEX_FAILED"
+        row.error = "用户取消索引"
+        _CANCEL_REQUESTED.discard(project_id)
+        await db.commit()
+    else:
+        row.error = "正在取消…"
+        await db.commit()
+    return _status_dict(row)
 
 
 async def recover_interrupted_jobs(db: AsyncSession) -> int:
@@ -256,8 +346,14 @@ async def _run_pipeline(
             row = await get_or_create_status(db, project_id)
             project = await db.get(Project, project_id)
             if not project:
+                _CANCEL_REQUESTED.discard(project_id)
                 return
             try:
+                if project_id in _CANCEL_REQUESTED:
+                    row.status = "INDEX_FAILED"
+                    row.error = "用户取消索引"
+                    await db.commit()
+                    return
                 await _clone_and_index(db, row, project, owner, repo, mode, refresh)
             except BaseException as exc:
                 # 含 CancelledError（BaseException）：必须落库，否则 UI 卡在 CLONING 或空错误
@@ -268,17 +364,27 @@ async def _run_pipeline(
                     _format_pipeline_error(exc),
                 )
                 try:
-                    row.status = (
-                        "CLONE_FAILED"
-                        if row.status in ("CLONING", "QUEUED")
-                        else "INDEX_FAILED"
+                    user_cancel = project_id in _CANCEL_REQUESTED or (
+                        isinstance(exc, asyncio.CancelledError)
+                        and "用户取消" in str(exc)
                     )
-                    row.error = _format_pipeline_error(exc)
+                    if user_cancel:
+                        row.status = "INDEX_FAILED"
+                        row.error = "用户取消索引"
+                    else:
+                        row.status = (
+                            "CLONE_FAILED"
+                            if row.status in ("CLONING", "QUEUED")
+                            else "INDEX_FAILED"
+                        )
+                        row.error = _format_pipeline_error(exc)
                     await db.commit()
                 except Exception:
                     logger.exception("写入失败状态时二次异常 project=%s", project_id)
-                if isinstance(exc, (asyncio.CancelledError, KeyboardInterrupt, SystemExit)):
+                if isinstance(exc, (KeyboardInterrupt, SystemExit)):
                     raise
+            finally:
+                _CANCEL_REQUESTED.discard(project_id)
 
 
 async def _clone_and_index(
@@ -298,6 +404,7 @@ async def _clone_and_index(
 
     row.status = "CLONING"
     await db.commit()
+    _raise_if_cancelled(project.id)
 
     token = None
     try:
@@ -323,8 +430,10 @@ async def _clone_and_index(
     row.head_sha = sha
     row.branch = branch
     row.engine_project = engine_project_name(owner, repo)
+    _raise_if_cancelled(project.id)
     row.status = "INDEXING"
     await db.commit()
+    _raise_if_cancelled(project.id)
 
     client = RpGraphClient()
     if not await client.health():

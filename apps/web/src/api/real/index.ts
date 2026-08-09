@@ -78,6 +78,9 @@ export class RealApiClient implements IApiClient {
   // ------- Graph / Search -------
   getGraph(p?: Parameters<IApiClient['getGraph']>[0]) { return this.graph.getGraph(p); }
   getCrossEdges() { return this.graph.getCrossEdges(); }
+  getRecommendEdges() { return this.graph.getRecommendEdges(); }
+  listCodeGraphIndexStatuses() { return this.graph.listCodeGraphIndexStatuses(); }
+  cancelCodeGraphIndex(id: string) { return this.graph.cancelCodeGraphIndex(id); }
   getCodeGraphStatus(id: string) { return this.graph.getCodeGraphStatus(id); }
   triggerCodeGraphIndex(id: string, b?: Parameters<IApiClient['triggerCodeGraphIndex']>[1]) {
     return this.graph.triggerCodeGraphIndex(id, b);

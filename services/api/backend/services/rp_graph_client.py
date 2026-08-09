@@ -6,6 +6,7 @@ RepoPilot 自研图谱客户端。
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import sys
 from pathlib import Path
@@ -78,8 +79,11 @@ class RpGraphClient:
                 {"project": project, "max_nodes": str(max_nodes), "graph": graph},
             )
         try:
-            return _local_engine().fetch_layout(
-                project, max_nodes=max_nodes, graph=graph
+            return await asyncio.to_thread(
+                _local_engine().fetch_layout,
+                project,
+                max_nodes=max_nodes,
+                graph=graph,
             )
         except Exception as exc:
             raise RpGraphError(
@@ -91,7 +95,8 @@ class RpGraphClient:
         if self.base_url and await self._sidecar_ok():
             return await self._http_rpc(name, args)
         eng = _local_engine()
-        try:
+
+        def _sync_call() -> Any:
             if name == "index_repository":
                 return eng.index_repository(
                     args.get("repo_path") or ".",
@@ -142,6 +147,10 @@ class RpGraphClient:
                     args["project"], aspects=args.get("aspects")
                 )
             raise RpGraphError(f"未知工具：{name}", code=EC.GRAPH_QUERY_FAILED)
+
+        try:
+            # 本地引擎为同步 CPU/IO 重活；必须丢进线程池，否则会卡死 uvicorn 事件循环
+            return await asyncio.to_thread(_sync_call)
         except RpGraphError:
             raise
         except Exception as exc:
@@ -202,7 +211,7 @@ class RpGraphClient:
         if self.base_url and await self._sidecar_ok():
             data = await self._http_get("/api/cross-edges", {})
             return data.get("edges") or []
-        return _local_engine().list_cross_edges()
+        return await asyncio.to_thread(_local_engine().list_cross_edges)
 
     async def _sidecar_ok(self) -> bool:
         try:

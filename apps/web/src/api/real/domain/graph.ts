@@ -28,6 +28,32 @@ export class GraphApi {
     return this.ctx.apiRequest('/graph/cross-edges');
   }
 
+  async getRecommendEdges(): Promise<
+    ApiResponse<{
+      edges: Array<Record<string, unknown>>;
+      stats: { edge_count: number };
+      meta?: Record<string, unknown>;
+    }>
+  > {
+    return this.ctx.apiRequest('/graph/recommend-edges');
+  }
+
+  async listCodeGraphIndexStatuses(): Promise<
+    ApiResponse<{
+      items: Array<Record<string, unknown>>;
+      active: Array<Record<string, unknown>>;
+      stats: { total: number; running: number; ready: number; failed: number };
+    }>
+  > {
+    return this.ctx.apiRequest('/graph/index-statuses');
+  }
+
+  async cancelCodeGraphIndex(projectId: string): Promise<ApiResponse<GraphIndexStatus>> {
+    return this.ctx.apiRequest(`/graph/projects/${projectId}/index/cancel`, {
+      method: 'POST',
+    });
+  }
+
   async getCodeGraphStatus(projectId: string): Promise<ApiResponse<GraphIndexStatus>> {
     return this.ctx.apiRequest(`/graph/projects/${projectId}/status`);
   }

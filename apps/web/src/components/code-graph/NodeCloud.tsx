@@ -12,12 +12,12 @@ interface NodeCloudProps {
   onClick: (node: GraphNode) => void;
   opacity?: number;
   /* Multiplier on the per-node glow boost. 1 = full boost (sparse graphs),
-   * 0 = flat colors (dense graphs). Adaptive default × user setting. */
+   * 0 = flat colors (dense graphs). Adaptive default � user setting. */
   boost?: number;
 }
 
 /* Above this count instanced spheres stop paying off (vertex + matrix cost)
- * and the cloud switches to point sprites �?one position per node. */
+ * and the cloud switches to point sprites �?one position per node. */
 const POINT_MODE_THRESHOLD = 75000;
 
 /* Sphere tessellation by node count: nobody can tell a 12-segment sphere from
@@ -73,7 +73,7 @@ function getPointSprite(): THREE.CanvasTexture {
   return pointSprite;
 }
 
-/* ── Point-sprite mode for very large clouds ──────────────────── */
+/* ?? Point-sprite mode for very large clouds ???????????????????? */
 
 function NodePoints({
   nodes,
@@ -135,7 +135,7 @@ function NodePoints({
       </bufferGeometry>
       <pointsMaterial
         vertexColors
-        size={4}
+        size={6.5}
         sizeAttenuation
         map={getPointSprite()}
         alphaTest={0.35}
@@ -146,7 +146,7 @@ function NodePoints({
   );
 }
 
-/* ── Instanced-sphere mode (default) ──────────────────────────── */
+/* ?? Instanced-sphere mode (default) ???????????????????????????? */
 
 function NodeSpheres({
   nodes,
@@ -161,7 +161,7 @@ function NodeSpheres({
   const tempColor = useMemo(() => new THREE.Color(), []);
   const detail = sphereDetail(nodes.length);
 
-  /* Build instance color attributes �?dim non-highlighted nodes */
+  /* Build instance color attributes �?dim non-highlighted nodes */
   const colors = useMemo(() => {
     const arr = new Float32Array(nodes.length * 3);
     for (let i = 0; i < nodes.length; i++) {
@@ -180,7 +180,7 @@ function NodeSpheres({
   }, [nodes, highlightedIds, tempColor, opacity, boost]);
 
   /* Node positions are static (the layout is server-computed), so instance
-   * matrices only change with the node set or the highlight �?never rebuild
+   * matrices only change with the node set or the highlight �?never rebuild
    * them per frame. */
   useEffect(() => {
     const mesh = meshRef.current;
@@ -191,7 +191,7 @@ function NodeSpheres({
       const n = nodes[i];
       tempObj.position.set(n.x, n.y, n.z);
       const isHighlighted = !hasHighlight || highlightedIds.has(n.id);
-      const s = n.size * (isHighlighted ? 0.5 : 0.2);
+      const s = n.size * (isHighlighted ? 0.72 : 0.32);
       tempObj.scale.set(s, s, s);
       tempObj.updateMatrix();
       mesh.setMatrixAt(i, tempObj.matrix);

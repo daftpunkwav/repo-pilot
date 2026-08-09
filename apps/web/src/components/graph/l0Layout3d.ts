@@ -1,8 +1,8 @@
 /**
  * L0 项目宇宙图 → 共享 GraphScene 渲染数据
- * 布局算法对标引擎 force_layout_3d（球面初值 + 斥力/弹簧/向心）
+ * 力导向：高相似度强吸引 → 聚成球体；树/径向：按星标×度选根，根在上/中心
  */
-import type { GraphData, GraphNode } from '@/api/types';
+import type { GraphData, GraphEdge, GraphNode } from '@/api/types';
 import type { CodeGraphData, CodeGraphNode } from '@/components/code-graph/types';
 import type { GraphLayoutMode } from '@/stores/graphStore';
 
@@ -30,23 +30,100 @@ function colorForProject(n: GraphNode): string {
   return palette[hashId(n.id) % palette.length]!;
 }
 
-type Vec = { id: string; x: number; y: number; z: number; size: number; inCalls: number };
+type Vec = {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  size: number;
+  inCalls: number;
+  stars: number;
+};
 
-function forceLayout3d(nodes: Vec[], links: Array<{ source: string; target: string }>, iterations = 40) {
+type WLink = { source: string; target: string; w: number };
+
+function pickRoot(nodes: Vec[]): Vec {
+  /* 星标 × log(1+度)：避免单纯「连接最多」把某仓永远钉在树底 */
+  return [...nodes].sort((a, b) => {
+    const sa = Math.log1p(a.stars) * (1 + Math.log1p(a.inCalls));
+    const sb = Math.log1p(b.stars) * (1 + Math.log1p(b.inCalls));
+    if (sb !== sa) return sb - sa;
+    return a.id.localeCompare(b.id);
+  })[0]!;
+}
+
+/** 简易社区：按最强边贪心并查集，形成「球体」分组 */
+function communityOf(nodes: Vec[], links: WLink[]): Map<string, string> {
+  const parent = new Map(nodes.map((n) => [n.id, n.id]));
+  const find = (x: string): string => {
+    let p = parent.get(x)!;
+    while (p !== parent.get(p)) p = parent.get(p)!;
+    parent.set(x, p);
+    return p;
+  };
+  const union = (a: string, b: string) => {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra === rb) return;
+    if (ra < rb) parent.set(rb, ra);
+    else parent.set(ra, rb);
+  };
+  const sorted = [...links].sort((a, b) => b.w - a.w);
+  const maxMerge = Math.max(1, Math.floor(nodes.length * 0.85));
+  let merges = 0;
+  for (const e of sorted) {
+    if (e.w < 0.35) break;
+    if (merges >= maxMerge) break;
+    if (find(e.source) === find(e.target)) continue;
+    union(e.source, e.target);
+    merges += 1;
+  }
+  const out = new Map<string, string>();
+  for (const n of nodes) out.set(n.id, find(n.id));
+  return out;
+}
+
+function forceLayout3d(nodes: Vec[], links: WLink[], iterations = 48) {
   const n = nodes.length;
   if (!n) return;
-  for (let i = 0; i < n; i += 1) {
-    const node = nodes[i]!;
-    if (node.x === 0 && node.y === 0 && node.z === 0) {
-      const phi = Math.acos(1 - (2 * (i + 0.5)) / n);
-      const theta = Math.PI * (1 + Math.sqrt(5)) * i;
-      const r = 80 + Math.min(n, 500) * 0.8;
-      node.x = r * Math.sin(phi) * Math.cos(theta);
-      node.y = r * Math.sin(phi) * Math.sin(theta);
-      node.z = r * Math.cos(phi);
-    }
+  const communities = communityOf(nodes, links);
+  const commKeys = [...new Set(communities.values())];
+  const baseR = 220 + Math.sqrt(n) * 42;
+  /* 社区球心先铺在大球面上 */
+  const centers = new Map<string, { x: number; y: number; z: number }>();
+  commKeys.forEach((key, i) => {
+    const phi = Math.acos(1 - (2 * (i + 0.5)) / Math.max(1, commKeys.length));
+    const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+    const R = baseR * (0.55 + Math.min(1.2, Math.sqrt(commKeys.length) * 0.22));
+    centers.set(key, {
+      x: R * Math.sin(phi) * Math.cos(theta),
+      y: R * Math.sin(phi) * Math.sin(theta) * 0.7,
+      z: R * Math.cos(phi),
+    });
+  });
+  /* 组内斐波那契球 */
+  const byComm = new Map<string, Vec[]>();
+  for (const node of nodes) {
+    const c = communities.get(node.id)!;
+    if (!byComm.has(c)) byComm.set(c, []);
+    byComm.get(c)!.push(node);
   }
+  for (const [cid, members] of byComm) {
+    const c = centers.get(cid)!;
+    const localR = 28 + Math.sqrt(members.length) * 14;
+    members.forEach((node, i) => {
+      const m = members.length;
+      const phi = Math.acos(1 - (2 * (i + 0.5)) / m);
+      const theta = Math.PI * (1 + Math.sqrt(5)) * i;
+      node.x = c.x + localR * Math.sin(phi) * Math.cos(theta);
+      node.y = c.y + localR * Math.sin(phi) * Math.sin(theta);
+      node.z = c.z + localR * Math.cos(phi);
+    });
+  }
+
   const idx = new Map(nodes.map((node, i) => [node.id, i]));
+  const restBase = 72 + Math.min(40, Math.sqrt(n) * 4);
+  const repulsion = 1400 + n * 12;
   for (let iter = 0; iter < iterations; iter += 1) {
     const fx = new Array(n).fill(0);
     const fy = new Array(n).fill(0);
@@ -55,12 +132,13 @@ function forceLayout3d(nodes: Vec[], links: Array<{ source: string; target: stri
       for (let j = i + 1; j < n; j += 1) {
         const a = nodes[i]!;
         const b = nodes[j]!;
+        const same = communities.get(a.id) === communities.get(b.id);
         const dx = a.x - b.x;
         const dy = a.y - b.y;
         const dz = a.z - b.z;
         const dist2 = dx * dx + dy * dy + dz * dz + 0.01;
         const dist = Math.sqrt(dist2);
-        const force = 220 / dist2;
+        const force = (same ? repulsion * 0.55 : repulsion) / dist2;
         fx[i] += (force * dx) / dist;
         fy[i] += (force * dy) / dist;
         fz[i] += (force * dz) / dist;
@@ -79,7 +157,10 @@ function forceLayout3d(nodes: Vec[], links: Array<{ source: string; target: stri
       const dy = b.y - a.y;
       const dz = b.z - a.z;
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) + 0.01;
-      const force = (dist - 48) * 0.035;
+      /* 高权边更短、更强 → 相似项聚球 */
+      const rest = restBase * (1.15 - Math.min(0.75, e.w * 0.85));
+      const k = 0.018 + e.w * 0.055;
+      const force = (dist - rest) * k;
       fx[i] += (force * dx) / dist;
       fy[i] += (force * dy) / dist;
       fz[i] += (force * dz) / dist;
@@ -87,12 +168,17 @@ function forceLayout3d(nodes: Vec[], links: Array<{ source: string; target: stri
       fy[j] -= (force * dy) / dist;
       fz[j] -= (force * dz) / dist;
     }
+    /* 社区向心 */
     for (let i = 0; i < n; i += 1) {
       const node = nodes[i]!;
-      fx[i] -= node.x * 0.012;
-      fy[i] -= node.y * 0.012;
-      fz[i] -= node.z * 0.012;
-      const clamp = (v: number) => Math.max(-3.5, Math.min(3.5, v));
+      const c = centers.get(communities.get(node.id)!)!;
+      fx[i] += (c.x - node.x) * 0.012;
+      fy[i] += (c.y - node.y) * 0.012;
+      fz[i] += (c.z - node.z) * 0.012;
+      fx[i] -= node.x * 0.0025;
+      fy[i] -= node.y * 0.0025;
+      fz[i] -= node.z * 0.0025;
+      const clamp = (v: number) => Math.max(-7.5, Math.min(7.5, v));
       node.x += clamp(fx[i]);
       node.y += clamp(fy[i]);
       node.z += clamp(fz[i]);
@@ -100,9 +186,9 @@ function forceLayout3d(nodes: Vec[], links: Array<{ source: string; target: stri
   }
 }
 
-function treeLayout3d(nodes: Vec[], links: Array<{ source: string; target: string }>) {
+function treeLayout3d(nodes: Vec[], links: WLink[]) {
   if (!nodes.length) return;
-  const root = [...nodes].sort((a, b) => b.inCalls - a.inCalls)[0]!;
+  const root = pickRoot(nodes);
   const adj = new Map<string, string[]>();
   for (const n of nodes) adj.set(n.id, []);
   for (const e of links) {
@@ -127,19 +213,21 @@ function treeLayout3d(nodes: Vec[], links: Array<{ source: string; target: strin
   }
   const maxD = Math.max(...byDepth.keys(), 1);
   for (const [d, ring] of byDepth) {
+    /* 根在上（+Y），子层向下展开；层内按社区聚类角距 */
+    ring.sort((a, b) => b.stars - a.stars || a.id.localeCompare(b.id));
     ring.forEach((n, i) => {
       const angle = (i / Math.max(1, ring.length)) * Math.PI * 2;
-      const r = d === 0 ? 0 : 40 + d * 90;
+      const r = d === 0 ? 0 : 70 + d * (130 + Math.sqrt(ring.length) * 10);
       n.x = r * Math.cos(angle);
-      n.y = d * 70 - maxD * 35;
+      n.y = (maxD - d) * 110; /* 根最高 */
       n.z = r * Math.sin(angle);
     });
   }
 }
 
-function radialLayout3d(nodes: Vec[], links: Array<{ source: string; target: string }>) {
+function radialLayout3d(nodes: Vec[], links: WLink[]) {
   if (!nodes.length) return;
-  const root = [...nodes].sort((a, b) => b.inCalls - a.inCalls)[0]!;
+  const root = pickRoot(nodes);
   const dist = new Map<string, number>([[root.id, 0]]);
   const q = [root.id];
   const adj = new Map<string, string[]>();
@@ -162,16 +250,27 @@ function radialLayout3d(nodes: Vec[], links: Array<{ source: string; target: str
     if (!byRing.has(d)) byRing.set(d, []);
     byRing.get(d)!.push(n);
   }
-  const maxRing = Math.max(1, byRing.size - 1);
   for (const [ring, ringNodes] of byRing) {
-    const r = ring === 0 ? 0 : (ring / maxRing) * (90 + nodes.length * 1.2);
+    const count = Math.max(1, ringNodes.length);
+    ringNodes.sort((a, b) => b.stars - a.stars || a.id.localeCompare(b.id));
+    const r =
+      ring === 0
+        ? 0
+        : 90 + ring * (100 + Math.sqrt(count) * 16) + Math.min(count, 40) * 2.5;
     ringNodes.forEach((n, i) => {
-      const angle = (i / Math.max(1, ringNodes.length)) * Math.PI * 2 - Math.PI / 2;
+      const angle = (i / count) * Math.PI * 2 - Math.PI / 2;
+      const clusterBump = Math.sin(angle * 3 + ring) * (12 + count * 0.4);
       n.x = r * Math.cos(angle);
-      n.y = (ring - maxRing / 2) * 12;
+      n.y = clusterBump * 0.35;
       n.z = r * Math.sin(angle);
     });
   }
+}
+
+function edgeWeight(e: GraphEdge): number {
+  const s = e.similarity;
+  if (typeof s === 'number' && Number.isFinite(s)) return Math.max(0.05, Math.min(1, s));
+  return 0.55;
 }
 
 /** 将 L0 GraphData 转为 GraphScene 可用的 CodeGraphData */
@@ -185,19 +284,31 @@ export function projectGraphToScene(
     degree.set(e.target, (degree.get(e.target) || 0) + 1);
   }
 
+  /* 边少（阈值高）时放大节点，避免「点太小」 */
+  const edgeSparse = data.edges.length < Math.max(8, data.nodes.length * 0.8);
+  const sizeBoost = edgeSparse ? 1.55 : 1;
+
   const vecs: Vec[] = data.nodes.map((n) => ({
     id: n.id,
     x: 0,
     y: 0,
     z: 0,
-    size: 2 + Math.min(10, Math.log2((n.stars || 0) + 1) * 1.8),
+    size: Math.max(
+      2.8,
+      (2.2 + Math.min(9, Math.log2((n.stars || 0) + 1) * 1.55)) * sizeBoost,
+    ),
     inCalls: degree.get(n.id) || 0,
+    stars: n.stars || 0,
   }));
-  const links = data.edges.map((e) => ({ source: e.source, target: e.target }));
+  const links: WLink[] = data.edges.map((e) => ({
+    source: e.source,
+    target: e.target,
+    w: edgeWeight(e),
+  }));
 
   if (layoutMode === 'tree') treeLayout3d(vecs, links);
   else if (layoutMode === 'radial') radialLayout3d(vecs, links);
-  else forceLayout3d(vecs, links, Math.min(55, 20 + Math.floor(vecs.length / 3)));
+  else forceLayout3d(vecs, links, Math.min(80, 32 + Math.floor(vecs.length / 2)));
 
   const pos = new Map(vecs.map((v) => [v.id, v]));
   const nodes: CodeGraphNode[] = data.nodes.map((n) => {
@@ -224,8 +335,8 @@ export function projectGraphToScene(
     .map((e) => ({
       source: idMap.get(e.source)!,
       target: idMap.get(e.target)!,
-      type: e.edge_type || 'similarity',
-      relation: e.edge_type || 'similarity',
+      type: e.edge_type || e.relation || 'similarity',
+      relation: e.edge_type || e.relation || 'similarity',
     }))
     .filter((e) => e.source && e.target);
 

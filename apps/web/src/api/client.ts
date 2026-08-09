@@ -96,6 +96,23 @@ export interface IApiClient {
   getCrossEdges(): Promise<
     ApiResponse<{ edges: Array<Record<string, unknown>>; stats: { edge_count: number } }>
   >;
+  getRecommendEdges(): Promise<
+    ApiResponse<{
+      edges: Array<Record<string, unknown>>;
+      stats: { edge_count: number };
+      meta?: Record<string, unknown>;
+    }>
+  >;
+  listCodeGraphIndexStatuses(): Promise<
+    ApiResponse<{
+      items: Array<Record<string, unknown>>;
+      active: Array<Record<string, unknown>>;
+      stats: { total: number; running: number; ready: number; failed: number };
+    }>
+  >;
+  cancelCodeGraphIndex(
+    projectId: string,
+  ): Promise<ApiResponse<import('@/components/code-graph/types').GraphIndexStatus>>;
   getCodeGraphStatus(projectId: string): Promise<ApiResponse<import('@/components/code-graph/types').GraphIndexStatus>>;
   triggerCodeGraphIndex(
     projectId: string,

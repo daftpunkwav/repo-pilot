@@ -651,6 +651,28 @@ export class MockApiClient implements IApiClient {
     return wrapResponse({ edges: [], stats: { edge_count: 0 } });
   }
 
+  async getRecommendEdges() {
+    await delay();
+    return wrapResponse({
+      edges: [],
+      stats: { edge_count: 0 },
+      meta: { status: 'reserved' },
+    });
+  }
+
+  async listCodeGraphIndexStatuses() {
+    await delay();
+    return wrapResponse({
+      items: [],
+      active: [],
+      stats: { total: 0, running: 0, ready: 0, failed: 0 },
+    });
+  }
+
+  async cancelCodeGraphIndex(projectId: string) {
+    return this.getCodeGraphStatus(projectId);
+  }
+
   async getCodeGraphStatus(projectId: string) {
     await delay();
     return wrapResponse({

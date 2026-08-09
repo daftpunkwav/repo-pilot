@@ -6,6 +6,7 @@ import type { CameraTarget, CodeGraphNode } from '@/components/graph-viz';
 import { CodeGraphSidebar } from '@/components/code-graph/CodeGraphSidebar';
 import { NodeDetailPanel } from '@/components/code-graph/NodeDetailPanel';
 import { IndexStatusBar } from '@/components/code-graph/IndexStatusBar';
+import { applyL1Layout, type L1LayoutMode } from '@/components/code-graph/l1Layout';
 import {
   useCodeGraph,
   useIndexStatus,
@@ -13,18 +14,12 @@ import {
   useRefreshIndex,
 } from '@/hooks/useCodeGraph';
 import { useCodeGraphStore } from '@/stores/codeGraphStore';
-import { useTheme } from '@/hooks/useTheme';
 import { getApi } from '@/api/client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { DEFAULT_DISPLAY_SETTINGS } from '@/components/code-graph/density';
 
 export function CodeGraphPage() {
   const { id } = useParams<{ id: string }>();
-  const { theme } = useTheme();
-  const isDark =
-    theme === 'dark' ||
-    (theme === 'system' &&
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const {
     showLabels,
@@ -56,6 +51,9 @@ export function CodeGraphPage() {
 
   const [cameraTarget, setCameraTarget] = useState<CameraTarget | null>(null);
   const [highlightedIds, setHighlightedIds] = useState<Set<number> | null>(null);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [layoutMode, setLayoutMode] = useState<L1LayoutMode>('force');
+  const [detailCollapsed, setDetailCollapsed] = useState(false);
 
   const render = graphQ.data?.render;
   const filtered = useMemo(() => {
@@ -72,12 +70,21 @@ export function CodeGraphPage() {
     if (edgeTypeFilter) {
       edges = edges.filter((e) => edgeTypeFilter.has(e.type || e.relation || ''));
     }
-    return { ...render, nodes, edges };
-  }, [render, nodeTypeFilter, edgeTypeFilter, showOnlyDead, hideTests, hideEntryPoints]);
+    return applyL1Layout({ ...render, nodes, edges }, layoutMode);
+  }, [
+    render,
+    nodeTypeFilter,
+    edgeTypeFilter,
+    showOnlyDead,
+    hideTests,
+    hideEntryPoints,
+    layoutMode,
+  ]);
 
   useEffect(() => {
+    if (selectedPath) return;
     if (!searchQuery || !filtered) {
-      setHighlightedIds(null);
+      if (!selectedPath) setHighlightedIds(null);
       return;
     }
     const q = searchQuery.toLowerCase();
@@ -90,25 +97,57 @@ export function CodeGraphPage() {
     const ids = new Set(matches.map((n) => n.id));
     setHighlightedIds(ids.size ? ids : null);
     if (ids.size) setCameraTarget(computeCameraTarget(filtered.nodes, ids));
-  }, [searchQuery, filtered]);
+  }, [searchQuery, filtered, selectedPath]);
 
-  /** 首次有节点时框住全图，避免相机过远导致「小白点」 */
   useEffect(() => {
     if (!filtered?.nodes.length) return;
+    /* 初次 / 切布局：总览；有选中时不强制 fit-all（避免「一选中就缩」） */
+    if (selectedNode || selectedPath) return;
     const ids = new Set(filtered.nodes.map((n) => n.id));
     setCameraTarget(computeCameraTarget(filtered.nodes, ids));
-  }, [filtered?.nodes.length, id]);
+  }, [filtered?.nodes.length, id, layoutMode, selectedNode, selectedPath]);
+
+  const onSelectPath = (path: string, nodeIds: Set<number>) => {
+    if (!path || nodeIds.size === 0) {
+      setSelectedPath(null);
+      setHighlightedIds(null);
+      selectNode(null);
+      return;
+    }
+    setSelectedPath(path);
+    setHighlightedIds(nodeIds);
+    setDetailCollapsed(false);
+    if (filtered) {
+      setCameraTarget(computeCameraTarget(filtered.nodes, nodeIds));
+      /* 目录/文件选中：选一个代表节点打开右侧信息栏 */
+      const candidates = filtered.nodes.filter((n) => nodeIds.has(n.id));
+      const prefer =
+        candidates.find((n) => (n.kind || n.label) === 'File') ||
+        candidates.find((n) => (n.file_path || '') === path) ||
+        candidates[0];
+      if (prefer) selectNode(prefer);
+    }
+  };
 
   const onNodeClick = (node: CodeGraphNode) => {
     selectNode(node);
-    if (filtered) setCameraTarget(computeCameraTarget(filtered.nodes, new Set([node.id])));
+    setDetailCollapsed(false);
+    if (!filtered) return;
+    const neigh = new Set<number>([node.id]);
+    for (const e of filtered.edges) {
+      if (e.source === node.id) neigh.add(e.target);
+      if (e.target === node.id) neigh.add(e.source);
+    }
+    setHighlightedIds(neigh);
+    /* 聚焦选中节点本身，邻居仅高亮不扩大视野 */
+    setCameraTarget(computeCameraTarget(filtered.nodes, new Set([node.id])));
   };
 
   const projectName = projectQ.data?.data?.name || id;
 
   return (
     <div className="code-graph-page">
-      <header className="code-graph-breadcrumb glass-card glass-card--panel">
+      <header className="code-graph-breadcrumb glass-card glass-card--overview-inner">
         <Link to="/graph">图谱</Link>
         <span aria-hidden>/</span>
         <span>{projectName}</span>
@@ -127,12 +166,20 @@ export function CodeGraphPage() {
         shownEdges={filtered?.edges.length}
       />
 
-      <div className="code-graph-layout">
-        <CodeGraphSidebar data={filtered} projectId={id!} />
+      <div
+        className={`code-graph-layout${selectedNode ? ' has-detail' : ' no-detail'}`}
+      >
+        <CodeGraphSidebar
+          data={filtered}
+          selectedPath={selectedPath}
+          onSelectPath={onSelectPath}
+          layoutMode={layoutMode}
+          onLayoutModeChange={setLayoutMode}
+        />
 
         <main className="code-graph-stage">
           {!ready && (
-            <div className="code-graph-empty glass-card">
+            <div className="code-graph-empty glass-card glass-card--overview-inner">
               <h2>尚未构建代码图谱</h2>
               <p>
                 {status?.status === 'CLONE_FAILED' || status?.status === 'INDEX_FAILED'
@@ -157,7 +204,7 @@ export function CodeGraphPage() {
 
           {ready && graphQ.isLoading && <LoadingSpinner />}
           {ready && graphQ.isError && (
-            <div className="code-graph-empty glass-card">
+            <div className="code-graph-empty glass-card glass-card--overview-inner">
               <h2>加载代码图谱失败</h2>
               <p>{(graphQ.error as Error)?.message || '无法获取布局数据'}</p>
             </div>
@@ -168,14 +215,36 @@ export function CodeGraphPage() {
               highlightedIds={highlightedIds}
               cameraTarget={cameraTarget}
               showLabels={showLabels}
-              enableBloom={isDark}
+              enableBloom
+              forceDarkBackground
+              display={{
+                ...DEFAULT_DISPLAY_SETTINGS,
+                edgeBrightness: 0.55,
+                nodeGlow: 0.85,
+                bloom: 0.22,
+              }}
               onNodeClick={onNodeClick}
-              onBackgroundClick={() => selectNode(null)}
+              onBackgroundClick={() => {
+                selectNode(null);
+                setHighlightedIds(null);
+                setSelectedPath(null);
+              }}
             />
           )}
         </main>
 
-        <NodeDetailPanel node={selectedNode} projectId={id!} onClose={() => selectNode(null)} />
+        {selectedNode && (
+          <NodeDetailPanel
+            node={selectedNode}
+            allNodes={filtered?.nodes || []}
+            allEdges={filtered?.edges || []}
+            projectId={id!}
+            onClose={() => selectNode(null)}
+            onNavigate={onNodeClick}
+            collapsed={detailCollapsed}
+            onCollapsedChange={setDetailCollapsed}
+          />
+        )}
       </div>
     </div>
   );

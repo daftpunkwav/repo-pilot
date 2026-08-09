@@ -9,6 +9,7 @@ const PAGE_LABEL: Record<string, string> = {
   '/projects': '项目库',
   '/agent': 'Agent Chat',
   '/graph': '图谱',
+  '/usage': '用量',
   '/notes': '笔记',
   '/settings': '设置',
   '/profile': '个人资料',

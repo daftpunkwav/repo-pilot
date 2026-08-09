@@ -64,8 +64,10 @@ const IDLE_TIMEOUT_MS = 60_000;
 
 function IdleAutoRotate({
   controlsRef,
+  idleMs = IDLE_TIMEOUT_MS,
 }: {
   controlsRef: React.RefObject<OrbitControlsImpl | null>;
+  idleMs?: number;
 }) {
   const lastInteraction = useRef(Date.now());
   const resetTimer = useCallback(() => {
@@ -87,7 +89,7 @@ function IdleAutoRotate({
   useFrame(() => {
     if (!controlsRef.current) return;
     controlsRef.current.autoRotate =
-      Date.now() - lastInteraction.current > IDLE_TIMEOUT_MS;
+      Date.now() - lastInteraction.current > idleMs;
   });
 
   return null;
@@ -105,6 +107,10 @@ interface GraphSceneProps {
   cameraTarget: CameraTarget | null;
   showLabels: boolean;
   enableBloom: boolean;
+  /** L0 宇宙图强制深空背景（与应用浅色壳可并存） */
+  forceDarkBackground?: boolean;
+  /** 空闲多久后自动旋转（毫秒） */
+  idleRotateMs?: number;
   display?: DisplaySettings;
   onNodeClick: (node: CodeGraphNode) => void;
   onBackgroundClick?: () => void;
@@ -116,6 +122,8 @@ export function GraphScene({
   cameraTarget,
   showLabels,
   enableBloom,
+  forceDarkBackground = false,
+  idleRotateMs = IDLE_TIMEOUT_MS,
   display = DEFAULT_DISPLAY_SETTINGS,
   onNodeClick,
   onBackgroundClick,
@@ -123,10 +131,10 @@ export function GraphScene({
   const [hovered, setHovered] = useState<CodeGraphNode | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
 
-  const bg = useMemo(
-    () => readCssColor('--bg-base', enableBloom ? '#06090f' : '#f4f6fa'),
-    [enableBloom],
-  );
+  const bg = useMemo(() => {
+    if (forceDarkBackground || enableBloom) return '#06090f';
+    return readCssColor('--bg-base', '#f4f6fa');
+  }, [enableBloom, forceDarkBackground]);
 
   const nodeBoost = nodeBoostScale(data.nodes.length) * display.nodeGlow;
   const bloomIntensity =
@@ -194,16 +202,16 @@ export function GraphScene({
         {hovered && <NodeTooltip node={hovered as never} />}
 
         <CameraAnimator target={cameraTarget} controlsRef={controlsRef} />
-        <IdleAutoRotate controlsRef={controlsRef} />
+        <IdleAutoRotate controlsRef={controlsRef} idleMs={idleRotateMs} />
 
         {enableBloom && (
           <EffectComposer multisampling={GRAPH_COMPOSER_MULTISAMPLING}>
             <Bloom
-              luminanceThreshold={0.3}
+              luminanceThreshold={nodes.length > 1200 ? 0.48 : 0.22}
               luminanceSmoothing={0.7}
-              intensity={bloomIntensity}
+              intensity={bloomIntensity * (nodes.length > 1200 ? 0.55 : 1)}
               mipmapBlur
-              radius={0.6}
+              radius={nodes.length > 1200 ? 0.35 : 0.55}
             />
           </EffectComposer>
         )}
@@ -216,7 +224,7 @@ export function GraphScene({
           zoomSpeed={1.5}
           minDistance={10}
           maxDistance={50000}
-          autoRotateSpeed={0.4}
+          autoRotateSpeed={0.55}
         />
       </Canvas>
     </div>
@@ -259,7 +267,10 @@ export function computeCameraTarget(
       if (d > maxDist) maxDist = d;
     }
   }
-  const distance = Math.max(count <= 5 ? 300 : 200, maxDist * 3);
+  const distance = Math.max(
+    count <= 3 ? 180 : count <= 12 ? 220 : 160,
+    Math.min(720, maxDist * (count <= 8 ? 2.1 : 2.6) + 80),
+  );
   return {
     position: new THREE.Vector3(cx + distance * 0.2, cy + distance * 0.15, cz + distance),
     lookAt: new THREE.Vector3(cx, cy, cz),

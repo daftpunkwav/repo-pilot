@@ -72,6 +72,8 @@ export interface GraphIndexStatus {
   edge_count?: number | null;
   indexed_at?: string | null;
   error?: string | null;
+  error_kind?: 'network' | 'service' | 'cancelled' | 'unknown' | null;
+  cancel_requested?: boolean;
 }
 
 function resolveNumericId(
@@ -104,11 +106,8 @@ export function toRenderGraph(raw: {
   const idMap = new Map<string, number>();
   const nodes: CodeGraphNode[] = (raw.nodes || []).map((n, idx) => {
     const kind = String(n.kind ?? n.label ?? 'Unknown');
-    const rawColor = n.color;
-    const color =
-      typeof rawColor === 'string' && rawColor.trim()
-        ? rawColor.trim()
-        : colorForLabel(kind);
+    /* 始终按类型着色（忽略引擎空色 / 恒星色），对齐 CBM 侧栏语义色 */
+    const color = colorForLabel(kind);
     return {
       id: resolveNumericId(n.id, idx, idMap),
       x: Number(n.x ?? 0),
@@ -121,7 +120,7 @@ export function toRenderGraph(raw: {
       qualified_name: (n.qualified_name as string) || undefined,
       start_line: n.start_line as number | undefined,
       end_line: n.end_line as number | undefined,
-      size: Number(n.size ?? 1),
+      size: Math.max(Number(n.size ?? 1) * 1.25, 1.4),
       color,
       status: n.status as NodeStatus | undefined,
       in_calls: n.in_calls as number | undefined,

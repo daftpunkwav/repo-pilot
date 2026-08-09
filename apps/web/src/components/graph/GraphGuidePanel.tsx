@@ -1,48 +1,59 @@
+import { useState } from 'react';
 import { EmbedAgentChat } from '@/components/agent/EmbedAgentChat';
+import { AgentAvatar } from '@/components/agent/AgentAvatar';
 
 interface GraphGuidePanelProps {
-  collapsed: boolean;
-  onToggleCollapse: () => void;
   selectedNodeId: string | null;
 }
 
-export function GraphGuidePanel({
-  collapsed,
-  onToggleCollapse,
-  selectedNodeId,
-}: GraphGuidePanelProps) {
-  if (collapsed) {
-    return (
-      <button
-        type="button"
-        className="graph-agent-collapse-tab"
-        onClick={onToggleCollapse}
-        title="展开图谱向导"
-      >
-        Atlas
-      </button>
-    );
-  }
+/**
+ * Atlas 浮钮：对标总览页 Scout —— 右下角小人，点击开闭对话窗。
+ */
+export function GraphGuidePanel({ selectedNodeId }: GraphGuidePanelProps) {
+  const [open, setOpen] = useState(false);
 
   return (
-    <aside className="graph-agent-panel">
+    <div className={`atlas-scout${open ? ' is-open' : ''}`}>
+      {open && (
+        <div className="atlas-scout__panel glass-card glass-card--panel" role="dialog" aria-label="Atlas 对话">
+          <header className="atlas-scout__head">
+            <div>
+              <strong>Atlas · 图谱向导</strong>
+              <p>专用于解读项目关系网络</p>
+            </div>
+            <button
+              type="button"
+              className="atlas-scout__close"
+              onClick={() => setOpen(false)}
+              aria-label="关闭 Atlas"
+            >
+              ×
+            </button>
+          </header>
+          <div className="atlas-scout__body">
+            <EmbedAgentChat
+              mode="graph"
+              title="Atlas"
+              subtitle=""
+              agentInitial="A"
+              agentClassName="agent-navigator"
+              graphNodeId={selectedNodeId}
+              placeholder="问我图谱结构、相似度含义…"
+            />
+          </div>
+        </div>
+      )}
       <button
         type="button"
-        className="graph-agent-panel__collapse"
-        onClick={onToggleCollapse}
-        aria-label="收起"
+        className="atlas-scout__fab"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={open ? '关闭 Atlas' : '打开 Atlas'}
+        title={open ? '关闭 Atlas' : '打开 Atlas'}
       >
-        ›
+        <AgentAvatar agentId="navigator" lookTarget={null} isFocused={open} blink size={56} />
+        <span className="atlas-scout__fab-label">Atlas</span>
       </button>
-      <EmbedAgentChat
-        mode="graph"
-        title="Atlas · 图谱向导"
-        subtitle="专用于解读项目关系网络"
-        agentInitial="A"
-        agentClassName="agent-navigator"
-        graphNodeId={selectedNodeId}
-        placeholder="问我图谱结构、相似度含义…"
-      />
-    </aside>
+    </div>
   );
 }

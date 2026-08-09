@@ -3,14 +3,16 @@ import { useQuery } from '@tanstack/react-query';
 import { getApi } from '@/api/client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
-function fmtTokens(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
+function fmtTokens(n: number | undefined | null): string {
+  const v = Number(n) || 0;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(2)}M`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}K`;
+  return String(v);
 }
 
-function fmtCost(usd: number): string {
-  return `$${usd.toFixed(4)}`;
+function fmtCost(usd: number | undefined | null): string {
+  const v = Number(usd) || 0;
+  return `$${v.toFixed(4)}`;
 }
 
 function fmtTs(ts: string): string {

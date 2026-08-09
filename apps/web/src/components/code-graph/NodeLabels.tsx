@@ -97,10 +97,20 @@ function createLabelTexture(name: string, color: string): LabelTexture | null {
   };
 }
 
+function displayName(node: GraphNode): string {
+  const raw = node.name || '';
+  /* L0 项目节点：标签只显示仓库短名，悬停仍看完整 owner/repo */
+  if ((node.kind === 'Project' || node.label === 'Project') && raw.includes('/')) {
+    return raw.split('/').pop() || raw;
+  }
+  return raw;
+}
+
 function NodeLabelSprite({ node }: { node: GraphNode }) {
+  const text = displayName(node);
   const label = useMemo(
-    () => createLabelTexture(node.name, node.color),
-    [node.name, node.color],
+    () => createLabelTexture(text, node.color),
+    [text, node.color],
   );
 
   useEffect(() => {
@@ -109,7 +119,7 @@ function NodeLabelSprite({ node }: { node: GraphNode }) {
 
   if (!label) return null;
 
-  const worldFontSize = Math.max(1.8, node.size * 0.4);
+  const worldFontSize = Math.max(2.4, node.size * 0.55);
   const worldHeight = worldFontSize * (label.height / TEXTURE_FONT_SIZE);
   const worldWidth = worldHeight * (label.width / label.height);
 
@@ -133,7 +143,7 @@ function NodeLabelSprite({ node }: { node: GraphNode }) {
 export function NodeLabels({
   nodes,
   highlightedIds,
-  maxLabels = 80,
+  maxLabels = 120,
 }: NodeLabelsProps) {
   const labeled = useMemo(() => {
     const hasHighlight = highlightedIds && highlightedIds.size > 0;
@@ -142,10 +152,14 @@ export function NodeLabels({
       return nodes
         .filter((n) => highlightedIds.has(n.id))
         .sort((a, b) => b.size - a.size)
-        .slice(0, maxLabels);
+        .slice(0, Math.min(maxLabels, 48));
     }
 
-    return [...nodes].sort((a, b) => b.size - a.size).slice(0, maxLabels);
+    /* 无选中时只标出更大/更重要的节点，避免中心叠字 */
+    const budget = Math.min(36, Math.max(14, Math.floor(Math.sqrt(nodes.length) * 3.2)));
+    return [...nodes]
+      .sort((a, b) => (b.in_calls || 0) - (a.in_calls || 0) || b.size - a.size)
+      .slice(0, budget);
   }, [nodes, highlightedIds, maxLabels]);
 
   return (

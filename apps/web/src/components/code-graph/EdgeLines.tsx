@@ -24,7 +24,7 @@ function getClusterKey(fp?: string): string {
   return parts.slice(0, Math.min(2, parts.length)).join("/");
 }
 
-/* Edge type â†?color (matches the filter panel) */
+/* Edge type ? color?? L0 ??????? */
 const EDGE_TYPE_COLORS: Record<string, string> = {
   CALLS: "#1DA27E",
   IMPORTS: "#3b82f6",
@@ -48,9 +48,17 @@ const EDGE_TYPE_COLORS: Record<string, string> = {
   CROSS_CHANNEL: "#fdba74",
   MEMBER_OF: "#64748b",
   TESTS_FILE: "#06b6d4",
+  /* L0 */
+  similarity: "#2dd4bf",
+  depends_on: "#fb923c",
+  recommend_learn: "#f472b6",
+  cross_http: "#a78bfa",
+  cross_async: "#fbbf24",
+  cross_channel: "#fdba74",
+  cross_shared: "#94a3b8",
 };
 
-const DEFAULT_EDGE_COLOR = "#1C8585";
+const DEFAULT_EDGE_COLOR = "#2dd4bf";
 
 export function EdgeLines({
   nodes,
@@ -96,13 +104,10 @@ export function EdgeLines({
       const sameCluster =
         getClusterKey(s.file_path) === getClusterKey(t.file_path);
 
-      /* Intensity based on cluster membership and highlight.
-       * With additive blending + dark background, these glow nicely. */
-      let intensity = sameCluster ? 0.25 : 0.06;
+      /* ???? CBM ??????????????????? */
+      let intensity = sameCluster ? 0.14 : 0.035;
       if (hasHighlight) {
-        /* A selection stays at full strength (never density-scaled) so it
-         * pops against the dimmed rest; only the un-selected bulk is scaled. */
-        intensity = sHL && tHL ? 0.5 : 0.04 * densityScale;
+        intensity = sHL && tHL ? 0.28 : 0.02 * densityScale;
       } else {
         intensity *= densityScale;
       }
@@ -115,9 +120,10 @@ export function EdgeLines({
       positions[off + 4] = t.y;
       positions[off + 5] = t.z;
 
-      /* Color from edge TYPE (correlates with edge type filter) */
+      /* Color from edge TYPE??? relation? */
+      const typeKey = edge.type || edge.relation || '';
       const edgeColor = new THREE.Color(
-        EDGE_TYPE_COLORS[edge.type] ?? DEFAULT_EDGE_COLOR,
+        EDGE_TYPE_COLORS[typeKey] ?? DEFAULT_EDGE_COLOR,
       );
       colors[off] = edgeColor.r * intensity;
       colors[off + 1] = edgeColor.g * intensity;

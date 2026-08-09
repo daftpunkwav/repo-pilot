@@ -1,23 +1,17 @@
-import type { GraphData, GraphNode } from '@/api/types';
 import { useGraphStore } from '@/stores/graphStore';
 import type { GraphLayoutMode, GraphViewMode } from '@/stores/graphStore';
+import { L0_EDGE_TYPES } from '@/components/graph/l0EdgeTypes';
+import { GraphIndexProgressBar } from '@/components/graph/GraphIndexProgressBar';
+import type { ReactNode } from 'react';
 
 interface GraphControlsProps {
-  /** 仅宇宙图模式显示布局算法切换，避免与「展示形态」语义撞车 */
   showLayout?: boolean;
   viewModes?: { id: GraphViewMode; label: string }[];
   viewMode?: GraphViewMode;
   onViewModeChange?: (mode: GraphViewMode) => void;
+  /** 批量索引入口（挂在左上信息栏，避免与 Atlas 重叠） */
+  batchSlot?: ReactNode;
 }
-
-const LEGEND = [
-  { color: '#007aff', label: 'Web 前端' },
-  { color: '#30d158', label: 'Web 后端' },
-  { color: '#ff3b30', label: 'AI / ML' },
-  { color: '#ff9f0a', label: '数据科学' },
-  { color: '#5e5ce6', label: 'DevOps' },
-  { color: '#6e6e73', label: '工具 / 库' },
-];
 
 const LAYOUTS: { id: GraphLayoutMode; label: string }[] = [
   { id: 'force', label: '力导向' },
@@ -25,36 +19,42 @@ const LAYOUTS: { id: GraphLayoutMode; label: string }[] = [
   { id: 'radial', label: '径向' },
 ];
 
+/** 图谱顶栏：单列列表式排布 */
 export function GraphControls({
   showLayout = true,
   viewModes,
   viewMode,
   onViewModeChange,
+  batchSlot,
 }: GraphControlsProps) {
   const searchQuery = useGraphStore((s) => s.searchQuery);
   const setSearchQuery = useGraphStore((s) => s.setSearchQuery);
-  const zoomLevel = useGraphStore((s) => s.zoomLevel);
   const minSimilarity = useGraphStore((s) => s.minSimilarity);
   const setMinSimilarity = useGraphStore((s) => s.setMinSimilarity);
-  const requestZoom = useGraphStore((s) => s.requestZoom);
   const layoutMode = useGraphStore((s) => s.layoutMode);
   const setLayoutMode = useGraphStore((s) => s.setLayoutMode);
+  const edgeTypeFilter = useGraphStore((s) => s.edgeTypeFilter);
+  const setEdgeTypeFilter = useGraphStore((s) => s.setEdgeTypeFilter);
+
+  const showUniverseExtras = showLayout && viewMode !== 'list';
 
   return (
-    <div className="graph-toolbar">
-      <div className="graph-controls">
-        <label className="graph-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="7" />
-            <path d="M21 21l-4.3-4.3" />
-          </svg>
-          <input
-            placeholder="搜索 owner/repo"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </label>
-        {viewModes && viewMode && onViewModeChange && (
+    <div className="graph-toolbar graph-toolbar--column glass-card glass-card--overview-inner">
+      <label className="graph-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M21 21l-4.3-4.3" />
+        </svg>
+        <input
+          placeholder="搜索 owner/repo"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </label>
+
+      {viewModes && viewMode && onViewModeChange && (
+        <div className="graph-toolbar__row">
+          <span className="graph-toolbar__label">视图</span>
           <div className="view-switch" role="group" aria-label="展示形态">
             {viewModes.map((m) => (
               <button
@@ -67,10 +67,41 @@ export function GraphControls({
               </button>
             ))}
           </div>
-        )}
-        {showLayout && (
+          {/* 边类型图例仅挂在「宇宙图」下；列表模式不展示 */}
+          {showUniverseExtras && (
+            <div className="graph-legend graph-legend--under-view" aria-label="边类型">
+              <button
+                type="button"
+                className={`legend-item${!edgeTypeFilter ? ' is-active' : ''}`}
+                onClick={() => setEdgeTypeFilter(null)}
+                title="全部边类型"
+              >
+                <span className="legend-dot" style={{ background: 'var(--text-400)' }} />
+                <span className="legend-item__text">全部</span>
+              </button>
+              {L0_EDGE_TYPES.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  className={`legend-item${edgeTypeFilter === l.id ? ' is-active' : ''}`}
+                  onClick={() =>
+                    setEdgeTypeFilter(edgeTypeFilter === l.id ? null : l.id)
+                  }
+                  title={l.label}
+                >
+                  <span className="legend-dot" style={{ background: l.color }} />
+                  <span className="legend-item__text">{l.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showUniverseExtras && (
+        <div className="graph-toolbar__row">
+          <span className="graph-toolbar__label">布局</span>
           <div className="layout-switch" role="group" aria-label="三维布局算法">
-            <span className="layout-switch__label">布局</span>
             {LAYOUTS.map((l) => (
               <button
                 key={l.id}
@@ -82,73 +113,36 @@ export function GraphControls({
               </button>
             ))}
           </div>
-        )}
-        <label className="graph-threshold" title="仅显示相似度 ≥ 此值的边">
-          <span className="graph-threshold__label">阈值</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={minSimilarity}
-            onChange={(e) => setMinSimilarity(Number(e.target.value))}
-            aria-label="最小相似度阈值"
-          />
-          <span className="graph-threshold__value">{minSimilarity.toFixed(2)}</span>
-        </label>
-        {showLayout && (
-          <div className="zoom-group" role="group" aria-label="缩放控件">
-            <button
-              type="button"
-              className="zoom-btn"
-              title="缩小"
-              onClick={() => requestZoom('out')}
-            >
-              −
-            </button>
-            <span className="zoom-label">{Math.round(zoomLevel * 100)}%</span>
-            <button
-              type="button"
-              className="zoom-btn"
-              title="放大"
-              onClick={() => requestZoom('in')}
-            >
-              +
-            </button>
-          </div>
-        )}
+        </div>
+      )}
+
+      {showUniverseExtras && (
+        <div className="graph-toolbar__row">
+          <span className="graph-toolbar__label">阈值</span>
+          <label className="graph-threshold" title="仅显示相似度 ≥ 此值的边">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={minSimilarity}
+              onChange={(e) => setMinSimilarity(Number(e.target.value))}
+              aria-label="最小相似度阈值"
+            />
+            <span className="graph-threshold__value">{minSimilarity.toFixed(2)}</span>
+          </label>
+        </div>
+      )}
+
+      <div className="graph-toolbar__row graph-toolbar__row--index">
+        <GraphIndexProgressBar />
       </div>
-      <div className="graph-legend" aria-label="分类图例">
-        {LEGEND.map((l) => (
-          <span key={l.label} className="legend-item" title={l.label}>
-            <span className="legend-dot" style={{ background: l.color }} />
-          </span>
-        ))}
-      </div>
+
+      {batchSlot && (
+        <div className="graph-toolbar__row graph-toolbar__row--batch">{batchSlot}</div>
+      )}
     </div>
   );
 }
 
-export function getSimilarNodes(
-  data: GraphData | undefined,
-  nodeId: string,
-  limit = 3
-): { node: GraphNode; similarity: number }[] {
-  if (!data) return [];
-  const nodeById = new Map(data.nodes.map((n) => [n.id, n]));
-  const related = data.edges
-    .filter((e) => e.source === nodeId || e.target === nodeId)
-    .map((e) => ({
-      id: e.source === nodeId ? e.target : e.source,
-      similarity: e.similarity,
-    }))
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, limit);
-
-  return related
-    .map((r) => {
-      const node = nodeById.get(r.id);
-      return node ? { node, similarity: r.similarity } : null;
-    })
-    .filter((x): x is { node: GraphNode; similarity: number } => x !== null);
-}
+export { getSimilarNodes } from './graphHelpers';

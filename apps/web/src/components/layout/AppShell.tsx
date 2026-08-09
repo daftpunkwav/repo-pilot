@@ -11,6 +11,7 @@ function resolveActivePage(pathname: string): SidebarPageKey {
   if (pathname.startsWith('/projects')) return 'projects';
   if (pathname.startsWith('/agent')) return 'agent';
   if (pathname.startsWith('/graph')) return 'graph';
+  if (pathname.startsWith('/usage')) return 'usage';
   if (pathname.startsWith('/notes')) return 'notes';
   if (pathname.startsWith('/settings')) return 'settings';
   return 'overview';

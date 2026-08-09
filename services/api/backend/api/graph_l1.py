@@ -85,6 +85,47 @@ async def refresh_project_index(
     )
 
 
+@router.post("/projects/{project_id}/index/cancel", response_model=DataResponse[dict])
+async def cancel_project_index(
+    project_id: UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """取消排队或进行中的索引。"""
+    return wrap_data(await pipeline.cancel_index(db, project_id))
+
+
+@router.get("/index-statuses", response_model=DataResponse[dict])
+async def list_project_index_statuses(
+    db: AsyncSession = Depends(get_db),
+):
+    """图谱页索引进度条：全部项目索引状态快照。"""
+    items = await pipeline.list_index_statuses(db)
+    active = [
+        s
+        for s in items
+        if s["status"] in ("QUEUED", "CLONING", "INDEXING")
+        or s["status"] in ("CLONE_FAILED", "INDEX_FAILED")
+    ]
+    return wrap_data(
+        {
+            "items": items,
+            "active": active,
+            "stats": {
+                "total": len(items),
+                "running": sum(
+                    1 for s in items if s["status"] in ("QUEUED", "CLONING", "INDEXING")
+                ),
+                "ready": sum(1 for s in items if s["status"] == "READY"),
+                "failed": sum(
+                    1
+                    for s in items
+                    if s["status"] in ("CLONE_FAILED", "INDEX_FAILED")
+                ),
+            },
+        }
+    )
+
+
 @router.delete("/projects/{project_id}/index", response_model=DataResponse[dict])
 async def delete_project_index(
     project_id: UUID,

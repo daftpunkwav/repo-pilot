@@ -23,6 +23,7 @@ interface Props {
   shownEdges?: number;
 }
 
+/** L1 顶栏：单列信息，对齐列表式排布 */
 export function IndexStatusBar({
   status,
   loading,
@@ -49,16 +50,16 @@ export function IndexStatusBar({
       : null);
 
   return (
-    <div className="code-graph-statusbar glass-card glass-card--control">
-      <div className="code-graph-statusbar__left">
+    <div className="code-graph-statusbar code-graph-statusbar--column glass-card glass-card--overview-inner">
+      <div className="code-graph-statusbar__row">
         <span className={`status-pill status-pill--${st.toLowerCase()}`}>
           {STATUS_ZH[st] ?? st}
         </span>
         {status?.index_mode && <span className="muted">模式: {status.index_mode}</span>}
-        {budgetHint && <span className="hint">{budgetHint}</span>}
-        {errorText && <span className="error">{errorText}</span>}
       </div>
-      <div className="code-graph-statusbar__right">
+      {budgetHint && <p className="hint">{budgetHint}</p>}
+      {errorText && <p className="error">{errorText}</p>}
+      <div className="code-graph-statusbar__row code-graph-statusbar__actions">
         <label>
           节点上限
           <input
