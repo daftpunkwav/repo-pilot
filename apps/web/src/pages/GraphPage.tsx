@@ -36,6 +36,7 @@ export function GraphPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchSelected, setBatchSelected] = useState<Set<string>>(new Set());
+  const [cameraResetTick, setCameraResetTick] = useState(0);
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId);
   const selectNode = useGraphStore((s) => s.selectNode);
   const highlightNode = useGraphStore((s) => s.highlightNode);
@@ -167,13 +168,25 @@ export function GraphPage() {
 
   const batchSlot = (
     <>
-      <button
-        type="button"
-        className={`graph-batch-btn graph-batch-btn--inline${batchOpen ? ' is-active' : ''}`}
-        onClick={() => setBatchOpen((v) => !v)}
-      >
-        批量索引
-      </button>
+      <div className="graph-batch-actions">
+        <button
+          type="button"
+          className={`graph-batch-btn graph-batch-btn--inline${batchOpen ? ' is-active' : ''}`}
+          onClick={() => setBatchOpen((v) => !v)}
+        >
+          批量索引
+        </button>
+        {viewMode === 'force' && (
+          <button
+            type="button"
+            className="graph-batch-btn graph-batch-btn--inline"
+            onClick={() => setCameraResetTick((n) => n + 1)}
+            title="回到全图总览视角"
+          >
+            重置视角
+          </button>
+        )}
+      </div>
       {batchOpen && (
         <div className="graph-batch-panel graph-batch-panel--inline glass-card glass-card--overview-inner">
           <div className="graph-batch-panel__head">
@@ -248,6 +261,7 @@ export function GraphPage() {
           {viewMode === 'force' && (
             <UniverseGraphView
               data={filteredData}
+              cameraResetTick={cameraResetTick}
               onNodeClick={(n) => selectNode(n.id)}
               onNodeDoubleClick={(n) => navigate(`/graph/projects/${n.id}`)}
             />

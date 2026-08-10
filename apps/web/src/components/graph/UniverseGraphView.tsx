@@ -1,7 +1,7 @@
 /**
  * L0 3D 宇宙图视图 —— 复用 L1 GraphScene（CBM 风格点云 + OrbitControls）
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { GraphData, GraphNode } from '@/api/types';
 import { GraphScene, computeCameraTarget } from '@/components/graph-viz';
 import type { CameraTarget, CodeGraphNode } from '@/components/graph-viz';
@@ -20,6 +20,8 @@ interface UniverseGraphViewProps {
   data: GraphData;
   onNodeClick: (node: GraphNode) => void;
   onNodeDoubleClick: (node: GraphNode) => void;
+  /** 递增时重置为全图总览视角 */
+  cameraResetTick?: number;
 }
 
 const UNIVERSE_DISPLAY: DisplaySettings = {
@@ -33,6 +35,7 @@ export function UniverseGraphView({
   data,
   onNodeClick,
   onNodeDoubleClick,
+  cameraResetTick = 0,
 }: UniverseGraphViewProps) {
   const layoutMode = useGraphStore((s) => s.layoutMode);
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId);
@@ -71,6 +74,12 @@ export function UniverseGraphView({
 
   const [cameraTarget, setCameraTarget] = useState<CameraTarget | null>(null);
   const [lastClickAt, setLastClickAt] = useState(0);
+
+  useEffect(() => {
+    if (cameraResetTick <= 0) return;
+    const ids = new Set(sceneData.nodes.map((n) => n.id));
+    setCameraTarget(computeCameraTarget(sceneData.nodes, ids));
+  }, [cameraResetTick, sceneData.nodes]);
 
   const handleClick = (node: CodeGraphNode) => {
     const projectId = projectIdFromSceneNode(node, data);

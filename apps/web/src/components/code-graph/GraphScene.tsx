@@ -26,9 +26,20 @@ const BASE_BLOOM_INTENSITY = 1.45;
 export const GRAPH_CANVAS_DPR: [number, number] = [1, 1.5];
 export const GRAPH_COMPOSER_MULTISAMPLING = 0;
 
+/** OrbitControls / 相机动画共用距离上下限 */
+export const CAMERA_MIN_DISTANCE = 20;
+export const CAMERA_MAX_DISTANCE = 4000;
+
 export interface CameraTarget {
   position: THREE.Vector3;
   lookAt: THREE.Vector3;
+}
+
+function clampCameraDistance(distance: number): number {
+  return Math.min(
+    CAMERA_MAX_DISTANCE,
+    Math.max(CAMERA_MIN_DISTANCE, distance),
+  );
 }
 
 function CameraAnimator({
@@ -250,8 +261,8 @@ export function GraphScene({
           rotateSpeed={0.5}
           zoomSpeed={1.5}
           zoomToCursor
-          minDistance={10}
-          maxDistance={50000}
+          minDistance={CAMERA_MIN_DISTANCE}
+          maxDistance={CAMERA_MAX_DISTANCE}
           autoRotateSpeed={BASE_AUTO_ROTATE_SPEED}
         />
       </Canvas>
@@ -295,12 +306,16 @@ export function computeCameraTarget(
       if (d > maxDist) maxDist = d;
     }
   }
-  const distance = Math.max(
-    count <= 3 ? 180 : count <= 12 ? 220 : 160,
-    Math.min(720, maxDist * (count <= 8 ? 2.1 : 2.6) + 80),
+  const distance = clampCameraDistance(
+    Math.max(
+      count <= 3 ? 180 : count <= 12 ? 220 : 160,
+      Math.min(720, maxDist * (count <= 8 ? 2.1 : 2.6) + 80),
+    ),
   );
+  const lookAt = new THREE.Vector3(cx, cy, cz);
+  const offset = new THREE.Vector3(0.2, 0.15, 1).normalize().multiplyScalar(distance);
   return {
-    position: new THREE.Vector3(cx + distance * 0.2, cy + distance * 0.15, cz + distance),
-    lookAt: new THREE.Vector3(cx, cy, cz),
+    position: lookAt.clone().add(offset),
+    lookAt,
   };
 }

@@ -93,6 +93,16 @@
     .graph-toolbar__row--batch {
       position: relative;
     }
+    .graph-batch-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      width: 100%;
+    }
+    .graph-batch-actions .graph-batch-btn {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
     .graph-toolbar .graph-index-trigger {
       width: 100%;
       justify-content: space-between;
