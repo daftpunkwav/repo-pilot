@@ -227,7 +227,13 @@
   min-height: 0;
   border-radius: var(--radius-md, 12px);
   overflow: hidden;
-  background: radial-gradient(circle at 50% 45%, var(--bg-50) 0%, var(--bg-100) 70%, var(--bg-200) 100%);
+  background: radial-gradient(
+    circle at 48% 42%,
+    #ffffff 0%,
+    var(--bg-50) 38%,
+    var(--bg-100) 72%,
+    color-mix(in srgb, var(--bg-200) 85%, var(--bg-300)) 100%
+  );
 }
 
 [data-theme='dark'] .code-graph-stage {

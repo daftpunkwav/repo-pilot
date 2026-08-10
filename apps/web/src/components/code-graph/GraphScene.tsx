@@ -107,12 +107,6 @@ function IdleAutoRotate({
   return null;
 }
 
-function readCssColor(name: string, fallback: string): string {
-  if (typeof document === 'undefined') return fallback;
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v || fallback;
-}
-
 interface GraphSceneProps {
   data: CodeGraphData;
   highlightedIds: Set<number> | null;
@@ -144,14 +138,17 @@ export function GraphScene({
 
   const bg = useMemo(() => {
     if (isDark) return '#06090f';
-    return readCssColor('--bg-100', '#f7f7fa');
+    /* 浅色不设 scene 背景，透出 CSS 径向渐变 */
+    return null;
   }, [isDark]);
 
   const useBloom = enableBloom && isDark;
-  const nodeBoost =
-    nodeBoostScale(data.nodes.length) * display.nodeGlow * (isDark ? 1 : 0.55);
+  const nodeBoost = nodeBoostScale(data.nodes.length) * display.nodeGlow * 0.95;
   const bloomIntensity =
-    BASE_BLOOM_INTENSITY * bloomIntensityScale(data.nodes.length) * display.bloom;
+    BASE_BLOOM_INTENSITY *
+    bloomIntensityScale(data.nodes.length) *
+    display.bloom *
+    (useBloom ? 0.75 : 1);
 
   // NodeCloud 期望 id:number；将 string 数字归一
   const nodes = useMemo(
@@ -187,30 +184,32 @@ export function GraphScene({
         )}
       </div>
       <Canvas
+        key={isDark ? 'graph-dark' : 'graph-light'}
         camera={{ position: [0, 0, 800], fov: 50, near: 0.1, far: 100000 }}
-        style={{ background: bg }}
+        style={{ background: isDark ? bg! : 'transparent' }}
         dpr={GRAPH_CANVAS_DPR}
         gl={{
           antialias: false,
-          alpha: false,
+          alpha: !isDark,
           powerPreference: 'high-performance',
         }}
+        onCreated={isDark ? undefined : ({ gl }) => gl.setClearColor(0x000000, 0)}
         onPointerMissed={onBackgroundClick}
       >
-        <color attach="background" args={[bg]} />
-        <ambientLight intensity={useBloom ? 0.5 : isDark ? 0.85 : 0.95} />
-        <pointLight position={[500, 500, 500]} intensity={useBloom ? 0.6 : isDark ? 0.35 : 0.28} />
+        {isDark && bg && <color attach="background" args={[bg]} />}
+        <ambientLight intensity={useBloom ? 0.5 : isDark ? 0.85 : 1.05} />
+        <pointLight position={[500, 500, 500]} intensity={useBloom ? 0.6 : isDark ? 0.35 : 0.22} />
         <pointLight
           position={[-300, -200, -300]}
-          intensity={useBloom ? 0.4 : isDark ? 0.2 : 0.12}
-          color={useBloom ? '#6040ff' : isDark ? '#94a3b8' : '#cbd5e1'}
+          intensity={useBloom ? 0.4 : isDark ? 0.2 : 0.14}
+          color={useBloom ? '#6040ff' : isDark ? '#94a3b8' : '#e2e8f0'}
         />
 
         <EdgeLines
           nodes={nodes as never}
           edges={edges as never}
           highlightedIds={highlightedIds}
-          brightness={display.edgeBrightness * (isDark ? 1 : 1.35)}
+          brightness={display.edgeBrightness * 1.1}
           isDark={isDark}
         />
         <NodeCloud

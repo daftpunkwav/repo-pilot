@@ -845,7 +845,13 @@
 
 /* L0 宇宙图画布：浅色默认，深色主题保留深空底 */
 .graph-stage--universe {
-  background: radial-gradient(circle at 50% 45%, var(--bg-50) 0%, var(--bg-100) 70%, var(--bg-200) 100%);
+  background: radial-gradient(
+    circle at 48% 42%,
+    #ffffff 0%,
+    var(--bg-50) 38%,
+    var(--bg-100) 72%,
+    color-mix(in srgb, var(--bg-200) 85%, var(--bg-300)) 100%
+  );
   border-color: var(--bg-300);
 }
 .graph-stage--universe {

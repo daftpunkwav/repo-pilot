@@ -1,21 +1,23 @@
 // @ts-nocheck
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import type { GraphNode, GraphEdge } from "./types";
 import { edgeIntensityScale } from "./density";
+import {
+  computeLightEdgeDegreeFactor,
+  computeLightEdgeZoomFade,
+  lightEdgeAlphaAt,
+  lightEdgeWidthAt,
+} from "./lightEdgeStyle";
 
 interface EdgeLinesProps {
   nodes: GraphNode[];
   edges: GraphEdge[];
   highlightedIds: Set<number> | null;
   opacity?: number;
-  /* User edge-brightness multiplier (see DisplaySettings). Layered on top of
-   * the automatic density scale. */
   brightness?: number;
   isDark?: boolean;
-  /* When set, edge.target is looked up in this array instead of `nodes`.
-   * Used for cross-galaxy edges where source lives in the primary graph
-   * and target lives in a linked project's offset-adjusted nodes. */
   targetNodes?: GraphNode[];
 }
 
@@ -25,7 +27,6 @@ function getClusterKey(fp?: string): string {
   return parts.slice(0, Math.min(2, parts.length)).join("/");
 }
 
-/* Edge type ? color?? L0 ??????? */
 const EDGE_TYPE_COLORS: Record<string, string> = {
   CALLS: "#1DA27E",
   IMPORTS: "#3b82f6",
@@ -49,7 +50,6 @@ const EDGE_TYPE_COLORS: Record<string, string> = {
   CROSS_CHANNEL: "#fdba74",
   MEMBER_OF: "#64748b",
   TESTS_FILE: "#06b6d4",
-  /* L0 */
   similarity: "#2dd4bf",
   depends_on: "#fb923c",
   recommend_learn: "#f472b6",
@@ -59,7 +59,110 @@ const EDGE_TYPE_COLORS: Record<string, string> = {
   cross_shared: "#94a3b8",
 };
 
+const EDGE_TYPE_COLORS_LIGHT: Record<string, string> = {
+  CALLS: "#0f766e",
+  IMPORTS: "#1d4ed8",
+  DEFINES: "#7e22ce",
+  DEFINES_METHOD: "#7e22ce",
+  CONTAINS_FILE: "#15803d",
+  CONTAINS_FOLDER: "#15803d",
+  CONTAINS_PACKAGE: "#15803d",
+  HANDLES: "#a16207",
+  IMPLEMENTS: "#c2410c",
+  HTTP_CALLS: "#be123c",
+  ASYNC_CALLS: "#be185d",
+  GRPC_CALLS: "#b45309",
+  GRAPHQL_CALLS: "#a21caf",
+  TRPC_CALLS: "#6d28d9",
+  CROSS_HTTP_CALLS: "#c2410c",
+  CROSS_ASYNC_CALLS: "#be123c",
+  CROSS_GRPC_CALLS: "#a16207",
+  CROSS_GRAPHQL_CALLS: "#a21caf",
+  CROSS_TRPC_CALLS: "#6d28d9",
+  CROSS_CHANNEL: "#c2410c",
+  MEMBER_OF: "#475569",
+  TESTS_FILE: "#0e7490",
+  similarity: "#0d9488",
+  depends_on: "#ea580c",
+  recommend_learn: "#db2777",
+  cross_http: "#7c3aed",
+  cross_async: "#ca8a04",
+  cross_channel: "#ea580c",
+  cross_shared: "#64748b",
+};
+
 const DEFAULT_EDGE_COLOR = "#2dd4bf";
+const DEFAULT_EDGE_COLOR_LIGHT = "#0d9488";
+
+const BG_LIGHT = new THREE.Vector3(0.957, 0.965, 0.98);
+const BG_DARK = new THREE.Vector3(0.024, 0.035, 0.059);
+
+/** 双主题共用：视空间带宽 + 中段混向背景 + 选中提亮 */
+function createEdgeRibbonMaterial(isDark: boolean) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uOpacity: { value: 1 },
+      uBg: { value: (isDark ? BG_DARK : BG_LIGHT).clone() },
+      uResolution: { value: new THREE.Vector2(1920, 1080) },
+      uPixelHalfWidth: { value: isDark ? 1.15 : 1.05 },
+      uIsDark: { value: isDark ? 1 : 0 },
+    },
+    vertexShader: /* glsl */ `
+      attribute vec3 color;
+      attribute float aWeight;
+      attribute float aWidth;
+      attribute float aSide;
+      attribute vec3 aDir;
+      uniform vec2 uResolution;
+      uniform float uPixelHalfWidth;
+      varying vec3 vColor;
+      varying float vWeight;
+      varying float vSide;
+      void main() {
+        vColor = color;
+        vWeight = aWeight;
+        vSide = aSide;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vec3 mvDir = mat3(modelViewMatrix) * aDir;
+        vec3 push = cross(mvDir, mv.xyz);
+        if (dot(push, push) < 1e-12) push = cross(mvDir, vec3(0.0, 1.0, 0.0));
+        if (dot(push, push) < 1e-12) push = vec3(1.0, 0.0, 0.0);
+        push = normalize(push);
+        float resY = max(uResolution.y, 64.0);
+        float halfNdc = min(uPixelHalfWidth * aWidth * 2.0 / resY, 0.008);
+        float halfView = halfNdc * abs(mv.z) / max(abs(projectionMatrix[1][1]), 1e-6);
+        mv.xyz += push * (aSide * halfView);
+        gl_Position = projectionMatrix * mv;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uOpacity;
+      uniform vec3 uBg;
+      uniform float uIsDark;
+      varying vec3 vColor;
+      varying float vWeight;
+      varying float vSide;
+      void main() {
+        float w = clamp(vWeight, 0.0, 1.0);
+        vec3 col = mix(uBg, vColor, w);
+        float lift = uIsDark > 0.5 ? 1.35 : 1.25;
+        float add = uIsDark > 0.5 ? 0.12 : 0.08;
+        col = mix(col, min(col * lift + vec3(add), vec3(1.0)), smoothstep(0.85, 1.0, w));
+        float soft = 1.0 - smoothstep(0.35, 1.0, abs(vSide));
+        float aMax = uIsDark > 0.5 ? 0.92 : 0.98;
+        float a = mix(0.18, aMax, w) * uOpacity * soft;
+        if (a < 0.02) discard;
+        gl_FragColor = vec4(col, a);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    blending: THREE.NormalBlending,
+    toneMapped: false,
+    side: THREE.DoubleSide,
+  });
+}
 
 export function EdgeLines({
   nodes,
@@ -70,16 +173,50 @@ export function EdgeLines({
   isDark = true,
   targetNodes,
 }: EdgeLinesProps) {
+  const edgeMat = useMemo(() => createEdgeRibbonMaterial(isDark), [isDark]);
+  const { camera, controls, gl, size } = useThree();
+  const fallbackTarget = useRef(new THREE.Vector3(0, 0, 0));
+
+  const syncUniforms = (distFade = true) => {
+    const pr = gl.getPixelRatio();
+    const w = gl.drawingBufferWidth || size.width * pr || 1920;
+    const h = gl.drawingBufferHeight || size.height * pr || 1080;
+    edgeMat.uniforms.uResolution.value.set(w, h);
+    edgeMat.uniforms.uBg.value.copy(isDark ? BG_DARK : BG_LIGHT);
+    edgeMat.uniforms.uIsDark.value = isDark ? 1 : 0;
+    if (!distFade) return;
+    const target =
+      controls && "target" in controls && controls.target
+        ? controls.target
+        : fallbackTarget.current;
+    const dist = camera.position.distanceTo(target);
+    edgeMat.uniforms.uOpacity.value =
+      Math.min(1, opacity) * computeLightEdgeZoomFade(dist);
+  };
+
+  useEffect(() => {
+    syncUniforms(false);
+    return () => {
+      edgeMat.dispose();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edgeMat, gl, size.width, size.height, isDark]);
+
   const geometry = useMemo(() => {
-    /* Shrink per-edge glow as the edge count grows so the additively-blended
-     * center doesn't saturate to white; the user multiplier rides on top. */
     const densityScale = edgeIntensityScale(edges.length) * brightness;
-    const srcMap = new Map<number, number>();
+
+    const degree = new Map();
+    for (const edge of edges) {
+      degree.set(edge.source, (degree.get(edge.source) || 0) + 1);
+      degree.set(edge.target, (degree.get(edge.target) || 0) + 1);
+    }
+
+    const srcMap = new Map();
     for (let i = 0; i < nodes.length; i++) {
       srcMap.set(nodes[i].id, i);
     }
     const tgtArr = targetNodes ?? nodes;
-    const tgtMap = targetNodes ? new Map<number, number>() : srcMap;
+    const tgtMap = targetNodes ? new Map() : srcMap;
     if (targetNodes) {
       for (let i = 0; i < targetNodes.length; i++) {
         tgtMap.set(targetNodes[i].id, i);
@@ -87,9 +224,25 @@ export function EdgeLines({
     }
 
     const hasHighlight = highlightedIds && highlightedIds.size > 0;
-    const positions = new Float32Array(edges.length * 6);
-    const colors = new Float32Array(edges.length * 6);
-    let validCount = 0;
+    const palette = isDark ? EDGE_TYPE_COLORS : EDGE_TYPE_COLORS_LIGHT;
+    const fallback = isDark ? DEFAULT_EDGE_COLOR : DEFAULT_EDGE_COLOR_LIGHT;
+    const edgeColor = new THREE.Color();
+    const brighten = new THREE.Color();
+
+    const DIVS = 8;
+    const stations = DIVS + 1;
+    const vertsPerEdge = stations * 2;
+    const idxPerEdge = DIVS * 6;
+    const maxEdges = edges.length;
+    const positions = new Float32Array(maxEdges * vertsPerEdge * 3);
+    const colors = new Float32Array(maxEdges * vertsPerEdge * 3);
+    const dirs = new Float32Array(maxEdges * vertsPerEdge * 3);
+    const weights = new Float32Array(maxEdges * vertsPerEdge);
+    const widths = new Float32Array(maxEdges * vertsPerEdge);
+    const sides = new Float32Array(maxEdges * vertsPerEdge);
+    const indices = new Uint32Array(maxEdges * idxPerEdge);
+    let vertCount = 0;
+    let idxCount = 0;
 
     for (const edge of edges) {
       const si = srcMap.get(edge.source);
@@ -101,64 +254,131 @@ export function EdgeLines({
 
       const sHL = !hasHighlight || highlightedIds.has(s.id);
       const tHL = !hasHighlight || highlightedIds.has(t.id);
-      if (hasHighlight && !sHL && !tHL) continue;
 
       const sameCluster =
         getClusterKey(s.file_path) === getClusterKey(t.file_path);
+      const base = sameCluster ? 1 : isDark ? 0.85 : 0.92;
+      const deg =
+        computeLightEdgeDegreeFactor(degree.get(s.id) || 0, 0) *
+        computeLightEdgeDegreeFactor(degree.get(t.id) || 0, 0);
+      let intensity = base * Math.max(isDark ? 0.55 : 0.75, deg);
 
-      /* 浅色底用 NormalBlending + 更高不透明度；深色底保持加法混合 */
-      let intensity = sameCluster ? (isDark ? 0.14 : 0.52) : isDark ? 0.035 : 0.26;
+      const related = hasHighlight && sHL && tHL;
       if (hasHighlight) {
-        intensity = sHL && tHL ? (isDark ? 0.28 : 0.68) : (isDark ? 0.02 : 0.14) * densityScale;
+        intensity = related ? 1 : isDark ? 0.22 : 0.32;
       } else {
-        intensity *= densityScale;
+        intensity *= Math.max(isDark ? 0.7 : 0.85, densityScale);
       }
 
-      const off = validCount * 6;
-      positions[off] = s.x;
-      positions[off + 1] = s.y;
-      positions[off + 2] = s.z;
-      positions[off + 3] = t.x;
-      positions[off + 4] = t.y;
-      positions[off + 5] = t.z;
+      const typeKey = edge.type || edge.relation || "";
+      edgeColor.set(palette[typeKey] ?? fallback);
+      if (related) {
+        brighten.copy(edgeColor);
+        brighten.offsetHSL(0, isDark ? 0.12 : 0.18, isDark ? 0.28 : 0.38);
+        const mul = isDark ? 1.25 : 1.15;
+        brighten.r = Math.min(1, brighten.r * mul);
+        brighten.g = Math.min(1, brighten.g * mul);
+        brighten.b = Math.min(1, brighten.b * mul);
+        edgeColor.copy(brighten);
+      }
+      const solid = related;
+      const cr = edgeColor.r;
+      const cg = edgeColor.g;
+      const cb = edgeColor.b;
 
-      /* Color from edge TYPE??? relation? */
-      const typeKey = edge.type || edge.relation || '';
-      const edgeColor = new THREE.Color(
-        EDGE_TYPE_COLORS[typeKey] ?? DEFAULT_EDGE_COLOR,
-      );
-      if (!isDark) edgeColor.multiplyScalar(0.78);
-      colors[off] = edgeColor.r * intensity;
-      colors[off + 1] = edgeColor.g * intensity;
-      colors[off + 2] = edgeColor.b * intensity;
-      colors[off + 3] = edgeColor.r * intensity;
-      colors[off + 4] = edgeColor.g * intensity;
-      colors[off + 5] = edgeColor.b * intensity;
-      validCount++;
+      let dx = t.x - s.x;
+      let dy = t.y - s.y;
+      let dz = t.z - s.z;
+      const dLen = Math.hypot(dx, dy, dz) || 1;
+      dx /= dLen;
+      dy /= dLen;
+      dz /= dLen;
+
+      const baseVert = vertCount;
+      for (let i = 0; i < stations; i++) {
+        const tt = i / DIVS;
+        const px = s.x + (t.x - s.x) * tt;
+        const py = s.y + (t.y - s.y) * tt;
+        const pz = s.z + (t.z - s.z) * tt;
+        const wAlpha = lightEdgeAlphaAt(tt, solid) * intensity;
+        const wWidth = lightEdgeWidthAt(tt);
+
+        for (let side = -1; side <= 1; side += 2) {
+          const o = vertCount * 3;
+          positions[o] = px;
+          positions[o + 1] = py;
+          positions[o + 2] = pz;
+          dirs[o] = dx;
+          dirs[o + 1] = dy;
+          dirs[o + 2] = dz;
+          colors[o] = cr;
+          colors[o + 1] = cg;
+          colors[o + 2] = cb;
+          weights[vertCount] = wAlpha;
+          widths[vertCount] = wWidth;
+          sides[vertCount] = side;
+          vertCount++;
+        }
+      }
+
+      for (let d = 0; d < DIVS; d++) {
+        const i0 = baseVert + d * 2;
+        indices[idxCount++] = i0;
+        indices[idxCount++] = i0 + 1;
+        indices[idxCount++] = i0 + 2;
+        indices[idxCount++] = i0 + 1;
+        indices[idxCount++] = i0 + 3;
+        indices[idxCount++] = i0 + 2;
+      }
     }
 
     const geo = new THREE.BufferGeometry();
     geo.setAttribute(
       "position",
-      new THREE.BufferAttribute(positions.slice(0, validCount * 6), 3),
+      new THREE.BufferAttribute(positions.slice(0, vertCount * 3), 3),
     );
     geo.setAttribute(
       "color",
-      new THREE.BufferAttribute(colors.slice(0, validCount * 6), 3),
+      new THREE.BufferAttribute(colors.slice(0, vertCount * 3), 3),
     );
+    geo.setAttribute(
+      "aDir",
+      new THREE.BufferAttribute(dirs.slice(0, vertCount * 3), 3),
+    );
+    geo.setAttribute(
+      "aWeight",
+      new THREE.BufferAttribute(weights.slice(0, vertCount), 1),
+    );
+    geo.setAttribute(
+      "aWidth",
+      new THREE.BufferAttribute(widths.slice(0, vertCount), 1),
+    );
+    geo.setAttribute(
+      "aSide",
+      new THREE.BufferAttribute(sides.slice(0, vertCount), 1),
+    );
+    geo.setIndex(new THREE.BufferAttribute(indices.slice(0, idxCount), 1));
     return geo;
   }, [nodes, edges, highlightedIds, targetNodes, brightness, isDark]);
 
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+    };
+  }, [geometry]);
+
+  useFrame(() => {
+    syncUniforms(true);
+  });
+
   return (
-    <lineSegments geometry={geometry}>
-      <lineBasicMaterial
-        vertexColors
-        transparent
-        opacity={isDark ? opacity : Math.min(1, opacity * 0.92)}
-        blending={isDark ? THREE.AdditiveBlending : THREE.NormalBlending}
-        depthWrite={false}
-        toneMapped={false}
-      />
-    </lineSegments>
+    <mesh
+      geometry={geometry}
+      material={edgeMat}
+      frustumCulled={false}
+      onBeforeRender={() => {
+        syncUniforms(true);
+      }}
+    />
   );
 }
