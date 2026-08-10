@@ -14,6 +14,12 @@ import { formatNumber, REPO_AVATAR_GRADIENTS, splitRepoName } from '@/utils/form
 import { categoryLabel } from '@/utils/labels';
 import { getApi } from '@/api/client';
 import type { GraphEdge, GraphNode } from '@/api/types';
+import {
+  OVERVIEW_INNER_GLASS,
+  OVERVIEW_OUTER_GLASS,
+} from '@/constants/overviewGlass';
+
+const SIMILAR_PREVIEW_COUNT = 3;
 
 /** 展示形态：分类聚合已移除（信息密度差且与列表/图例重复） */
 const VIEW_MODES: { id: GraphViewMode; label: string }[] = [
@@ -37,6 +43,7 @@ export function GraphPage() {
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchSelected, setBatchSelected] = useState<Set<string>>(new Set());
   const [cameraResetTick, setCameraResetTick] = useState(0);
+  const [similarPage, setSimilarPage] = useState(0);
   const selectedNodeId = useGraphStore((s) => s.selectedNodeId);
   const selectNode = useGraphStore((s) => s.selectNode);
   const highlightNode = useGraphStore((s) => s.highlightNode);
@@ -47,8 +54,7 @@ export function GraphPage() {
   /** 废弃的 cluster/edges 归一到宇宙图或列表 */
   const viewMode: GraphViewMode = viewModeRaw === 'list' ? 'list' : 'force';
   const setViewMode = useGraphStore((s) => s.setViewMode);
-  const detailCollapsed = useGraphStore((s) => s.detailCollapsed);
-  const setDetailCollapsed = useGraphStore((s) => s.setDetailCollapsed);
+  const leftPanelCollapsed = useGraphStore((s) => s.leftPanelCollapsed);
   const addToast = useUIStore((s) => s.addToast);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -135,6 +141,41 @@ export function GraphPage() {
   const similarNodes = selectedNode
     ? getSimilarNodes(filteredData, selectedNode.id)
     : [];
+
+  useEffect(() => {
+    setSimilarPage(0);
+  }, [selectedNodeId]);
+
+  /** 右侧详情栏高度与左侧信息栏对齐（收起左侧时保留上次展开高度） */
+  useEffect(() => {
+    const stage = containerRef.current;
+    if (!stage) return;
+    const toolbar = stage.querySelector('.graph-toolbar');
+    if (!(toolbar instanceof HTMLElement)) return;
+
+    const syncHeight = () => {
+      if (toolbar.classList.contains('is-collapsed')) return;
+      const h = Math.round(toolbar.getBoundingClientRect().height);
+      if (h > 0) stage.style.setProperty('--graph-left-panel-h', `${h}px`);
+    };
+
+    syncHeight();
+    const ro = new ResizeObserver(syncHeight);
+    ro.observe(toolbar);
+    return () => ro.disconnect();
+  }, [viewMode, leftPanelCollapsed, batchOpen, isLoading, data?.nodes.length]);
+
+  const similarPageCount = Math.max(1, Math.ceil(similarNodes.length / SIMILAR_PREVIEW_COUNT));
+  const clampedSimilarPage = Math.min(similarPage, similarPageCount - 1);
+  const visibleSimilarNodes = similarNodes.slice(
+    clampedSimilarPage * SIMILAR_PREVIEW_COUNT,
+    (clampedSimilarPage + 1) * SIMILAR_PREVIEW_COUNT,
+  );
+  const selectedRepo = selectedNode ? splitRepoName(selectedNode.name) : null;
+  const selectedGithubUrl =
+    selectedRepo?.owner && selectedRepo.repo
+      ? `https://github.com/${selectedRepo.owner}/${selectedRepo.repo}`
+      : null;
 
   if (isLoading) return <LoadingSpinner fullScreen />;
 
@@ -330,25 +371,16 @@ export function GraphPage() {
           )}
 
           {selectedNode && (
-            <div
-              className={`node-detail glass-card glass-card--overview-inner${detailCollapsed ? ' is-collapsed' : ''}`}
-            >
+            <div className={`node-detail ${OVERVIEW_OUTER_GLASS}`}>
               <div className="node-detail-head">
                 <div className="node-avatar" style={{ background: REPO_AVATAR_GRADIENTS[0] }}>
-                  {(splitRepoName(selectedNode.name).repo[0] ?? 'P').toUpperCase()}
+                  {(selectedRepo?.repo[0] ?? 'P').toUpperCase()}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="node-meta-name">{selectedNode.name}</div>
-                  <div className="node-meta-cat">{categoryLabel(selectedNode.category_id)}</div>
+                  <div className="node-meta-name" title={selectedNode.name}>
+                    {selectedRepo?.repo || selectedNode.name}
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="node-detail-collapse"
-                  title={detailCollapsed ? '展开详情' : '折叠详情'}
-                  onClick={() => setDetailCollapsed(!detailCollapsed)}
-                >
-                  {detailCollapsed ? '▾' : '▴'}
-                </button>
                 <button
                   type="button"
                   className="node-detail-close"
@@ -358,31 +390,98 @@ export function GraphPage() {
                   ✕
                 </button>
               </div>
-              {!detailCollapsed && (
-                <>
+              <div className="node-detail-body">
                   <div className="node-detail-section">
                     <div className="detail-label">概览</div>
                     <div className="detail-row">
-                      <span className="muted">Stars</span>
-                      <strong>{formatNumber(selectedNode.stars)}</strong>
+                      <span className="muted">所有者</span>
+                      <strong className="detail-owner">{selectedRepo?.owner || '—'}</strong>
+                    </div>
+                    <div className="detail-row">
+                      <span className="muted">GitHub</span>
+                      {selectedGithubUrl ? (
+                        <a
+                          className="detail-github-link"
+                          href={selectedGithubUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={selectedGithubUrl}
+                        >
+                          {`${selectedRepo?.owner}/${selectedRepo?.repo}`}
+                        </a>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
                     </div>
                   </div>
                   {similarNodes.length > 0 && (
-                    <div className="node-detail-section">
+                    <div className="node-detail-section node-detail-section--similar">
                       <div className="detail-label">相似项目</div>
                       <div className="similar-list">
-                        {similarNodes.map(({ node, similarity }) => (
-                          <button
-                            key={node.id}
-                            type="button"
-                            className="similar-item"
-                            onClick={() => selectNode(node.id)}
-                          >
-                            <span className="similar-name">{node.name}</span>
-                            <span className="similar-score">{similarity.toFixed(2)}</span>
-                          </button>
-                        ))}
+                        {visibleSimilarNodes.map(({ node, similarity }) => {
+                          const { owner, repo } = splitRepoName(node.name);
+                          const githubUrl =
+                            owner && repo ? `https://github.com/${owner}/${repo}` : null;
+                          return (
+                            <div
+                              key={node.id}
+                              className={`similar-item ${OVERVIEW_INNER_GLASS}`}
+                            >
+                              <button
+                                type="button"
+                                className="similar-item__main"
+                                onClick={() => selectNode(node.id)}
+                                title={node.name}
+                              >
+                                <span className="similar-name">{repo || node.name}</span>
+                                <span className="similar-score">{similarity.toFixed(2)}</span>
+                              </button>
+                              <div className="similar-item__meta">
+                                <span className="similar-owner">{owner || '—'}</span>
+                                {githubUrl ? (
+                                  <a
+                                    className="similar-github"
+                                    href={githubUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={`在 GitHub 打开 ${owner}/${repo}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    GitHub ↗
+                                  </a>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
+                      {similarPageCount > 1 && (
+                        <div className="similar-pager" role="navigation" aria-label="相似项目翻页">
+                          <button
+                            type="button"
+                            className="similar-pager__btn"
+                            disabled={clampedSimilarPage <= 0}
+                            onClick={() => setSimilarPage((p) => Math.max(0, p - 1))}
+                            title="上一页"
+                          >
+                            ‹
+                          </button>
+                          <span className="similar-pager__meta">
+                            {clampedSimilarPage + 1} / {similarPageCount}
+                          </span>
+                          <button
+                            type="button"
+                            className="similar-pager__btn"
+                            disabled={clampedSimilarPage >= similarPageCount - 1}
+                            onClick={() =>
+                              setSimilarPage((p) => Math.min(similarPageCount - 1, p + 1))
+                            }
+                            title="下一页"
+                          >
+                            ›
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="detail-actions">
@@ -401,8 +500,7 @@ export function GraphPage() {
                       项目详情
                     </button>
                   </div>
-                </>
-              )}
+              </div>
             </div>
           )}
 

@@ -53,7 +53,7 @@ export const useGraphStore = create<GraphState>((set) => ({
   edgeTypeFilter: null,
   viewMode: 'force',
   layoutMode: 'force',
-  leftPanelCollapsed: true,
+  leftPanelCollapsed: false,
   detailCollapsed: false,
   zoomLevel: 1.0,
   zoomTick: 0,
