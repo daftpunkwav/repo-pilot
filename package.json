@@ -44,11 +44,20 @@
     "apps/web/src/**/*.{ts,tsx}": [
       "eslint --max-warnings 0"
     ],
-    "**/*.py": [
+    "services/api/**/*.py": [
       "ruff check --fix"
     ],
-    ".env*": [
-      "echo '错误: .env* 文件禁止提交,请先从暂存区移除!' && exit 1"
+    "services/graph_engine/python/**/*.py": [
+      "ruff check --fix"
+    ],
+    ".env": [
+      "echo '错误: .env 文件禁止提交,请先从暂存区移除!' && exit 1"
+    ],
+    ".env.local": [
+      "echo '错误: .env.local 文件禁止提交,请先从暂存区移除!' && exit 1"
+    ],
+    ".env.*.local": [
+      "echo '错误: 本地 .env 文件禁止提交,请先从暂存区移除!' && exit 1"
     ]
   }
 }

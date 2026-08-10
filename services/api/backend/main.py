@@ -48,13 +48,30 @@ async def lifespan(_app: FastAPI):
             pass
 
     # 常驻索引 worker：在 lifespan 内 create_task，脱离 HTTP 请求 cancel scope
+    from backend.services.graph_engine_sidecar import (
+        ensure_graph_engine_sidecar,
+        stop_graph_engine_sidecar,
+    )
     from backend.services.index_pipeline import start_index_worker, stop_index_worker
+
+    # 图谱 C 引擎 sidecar（迁入二进制）；失败则 RpGraphClient 回退 Python
+    if getattr(settings, "rp_graph_auto_start", True) and (
+        settings.rp_graph_engine_url or ""
+    ).strip():
+        try:
+            await ensure_graph_engine_sidecar()
+        except Exception:
+            pass
 
     await start_index_worker()
     try:
         yield
     finally:
         await stop_index_worker()
+        try:
+            await stop_graph_engine_sidecar()
+        except Exception:
+            pass
 
 
 app = FastAPI(title=settings.app_name, version="2.0.0", lifespan=lifespan)

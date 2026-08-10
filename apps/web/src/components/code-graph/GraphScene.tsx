@@ -17,18 +17,20 @@ import {
 } from './graphAutoRotate';
 import {
   DEFAULT_DISPLAY_SETTINGS,
-  bloomIntensityScale,
+  BASE_NODE_GLOW,
+  bloomIntensityScaleForGraph,
   nodeBoostScale,
   type DisplaySettings,
 } from './density';
 
-const BASE_BLOOM_INTENSITY = 1.45;
+const BASE_BLOOM_INTENSITY = 0.525;
 export const GRAPH_CANVAS_DPR: [number, number] = [1, 1.5];
 export const GRAPH_COMPOSER_MULTISAMPLING = 0;
 
 /** OrbitControls / 相机动画共用距离上下限 */
 export const CAMERA_MIN_DISTANCE = 20;
-export const CAMERA_MAX_DISTANCE = 4000;
+/** 与 CBM 一致：引擎布局跨度可达数千，需留足 zoom-out */
+export const CAMERA_MAX_DISTANCE = 50000;
 
 export interface CameraTarget {
   position: THREE.Vector3;
@@ -149,17 +151,24 @@ export function GraphScene({
 
   const bg = useMemo(() => {
     if (isDark) return '#06090f';
-    /* 浅色不设 scene 背景，透出 CSS 径向渐变 */
-    return null;
+    /* 浅色给 Canvas 实底，边线/节点对比更稳，不依赖背后 CSS 透叠 */
+    return '#eef2f7';
   }, [isDark]);
 
   const useBloom = enableBloom && isDark;
-  const nodeBoost = nodeBoostScale(data.nodes.length) * display.nodeGlow * 0.95;
+  /* 密度自适应：节点 glow + 边/节点综合 bloom，避免 1.8万点/8万边中心爆白 */
+  const nodeBoost =
+    BASE_NODE_GLOW *
+    nodeBoostScale(data.nodes.length) *
+    display.nodeGlow *
+    (isDark ? 1 : 0.72);
   const bloomIntensity =
     BASE_BLOOM_INTENSITY *
-    bloomIntensityScale(data.nodes.length) *
-    display.bloom *
-    (useBloom ? 0.75 : 1);
+    bloomIntensityScaleForGraph(data.nodes.length, data.edges.length) *
+    display.bloom;
+  /* 高密度抬高阈值，减少叠线叠点被 bloom 洗成白团 */
+  const bloomThreshold =
+    data.edges.length > 12000 || data.nodes.length > 8000 ? 0.52 : 0.35;
 
   // NodeCloud 期望 id:number；将 string 数字归一
   const nodes = useMemo(
@@ -197,30 +206,32 @@ export function GraphScene({
       <Canvas
         key={isDark ? 'graph-dark' : 'graph-light'}
         camera={{ position: [0, 0, 800], fov: 50, near: 0.1, far: 100000 }}
-        style={{ background: isDark ? bg! : 'transparent' }}
+        style={{ background: bg! }}
         dpr={GRAPH_CANVAS_DPR}
         gl={{
           antialias: false,
-          alpha: !isDark,
+          alpha: false,
           powerPreference: 'high-performance',
         }}
-        onCreated={isDark ? undefined : ({ gl }) => gl.setClearColor(0x000000, 0)}
         onPointerMissed={onBackgroundClick}
       >
-        {isDark && bg && <color attach="background" args={[bg]} />}
-        <ambientLight intensity={useBloom ? 0.5 : isDark ? 0.85 : 1.05} />
-        <pointLight position={[500, 500, 500]} intensity={useBloom ? 0.6 : isDark ? 0.35 : 0.22} />
+        {bg && <color attach="background" args={[bg]} />}
+        <ambientLight intensity={useBloom ? 0.5 : isDark ? 0.85 : 0.62} />
+        <pointLight
+          position={[500, 500, 500]}
+          intensity={useBloom ? 0.6 : isDark ? 0.35 : 0.28}
+        />
         <pointLight
           position={[-300, -200, -300]}
-          intensity={useBloom ? 0.4 : isDark ? 0.2 : 0.14}
-          color={useBloom ? '#6040ff' : isDark ? '#94a3b8' : '#e2e8f0'}
+          intensity={useBloom ? 0.4 : isDark ? 0.2 : 0.18}
+          color={useBloom ? '#6040ff' : isDark ? '#94a3b8' : '#94a3b8'}
         />
 
         <EdgeLines
           nodes={nodes as never}
           edges={edges as never}
           highlightedIds={highlightedIds}
-          brightness={display.edgeBrightness * 1.1}
+          brightness={display.edgeBrightness}
           isDark={isDark}
         />
         <NodeCloud
@@ -232,7 +243,11 @@ export function GraphScene({
           isDark={isDark}
         />
         {showLabels && (
-          <NodeLabels nodes={nodes as never} highlightedIds={highlightedIds} />
+          <NodeLabels
+            nodes={nodes as never}
+            highlightedIds={highlightedIds}
+            isDark={isDark}
+          />
         )}
 
         {hovered && (
@@ -245,11 +260,11 @@ export function GraphScene({
         {useBloom && (
           <EffectComposer multisampling={GRAPH_COMPOSER_MULTISAMPLING}>
             <Bloom
-              luminanceThreshold={nodes.length > 1200 ? 0.48 : 0.22}
+              luminanceThreshold={bloomThreshold}
               luminanceSmoothing={0.7}
-              intensity={bloomIntensity * (nodes.length > 1200 ? 0.55 : 1)}
+              intensity={bloomIntensity}
               mipmapBlur
-              radius={nodes.length > 1200 ? 0.35 : 0.55}
+              radius={0.6}
             />
           </EffectComposer>
         )}
@@ -306,12 +321,10 @@ export function computeCameraTarget(
       if (d > maxDist) maxDist = d;
     }
   }
-  const distance = clampCameraDistance(
-    Math.max(
-      count <= 3 ? 180 : count <= 12 ? 220 : 160,
-      Math.min(720, maxDist * (count <= 8 ? 2.1 : 2.6) + 80),
-    ),
-  );
+  /* 对齐 CBM：按簇半径 ×3 取景，单点/小簇有最小距离 */
+  const spreadDist = maxDist * 3;
+  const minDist = count <= 5 ? 300 : count <= 12 ? 220 : 200;
+  const distance = clampCameraDistance(Math.max(minDist, spreadDist));
   const lookAt = new THREE.Vector3(cx, cy, cz);
   const offset = new THREE.Vector3(0.2, 0.15, 1).normalize().multiplyScalar(distance);
   return {

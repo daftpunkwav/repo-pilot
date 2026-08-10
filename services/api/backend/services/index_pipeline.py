@@ -865,10 +865,11 @@ async def _clone_and_index(
     )
     _raise_if_cancelled(project_id, job_gen)
 
-    client = RpGraphClient()
+    client = RpGraphClient(timeout=float(settings.graph_index_timeout_sec))
     if not await client.health():
         raise RpGraphError(
-            "自研图谱引擎不可用。请确认 RepoPilot 已正确安装，或检查 RP_GRAPH_ENGINE_URL。",
+            "图谱引擎不可用。请构建并启动本仓 C 引擎（services/graph_engine/c，默认 http://127.0.0.1:9750），"
+            "或检查 RP_GRAPH_ENGINE_URL / RP_GRAPH_ENGINE_BIN；亦可清空 URL 以回退 Python rp_graph。",
             code=EC.GRAPH_ENGINE_UNAVAILABLE,
         )
 
@@ -918,16 +919,33 @@ async def _clone_and_index(
 
     node_count: int | None = None
     edge_count: int | None = None
-    try:
-        schema = await client.get_graph_schema(eng)
-        node_count = sum(
-            int(x.get("count") or 0) for x in (schema.get("node_labels") or [])
-        )
-        edge_count = sum(
-            int(x.get("count") or 0) for x in (schema.get("edge_types") or [])
-        )
-    except Exception:
-        logger.warning("无法读取 graph schema 统计", exc_info=True)
+    if isinstance(result, dict):
+        if result.get("nodes") is not None:
+            try:
+                node_count = int(result["nodes"])
+            except (TypeError, ValueError):
+                pass
+        if result.get("edges") is not None:
+            try:
+                edge_count = int(result["edges"])
+            except (TypeError, ValueError):
+                pass
+    if node_count is None or edge_count is None:
+        try:
+            schema = await client.get_graph_schema(eng)
+            if isinstance(schema, dict):
+                if node_count is None:
+                    node_count = sum(
+                        int(x.get("count") or 0)
+                        for x in (schema.get("node_labels") or [])
+                    )
+                if edge_count is None:
+                    edge_count = sum(
+                        int(x.get("count") or 0)
+                        for x in (schema.get("edge_types") or [])
+                    )
+        except Exception:
+            logger.warning("无法读取 graph schema 统计", exc_info=True)
 
     await _patch_status(
         project_id,

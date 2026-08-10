@@ -27,7 +27,8 @@ class Settings(BaseSettings):
     """应用配置"""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # 同时尝试进程 cwd 与仓库根，避免从 services/api 启动时读不到根目录 .env
+        env_file=(".env", str(REPO_ROOT / ".env")),
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -80,14 +81,32 @@ class Settings(BaseSettings):
     llm_api_base: Optional[str] = None
     llm_model: str = "gpt-4o-mini"
 
-    # 自研图谱引擎（rp-graph-engine）
+    # 图谱 C 引擎 sidecar（迁入 services/graph_engine/c）
     rp_graph_allowed_root: str = Field(
         default_factory=lambda: str(DATA_DIR),
         description="RP_GRAPH_ALLOWED_ROOT：引擎可索引根；仓库缓存落其下 repo-cache/",
     )
     rp_graph_engine_url: str = Field(
+        default="http://127.0.0.1:9750",
+        description=(
+            "图谱引擎 sidecar HTTP 基址（默认 http://127.0.0.1:9750）。"
+            "设为空字符串可强制仅用进程内 Python 回退。"
+        ),
+    )
+    rp_graph_engine_bin: str = Field(
         default="",
-        description="可选 sidecar HTTP 基址（空则进程内引擎）；例 http://127.0.0.1:9750",
+        description=(
+            "RP_GRAPH_ENGINE_BIN：本仓 rp-graph-engine 可执行文件路径；"
+            "空则尝试 services/graph_engine/c/build/c/ 下约定产物"
+        ),
+    )
+    rp_graph_cache_dir: str = Field(
+        default_factory=lambda: str(DATA_DIR / "graph-engine-cache"),
+        description="RP_GRAPH_CACHE_DIR：写入 C 引擎的 CBM_CACHE_DIR（图谱 SQLite 根）",
+    )
+    rp_graph_auto_start: bool = Field(
+        default=True,
+        description="API 启动时若 sidecar 不健康则尝试拉起 RP_GRAPH_ENGINE_BIN",
     )
     # 兼容旧环境变量名（勿在新代码中直接依赖）
     cbm_allowed_root: str = Field(
@@ -96,7 +115,7 @@ class Settings(BaseSettings):
     )
     cbm_ui_base_url: str = Field(
         default="",
-        description="[deprecated] 已切断外部 CBM",
+        description="[deprecated] 请改用 RP_GRAPH_ENGINE_URL",
     )
     repo_cache_quota_gb: float = Field(
         default=2.0,

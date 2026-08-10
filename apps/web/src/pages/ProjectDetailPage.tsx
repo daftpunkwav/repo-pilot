@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useIndexStatus, useTriggerIndex } from '@/hooks/useCodeGraph';
+import { useIndexStatus, useTriggerIndex, useDeleteIndex } from '@/hooks/useCodeGraph';
 import { useProjectNotes } from '@/hooks/useNotes';
 import {
   useCategories,
@@ -58,12 +58,14 @@ const INDEX_STATUS_LABELS: Record<string, string> = {
 function CodeGraphIndexCard({ projectId }: { projectId: string }) {
   const statusQ = useIndexStatus(projectId);
   const trigger = useTriggerIndex(projectId);
-  const [mode, setMode] = useState<'fast' | 'moderate' | 'full'>('moderate');
+  const delIndex = useDeleteIndex(projectId);
+  const [mode, setMode] = useState<'fast' | 'moderate' | 'full'>('fast');
   const status = statusQ.data?.data;
 
   const isReady = status?.status === 'READY';
   const isBusy = ['QUEUED', 'CLONING', 'INDEXING'].includes(status?.status ?? '');
   const isFailed = ['CLONE_FAILED', 'INDEX_FAILED'].includes(status?.status ?? '');
+  const canDelete = status && status.status !== 'NONE';
 
   return (
     <div className={OVERVIEW_OUTER_GLASS} style={{ marginTop: 12 }}>
@@ -101,23 +103,43 @@ function CodeGraphIndexCard({ projectId }: { projectId: string }) {
           className="field input"
           style={{ height: 28, fontSize: 12, flex: '0 0 auto', minWidth: 72 }}
           value={mode}
-          disabled={isBusy || trigger.isPending}
+          disabled={isBusy || trigger.isPending || delIndex.isPending}
           onChange={(e) => setMode(e.target.value as 'fast' | 'moderate' | 'full')}
         >
           <option value="fast">快速</option>
-          <option value="moderate">均衡</option>
+          <option value="moderate">标准</option>
           <option value="full">完整</option>
         </select>
 
         <button
           type="button"
           className="btn btn-primary btn-sm"
-          disabled={isBusy || trigger.isPending}
+          disabled={isBusy || trigger.isPending || delIndex.isPending}
           onClick={() => trigger.mutate(mode)}
           style={{ height: 28, fontSize: 12 }}
         >
           {isBusy ? '索引中…' : (status?.status === 'NONE' || !status) ? '开始索引' : '重新索引'}
         </button>
+
+        {canDelete && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={isBusy || trigger.isPending || delIndex.isPending}
+            style={{ height: 28, fontSize: 12, color: '#dc2626' }}
+            onClick={() => {
+              if (
+                window.confirm(
+                  '删除该项目的索引？将清理本地克隆缓存与图谱数据库，不可恢复。',
+                )
+              ) {
+                delIndex.mutate();
+              }
+            }}
+          >
+            删除索引
+          </button>
+        )}
 
         {isReady && (
           <Link
@@ -830,7 +852,7 @@ export function ProjectDetailPage() {
           </div>
         </div>
 
-        <CodeGraphIndexCard projectId={id!} />
+        {id ? <CodeGraphIndexCard projectId={id} /> : null}
 
       </aside>
 

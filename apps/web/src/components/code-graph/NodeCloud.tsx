@@ -33,19 +33,17 @@ function sphereDetail(count: number): [number, number, number] {
   return [1, 10, 7];
 }
 
-/** 浅色底提高饱和度并压低过亮色，保证可读 */
+/** 浅色底提高饱和度并压低过亮色，保证可读、减轻密区发白 */
 function ensureLightContrast(tempColor: THREE.Color, isDark: boolean): void {
   if (isDark) return;
   const hsl = { h: 0, s: 0, l: 0 };
   tempColor.getHSL(hsl);
-  /* 饱和度增益略提，让 pastel 色更鲜明 */
-  hsl.s = Math.min(1, hsl.s * 1.25 + 0.08);
-  /* 亮度区间略放宽：下限 0.32，上限 0.56 */
-  hsl.l = Math.min(0.56, Math.max(0.32, hsl.l * 0.86));
-  /* 黄色在白底对比不足，额外压暗并提饱和 */
+  hsl.s = Math.min(1, hsl.s * 1.35 + 0.1);
+  /* 收紧亮度：更暗更实，密球不再像高光白团 */
+  hsl.l = Math.min(0.48, Math.max(0.28, hsl.l * 0.78));
   if (hsl.h > 0.1 && hsl.h < 0.18) {
-    hsl.l = Math.min(0.5, hsl.l);
-    hsl.s = Math.min(1, hsl.s + 0.1);
+    hsl.l = Math.min(0.42, hsl.l);
+    hsl.s = Math.min(1, hsl.s + 0.12);
   }
   tempColor.setHSL(hsl.h, hsl.s, hsl.l);
 }
@@ -65,7 +63,7 @@ function nodeColor(
     tempColor.multiplyScalar(isDark ? 0.15 : 0.28);
   } else {
     const fullBoost = nodeGlowBoost(tempColor.r, tempColor.g, tempColor.b);
-    const glowMix = isDark ? boost : Math.min(1, boost * 0.85);
+    const glowMix = isDark ? boost : Math.min(0.55, boost * 0.45);
     const applied = 1 + (fullBoost - 1) * glowMix;
     tempColor.multiplyScalar(applied);
   }

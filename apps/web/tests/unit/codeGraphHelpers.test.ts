@@ -3,6 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { toRenderGraph } from '@/components/code-graph/types';
+import { applyL1Layout } from '@/components/code-graph/l1Layout';
 
 function clampNodeBudget(value: number, step = 5000, max = 10_000_000): number {
   if (!Number.isFinite(value)) return step;
@@ -55,5 +56,53 @@ describe('code graph helpers', () => {
     expect(g.edges[0].target).toBe(g.nodes[1].id);
     expect(g.nodes[0].color).toMatch(/^#/);
     expect(g.nodes[1].color).toMatch(/^#/);
+  });
+
+  it('prefers engine stellar color when present', () => {
+    const g = toRenderGraph({
+      nodes: [
+        {
+          id: 1,
+          name: 'hub',
+          label: 'Function',
+          x: 0,
+          y: 0,
+          z: 0,
+          color: '#80a0ff',
+        },
+      ],
+      edges: [],
+    });
+    expect(g.nodes[0].color).toBe('#80a0ff');
+  });
+
+  it('colorForStatus maps dead/entry', async () => {
+    const { colorForStatus } = await import('@/components/code-graph/colors');
+    expect(colorForStatus('dead')).toBe('#ef4444');
+    expect(colorForStatus('entry')).toBe('#3b82f6');
+  });
+
+  it('engine layout mode keeps coordinates', () => {
+    const data = {
+      nodes: [
+        {
+          id: 1,
+          name: 'a',
+          label: 'Function',
+          kind: 'Function',
+          x: 123,
+          y: -45,
+          z: 67,
+          size: 4,
+          color: '#fff',
+        },
+      ],
+      edges: [],
+      stats: { node_count: 1, edge_count: 0 },
+    };
+    const out = applyL1Layout(data as never, 'engine');
+    expect(out.nodes[0].x).toBe(123);
+    expect(out.nodes[0].y).toBe(-45);
+    expect(out.nodes[0].z).toBe(67);
   });
 });

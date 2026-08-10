@@ -23,9 +23,10 @@ const STATUS_COLORS: Record<string, string> = {
   single: '#f97316',
   entry: '#3b82f6',
   test: '#a855f7',
-  exported: '#475569',
+  exported: '#64748b',
   normal: '#22c55e',
-  structural: '#334155',
+  /* 结构节点占绝大多数：过深会在暗底上「消失」 */
+  structural: '#6b7280',
 };
 
 export function colorForLabel(label: string): string {
@@ -39,6 +40,14 @@ export function colorForStatus(status: string): string {
   return STATUS_COLORS[status] || '#334155';
 }
 
-export const STATUS_LEGEND = Object.keys(STATUS_COLORS);
+/** 状态着色图例（侧栏「按状态着色」开启时展示） */
+export const STATUS_LEGEND: { status: string; label: string; color: string }[] = [
+  { status: 'dead', label: '死代码', color: STATUS_COLORS.dead! },
+  { status: 'single', label: '单调用', color: STATUS_COLORS.single! },
+  { status: 'entry', label: '入口', color: STATUS_COLORS.entry! },
+  { status: 'test', label: '测试', color: STATUS_COLORS.test! },
+  { status: 'normal', label: '正常', color: STATUS_COLORS.normal! },
+  { status: 'structural', label: '结构', color: STATUS_COLORS.structural! },
+];
 
 export const LABEL_COLOR_ENTRIES = Object.entries(LABEL_COLORS);

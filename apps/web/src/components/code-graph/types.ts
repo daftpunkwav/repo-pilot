@@ -108,8 +108,12 @@ export function toRenderGraph(raw: {
   const idMap = new Map<string, number>();
   const nodes: CodeGraphNode[] = (raw.nodes || []).map((n, idx) => {
     const kind = String(n.kind ?? n.label ?? 'Unknown');
-    /* 始终按类型着色（忽略引擎空色 / 恒星色），对齐 CBM 侧栏语义色 */
-    const color = colorForLabel(kind);
+    /* 优先引擎恒星色（layout3d stellar_color）；无则按类型着色 */
+    const engineColor =
+      typeof n.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(n.color)
+        ? n.color
+        : null;
+    const color = engineColor || colorForLabel(kind);
     return {
       id: resolveNumericId(n.id, idx, idMap),
       x: Number(n.x ?? 0),

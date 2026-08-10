@@ -1,0 +1,4 @@
+# RepoPilot 图谱 C 引擎：超大 tree-sitter grammar 解析器走 Git LFS
+services/graph_engine/c/internal/cbm/vendored/grammars/**/parser.c filter=lfs diff=lfs merge=lfs -text
+services/graph_engine/c/internal/cbm/vendored/grammars/**/scanner.c filter=lfs diff=lfs merge=lfs -text
+services/graph_engine/c/internal/cbm/vendored/grammars/**/scanner.cc filter=lfs diff=lfs merge=lfs -text

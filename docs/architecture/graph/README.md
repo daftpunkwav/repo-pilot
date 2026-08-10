@@ -2,6 +2,8 @@
 
 > 版本： 2026-08-09 | 状态： **方向性文档（草案，待评审）**
 >
+> **2026-08-11 更新**：C 索引引擎已迁入 [`services/graph_engine/c`](../../../services/graph_engine/c)（MIT 源码迁自 codebase-memory-mcp），默认 sidecar `127.0.0.1:9750`；不再依赖 `vendor/` 或外部全局 CBM 安装。下文中「外挂 codebase-memory-mcp / :9749」表述视为历史方案。
+>
 > 本文档定义 RepoPilot 图谱子系统的**演进方向与关键决策**，是后续 PRD/SPEC 修订与开发实施的输入。
 > 本文档**不包含**接口定义、字段设计、组件实现等细节；落地前须按 `docs/README.md` §1 的权威性规则，将本文档的结论升级为 `product/` 层文档（PRD/SPEC）的修订。
 >

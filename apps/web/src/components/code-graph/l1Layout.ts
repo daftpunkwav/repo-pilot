@@ -1,9 +1,11 @@
 /**
- * L1 客户端布局 —— 力导向=目录服务球；树/径向=架构层 + 目录内聚类
+ * L1 客户端布局
+ * - engine：保留引擎（C layout3d）坐标，星系形态
+ * - force/tree/radial：客户端重排（目录球 / 架构层）
  */
 import type { CodeGraphData, CodeGraphNode } from './types';
 
-export type L1LayoutMode = 'force' | 'tree' | 'radial';
+export type L1LayoutMode = 'engine' | 'force' | 'tree' | 'radial';
 
 const LAYER_GAP = 280;
 const SPHERE_GAP = 380;
@@ -153,6 +155,16 @@ function radialLayers(nodes: CodeGraphNode[]): CodeGraphNode[] {
 
 export function applyL1Layout(data: CodeGraphData, mode: L1LayoutMode): CodeGraphData {
   if (!data.nodes.length) return data;
+  /* 引擎布局：保留 x/y/z（C 端 layout3d 星系坐标），仅略放大点径 */
+  if (mode === 'engine') {
+    return {
+      ...data,
+      nodes: data.nodes.map((n) => ({
+        ...n,
+        size: Math.max(n.size * 1.1, 1.5),
+      })),
+    };
+  }
   let nodes = data.nodes;
   if (mode === 'force') nodes = forceSpheres(nodes);
   else if (mode === 'tree') nodes = treeLayers(nodes);

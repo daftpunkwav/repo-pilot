@@ -17,8 +17,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   tool: '#6e6e73',
 };
 
-const FOUNDATION_GAMMA = 1.0;
-const HUBNESS_DELTA = 0.75;
 const FORCE_ITERS_CAP = 90;
 /** 黄金角：圆内均匀铺开，避免扇区挤成一团 */
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
@@ -254,7 +252,6 @@ function fibonacciDir(i: number, n: number): { x: number; y: number; z: number }
 function sectorAngle(
   members: Vec[],
   node: Vec,
-  indexInSorted: number,
   links: WLink[],
 ): number {
   const fines = [...new Set(members.map((m) => m.fineClusterId))].sort();
@@ -450,7 +447,7 @@ export function forceLayout3d(nodes: Vec[], links: WLink[], iterations = 48) {
     sorted.forEach((item, i) => {
       const { node, rank } = item;
       const r = Math.max(c.R * 0.18, filledDiskRadius(c.R * 1.05, rank));
-      const angle = i * GOLDEN_ANGLE + sectorAngle(members, node, i, links) * 0.12;
+      const angle = i * GOLDEN_ANGLE + sectorAngle(members, node, links) * 0.12;
       const elev = ((hashId(node.id) % 100) / 100 - 0.5) * Math.PI * 0.95;
       const dir = fibonacciDir(i, members.length);
       const mix = 0.62;
@@ -572,7 +569,7 @@ export function treeLayout3d(nodes: Vec[], links: WLink[]) {
       const fineBias =
         (hashId(node.fineClusterId) % 360) * (Math.PI / 180) * 0.12;
       const angle =
-        i * GOLDEN_ANGLE + fineBias + sectorAngle(members, node, i, links) * 0.15;
+        i * GOLDEN_ANGLE + fineBias + sectorAngle(members, node, links) * 0.15;
       const tilt = Math.sin(angle * 1.7 + ci) * Math.min(8, R * 0.05);
       node.x = r * Math.cos(angle);
       node.y = cy + tilt;

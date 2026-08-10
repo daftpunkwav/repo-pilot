@@ -1,31 +1,27 @@
-# RepoPilot 自研图谱引擎
+# RepoPilot 图谱引擎
 
-进程内 Python 引擎（`python/rp_graph`）为默认运行时；`native/` 提供可选 C 布局加速与 `rp-graph-engine` CLI。
+## 默认：C 引擎 sidecar（迁入源码）
 
-## 能力
+源码位于 [`c/`](c/)（MIT，迁自 codebase-memory-mcp）。构建与运行见 [`c/README.md`](c/README.md)。
 
-- `index_repository`：full / moderate / fast / cross-repo-intelligence + persistence（`graph.db` / `.zst`）
-- `search_graph` / `search_code` / `get_code_snippet`
-- `trace_path`（calls / data_flow / cross_service + 风险分级）
-- `query_graph`（Cypher 子集，硬上限 10 万行）
-- `get_graph_schema` / `get_architecture`
-
-## 构建 native（可选）
-
-```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release
+```powershell
+.\services\graph_engine\c\scripts\build.ps1
+$env:CBM_CACHE_DIR = "$PWD\data\graph-engine-cache"
+$env:RP_GRAPH_ENGINE_BIN = "$PWD\services\graph_engine\c\build\c\rp-graph-engine"
+# API 侧：
+$env:RP_GRAPH_ENGINE_URL = "http://127.0.0.1:9750"
 ```
 
-## Sidecar
+API 启动时若配置了 `RP_GRAPH_ENGINE_BIN`（或在约定路径找到二进制），会在 sidecar 不健康时自动拉起。
 
-```bash
-set RP_GRAPH_ALLOWED_ROOT=.../data
-python -m rp_graph.server
-```
+## 回退：进程内 Python（`python/rp_graph`）
 
-默认监听 `127.0.0.1:9750`。
+当 `RP_GRAPH_ENGINE_URL` 未设置或 sidecar 不可达时，回退到 Python 引擎。  
+新功能与索引质量以 C 引擎为准；Python 路径仅作兼容。
+
+可选 native 布局加速见 [`native/`](native/)（CMake）。
 
 ## 许可
 
-实现为 RepoPilot 自有代码；设计对照参考了 MIT 许可的 codebase-memory 能力面（见仓库 `THIRD_PARTY`）。
+- C 引擎迁入代码：见 `c/LICENSE` / 仓库根 `THIRD_PARTY.md`
+- Python / native 自有实现：RepoPilot

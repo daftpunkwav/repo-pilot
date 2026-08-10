@@ -1,8 +1,8 @@
 """
-RepoPilot 自研图谱引擎（Python 编排层）。
+RepoPilot 图谱引擎 Python 回退层。
 
-运行时不依赖第三方 codebase-memory-mcp。
-可选加速：native/ 下的 C 布局库（rp_layout）。
+默认运行时为迁入的 C 引擎 sidecar（services/graph_engine/c）。
+本包仅在 sidecar 不可用时使用。
 """
 
 from .engine import GraphEngine, get_engine

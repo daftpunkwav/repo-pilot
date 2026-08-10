@@ -79,5 +79,12 @@ vendor/
 # 数据缓存（repo-cache 为克隆缓存，graph-db 为图谱索引；DB 备份均禁止入库）
 data/repo-cache/
 data/graph-db/
+data/graph-engine-cache/
 data/*.bak*
 data/repopilot.db.bak*
+data/*.db-shm
+data/*.db-wal
+
+# ?? C ??????
+services/graph_engine/c/build/
+

@@ -91,10 +91,11 @@ const EDGE_TYPE_COLORS_LIGHT: Record<string, string> = {
   cross_shared: "#64748b",
 };
 
-const DEFAULT_EDGE_COLOR = "#2dd4bf";
-const DEFAULT_EDGE_COLOR_LIGHT = "#0d9488";
+const DEFAULT_EDGE_COLOR = '#2dd4bf';
+const DEFAULT_EDGE_COLOR_LIGHT = '#0f766e';
 
-const BG_LIGHT = new THREE.Vector3(0.957, 0.965, 0.98);
+/* 浅色舞台偏冷灰，避免边线被洗进纯白背景 */
+const BG_LIGHT = new THREE.Vector3(0.925, 0.94, 0.96);
 const BG_DARK = new THREE.Vector3(0.024, 0.035, 0.059);
 
 /** 双主题共用：视空间带宽 + 中段混向背景 + 选中提亮 */
@@ -104,7 +105,7 @@ function createEdgeRibbonMaterial(isDark: boolean) {
       uOpacity: { value: 1 },
       uBg: { value: (isDark ? BG_DARK : BG_LIGHT).clone() },
       uResolution: { value: new THREE.Vector2(1920, 1080) },
-      uPixelHalfWidth: { value: isDark ? 1.15 : 1.05 },
+      uPixelHalfWidth: { value: isDark ? 0.95 : 1.45 },
       uIsDark: { value: isDark ? 1 : 0 },
     },
     vertexShader: /* glsl */ `
@@ -129,7 +130,7 @@ function createEdgeRibbonMaterial(isDark: boolean) {
         if (dot(push, push) < 1e-12) push = vec3(1.0, 0.0, 0.0);
         push = normalize(push);
         float resY = max(uResolution.y, 64.0);
-        float halfNdc = min(uPixelHalfWidth * aWidth * 2.0 / resY, 0.008);
+        float halfNdc = min(uPixelHalfWidth * aWidth * 2.0 / resY, 0.012);
         float halfView = halfNdc * abs(mv.z) / max(abs(projectionMatrix[1][1]), 1e-6);
         mv.xyz += push * (aSide * halfView);
         gl_Position = projectionMatrix * mv;
@@ -144,13 +145,19 @@ function createEdgeRibbonMaterial(isDark: boolean) {
       varying float vSide;
       void main() {
         float w = clamp(vWeight, 0.0, 1.0);
-        vec3 col = mix(uBg, vColor, w);
-        float lift = uIsDark > 0.5 ? 1.35 : 1.25;
-        float add = uIsDark > 0.5 ? 0.12 : 0.08;
+        /* 浅色：少混背景、提高 alpha，避免连线淹没在白底里 */
+        float mixAmt = uIsDark > 0.5 ? w : clamp(w * 1.15 + 0.18, 0.0, 1.0);
+        vec3 col = mix(uBg, vColor, mixAmt);
+        float lift = uIsDark > 0.5 ? 1.35 : 1.08;
+        float add = uIsDark > 0.5 ? 0.12 : 0.02;
         col = mix(col, min(col * lift + vec3(add), vec3(1.0)), smoothstep(0.85, 1.0, w));
+        if (uIsDark < 0.5) {
+          col = mix(col, vColor * 0.92, 0.35);
+        }
         float soft = 1.0 - smoothstep(0.35, 1.0, abs(vSide));
-        float aMax = uIsDark > 0.5 ? 0.92 : 0.98;
-        float a = mix(0.18, aMax, w) * uOpacity * soft;
+        float aMin = uIsDark > 0.5 ? 0.18 : 0.42;
+        float aMax = uIsDark > 0.5 ? 0.92 : 0.9;
+        float a = mix(aMin, aMax, w) * uOpacity * soft;
         if (a < 0.02) discard;
         gl_FragColor = vec4(col, a);
       }
@@ -158,7 +165,8 @@ function createEdgeRibbonMaterial(isDark: boolean) {
     transparent: true,
     depthWrite: false,
     depthTest: true,
-    blending: THREE.NormalBlending,
+    /* 暗色对齐 CBM：加法混合让连线形成星云辉光 */
+    blending: isDark ? THREE.AdditiveBlending : THREE.NormalBlending,
     toneMapped: false,
     side: THREE.DoubleSide,
   });
@@ -190,20 +198,31 @@ export function EdgeLines({
         ? controls.target
         : fallbackTarget.current;
     const dist = camera.position.distanceTo(target);
-    edgeMat.uniforms.uOpacity.value =
-      Math.min(1, opacity) * computeLightEdgeZoomFade(dist);
+    /* 暗色少做远距压暗，保留 CBM 式星云连线；浅色仍用 fade 防黑疙瘩 */
+    const fade = isDark
+      ? Math.max(0.72, computeLightEdgeZoomFade(dist))
+      : computeLightEdgeZoomFade(dist);
+    edgeMat.uniforms.uOpacity.value = Math.min(1, opacity) * fade;
   };
 
   useEffect(() => {
+      const dense = edges.length > 12000;
+    edgeMat.uniforms.uPixelHalfWidth.value = isDark
+      ? dense
+        ? 0.55
+        : 0.85
+      : dense
+        ? 1.15
+        : 1.55;
     syncUniforms(false);
     return () => {
       edgeMat.dispose();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [edgeMat, gl, size.width, size.height, isDark]);
+  }, [edgeMat, gl, size.width, size.height, isDark, edges.length]);
 
   const geometry = useMemo(() => {
-    const densityScale = edgeIntensityScale(edges.length) * brightness;
+    const densityScale = edgeIntensityScale(edges.length, isDark) * brightness;
 
     const degree = new Map();
     for (const edge of edges) {
@@ -257,17 +276,20 @@ export function EdgeLines({
 
       const sameCluster =
         getClusterKey(s.file_path) === getClusterKey(t.file_path);
-      const base = sameCluster ? 1 : isDark ? 0.85 : 0.92;
+      const base = sameCluster ? 1 : isDark ? 0.85 : 1.05;
       const deg =
         computeLightEdgeDegreeFactor(degree.get(s.id) || 0, 0) *
         computeLightEdgeDegreeFactor(degree.get(t.id) || 0, 0);
-      let intensity = base * Math.max(isDark ? 0.55 : 0.75, deg);
+      let intensity = base * Math.max(isDark ? 0.55 : 0.88, deg);
 
       const related = hasHighlight && sHL && tHL;
       if (hasHighlight) {
-        intensity = related ? 1 : isDark ? 0.22 : 0.32;
+        /* 选中边保持可读；其余按密度压暗（勿用 max 地板，否则 8万边仍过曝） */
+        intensity = related ? 1 : (isDark ? 0.08 : 0.28) * densityScale;
       } else {
-        intensity *= Math.max(isDark ? 0.7 : 0.85, densityScale);
+        intensity *= densityScale;
+        /* 浅色再抬一档，配合默认 1.2× 亮度 */
+        if (!isDark) intensity = Math.min(1.4, intensity * 1.15);
       }
 
       const typeKey = edge.type || edge.relation || "";

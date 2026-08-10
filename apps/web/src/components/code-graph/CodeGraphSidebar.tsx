@@ -2,7 +2,7 @@ import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import type { CodeGraphData, CodeGraphNode } from './types';
 import { useCodeGraphStore } from '@/stores/codeGraphStore';
 import type { L1LayoutMode } from './l1Layout';
-import { colorForLabel } from './colors';
+import { colorForLabel, STATUS_LEGEND } from './colors';
 
 interface Props {
   data: CodeGraphData | null;
@@ -23,6 +23,7 @@ interface DirNode {
 }
 
 const LAYOUTS: { id: L1LayoutMode; label: string }[] = [
+  { id: 'engine', label: '引擎' },
   { id: 'force', label: '力导向' },
   { id: 'tree', label: '树状' },
   { id: 'radial', label: '径向' },
@@ -371,6 +372,20 @@ export function CodeGraphSidebar({
                   />
                   按状态着色
                 </label>
+                {colorByStatus && (
+                  <div className="code-graph-status-legend" aria-label="状态图例">
+                    {STATUS_LEGEND.map((s) => (
+                      <span key={s.status} className="code-graph-status-legend__item">
+                        <span
+                          className="dot"
+                          style={{ background: s.color }}
+                          aria-hidden
+                        />
+                        {s.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <label className="check">
                   <input
                     type="checkbox"

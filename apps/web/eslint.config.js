@@ -48,4 +48,20 @@ export default [
       ],
     },
   },
+  // R3F / Three 场景会就地改 uniforms、并用 @ts-nocheck；布局算法大量使用非空断言
+  {
+    files: [
+      'src/components/code-graph/**/*.{ts,tsx}',
+      'src/components/graph/**/*.{ts,tsx}',
+    ],
+    rules: {
+      '@typescript-eslint/ban-ts-comment': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      'react-hooks/immutability': 'off',
+    },
+  },
 ];

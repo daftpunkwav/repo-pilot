@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { GraphScene, computeCameraTarget } from '@/components/graph-viz';
@@ -7,6 +7,7 @@ import { CodeGraphSidebar } from '@/components/code-graph/CodeGraphSidebar';
 import { NodeDetailPanel } from '@/components/code-graph/NodeDetailPanel';
 import { IndexStatusBar } from '@/components/code-graph/IndexStatusBar';
 import { GraphGuidePanel } from '@/components/graph/GraphGuidePanel';
+import { DisplaySettingsMenu } from '@/components/code-graph/DisplaySettingsMenu';
 import { applyL1Layout, type L1LayoutMode } from '@/components/code-graph/l1Layout';
 import {
   useCodeGraph,
@@ -18,7 +19,13 @@ import {
 import { useCodeGraphStore } from '@/stores/codeGraphStore';
 import { getApi } from '@/api/client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
-import { DEFAULT_DISPLAY_SETTINGS } from '@/components/code-graph/density';
+import {
+  loadDisplaySettings,
+  saveDisplaySettings,
+  withStatusColorDisplay,
+  type DisplaySettings,
+} from '@/components/code-graph/density';
+import { colorForStatus } from '@/components/code-graph/colors';
 
 export function CodeGraphPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,11 +38,24 @@ export function CodeGraphPage() {
     nodeTypeFilter,
     edgeTypeFilter,
     showOnlyDead,
+    colorByStatus,
     hideTests,
     hideEntryPoints,
     selectNode,
     setNodeBudget,
   } = useCodeGraphStore();
+
+  const [display, setDisplay] = useState<DisplaySettings>(() =>
+    loadDisplaySettings(),
+  );
+  const updateDisplay = useCallback((next: DisplaySettings) => {
+    setDisplay(next);
+    saveDisplaySettings(next);
+  }, []);
+  const effectiveDisplay = useMemo(
+    () => (colorByStatus ? withStatusColorDisplay(display) : display),
+    [colorByStatus, display],
+  );
 
   const statusQ = useIndexStatus(id);
   const status = statusQ.data?.data;
@@ -58,7 +78,7 @@ export function CodeGraphPage() {
   const [cameraTarget, setCameraTarget] = useState<CameraTarget | null>(null);
   const [highlightedIds, setHighlightedIds] = useState<Set<number> | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [layoutMode, setLayoutMode] = useState<L1LayoutMode>('force');
+  const [layoutMode, setLayoutMode] = useState<L1LayoutMode>('engine');
 
   const render = graphQ.data?.render;
   const filtered = useMemo(() => {
@@ -70,6 +90,13 @@ export function CodeGraphPage() {
     if (showOnlyDead) nodes = nodes.filter((n) => n.status === 'dead');
     if (hideTests) nodes = nodes.filter((n) => n.status !== 'test');
     if (hideEntryPoints) nodes = nodes.filter((n) => n.status !== 'entry');
+    /* 对齐 CBM deadCodeView：按 status 重着色，覆盖引擎恒星色 */
+    if (colorByStatus) {
+      nodes = nodes.map((n) => ({
+        ...n,
+        color: colorForStatus(n.status || ''),
+      }));
+    }
     const ids = new Set(nodes.map((n) => n.id));
     let edges = render.edges.filter((e) => ids.has(e.source) && ids.has(e.target));
     if (edgeTypeFilter) {
@@ -81,6 +108,7 @@ export function CodeGraphPage() {
     nodeTypeFilter,
     edgeTypeFilter,
     showOnlyDead,
+    colorByStatus,
     hideTests,
     hideEntryPoints,
     layoutMode,
@@ -192,7 +220,7 @@ export function CodeGraphPage() {
                 ? status.error || '克隆或索引失败，请重试'
                 : status && ['QUEUED', 'CLONING', 'INDEXING'].includes(status.status)
                   ? `正在处理：${status.status}`
-                  : '请先浅克隆 GitHub 仓库并构建代码图谱（自研引擎，无需第三方进程）。'}
+                  : '请先浅克隆 GitHub 仓库并构建代码图谱。'}
             </p>
             {(!status ||
               ['NONE', 'CLONE_FAILED', 'INDEX_FAILED', 'STALE'].includes(status.status)) && (
@@ -216,25 +244,25 @@ export function CodeGraphPage() {
           </div>
         )}
         {ready && filtered && (
-          <GraphScene
-            data={filtered}
-            highlightedIds={highlightedIds}
-            cameraTarget={cameraTarget}
-            showLabels={showLabels}
-            enableBloom
-            display={{
-              ...DEFAULT_DISPLAY_SETTINGS,
-              edgeBrightness: 0.55,
-              nodeGlow: 0.85,
-              bloom: 0.22,
-            }}
-            onNodeClick={onNodeClick}
-            onBackgroundClick={() => {
-              selectNode(null);
-              setHighlightedIds(null);
-              setSelectedPath(null);
-            }}
-          />
+          <>
+            <div className="code-graph-display-dock">
+              <DisplaySettingsMenu settings={display} onChange={updateDisplay} />
+            </div>
+            <GraphScene
+              data={filtered}
+              highlightedIds={highlightedIds}
+              cameraTarget={cameraTarget}
+              showLabels={showLabels}
+              enableBloom
+              display={effectiveDisplay}
+              onNodeClick={onNodeClick}
+              onBackgroundClick={() => {
+                selectNode(null);
+                setHighlightedIds(null);
+                setSelectedPath(null);
+              }}
+            />
+          </>
         )}
 
         {selectedNode && id && (
