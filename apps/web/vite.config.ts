@@ -21,11 +21,18 @@ export default defineConfig({
   },
   server: {
     host: '127.0.0.1',
-    port: 5173,
+    // 支持 VITE_PORT / VITE_API_TARGET 环境变量覆盖（默认与后端 npm run dev:api 一致）
+    port: Number(process.env.VITE_PORT) || 5173,
+    strictPort: true, // 端口被占用直接报错，避免静默顺延后 CORS/文案断链
     proxy: {
+      // 19876 在部分 Windows 环境会出现幽灵 LISTENING；开发暂用 19878
       '/api': {
-        // 19876 在部分 Windows 环境会出现幽灵 LISTENING；开发暂用 19878
-        target: 'http://127.0.0.1:19878',
+        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:19878',
+        changeOrigin: true,
+      },
+      // 后端 /health 不在 /api 前缀下，需单独代理（EmbedAgentChat 挂载探测依赖它）
+      '/health': {
+        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:19878',
         changeOrigin: true,
       },
     },

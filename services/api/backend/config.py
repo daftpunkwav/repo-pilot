@@ -102,6 +102,20 @@ class Settings(BaseSettings):
         default=2.0,
         description="data/repo-cache 总配额（GB）",
     )
+    index_concurrency: int = Field(
+        default=4,
+        ge=1,
+        le=16,
+        description="INDEX_CONCURRENCY：同时进行的 clone/index 任务数",
+    )
+    git_clone_timeout_sec: float = Field(
+        default=600.0,
+        description="单次浅克隆超时（秒）；超时后失败并释放队列槽位",
+    )
+    graph_index_timeout_sec: float = Field(
+        default=900.0,
+        description="单次引擎 index_repository 超时（秒）",
+    )
 
 
 @lru_cache()

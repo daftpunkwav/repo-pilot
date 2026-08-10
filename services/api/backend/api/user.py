@@ -1,7 +1,4 @@
 """本机身份与学习者画像 API（无认证）"""
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.api.deps import get_db
 from backend.core.responses import wrap_data
 from backend.memory.service import MemoryService
@@ -15,6 +12,8 @@ from backend.services.profile_service import (
     update_user_profile,
 )
 from backend.services.user_service import app_state_to_out
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/user", tags=["user"])
 

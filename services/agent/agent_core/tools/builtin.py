@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import logging
-import threading  # §4.2.6 ensure_tools_loaded 锁
-import threading  # §4.2.6 ensure_tools_loaded 锁
 import re
+import threading  # §4.2.6 ensure_tools_loaded 锁
 from typing import Any
 from uuid import UUID
 
 from backend.models.project import Project
+
 from agent_core.tools.registry import tool
 
 logger = logging.getLogger(__name__)

@@ -1,11 +1,10 @@
 """标签业务逻辑（本地单机，无 user 维度）"""
 from uuid import UUID
 
-from sqlalchemy import delete, func, insert, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.models.project import Project, Tag, project_tags
 from backend.schemas.tag import SetProjectTagsOut, TagOut
+from sqlalchemy import delete, func, insert, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def list_user_tags(db: AsyncSession) -> list[TagOut]:

@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 import httpx
-
 from backend.config import get_settings
 from backend.core import error_codes as EC
 
@@ -146,6 +145,8 @@ class RpGraphClient:
                 return eng.get_architecture(
                     args["project"], aspects=args.get("aspects")
                 )
+            if name == "drop_project":
+                return eng.drop_project(args.get("project") or args.get("name") or "")
             raise RpGraphError(f"未知工具：{name}", code=EC.GRAPH_QUERY_FAILED)
 
         try:
@@ -164,17 +165,38 @@ class RpGraphClient:
         name: Optional[str] = None,
         target_projects: list[str] | None = None,
         persistence: bool = True,
+        should_abandon: Any = None,
     ) -> Any:
-        return await self.call_tool(
-            "index_repository",
-            {
-                "repo_path": repo_path,
-                "mode": mode,
-                "name": name,
-                "target_projects": target_projects,
-                "persistence": persistence,
-            },
-        )
+        """本地引擎可传 should_abandon，超时/取消后跳过 persist，尽快释放项目锁。"""
+        if self.base_url and await self._sidecar_ok():
+            return await self.call_tool(
+                "index_repository",
+                {
+                    "repo_path": repo_path,
+                    "mode": mode,
+                    "name": name,
+                    "target_projects": target_projects,
+                    "persistence": persistence,
+                },
+            )
+        eng = _local_engine()
+
+        def _sync() -> Any:
+            return eng.index_repository(
+                repo_path,
+                mode=mode,
+                name=name,
+                target_projects=target_projects,
+                persistence=persistence,
+                should_abandon=should_abandon,
+            )
+
+        try:
+            return await asyncio.to_thread(_sync)
+        except RpGraphError:
+            raise
+        except Exception as exc:
+            raise RpGraphError(str(exc), code=EC.GRAPH_QUERY_FAILED) from exc
 
     async def search_graph(self, project: str, **kwargs: Any) -> Any:
         return await self.call_tool(
@@ -201,6 +223,10 @@ class RpGraphClient:
 
     async def get_graph_schema(self, project: str) -> Any:
         return await self.call_tool("get_graph_schema", {"project": project})
+
+    async def drop_project(self, project: str) -> Any:
+        """删除引擎侧图谱内存与 graph-db 持久化文件。"""
+        return await self.call_tool("drop_project", {"project": project})
 
     async def query_graph(self, project: str, query: str, **kwargs: Any) -> Any:
         return await self.call_tool(

@@ -11,9 +11,8 @@ users.password_hash / token_version 因 SQLite DROP COLUMN 会损坏 UUID 亲和
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision: str = "a1b2c3d4e5f6"
 down_revision: Union[str, Sequence[str], None] = "9dd51a4a165a"

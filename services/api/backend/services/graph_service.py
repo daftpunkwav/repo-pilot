@@ -12,10 +12,9 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from uuid import UUID
 
+from backend.models.project import Project, Tag, project_tags
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from backend.models.project import Project, Tag, project_tags
 
 # ---------------------------------------------------------------------------
 # 可调权重（角色/问题/栈/作者为主；语言与粗分类刻意降权防过拟合）
@@ -507,7 +506,7 @@ def _build_profile(
             if t == role or t in kws:
                 role_scores[role] = role_scores.get(role, 0.0) + 1.2
 
-    primary = max(role_scores, key=role_scores.get) if role_scores else None
+    primary = max(role_scores, key=lambda k: role_scores[k]) if role_scores else None
     stacks = set(_score_keyed_lexicon(toks, blob, STACK_KEYWORDS))
     problems = set(_score_keyed_lexicon(toks, blob, PROBLEM_KEYWORDS))
     return ProjectProfile(

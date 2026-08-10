@@ -3,9 +3,8 @@
 """
 from typing import Optional
 
-from fastapi import HTTPException, status
-
 from backend.core import error_codes as EC
+from fastapi import HTTPException, status
 
 
 class AppException(HTTPException):

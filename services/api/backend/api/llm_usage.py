@@ -1,15 +1,14 @@
 """LLM 用量统计 API —— 独立模块，加载失败不影响聊天。"""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.api.deps import get_db
 from backend.core.responses import wrap_data
 from backend.schemas.common import DataResponse
 from backend.services import llm_usage_service as usage_svc
 from backend.services.llm_usage_parse import parse_usage_details
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/usage", tags=["llm-usage"])
 

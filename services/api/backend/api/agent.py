@@ -3,12 +3,6 @@ Agent API —— 会话管理、对话 SSE、反问、分析、专用入口
 """
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from fastapi.responses import StreamingResponse
-from slowapi.util import get_remote_address
-from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.requests import Request
-
 from backend.api.deps import get_db
 from backend.config import get_settings
 from backend.core.limiter import limiter
@@ -52,6 +46,11 @@ from backend.services.agent_service import (
 )
 from backend.services.project_service import get_project
 from backend.services.sse_stream import encode_stream_item, format_sse
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import StreamingResponse
+from slowapi.util import get_remote_address
+from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 settings = get_settings()

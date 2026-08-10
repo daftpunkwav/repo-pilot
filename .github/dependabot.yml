@@ -1,0 +1,29 @@
+# Dependabot 配置：自动发现 npm 与 uv(pip) 生态的依赖更新与安全补丁
+# 每周日检查 npm / pip 依赖；pull_request 更新由 CI 自动验证
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "deps(python)"
+      include: "scope"

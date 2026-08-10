@@ -99,6 +99,8 @@ def _dispatch(eng, name: str, args: dict):
         return eng.get_graph_schema(args["project"])
     if name == "get_architecture":
         return eng.get_architecture(args["project"], aspects=args.get("aspects"))
+    if name == "drop_project":
+        return eng.drop_project(args.get("project") or args.get("name") or "")
     raise ValueError(f"unknown tool: {name}")
 
 

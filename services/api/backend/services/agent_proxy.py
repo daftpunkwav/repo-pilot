@@ -6,7 +6,6 @@ from typing import Any, AsyncIterator
 from uuid import UUID
 
 import httpx
-
 from backend.config import get_settings
 
 logger = logging.getLogger(__name__)

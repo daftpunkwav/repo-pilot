@@ -5,16 +5,9 @@ from backend.path_setup import ensure_service_paths
 
 ensure_service_paths()
 
-import asyncio
 import importlib
 from contextlib import asynccontextmanager
 from typing import Callable
-
-from fastapi import FastAPI, Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
 
 from backend.config import get_settings
 from backend.core import error_codes as EC
@@ -23,6 +16,11 @@ from backend.core.middleware import setup_middleware
 from backend.core.module_registry import all_module_statuses, get_module_status, safe_load_router
 from backend.database import get_session_factory, init_db
 from backend.services.seed_service import seed_preset_categories
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 settings = get_settings()
 api = settings.api_v1_prefix
@@ -64,7 +62,7 @@ app = FastAPI(title=settings.app_name, version="2.0.0", lifespan=lifespan)
 app.state.limiter = limiter
 
 
-async def _rate_limited_handler(request, exc):  # noqa: ANN001
+async def _rate_limited_handler(request: Request, exc: Exception) -> JSONResponse:
     """限流响应统一带 RATE_LIMITED 码。"""
     return JSONResponse(
         status_code=429,
@@ -77,7 +75,7 @@ async def _rate_limited_handler(request, exc):  # noqa: ANN001
     )
 
 
-async def _validation_error_handler(request: Request, exc: RequestValidationError):
+async def _validation_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """参数校验 → VALIDATION_ERROR；llm_api_base SSRF → SETTINGS_LLM_BASE_INVALID。"""
 
     def _json_safe(obj: object) -> object:
@@ -89,6 +87,7 @@ async def _validation_error_handler(request: Request, exc: RequestValidationErro
             return str(obj)
         return obj
 
+    assert isinstance(exc, RequestValidationError)
     errors = _json_safe(exc.errors())
     assert isinstance(errors, list)
     for err in errors:

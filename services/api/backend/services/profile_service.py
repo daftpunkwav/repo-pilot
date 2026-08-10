@@ -1,10 +1,8 @@
 """学习者画像持久化 —— 单例 UserProfile（id=1）"""
 import json
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.models.agent import LEARNER_PROFILE_ID, UserProfile
-from backend.models.app_state import AppState, APP_STATE_ID
+from backend.models.app_state import APP_STATE_ID, AppState
 from backend.schemas.profile import (
     GoalOut,
     LearnerIdentityOut,
@@ -14,6 +12,7 @@ from backend.schemas.profile import (
     UserProfileOut,
     UserProfileUpdate,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 DEFAULT_PROFILE = UserProfileOut()
 
@@ -182,14 +181,14 @@ async def update_user_profile(
     if data.history_summary is not None:
         row.history_summary = data.history_summary
     if data.memory_items is not None or data.extensions is not None:
-        current = _parse_json(row.agent_prefs, {})
-        if not isinstance(current, dict):
-            current = {}
+        prefs = _parse_json(row.agent_prefs, {})
+        if not isinstance(prefs, dict):
+            prefs = {}
         if data.memory_items is not None:
-            current["memory_items"] = [m.model_dump() for m in data.memory_items]
+            prefs["memory_items"] = [m.model_dump() for m in data.memory_items]
         if data.extensions is not None:
-            current["extensions"] = data.extensions
-        row.agent_prefs = json.dumps(current, ensure_ascii=False)
+            prefs["extensions"] = data.extensions
+        row.agent_prefs = json.dumps(prefs, ensure_ascii=False)
     await db.commit()
     await db.refresh(row)
     return profile_to_out(row)

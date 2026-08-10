@@ -49,6 +49,13 @@ VITE_USE_MOCK=false
 ### 环境
 
 ```bash
+uv sync          # Python 依赖（uv workspace，等价于下方 venv 方式）
+npm install      # Node 依赖（npm workspaces）
+```
+
+或使用传统 venv：
+
+```bash
 python -m venv .venv
 .venv\Scripts\activate
 pip install -e "./services/api[dev]"
@@ -76,6 +83,33 @@ npm run dev:web
 ```powershell
 .\scripts\dev.ps1
 ```
+
+## 端口与环境变量
+
+| 服务 | 默认端口 | 绑定地址 | 环境变量覆盖 |
+|------|----------|----------|--------------|
+| Web（Vite dev） | 5173 | 127.0.0.1 | `VITE_PORT` |
+| API（uvicorn） | 19878 | 127.0.0.1（显式） | 命令行 `--port` |
+| Agent Runtime（uvicorn） | 19877 | 127.0.0.1（显式） | 命令行 `--port` |
+| 图谱引擎 sidecar | 9750 | 127.0.0.1 | `RP_GRAPH_ENGINE_PORT` |
+
+- **开发代理目标**：`apps/web/vite.config.ts`，默认 `http://127.0.0.1:19878`，可用 `VITE_API_TARGET` 覆盖；同时代理 `/api` 与 `/health`（后端健康检查）。
+- **Vite 端口占用**：已启用 `strictPort`，占用即报错，不会静默顺延；显式改端口请用 `VITE_PORT=xxxx npm run dev:web`。
+- **CORS 白名单**：后端 `CORS_ALLOW_ORIGINS`（默认含 5173/5174/5175/4173/5193 的 localhost 与 127.0.0.1 双写）。**改动前端端口时务必同步该变量**；配置含 `*` 时启动会 fail-fast 报错（与 `allow_credentials=True` 冲突）。
+- 完整环境变量清单见 `.env.example`。
+
+## 生产部署
+
+本项目定位**本地单机**（默认全部绑定 `127.0.0.1`，无内置鉴权）。如需在局域网/公网提供访问，请遵循以下安全指引：
+
+1. **前端构建产物**：`npm run build:web` → `apps/web/dist/`，用 Nginx/Caddy 托管，并反向代理 `/api`、`/health` 到 API（`127.0.0.1:19878`）。
+2. **环境变量**：`.env` 必须显式配置——`SECRET_KEY` ≥32 字节随机值、`DEBUG=false`、`CORS_ALLOW_ORIGINS` 设为实际域名、`SECRETS_ENCRYPTION_KEY` 独立设置；启用独立 Agent 进程时配 `AGENT_BASE_URL` + `AGENT_INTERNAL_TOKEN`。
+3. **防火墙与暴露面**：不要直接把 uvicorn 端口（19878/19877/9750）暴露到公网；由反向代理统一对外（HTTPS），内部服务仅监听 127.0.0.1。
+4. **HTTPS**：公网访问必须启用 TLS（反向代理终结），并保持 `AUTH_COOKIE_SECURE=true`、`AUTH_COOKIE_SAMESITE=lax`。
+5. **依赖安全**：CI 自动执行 `npm audit` / `pip-audit`；依赖更新由 Dependabot（`.github/dependabot.yml`）接管。
+6. **数据备份**：SQLite 数据库位于 `data/repopilot.db`，请纳入常规备份（`data/*.db` 与备份文件均已被 .gitignore 排除）。
+
+> ⚠️ 本项目当前无用户鉴权体系（本地单机假设）。暴露到不可信网络前，必须先加反向代理层鉴权（如 Basic Auth / 应用内 SSO）。
 
 ## 文档
 

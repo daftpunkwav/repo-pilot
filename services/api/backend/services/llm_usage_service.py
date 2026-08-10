@@ -5,14 +5,13 @@ import json
 import logging
 import re
 from datetime import datetime, timedelta
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
-
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.models.llm_usage import LlmUsageEvent
 from backend.services.llm_usage_parse import parse_usage_details
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -285,7 +284,7 @@ async def usage_summary(db: AsyncSession, *, days: int = 30) -> dict[str, Any]:
     def _sorted_rows(
         acc: dict[str, dict[str, int]], key_name: str
     ) -> list[dict[str, Any]]:
-        items = []
+        items: list[dict[str, Any]] = []
         for k, v in acc.items():
             items.append(
                 {
@@ -300,7 +299,7 @@ async def usage_summary(db: AsyncSession, *, days: int = 30) -> dict[str, Any]:
                     ),
                 }
             )
-        items.sort(key=lambda x: x["total_tokens"], reverse=True)
+        items.sort(key=lambda x: int(x["total_tokens"]), reverse=True)
         return items
 
     by_provider = _sorted_rows(provider_acc, "provider")
@@ -337,7 +336,7 @@ async def usage_summary(db: AsyncSession, *, days: int = 30) -> dict[str, Any]:
         )
     by_model.sort(key=lambda x: x["total_tokens"], reverse=True)
 
-    top_pair = None
+    top_pair: dict[str, Any] | None = None
     if pair_acc:
         (prov, model), top_v = max(
             pair_acc.items(), key=lambda kv: kv[1].get("total_tokens", 0)
@@ -453,7 +452,7 @@ async def usage_summary(db: AsyncSession, *, days: int = 30) -> dict[str, Any]:
 
     if top_pair and totals["total_tokens"] > 0:
         top_pair["share"] = round(
-            top_pair["total_tokens"] / totals["total_tokens"], 4
+            int(top_pair["total_tokens"]) / int(totals["total_tokens"]), 4
         )
     elif top_pair:
         top_pair["share"] = 0.0

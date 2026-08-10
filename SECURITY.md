@@ -65,4 +65,4 @@
 
 ## 不在范围
 
-本项目不维护 `SECURITY.md` 中提及的所有依赖的安全公告分发；依赖的安全更新通过 Renovate / dependabot 流程自动处理。
+本项目不维护 `SECURITY.md` 中提及的所有依赖的安全公告分发；依赖的安全更新通过 **Dependabot**（`.github/dependabot.yml`，每周扫描 npm + pip 生态）自动处理，CI 中另以 `npm audit` 与 `pip-audit` 兜底阻断高危漏洞。

@@ -1,7 +1,4 @@
 """总览聚合 API —— 从数据库派生真实数据"""
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.api.deps import get_db
 from backend.core.responses import wrap_data
 from backend.schemas.common import DataResponse
@@ -17,6 +14,8 @@ from backend.services.overview_service import (
     list_recommended,
     list_trending,
 )
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/overview", tags=["overview"])
 

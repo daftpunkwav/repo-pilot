@@ -1,10 +1,11 @@
 """
 Pydantic schemas —— 笔记相关请求/响应
 """
-from pydantic import BaseModel, Field
-from uuid import UUID
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
+
+from pydantic import BaseModel, Field
 
 
 class NoteCreate(BaseModel):

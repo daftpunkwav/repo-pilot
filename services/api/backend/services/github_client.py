@@ -212,8 +212,10 @@ async def list_user_stars(
             items.append(_map_star_item(r))
         if len(data) < per_page:
             break
-        path = _parse_next_link(headers.get("link"))
-        if not path:
+        next_path = _parse_next_link(headers.get("link"))
+        if next_path:
+            path = next_path
+        else:
             # 无 Link 时按 page 递增兜底
             if token:
                 path = f"/user/starred?per_page={per_page}&page={page + 1}"

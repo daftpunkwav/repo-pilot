@@ -94,9 +94,9 @@ async def chat_session(
                 detail={"code": "VALIDATION_ERROR", "message": "project_id 无效"},
             ) from exc
 
+    from agent_core.agents.stream_events import encode_stream_item
     from backend.database import get_session_factory
     from backend.services.agent_service import stream_chat
-    from agent_core.agents.stream_events import encode_stream_item
 
     factory = get_session_factory()
 

@@ -6,21 +6,31 @@
 
 ## 开发环境
 
-- Python 3.14+
-- Node.js >= 20.11
-- pnpm 10.x
+- Python >= 3.11（CI 固定 3.11，见 `.python-version`；建议用 [uv](https://docs.astral.sh/uv/) 管理）
+- Node.js >= 20.11（见 `.nvmrc`）
+- npm 10.x（npm workspaces，lockfile 在仓库根）
 - SQLite（开发默认） / PostgreSQL（生产可选）
 
 ```bash
-# Python 依赖（项目根）
-python -m venv .venv
-.venv\Scripts\pip install -e services/api -e services/agent -e services/mcp -e packages/py-shared
+# Python 依赖（项目根，uv workspace）
+uv sync
 
 # Node 依赖（前端）
-cd apps/web && npm install
+npm install
 
 # 数据库初始化
 alembic upgrade head
+```
+
+### 本地校验
+
+```bash
+ruff check services/        # Python lint
+mypy services/api/backend   # Python 类型检查
+npm run lint:web            # 前端 ESLint
+npm run typecheck:web       # 前端类型检查
+pytest tests/unit -q        # 后端单测
+npm run test:web            # 前端单测
 ```
 
 ## 分支模型

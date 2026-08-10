@@ -1,9 +1,6 @@
 """总览页数据聚合 —— 从真实数据库派生（本地单机）"""
 from datetime import datetime
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.models.agent import AgentSession
 from backend.models.note import Note
 from backend.models.project import Project
@@ -13,6 +10,8 @@ from backend.schemas.overview import (
     RecommendedProjectOut,
     TrendingRepoOut,
 )
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def _iso(dt: datetime | None) -> str:

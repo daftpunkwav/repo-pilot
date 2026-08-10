@@ -6,10 +6,9 @@ ORM 模型 —— 本机应用状态（单行，无用户概念）
 from datetime import datetime
 from typing import Optional
 
+from backend.database import Base
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
-
-from backend.database import Base
 
 # 单行表固定主键
 APP_STATE_ID = 1

@@ -7,9 +7,8 @@ import base64
 import hashlib
 from functools import lru_cache
 
-from cryptography.fernet import Fernet, InvalidToken
-
 from backend.config import get_settings
+from cryptography.fernet import Fernet, InvalidToken
 
 # 落库密文前缀；无此前缀视为历史明文（兼容旧数据）
 _SECRET_PREFIX = "enc:v1:"

@@ -1,10 +1,9 @@
 """意图分类 —— 规则 + 多意图 + LLM"""
 from __future__ import annotations
 
-import os  # §4.2.8 多意图关键词 env 覆盖
-
 import json
 import logging
+import os  # §4.2.8 多意图关键词 env 覆盖
 import re
 from dataclasses import dataclass, field
 from typing import Any

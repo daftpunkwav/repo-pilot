@@ -5,9 +5,6 @@ from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.models.agent import AgentSession
 from backend.models.category import Category
 from backend.models.note import Note
@@ -21,6 +18,8 @@ from backend.ports import (
     TagPort,
     ToolPorts,
 )
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @dataclass

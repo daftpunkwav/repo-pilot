@@ -15,12 +15,14 @@ export function extractErrorMessage(err: unknown): string {
   if (isApiError(err)) {
     return err.error.message;
   }
+  // 网络错误统一提示，不硬编码端口（端口可通过 VITE_API_TARGET 等环境变量覆盖）
+  const NETWORK_HINT = '无法连接后端，请确认 API 服务已启动且端口配置正确（开发默认经 Vite 代理转发）';
   if (err instanceof TypeError && /fetch|network|Failed to fetch/i.test(err.message)) {
-    return '无法连接后端，请确认 API 已启动（http://127.0.0.1:19878）且前端走 http://127.0.0.1:5173';
+    return NETWORK_HINT;
   }
   if (err instanceof Error) {
     if (/Failed to fetch|NetworkError|Load failed/i.test(err.message)) {
-      return '无法连接后端，请确认 API 已启动（http://127.0.0.1:19878）且前端走 http://127.0.0.1:5173';
+      return NETWORK_HINT;
     }
     return err.message;
   }

@@ -8,7 +8,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
 ProjectProgress = Literal["none", "learning", "learned", "mastered"]
 ProjectSource = Literal["github", "manual"]
 

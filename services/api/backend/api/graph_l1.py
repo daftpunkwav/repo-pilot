@@ -5,10 +5,6 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.api.deps import get_db
 from backend.core import error_codes as EC
 from backend.core.exceptions import AppException, NotFoundError
@@ -19,13 +15,16 @@ from backend.schemas.graph import IndexTriggerBody, SearchBody, TraceBody
 from backend.services import index_pipeline as pipeline
 from backend.services.index_data_adapter import adapt_layout
 from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/graph", tags=["graph-l1"])
 
 
 class BatchIndexBody(BaseModel):
     project_ids: list[UUID] = Field(..., min_length=1, max_length=50)
-    mode: str = "moderate"
+    mode: str = "fast"
 
 
 @router.get("/projects/{project_id}/status", response_model=DataResponse[dict])
@@ -42,7 +41,7 @@ async def trigger_project_index(
     body: IndexTriggerBody | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    mode = (body.mode if body else "moderate") or "moderate"
+    mode = (body.mode if body else "fast") or "fast"
     return wrap_data(await pipeline.trigger_index(db, project_id, mode=mode))
 
 
@@ -51,11 +50,11 @@ async def trigger_batch_index(
     body: BatchIndexBody,
     db: AsyncSession = Depends(get_db),
 ):
-    """批量入队索引（串行槽）；返回各项目状态快照。"""
+    """批量入队索引（worker 池并行）；返回各项目状态快照。"""
     results = []
     for pid in body.project_ids:
         try:
-            st = await pipeline.trigger_index(db, pid, mode=body.mode or "moderate")
+            st = await pipeline.trigger_index(db, pid, mode=body.mode or "fast")
             results.append(st)
         except AppException as exc:
             results.append(
@@ -79,7 +78,7 @@ async def refresh_project_index(
     body: IndexTriggerBody | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    mode = (body.mode if body else "moderate") or "moderate"
+    mode = (body.mode if body else "fast") or "fast"
     return wrap_data(
         await pipeline.trigger_index(db, project_id, mode=mode, refresh=True)
     )

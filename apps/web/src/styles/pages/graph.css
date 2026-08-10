@@ -1395,6 +1395,51 @@
   padding: 4px 6px;
   white-space: nowrap;
 }
+.graph-index-modal__actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.graph-index-modal__actions button.is-danger {
+  color: #dc2626;
+}
+.graph-index-modal__menu {
+  position: relative;
+  display: inline-flex;
+}
+.graph-index-modal__menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 5;
+  min-width: 132px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--bg-elevated, var(--bg-100));
+  border: 1px solid color-mix(in srgb, var(--text-900) 10%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 18%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.graph-index-modal__menu-panel button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.graph-index-modal__menu-panel button:hover {
+  background: color-mix(in srgb, var(--brand-500) 10%, transparent);
+}
+.graph-index-modal__menu-panel .muted {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-500);
+  font-family: var(--font-mono, monospace);
+}
 
 .graph-list-view__head {
   display: flex;

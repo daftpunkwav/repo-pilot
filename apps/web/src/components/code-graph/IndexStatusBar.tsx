@@ -11,11 +11,14 @@ const STATUS_ZH: Record<string, string> = {
   INDEX_FAILED: '索引失败',
 };
 
+type IndexMode = 'fast' | 'moderate' | 'full';
+
 interface Props {
   status?: GraphIndexStatus;
   loading?: boolean;
-  onIndex: (mode: 'fast' | 'moderate' | 'full') => void;
-  onRefresh: (mode: 'fast' | 'moderate' | 'full') => void;
+  onIndex: (mode: IndexMode) => void;
+  onRefresh: (mode: IndexMode) => void;
+  onDelete?: () => void;
   nodeBudget: number;
   onBudgetChange: (n: number) => void;
   totalNodes?: number | null;
@@ -29,6 +32,7 @@ export function IndexStatusBar({
   loading,
   onIndex,
   onRefresh,
+  onDelete,
   nodeBudget,
   onBudgetChange,
   totalNodes,
@@ -51,26 +55,7 @@ export function IndexStatusBar({
       ? '索引失败，请重试'
       : null);
 
-  const primaryAction =
-    st === 'READY' || st === 'STALE' ? (
-      <button
-        type="button"
-        className="btn btn-ghost btn-sm"
-        disabled={loading}
-        onClick={() => onRefresh('moderate')}
-      >
-        刷新
-      </button>
-    ) : (
-      <button
-        type="button"
-        className="btn btn-primary btn-sm"
-        disabled={loading}
-        onClick={() => onIndex('moderate')}
-      >
-        索引
-      </button>
-    );
+  const canDelete = st !== 'NONE' && Boolean(onDelete);
 
   return (
     <div className="code-graph-statusbar code-graph-statusbar--inline">
@@ -95,7 +80,17 @@ export function IndexStatusBar({
         </label>
       </div>
       <div className="code-graph-statusbar__row code-graph-statusbar__actions">
-        {primaryAction}
+        {(st === 'READY' || st === 'STALE') && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={loading}
+            onClick={() => onRefresh('fast')}
+            title="增量拉取后按快速模式重建"
+          >
+            刷新
+          </button>
+        )}
         <button
           type="button"
           className="btn btn-ghost btn-sm"
@@ -108,10 +103,29 @@ export function IndexStatusBar({
           type="button"
           className="btn btn-ghost btn-sm"
           disabled={loading}
+          onClick={() => onIndex('moderate')}
+        >
+          标准
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          disabled={loading}
           onClick={() => onIndex('full')}
         >
           完整
         </button>
+        {canDelete && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            disabled={loading}
+            onClick={onDelete}
+            title="删除本地克隆与图谱数据库"
+          >
+            删除
+          </button>
+        )}
       </div>
     </div>
   );

@@ -1,10 +1,6 @@
 """标签 API（本地单机）"""
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.api.deps import get_db
 from backend.core.responses import wrap_data
 from backend.models.project import Tag
@@ -16,6 +12,9 @@ from backend.services.tag_service import (
     list_user_tags,
     set_project_tags,
 )
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/tags", tags=["tags"])
 

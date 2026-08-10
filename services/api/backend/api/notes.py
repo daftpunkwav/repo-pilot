@@ -3,16 +3,15 @@
 """
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.api.deps import get_db
 from backend.core.responses import wrap_data
 from backend.models.note import Note
 from backend.models.project import Project
 from backend.schemas.common import DataResponse
 from backend.schemas.note import NoteCreate, NoteOut, NoteUpdate
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 

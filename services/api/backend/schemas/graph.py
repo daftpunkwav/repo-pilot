@@ -68,7 +68,7 @@ class GraphIndexStatusOut(BaseModel):
     head_sha: Optional[str] = None
     branch: Optional[str] = None
     status: IndexStatus = "NONE"
-    index_mode: IndexMode = "moderate"
+    index_mode: IndexMode = "fast"
     node_count: Optional[int] = None
     edge_count: Optional[int] = None
     indexed_at: Optional[datetime] = None
@@ -76,7 +76,7 @@ class GraphIndexStatusOut(BaseModel):
 
 
 class IndexTriggerBody(BaseModel):
-    mode: IndexMode = "moderate"
+    mode: IndexMode = "fast"
 
 
 class TraceBody(BaseModel):

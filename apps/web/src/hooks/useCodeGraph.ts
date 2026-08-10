@@ -3,6 +3,11 @@ import { getApi } from '@/api/client';
 import type { GraphIndexStatus } from '@/components/code-graph/types';
 import { toRenderGraph } from '@/components/code-graph/types';
 
+function requireProjectId(projectId: string | undefined): string {
+  if (!projectId) throw new Error('缺少 projectId');
+  return projectId;
+}
+
 export function useIndexStatus(projectId: string | undefined) {
   return useQuery({
     queryKey: ['graph-index-status', projectId],
@@ -14,7 +19,7 @@ export function useIndexStatus(projectId: string | undefined) {
     },
     queryFn: async () => {
       const api = getApi();
-      return api.getCodeGraphStatus(projectId!);
+      return api.getCodeGraphStatus(requireProjectId(projectId));
     },
   });
 }
@@ -28,7 +33,9 @@ export function useCodeGraph(
     enabled: Boolean(projectId) && opts.enabled,
     queryFn: async () => {
       const api = getApi();
-      const res = await api.getCodeGraph(projectId!, { max_nodes: opts.maxNodes });
+      const res = await api.getCodeGraph(requireProjectId(projectId), {
+        max_nodes: opts.maxNodes,
+      });
       return { ...res, render: toRenderGraph(res.data as never) };
     },
   });
@@ -39,7 +46,7 @@ export function useTriggerIndex(projectId: string | undefined) {
   return useMutation({
     mutationFn: async (mode: 'fast' | 'moderate' | 'full' = 'moderate') => {
       const api = getApi();
-      return api.triggerCodeGraphIndex(projectId!, { mode });
+      return api.triggerCodeGraphIndex(requireProjectId(projectId), { mode });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['graph-index-status', projectId] });
@@ -52,10 +59,25 @@ export function useRefreshIndex(projectId: string | undefined) {
   return useMutation({
     mutationFn: async (mode: 'fast' | 'moderate' | 'full' = 'moderate') => {
       const api = getApi();
-      return api.refreshCodeGraphIndex(projectId!, { mode });
+      return api.refreshCodeGraphIndex(requireProjectId(projectId), { mode });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['graph-index-status', projectId] });
+    },
+  });
+}
+
+export function useDeleteIndex(projectId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const api = getApi();
+      return api.deleteCodeGraphIndex(requireProjectId(projectId));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['graph-index-status', projectId] });
+      qc.invalidateQueries({ queryKey: ['code-graph', projectId] });
+      qc.invalidateQueries({ queryKey: ['graph-index-statuses'] });
     },
   });
 }

@@ -285,7 +285,10 @@ def force_layout_3d(
     *,
     iterations: int = 40,
 ) -> None:
-    """简易 3D 力导向（Python；有 C 扩展时由 layout_c 替换）。"""
+    """简易 3D 力导向（Python；有 C 扩展时由 layout_c 替换）。
+
+    注意：全量斥力为 O(n²)；节点多时绝不可跑多轮迭代，否则会卡死索引流水线。
+    """
     if not nodes:
         return
     n = len(nodes)
@@ -298,6 +301,11 @@ def force_layout_3d(
             node.x = r * math.sin(phi) * math.cos(theta)
             node.y = r * math.sin(phi) * math.sin(theta)
             node.z = r * math.cos(phi)
+        node.size = 1.0 + min(8.0, math.log1p(node.in_calls) * 1.5)
+
+    # 大图或 iterations<=0：仅球面初置，交给前端布局
+    if iterations <= 0 or n > 500:
+        return
 
     idx = {node.id: i for i, node in enumerate(nodes)}
     for _ in range(iterations):

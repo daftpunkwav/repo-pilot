@@ -6,12 +6,12 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
+from backend.models.project import Project
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_core.llm.config import LLMConfig
 from agent_core.llm.provider import LLMProvider
 from agent_core.memory.service import MemoryService
-from backend.models.project import Project
 from agent_core.tools.registry import ToolRegistry, global_registry
 
 

@@ -5,8 +5,6 @@ import json
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.core.security import decrypt_secret, encrypt_secret, ensure_encrypted_secret
 from backend.models.app_state import AppState
 from backend.schemas.settings import (
@@ -18,6 +16,7 @@ from backend.schemas.settings import (
     SettingsUpdate,
 )
 from backend.services.app_state_service import get_or_create_app_state
+from sqlalchemy.ext.asyncio import AsyncSession
 
 AGENT_IDS = ("hub", "scout", "mentor", "navigator", "curator", "scribe", "atlas")
 

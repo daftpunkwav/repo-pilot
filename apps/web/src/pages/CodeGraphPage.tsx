@@ -13,6 +13,7 @@ import {
   useIndexStatus,
   useTriggerIndex,
   useRefreshIndex,
+  useDeleteIndex,
 } from '@/hooks/useCodeGraph';
 import { useCodeGraphStore } from '@/stores/codeGraphStore';
 import { getApi } from '@/api/client';
@@ -43,11 +44,15 @@ export function CodeGraphPage() {
   const graphQ = useCodeGraph(id, { maxNodes: nodeBudget, enabled: Boolean(ready) });
   const trigger = useTriggerIndex(id);
   const refresh = useRefreshIndex(id);
+  const delIndex = useDeleteIndex(id);
 
   const projectQ = useQuery({
     queryKey: ['project', id],
     enabled: Boolean(id),
-    queryFn: () => getApi().getProject(id!),
+    queryFn: () => {
+      if (!id) throw new Error('缺少项目 id');
+      return getApi().getProject(id);
+    },
   });
 
   const [cameraTarget, setCameraTarget] = useState<CameraTarget | null>(null);
@@ -104,6 +109,8 @@ export function CodeGraphPage() {
     if (selectedNode || selectedPath) return;
     const ids = new Set(filtered.nodes.map((n) => n.id));
     setCameraTarget(computeCameraTarget(filtered.nodes, ids));
+    // 仅在节点数量/布局变化时重置相机，避免 filtered 引用抖动
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 有意依赖 nodes.length
   }, [filtered?.nodes.length, id, layoutMode, selectedNode, selectedPath]);
 
   const onSelectPath = (path: string, nodeIds: Set<number>) => {
@@ -142,9 +149,21 @@ export function CodeGraphPage() {
   const statusSlot = (
     <IndexStatusBar
       status={status}
-      loading={statusQ.isLoading || trigger.isPending || refresh.isPending}
+      loading={
+        statusQ.isLoading || trigger.isPending || refresh.isPending || delIndex.isPending
+      }
       onIndex={(mode) => trigger.mutate(mode)}
       onRefresh={(mode) => refresh.mutate(mode)}
+      onDelete={() => {
+        const name = projectQ.data?.data?.name || id || '该项目';
+        if (
+          window.confirm(
+            `删除「${name}」的索引？\n将清理本地克隆缓存与图谱数据库，不可恢复。`,
+          )
+        ) {
+          delIndex.mutate();
+        }
+      }}
       nodeBudget={nodeBudget}
       onBudgetChange={setNodeBudget}
       totalNodes={filtered?.total_nodes ?? status?.node_count ?? undefined}
@@ -218,12 +237,12 @@ export function CodeGraphPage() {
           />
         )}
 
-        {selectedNode && (
+        {selectedNode && id && (
           <NodeDetailPanel
             node={selectedNode}
             allNodes={filtered?.nodes || []}
             allEdges={filtered?.edges || []}
-            projectId={id!}
+            projectId={id}
             onClose={() => selectNode(null)}
             onNavigate={onNodeClick}
           />

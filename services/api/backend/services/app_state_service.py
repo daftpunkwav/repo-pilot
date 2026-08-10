@@ -1,8 +1,7 @@
 """AppState 读写辅助 —— 确保单行存在。"""
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from backend.models.app_state import APP_STATE_ID, AppState
 from backend.models.agent import LEARNER_PROFILE_ID, UserProfile
+from backend.models.app_state import APP_STATE_ID, AppState
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def get_or_create_app_state(db: AsyncSession) -> AppState:

@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import asyncio
-import threading  # §4.2.10 registry 锁
 import logging
+import threading  # §4.2.10 registry 锁
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
 

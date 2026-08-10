@@ -72,7 +72,7 @@ def validate_public_https_url(
             raise ValueError("无法解析 API 基础地址域名")
         seen: set[str] = set()
         for info in infos:
-            ip_str = info[4][0]
+            ip_str = str(info[4][0])
             if ip_str in seen:
                 continue
             seen.add(ip_str)

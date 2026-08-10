@@ -59,28 +59,65 @@ class GraphEngine:
         name: str | None = None,
         target_projects: list[str] | None = None,
         persistence: bool = True,
+        should_abandon: Any = None,
     ) -> dict[str, Any]:
         if mode == "cross-repo-intelligence":
             return self._cross_repo(target_projects or [])
 
         project = name or Path(repo_path).name
         store = self._store(project)
-        result = index_repository(store, repo_path, mode=mode)
-        if persistence:
-            db_path = self.graphs_dir / f"{project}.db"
-            store.persist(db_path)
-            # 可选 zst：无 zstandard 时仅保留 .db
-            zst = Path(str(db_path) + ".zst")
-            try:
-                import zstandard as zstd  # type: ignore
+        # 同项目索引互斥；不同项目可并行（store 按名隔离）
+        with self._lock:
+            project_lock = getattr(store, "_index_lock", None)
+            if project_lock is None:
+                project_lock = threading.Lock()
+                setattr(store, "_index_lock", project_lock)
+        with project_lock:
+            if callable(should_abandon) and should_abandon():
+                return {
+                    "project": project,
+                    "mode": mode,
+                    "abandoned": True,
+                    "node_count": 0,
+                    "edge_count": 0,
+                }
+            result = index_repository(store, repo_path, mode=mode)
+            if callable(should_abandon) and should_abandon():
+                result["abandoned"] = True
+                return result
+            if persistence:
+                db_path = self.graphs_dir / f"{project}.db"
+                store.persist(db_path)
+                # 可选 zst：无 zstandard 时仅保留 .db
+                zst = Path(str(db_path) + ".zst")
+                try:
+                    import zstandard as zstd  # type: ignore
 
-                cctx = zstd.ZstdCompressor(level=3)
-                with open(db_path, "rb") as src, open(zst, "wb") as dst:
-                    dst.write(cctx.compress(src.read()))
-                result["persistence_path"] = str(zst)
-            except Exception:
-                result["persistence_path"] = str(db_path)
+                    cctx = zstd.ZstdCompressor(level=3)
+                    with open(db_path, "rb") as src, open(zst, "wb") as dst:
+                        dst.write(cctx.compress(src.read()))
+                    result["persistence_path"] = str(zst)
+                except Exception:
+                    result["persistence_path"] = str(db_path)
         return result
+
+    def drop_project(self, project: str) -> dict[str, Any]:
+        """删除内存图与持久化文件（.db / .db.zst）。"""
+        name = (project or "").strip()
+        removed_files: list[str] = []
+        with self._lock:
+            self._projects.pop(name, None)
+            for path in (
+                self.graphs_dir / f"{name}.db",
+                self.graphs_dir / f"{name}.db.zst",
+            ):
+                if path.exists():
+                    try:
+                        path.unlink()
+                        removed_files.append(str(path))
+                    except OSError:
+                        pass
+        return {"project": name, "removed_files": removed_files}
 
     def _cross_repo(self, projects: list[str]) -> dict[str, Any]:
         """基于同名符号/HTTP 启发式生成跨仓边。"""

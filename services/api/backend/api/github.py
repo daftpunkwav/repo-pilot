@@ -8,11 +8,6 @@ from datetime import datetime, timedelta
 from typing import Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.api.deps import get_db
 from backend.core.responses import wrap_data
 from backend.core.security import encrypt_secret
@@ -22,11 +17,21 @@ from backend.schemas.common import DataResponse
 from backend.services.app_state_service import get_or_create_app_state
 from backend.services.github_accounts import (
     load_accounts as _load_accounts,
+)
+from backend.services.github_accounts import (
     migrate_plaintext_pats as _migrate_plaintext_pats,
+)
+from backend.services.github_accounts import (
     primary_token as _primary_token,
+)
+from backend.services.github_accounts import (
     save_accounts as _save_accounts,
 )
 from backend.services.github_client import list_user_stars, search_repositories
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/github", tags=["github"])
 

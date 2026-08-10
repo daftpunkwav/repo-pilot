@@ -8,10 +8,8 @@ from datetime import datetime
 from typing import Any, AsyncIterator
 from uuid import UUID
 
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.agents.hub import HubService
+from backend.core import stream_cancel
 from backend.llm.config import build_llm_config_from_user
 from backend.memory.service import MemoryService
 from backend.models.agent import AgentMessage, AgentSession, agent_session_projects
@@ -22,10 +20,11 @@ from backend.schemas.agent import (
     ContextWindowSegmentOut,
     ContextWindowStatsOut,
 )
-from backend.core import stream_cancel
 from backend.services.project_service import get_project
 from backend.services.sse_stream import StreamEvent, encode_stream_item, format_sse
 from backend.tools.builtin import ensure_tools_loaded
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -1064,9 +1063,8 @@ async def stream_import_assist(
     msg = (message or "").strip()
 
     # 服务端补齐：用户库项目 + Stars 缓存（即使前端未传也能回答）
-    from sqlalchemy import func, select
-
     from backend.models.project import Project
+    from sqlalchemy import func, select
 
     proj_rows = (
         await db.execute(

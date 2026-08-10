@@ -8,13 +8,14 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 
+from backend.services.sse_stream import format_sse
+
 from agent_core.agents.question import _normalize_question
 from agent_core.agents.registry import AgentDefinition
 from agent_core.agents.stream_events import StreamEvent
 from agent_core.agents.types import AgentEngineConfig, Messages, Workflow
 from agent_core.llm.provider import LLMCompleteResult, LLMProvider
 from agent_core.memory.context import AgentRunContext
-from backend.services.sse_stream import format_sse
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +99,8 @@ class ReActEngine:
         max_tokens: int | None = None,
     ) -> AsyncIterator[str | Any]:
         """纯流式：channel=text→text_delta，channel=thinking→thinking。最后 yield LLMCompleteResult。"""
-        from agent_core.llm.provider import LLMChunk, LLMCompleteResult as LCR
+        from agent_core.llm.provider import LLMChunk
+        from agent_core.llm.provider import LLMCompleteResult as LCR
 
         full = ""
         usage: dict[str, int] = {}

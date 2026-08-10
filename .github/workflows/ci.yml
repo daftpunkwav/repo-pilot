@@ -23,6 +23,13 @@ jobs:
       - name: 同步依赖(锁定版本)
         # 根目录是 uv workspace;api 是 member,从根 sync 能解析 workspace 依赖
         run: uv sync --frozen
+      - name: Python lint(ruff)
+        run: uv run --project services/api ruff check services/
+      - name: Python 类型检查(mypy)
+        run: uv run --project services/api mypy services/api/backend
+      - name: Python 依赖审计
+        # 从 uv.lock 导出 requirements 后由 pip-audit 扫描(仅生产依赖)
+        run: uv export --frozen --no-dev | uvx pip-audit -r -
       - name: 跑单元测试
         # 测试在仓库根 tests/(含 pytest.ini + conftest.py),必须从仓库根运行。
         # PYTHONPATH 设为仓库根,使 `from tests.sse_util import ...` 这类
@@ -45,6 +52,8 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: 安装依赖
         run: cd apps/web && npm ci
+      - name: 前端依赖审计
+        run: cd apps/web && npm audit --audit-level=high
       - name: ESLint
         run: cd apps/web && npm run lint
       - name: Vitest 单元测试

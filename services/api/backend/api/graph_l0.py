@@ -4,13 +4,12 @@ L0 项目宇宙图 API —— 与 L1 代码索引域故障隔离。
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.api.deps import get_db
 from backend.core.responses import wrap_data
 from backend.schemas.common import DataResponse
-from backend.services.graph_service import build_graph, build_cross_edges
+from backend.services.graph_service import build_cross_edges, build_graph
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/graph", tags=["graph-l0"])
 

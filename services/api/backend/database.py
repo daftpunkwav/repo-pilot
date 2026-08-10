@@ -1,8 +1,10 @@
 """
 数据库引擎与会话管理 —— SQLAlchemy 2.0 async
 """
+from collections.abc import AsyncIterator
 from pathlib import Path
 
+from backend.config import get_settings
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -10,8 +12,6 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
-
-from backend.config import get_settings
 
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
@@ -35,11 +35,28 @@ def get_engine() -> AsyncEngine:
     if _engine is None:
         settings = get_settings()
         _ensure_data_dir(settings.database_url)
+        connect_args: dict = {}
+        url = _async_database_url(settings.database_url)
+        if url.startswith("sqlite"):
+            # 多 worker 并行写状态时降低 database is locked
+            connect_args["timeout"] = 30
         _engine = create_async_engine(
-            _async_database_url(settings.database_url),
+            url,
             echo=settings.debug,
             future=True,
+            connect_args=connect_args,
         )
+        if url.startswith("sqlite"):
+            from sqlalchemy import event
+
+            @event.listens_for(_engine.sync_engine, "connect")
+            def _sqlite_on_connect(dbapi_conn, _connection_record) -> None:  # type: ignore[no-untyped-def]
+                cursor = dbapi_conn.cursor()
+                cursor.execute("PRAGMA journal_mode=WAL")
+                cursor.execute("PRAGMA busy_timeout=30000")
+                cursor.execute("PRAGMA synchronous=NORMAL")
+                cursor.close()
+
     return _engine
 
 
@@ -63,7 +80,7 @@ class Base(DeclarativeBase):
     pass
 
 
-async def get_session() -> AsyncSession:
+async def get_session() -> AsyncIterator[AsyncSession]:
     """FastAPI Depends 用会话生成器"""
     factory = get_session_factory()
     async with factory() as session:
@@ -83,7 +100,6 @@ def _run_alembic_upgrade() -> None:
     """同步执行 alembic upgrade head（在线程中调用以免阻塞事件循环）。"""
     from alembic import command
     from alembic.config import Config
-
     from backend.config import REPO_ROOT
 
     cfg = Config(str(REPO_ROOT / "alembic.ini"))

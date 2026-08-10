@@ -17,9 +17,9 @@ import sys
 
 sys.path.insert(0, str(ROOT / "services" / "api"))
 
+import backend.models  # noqa: E402, F401
 from backend.config import get_settings  # noqa: E402
 from backend.database import Base  # noqa: E402
-import backend.models  # noqa: E402, F401
 
 config = context.config
 if config.config_file_name is not None:
@@ -39,7 +39,7 @@ def _async_url() -> str:
 def run_migrations_offline() -> None:
     # §4.3.3: 仅 SQLite 需要 batch mode；PG 默认 DDL 直接执行
     from sqlalchemy import make_url
-    is_sqlite = make_url(_async_url()).dialect.name == "sqlite"
+    is_sqlite = make_url(_async_url()).get_backend_name() == "sqlite"
     context.configure(
         url=_async_url(),
         target_metadata=target_metadata,

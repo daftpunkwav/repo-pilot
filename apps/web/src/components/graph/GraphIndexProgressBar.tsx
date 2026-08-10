@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getApi } from '@/api/client';
 import { classifyErrorKind } from '@/components/graph/l0EdgeTypes';
 
+type IndexMode = 'fast' | 'moderate' | 'full';
+
 type IndexRow = {
   project_id: string;
   status: string;
@@ -28,18 +30,70 @@ const STATUS_LABEL: Record<string, string> = {
   INDEX_FAILED: '索引失败',
 };
 
+const MODE_OPTIONS: { id: IndexMode; label: string }[] = [
+  { id: 'fast', label: '快速' },
+  { id: 'moderate', label: '标准' },
+  { id: 'full', label: '完整' },
+];
+
 function shortId(id: string): string {
   return id.length > 10 ? `${id.slice(0, 8)}…` : id;
+}
+
+function ModeMenu({
+  disabled,
+  onPick,
+  label = '重新索引',
+}: {
+  disabled?: boolean;
+  onPick: (mode: IndexMode) => void;
+  label?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="graph-index-modal__menu">
+      <button
+        type="button"
+        disabled={disabled}
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {label}
+      </button>
+      {open && (
+        <div className="graph-index-modal__menu-panel" role="menu">
+          {MODE_OPTIONS.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onPick(m.id);
+              }}
+            >
+              {m.label}
+              <span className="muted">{m.id}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function FailedRow({
   row,
   label,
   onRetry,
+  onDelete,
+  busy,
 }: {
   row: IndexRow;
   label: string;
-  onRetry: () => void;
+  onRetry: (mode: IndexMode) => void;
+  onDelete: () => void;
+  busy?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const kind = classifyErrorKind(row.error_kind, row.error);
@@ -70,8 +124,14 @@ function FailedRow({
         )}
       </div>
       <div className="graph-index-modal__actions">
-        <button type="button" onClick={onRetry}>
-          重试
+        <ModeMenu disabled={busy} label="重试" onPick={onRetry} />
+        <button
+          type="button"
+          className="is-danger"
+          disabled={busy}
+          onClick={onDelete}
+        >
+          删除
         </button>
       </div>
     </li>
@@ -114,14 +174,41 @@ export function GraphIndexProgressBar() {
   const labelOf = (row: IndexRow) =>
     nameById.get(row.project_id) || row.engine_project || shortId(row.project_id);
 
+  const invalidate = () => {
+    void qc.invalidateQueries({ queryKey: ['graph-index-statuses'] });
+    void qc.invalidateQueries({ queryKey: ['code-graph'] });
+    void qc.invalidateQueries({ queryKey: ['graph-index-status'] });
+  };
+
   const cancel = useMutation({
     mutationFn: (projectId: string) => getApi().cancelCodeGraphIndex(projectId),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['graph-index-statuses'] });
-    },
+    onSuccess: invalidate,
   });
 
-  const items = (q.data?.data?.items || []) as IndexRow[];
+  const del = useMutation({
+    mutationFn: (projectId: string) => getApi().deleteCodeGraphIndex(projectId),
+    onSuccess: invalidate,
+  });
+
+  const reindex = useMutation({
+    mutationFn: ({ projectId, mode }: { projectId: string; mode: IndexMode }) =>
+      getApi().triggerCodeGraphIndex(projectId, { mode }),
+    onSuccess: invalidate,
+  });
+
+  const busy = cancel.isPending || del.isPending || reindex.isPending;
+
+  const confirmDelete = (row: IndexRow, label: string) => {
+    const ok = window.confirm(
+      `删除「${label}」的索引？\n将清理本地克隆缓存与图谱数据库，不可恢复。`,
+    );
+    if (ok) del.mutate(row.project_id);
+  };
+
+  const items = useMemo(
+    () => (q.data?.data?.items || []) as IndexRow[],
+    [q.data?.data?.items],
+  );
   const stats = q.data?.data?.stats;
 
   const running = useMemo(() => items.filter((i) => ACTIVE.has(i.status)), [items]);
@@ -200,24 +287,26 @@ export function GraphIndexProgressBar() {
               </p>
             )}
             <ul className="graph-index-modal__list">
-              {list.map((row) =>
-                tab === 'failed' ? (
-                  <FailedRow
-                    key={row.project_id}
-                    row={row}
-                    label={labelOf(row)}
-                    onRetry={() => {
-                      void getApi()
-                        .triggerCodeGraphIndex(row.project_id, { mode: 'moderate' })
-                        .then(() =>
-                          qc.invalidateQueries({ queryKey: ['graph-index-statuses'] }),
-                        );
-                    }}
-                  />
-                ) : (
+              {list.map((row) => {
+                const label = labelOf(row);
+                if (tab === 'failed') {
+                  return (
+                    <FailedRow
+                      key={row.project_id}
+                      row={row}
+                      label={label}
+                      busy={busy}
+                      onRetry={(mode) =>
+                        reindex.mutate({ projectId: row.project_id, mode })
+                      }
+                      onDelete={() => confirmDelete(row, label)}
+                    />
+                  );
+                }
+                return (
                   <li key={row.project_id} className={`graph-index-modal__row is-${tab}`}>
                     <div className="graph-index-modal__row-main">
-                      <strong>{labelOf(row)}</strong>
+                      <strong>{label}</strong>
                       <span className="graph-index-modal__phase">
                         {STATUS_LABEL[row.status] || row.status}
                         {row.index_mode ? ` · ${row.index_mode}` : ''}
@@ -228,16 +317,35 @@ export function GraphIndexProgressBar() {
                       {tab === 'running' && (
                         <button
                           type="button"
-                          disabled={cancel.isPending}
+                          disabled={busy}
                           onClick={() => cancel.mutate(row.project_id)}
                         >
                           取消
                         </button>
                       )}
+                      {tab === 'ready' && (
+                        <>
+                          <ModeMenu
+                            disabled={busy}
+                            label="重新索引"
+                            onPick={(mode) =>
+                              reindex.mutate({ projectId: row.project_id, mode })
+                            }
+                          />
+                          <button
+                            type="button"
+                            className="is-danger"
+                            disabled={busy}
+                            onClick={() => confirmDelete(row, label)}
+                          >
+                            删除
+                          </button>
+                        </>
+                      )}
                     </div>
                   </li>
-                ),
-              )}
+                );
+              })}
             </ul>
           </div>
         </div>

@@ -5,11 +5,10 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+from backend.database import Base
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
-
-from backend.database import Base
 
 # 项目与标签多对多关联
 project_tags = Table(

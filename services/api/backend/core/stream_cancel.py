@@ -17,11 +17,10 @@ import secrets
 from datetime import datetime
 from uuid import UUID
 
+from backend.models.agent import AgentSessionCancelToken
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from backend.models.agent import AgentSessionCancelToken
 
 
 async def begin(db: AsyncSession, session_id: UUID) -> str:

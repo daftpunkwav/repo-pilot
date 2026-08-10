@@ -4,9 +4,8 @@
 import time
 from typing import Any, TypeVar
 
-from fastapi import HTTPException
-
 from backend.schemas.common import DataResponse, PaginatedData, PaginatedResponse
+from fastapi import HTTPException
 
 T = TypeVar("T")
 

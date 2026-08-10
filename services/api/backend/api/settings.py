@@ -1,7 +1,4 @@
 """本机设置 API —— 持久化到 AppState.settings_json"""
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.api.deps import get_db
 from backend.core.responses import wrap_data
 from backend.schemas.common import DataResponse
@@ -14,6 +11,8 @@ from backend.schemas.settings import (
     SettingsUpdate,
 )
 from backend.services.settings_service import get_settings, save_llm_api_key, update_settings
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 

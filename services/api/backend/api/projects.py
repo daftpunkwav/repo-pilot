@@ -4,10 +4,6 @@
 from urllib.parse import urlparse
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.api.deps import get_db
 from backend.core.responses import wrap_data, wrap_paginated
 from backend.models.project import Project
@@ -35,6 +31,9 @@ from backend.services.project_service import (
     project_stats,
     project_to_out,
 )
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 

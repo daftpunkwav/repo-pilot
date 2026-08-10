@@ -16,9 +16,8 @@ SQLite：建新表拷数据再 rename，避免 DROP COLUMN 损坏 UUID。
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision: str = "b2c3d4e5f6a7"
 down_revision: Union[str, Sequence[str], None] = "a1b2c3d4e5f6"

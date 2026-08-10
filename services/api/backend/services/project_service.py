@@ -3,9 +3,6 @@
 """
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.models.project import Project, project_tags
 from backend.schemas.project import (
     ImportRepoItem,
@@ -14,6 +11,8 @@ from backend.schemas.project import (
     ProjectOut,
     ProjectStats,
 )
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def project_to_out(project: Project, tag_ids: list[str] | None = None) -> ProjectOut:

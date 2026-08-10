@@ -64,7 +64,7 @@ export class GraphApi {
   ): Promise<ApiResponse<GraphIndexStatus>> {
     return this.ctx.apiRequest(`/graph/projects/${projectId}/index`, {
       method: 'POST',
-      body: JSON.stringify(body || { mode: 'moderate' }),
+      body: JSON.stringify(body || { mode: 'fast' }),
     });
   }
 
@@ -74,7 +74,7 @@ export class GraphApi {
   ): Promise<ApiResponse<GraphIndexStatus>> {
     return this.ctx.apiRequest(`/graph/projects/${projectId}/refresh`, {
       method: 'POST',
-      body: JSON.stringify(body || { mode: 'moderate' }),
+      body: JSON.stringify(body || { mode: 'fast' }),
     });
   }
 
@@ -119,7 +119,7 @@ export class GraphApi {
 
   async batchIndexCodeGraph(
     projectIds: string[],
-    mode: 'fast' | 'moderate' | 'full' = 'moderate',
+    mode: 'fast' | 'moderate' | 'full' = 'fast',
   ): Promise<ApiResponse<{ queued: string[]; failed: string[] }>> {
     return this.ctx.apiRequest('/graph/projects/index-batch', {
       method: 'POST',

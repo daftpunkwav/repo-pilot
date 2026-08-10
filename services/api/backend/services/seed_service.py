@@ -1,10 +1,9 @@
 """
 数据库种子数据
 """
+from backend.models.category import Category
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from backend.models.category import Category
 
 PRESET_CATEGORIES = [
     {"name": "前端", "icon": "🎨", "color": "#3b82f6"},

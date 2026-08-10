@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-
 THINK_START = "<<<THINK>>>"
 THINK_END = "<<<END_THINK>>>"
 

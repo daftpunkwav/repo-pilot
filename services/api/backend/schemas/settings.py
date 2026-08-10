@@ -1,9 +1,8 @@
 """Pydantic schemas —— 用户设置（对齐前端 Settings 子集）"""
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
-
 from backend.core.url_safety import validate_public_https_url
+from pydantic import BaseModel, Field, field_validator
 
 LlmApiFormat = Literal["openai", "anthropic", "google", "ollama", "custom"]
 

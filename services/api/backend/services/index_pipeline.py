@@ -1,75 +1,213 @@
-"""索引流水线：浅克隆 → 引擎 index_repository → 状态机（串行）。"""
+"""索引流水线：浅克隆 → 引擎 index_repository → 状态机（可并行）。"""
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 import shutil
-from datetime import datetime
+import stat
+import subprocess
+import time
+import uuid
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlparse
 from uuid import UUID
-
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.config import get_settings
 from backend.core import error_codes as EC
 from backend.core.exceptions import AppException, NotFoundError
 from backend.models.graph_index import GraphIndexStatus
 from backend.models.project import Project
-from backend.services.rp_graph_client import RpGraphClient, RpGraphError
 from backend.services.github_accounts import primary_token
+from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-_INDEX_LOCK = asyncio.Lock()
 _BACKGROUND_TASKS: set[asyncio.Task[Any]] = set()
-_INDEX_QUEUE: asyncio.Queue[tuple[UUID, str, str, str, bool]] | None = None
-_INDEX_WORKER: asyncio.Task[Any] | None = None
-# 用户取消请求：worker 在阶段边界检查
+# (project_id, owner, repo, mode, refresh, job_gen)
+_INDEX_QUEUE: asyncio.Queue[tuple[UUID, str, str, str, bool, int]] | None = None
+_INDEX_WORKERS: list[asyncio.Task[Any]] = []
+_PROJECT_LOCKS: dict[UUID, asyncio.Lock] = {}
+_PROJECT_LOCKS_GUARD = asyncio.Lock()
+# 用户取消：阶段边界检查；与 job_gen 叠加，防止迟到写回
 _CANCEL_REQUESTED: set[UUID] = set()
+# 每次 trigger/cancel/delete/timeout 递增；过期 job 不得写 READY
+_JOB_GEN: dict[UUID, int] = {}
+# 已入队尚未被 worker 取走
+_QUEUED_IDS: set[UUID] = set()
+# worker 正在执行
+_INFLIGHT: set[UUID] = set()
+
 _OWNER_REPO_RE = re.compile(
     r"github\.com[/:](?P<owner>[^/]+)/(?P<repo>[^/.]+?)(?:\.git)?/?$",
     re.I,
 )
 _TOKEN_IN_URL_RE = re.compile(r"(https?://)([^:@/]+):([^@/]+)@", re.I)
+_ACTIVE_STATUSES = frozenset({"QUEUED", "CLONING", "INDEXING"})
+
+
+def _bump_job_gen(project_id: UUID) -> int:
+    n = _JOB_GEN.get(project_id, 0) + 1
+    _JOB_GEN[project_id] = n
+    return n
+
+
+def _job_gen(project_id: UUID) -> int:
+    return _JOB_GEN.get(project_id, 0)
+
+
+def _job_alive(project_id: UUID, expected_gen: int) -> bool:
+    """本代任务是否仍有效（取消/删除/超时会 bump gen）。"""
+    return _job_gen(project_id) == expected_gen
+
+
+def _safe_remove_dir(path: Path) -> None:
+    """删除缓存目录。Windows 上文件锁导致删除失败时，改名到同级 .trash/。"""
+    if not path.exists():
+        return
+
+    def _onerror(func: Any, p: str, _exc_info: Any) -> None:
+        try:
+            os.chmod(p, stat.S_IWRITE)
+            func(p)
+        except Exception:
+            pass
+
+    for attempt in range(3):
+        try:
+            shutil.rmtree(path, onerror=_onerror)
+        except Exception:
+            pass
+        if not path.exists():
+            return
+        time.sleep(0.12 * (attempt + 1))
+
+    trash_root = path.parent / ".trash"
+    trash_root.mkdir(parents=True, exist_ok=True)
+    trash = trash_root / f"{path.name}-{uuid.uuid4().hex[:8]}"
+    try:
+        path.rename(trash)
+    except OSError as exc:
+        raise RuntimeError(
+            f"无法清理缓存目录 {path}（可能被占用）：{exc}。请关闭占用该目录的程序后重试。"
+        ) from exc
+
+
+def _cache_root() -> Path:
+    root = _allowed_root() / "repo-cache"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _is_under_dir(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except (ValueError, OSError):
+        return False
+
+
+def _resolve_cache_dest(
+    owner: str, repo: str, local_path: str | None, cache_root: Path
+) -> Path:
+    """仅允许复用 repo-cache 下的路径；否则回退到规范缓存目录。"""
+    canonical = cache_dir_for(owner, repo, "head")
+    if not local_path:
+        return canonical
+    candidate = Path(local_path)
+    if _is_under_dir(candidate, cache_root) and candidate.exists():
+        return candidate
+    return canonical
+
+
+async def _project_lock(project_id: UUID) -> asyncio.Lock:
+    async with _PROJECT_LOCKS_GUARD:
+        lock = _PROJECT_LOCKS.get(project_id)
+        if lock is None:
+            lock = asyncio.Lock()
+            _PROJECT_LOCKS[project_id] = lock
+        return lock
+
+
+def _stale_age_sec() -> float:
+    settings = get_settings()
+    return max(
+        3600.0,
+        float(settings.git_clone_timeout_sec)
+        + float(settings.graph_index_timeout_sec)
+        + 300.0,
+    )
 
 
 async def start_index_worker() -> None:
-    """在 lifespan 启动常驻 worker（不受请求 cancel scope 影响）。"""
-    global _INDEX_QUEUE, _INDEX_WORKER
-    if _INDEX_WORKER and not _INDEX_WORKER.done():
+    """在 lifespan 启动常驻 worker 池（不受请求 cancel scope 影响）。"""
+    global _INDEX_QUEUE, _INDEX_WORKERS
+    alive = [w for w in _INDEX_WORKERS if not w.done()]
+    if alive and _INDEX_QUEUE is not None:
+        _INDEX_WORKERS = alive
         return
-    _INDEX_QUEUE = asyncio.Queue()
 
-    async def _worker() -> None:
+    settings = get_settings()
+    n = int(settings.index_concurrency)
+    _INDEX_QUEUE = asyncio.Queue()
+    _INDEX_WORKERS = []
+
+    async def _worker(worker_id: int) -> None:
         assert _INDEX_QUEUE is not None
         while True:
-            project_id, owner, repo, mode, refresh = await _INDEX_QUEUE.get()
+            project_id, owner, repo, mode, refresh, job_gen = await _INDEX_QUEUE.get()
+            _QUEUED_IDS.discard(project_id)
+            t0 = time.perf_counter()
+            _INFLIGHT.add(project_id)
             try:
-                await _run_pipeline(project_id, owner, repo, mode=mode, refresh=refresh)
+                await _run_pipeline(
+                    project_id,
+                    owner,
+                    repo,
+                    mode=mode,
+                    refresh=refresh,
+                    job_gen=job_gen,
+                )
             except asyncio.CancelledError:
                 raise
             except Exception:
                 logger.exception("索引 worker 未捕获异常 project=%s", project_id)
             finally:
+                _INFLIGHT.discard(project_id)
+                logger.debug(
+                    "index worker=%s project=%s elapsed_ms=%s",
+                    worker_id,
+                    project_id,
+                    int((time.perf_counter() - t0) * 1000),
+                )
                 _INDEX_QUEUE.task_done()
 
-    _INDEX_WORKER = asyncio.create_task(_worker(), name="graph-index-worker")
+    for i in range(n):
+        _INDEX_WORKERS.append(
+            asyncio.create_task(_worker(i), name=f"graph-index-worker-{i}")
+        )
+    logger.info("索引 worker 池已启动 concurrency=%s", n)
 
 
 async def stop_index_worker() -> None:
-    global _INDEX_QUEUE, _INDEX_WORKER
-    if _INDEX_WORKER and not _INDEX_WORKER.done():
-        _INDEX_WORKER.cancel()
+    global _INDEX_QUEUE, _INDEX_WORKERS
+    for w in _INDEX_WORKERS:
+        if not w.done():
+            w.cancel()
+    for w in _INDEX_WORKERS:
         try:
-            await _INDEX_WORKER
+            await w
         except (asyncio.CancelledError, Exception):
             pass
-    _INDEX_WORKER = None
+    _INDEX_WORKERS = []
     _INDEX_QUEUE = None
+    _QUEUED_IDS.clear()
+    _INFLIGHT.clear()
 
 
 def classify_index_error(error: str | None) -> str:
@@ -142,14 +280,22 @@ def _spawn_pipeline(
     *,
     mode: str,
     refresh: bool,
+    job_gen: int,
 ) -> None:
     """投递到 lifespan worker 队列；worker 未就绪时退化为带强引用的 create_task。"""
     if _INDEX_QUEUE is not None:
-        _INDEX_QUEUE.put_nowait((project_id, owner, repo, mode, refresh))
+        _QUEUED_IDS.add(project_id)
+        _INDEX_QUEUE.put_nowait((project_id, owner, repo, mode, refresh, job_gen))
         return
 
     async def _runner() -> None:
-        await _run_pipeline(project_id, owner, repo, mode=mode, refresh=refresh)
+        _INFLIGHT.add(project_id)
+        try:
+            await _run_pipeline(
+                project_id, owner, repo, mode=mode, refresh=refresh, job_gen=job_gen
+            )
+        finally:
+            _INFLIGHT.discard(project_id)
 
     task = asyncio.create_task(_runner(), name=f"graph-index-{project_id}")
     _BACKGROUND_TASKS.add(task)
@@ -181,8 +327,7 @@ def _allowed_root() -> Path:
 
 
 def cache_dir_for(owner: str, repo: str, sha7: str = "head") -> Path:
-    root = _allowed_root() / "repo-cache"
-    root.mkdir(parents=True, exist_ok=True)
+    root = _cache_root()
     name = f"{owner}-{repo}-{sha7}"[:180]
     return root / name
 
@@ -196,10 +341,32 @@ async def get_or_create_status(
     row = result.scalar_one_or_none()
     if row:
         return row
-    row = GraphIndexStatus(project_id=project_id, status="NONE", index_mode="moderate")
+    row = GraphIndexStatus(project_id=project_id, status="NONE", index_mode="fast")
     db.add(row)
     await db.flush()
     return row
+
+
+def _row_is_stale(row: GraphIndexStatus, *, max_age_sec: float) -> bool:
+    """仅 CLONING/INDEXING 且不在 inflight 时可判僵尸（QUEUED 可能只是排队）。"""
+    if row.status not in ("CLONING", "INDEXING"):
+        return False
+    if row.project_id in _INFLIGHT:
+        return False
+    cutoff = datetime.utcnow() - timedelta(seconds=max_age_sec)
+    ts = row.updated_at or row.created_at
+    return bool(ts and ts < cutoff)
+
+
+async def _fail_stale_row(db: AsyncSession, row: GraphIndexStatus, max_age_sec: float) -> bool:
+    if not _row_is_stale(row, max_age_sec=max_age_sec):
+        return False
+    _bump_job_gen(row.project_id)
+    row.status = "INDEX_FAILED"
+    row.error = f"索引超时未完成（>{int(max_age_sec)}s），请用 fast 模式重试"
+    row.updated_at = datetime.utcnow()
+    await db.commit()
+    return True
 
 
 async def get_status_out(db: AsyncSession, project_id: UUID) -> dict:
@@ -207,7 +374,8 @@ async def get_status_out(db: AsyncSession, project_id: UUID) -> dict:
     if not project:
         raise NotFoundError("项目不存在", EC.PROJECT_NOT_FOUND)
     row = await get_or_create_status(db, project_id)
-    await db.commit()
+    await _fail_stale_row(db, row, _stale_age_sec())
+    await db.refresh(row)
     return _status_dict(row)
 
 
@@ -231,14 +399,18 @@ def _status_dict(row: GraphIndexStatus) -> dict:
 
 
 async def list_index_statuses(db: AsyncSession) -> list[dict]:
-    """全部项目索引状态（图谱页进度条）。"""
+    """全部项目索引状态（图谱页进度条）。顺带清理超长僵尸任务。"""
+    try:
+        await recover_stale_jobs(db, max_age_sec=_stale_age_sec())
+    except Exception:
+        logger.warning("清理僵尸索引状态失败", exc_info=True)
     result = await db.execute(select(GraphIndexStatus))
     rows = result.scalars().all()
     return [_status_dict(r) for r in rows]
 
 
-def _raise_if_cancelled(project_id: UUID) -> None:
-    if project_id in _CANCEL_REQUESTED:
+def _raise_if_cancelled(project_id: UUID, job_gen: int) -> None:
+    if not _job_alive(project_id, job_gen) or project_id in _CANCEL_REQUESTED:
         raise asyncio.CancelledError("用户取消索引")
 
 
@@ -248,24 +420,23 @@ async def cancel_index(db: AsyncSession, project_id: UUID) -> dict:
     if not project:
         raise NotFoundError("项目不存在", EC.PROJECT_NOT_FOUND)
     row = await get_or_create_status(db, project_id)
-    if row.status not in ("QUEUED", "CLONING", "INDEXING"):
+    if row.status not in _ACTIVE_STATUSES:
         return _status_dict(row)
 
+    # 作废队列中的旧 job_gen，防止出队后继续跑 / 迟到 READY
+    _bump_job_gen(project_id)
     _CANCEL_REQUESTED.add(project_id)
-    # 排队中：直接落库，worker 取到后会立刻退出
-    if row.status == "QUEUED":
-        row.status = "INDEX_FAILED"
-        row.error = "用户取消索引"
+    row.status = "INDEX_FAILED"
+    row.error = "用户取消索引"
+    row.updated_at = datetime.utcnow()
+    await db.commit()
+    if project_id not in _INFLIGHT and project_id not in _QUEUED_IDS:
         _CANCEL_REQUESTED.discard(project_id)
-        await db.commit()
-    else:
-        row.error = "正在取消…"
-        await db.commit()
     return _status_dict(row)
 
 
 async def recover_interrupted_jobs(db: AsyncSession) -> int:
-    """启动时将中断的 CLONING/INDEXING 标为失败，供用户重试。"""
+    """启动时将中断的 CLONING/INDEXING/QUEUED 标为失败，供用户重试。"""
     result = await db.execute(
         update(GraphIndexStatus)
         .where(GraphIndexStatus.status.in_(("QUEUED", "CLONING", "INDEXING")))
@@ -276,14 +447,51 @@ async def recover_interrupted_jobs(db: AsyncSession) -> int:
         )
     )
     await db.commit()
-    return result.rowcount or 0
+    return (result.rowcount or 0)  # type: ignore[attr-defined]
+
+
+async def recover_stale_jobs(
+    db: AsyncSession, *, max_age_sec: float = 3600.0
+) -> int:
+    """清理长时间无进度的 CLONING/INDEXING（不含 QUEUED，避免误杀排队任务）。"""
+    cutoff = datetime.utcnow() - timedelta(seconds=max_age_sec)
+    # 仍在执行的不算僵尸
+    inflight = list(_INFLIGHT)
+    stmt = (
+        update(GraphIndexStatus)
+        .where(
+            GraphIndexStatus.status.in_(("CLONING", "INDEXING")),
+            (
+                (GraphIndexStatus.updated_at.is_not(None)
+                 & (GraphIndexStatus.updated_at < cutoff))
+                | (
+                    GraphIndexStatus.updated_at.is_(None)
+                    & (GraphIndexStatus.created_at < cutoff)
+                )
+            ),
+        )
+        .values(
+            status="INDEX_FAILED",
+            error=f"索引超时未完成（>{int(max_age_sec)}s），请用 fast 模式重试",
+            updated_at=datetime.utcnow(),
+        )
+    )
+    if inflight:
+        stmt = stmt.where(GraphIndexStatus.project_id.notin_(inflight))
+    result = await db.execute(stmt)
+    await db.commit()
+    return (result.rowcount or 0)  # type: ignore[attr-defined]
+
+
+def _is_job_tracked(project_id: UUID) -> bool:
+    return project_id in _QUEUED_IDS or project_id in _INFLIGHT
 
 
 async def trigger_index(
     db: AsyncSession,
     project_id: UUID,
     *,
-    mode: str = "moderate",
+    mode: str = "fast",
     refresh: bool = False,
 ) -> dict:
     project = await db.get(Project, project_id)
@@ -291,7 +499,11 @@ async def trigger_index(
         raise NotFoundError("项目不存在", EC.PROJECT_NOT_FOUND)
 
     row = await get_or_create_status(db, project_id)
-    if row.status in ("QUEUED", "CLONING", "INDEXING"):
+    await _fail_stale_row(db, row, _stale_age_sec())
+    await db.refresh(row)
+
+    # 真正在队列/执行中才短路；孤儿 QUEUED/CLONING/INDEXING 允许重入队
+    if row.status in _ACTIVE_STATUSES and _is_job_tracked(project_id):
         return _status_dict(row)
 
     try:
@@ -299,35 +511,157 @@ async def trigger_index(
     except ValueError as exc:
         raise AppException(400, EC.PROJECT_URL_INVALID, str(exc)) from exc
 
+    job_gen = _bump_job_gen(project_id)
+    _CANCEL_REQUESTED.discard(project_id)
     row.status = "QUEUED"
     row.index_mode = mode
     row.error = None
     row.engine_project = engine_project_name(owner, repo)
+    row.updated_at = datetime.utcnow()
     await db.commit()
 
-    # 后台串行执行（必须脱离 HTTP 请求 cancel scope，否则会秒级 CancelledError）
-    _spawn_pipeline(project_id, owner, repo, mode=mode, refresh=refresh)
+    _spawn_pipeline(
+        project_id, owner, repo, mode=mode, refresh=refresh, job_gen=job_gen
+    )
     return _status_dict(row)
 
 
 async def delete_index(db: AsyncSession, project_id: UUID) -> dict:
+    """删除索引：作废进行中任务 + 清理本地 clone 缓存 + 删除引擎图谱 + 重置状态。"""
     project = await db.get(Project, project_id)
     if not project:
         raise NotFoundError("项目不存在", EC.PROJECT_NOT_FOUND)
     row = await get_or_create_status(db, project_id)
+
+    # 作废一切进行中的写回（含迟到 READY）
+    _bump_job_gen(project_id)
+    _CANCEL_REQUESTED.add(project_id)
+
+    owner = repo = ""
+    try:
+        owner, repo = parse_github_owner_repo(project.url)
+    except ValueError:
+        pass
+
+    cache_root = _cache_root()
+    candidates: list[Path] = []
     if row.local_path:
-        path = Path(row.local_path)
+        candidates.append(Path(row.local_path))
+    if owner and repo:
+        candidates.append(cache_dir_for(owner, repo, "head"))
+    seen: set[str] = set()
+    for path in candidates:
+        if not _is_under_dir(path, cache_root):
+            logger.warning("拒绝删除允许根外路径 path=%s", path)
+            continue
+        key = str(path.resolve()) if path.exists() else str(path)
+        if key in seen:
+            continue
+        seen.add(key)
         if path.exists() and path.is_dir():
-            shutil.rmtree(path, ignore_errors=True)
+            try:
+                await asyncio.to_thread(_safe_remove_dir, path)
+            except Exception:
+                logger.warning("删除仓库缓存失败 path=%s", path, exc_info=True)
+
+    engine_name = (row.engine_project or "").strip()
+    if not engine_name and owner and repo:
+        engine_name = engine_project_name(owner, repo)
+    if engine_name:
+        try:
+            await RpGraphClient().drop_project(engine_name)
+        except Exception:
+            logger.warning(
+                "删除引擎图谱失败 engine=%s", engine_name, exc_info=True
+            )
+
     row.status = "NONE"
     row.local_path = None
     row.head_sha = None
+    row.branch = None
+    row.engine_project = ""
     row.node_count = None
     row.edge_count = None
     row.indexed_at = None
     row.error = None
+    row.index_mode = "fast"
+    row.updated_at = datetime.utcnow()
     await db.commit()
+    # 写回防护靠 job_gen + status==NONE；cancel 仅用于 UI/阶段边界
+    if project_id not in _INFLIGHT:
+        _CANCEL_REQUESTED.discard(project_id)
     return _status_dict(row)
+
+
+async def _patch_status(
+    project_id: UUID,
+    *,
+    expected_gen: int,
+    status: str | None = None,
+    error: str | None = None,
+    clear_error: bool = False,
+    local_path: str | None = None,
+    head_sha: str | None = None,
+    branch: str | None = None,
+    engine_project: str | None = None,
+    node_count: int | None = None,
+    edge_count: int | None = None,
+    indexed_at: datetime | None = None,
+    index_mode: str | None = None,
+) -> str:
+    """短会话写状态；job_gen 过期或已删除(NONE)时拒绝进度/READY 写回。"""
+    from backend.database import get_session_factory
+
+    last: BaseException | None = None
+    for i in range(8):
+        try:
+            factory = get_session_factory()
+            async with factory() as db:
+                row = await get_or_create_status(db, project_id)
+                prev = row.status
+                if _job_gen(project_id) != expected_gen:
+                    return prev
+                # 删除后禁止任何进度写回
+                if row.status == "NONE" and status in (
+                    "CLONING",
+                    "INDEXING",
+                    "READY",
+                    "QUEUED",
+                ):
+                    return prev
+                if status is not None:
+                    row.status = status
+                if clear_error:
+                    row.error = None
+                elif error is not None:
+                    row.error = error
+                if local_path is not None:
+                    row.local_path = local_path
+                if head_sha is not None:
+                    row.head_sha = head_sha
+                if branch is not None:
+                    row.branch = branch
+                if engine_project is not None:
+                    row.engine_project = engine_project
+                if node_count is not None:
+                    row.node_count = node_count
+                if edge_count is not None:
+                    row.edge_count = edge_count
+                if indexed_at is not None:
+                    row.indexed_at = indexed_at
+                if index_mode is not None:
+                    row.index_mode = index_mode
+                row.updated_at = datetime.utcnow()
+                await db.commit()
+                return prev
+        except Exception as exc:
+            last = exc
+            msg = str(exc).lower()
+            if "locked" not in msg and "busy" not in msg:
+                raise
+            await asyncio.sleep(0.05 * (2**i))
+    assert last is not None
+    raise last
 
 
 async def _run_pipeline(
@@ -337,103 +671,199 @@ async def _run_pipeline(
     *,
     mode: str,
     refresh: bool,
+    job_gen: int,
 ) -> None:
     from backend.database import get_session_factory
 
-    async with _INDEX_LOCK:
-        factory = get_session_factory()
-        async with factory() as db:
-            row = await get_or_create_status(db, project_id)
-            project = await db.get(Project, project_id)
-            if not project:
-                _CANCEL_REQUESTED.discard(project_id)
+    # 队列中的过期/已取消任务直接丢弃
+    if _job_gen(project_id) != job_gen:
+        _CANCEL_REQUESTED.discard(project_id)
+        return
+
+    lock = await _project_lock(project_id)
+    async with lock:
+        phase = "QUEUED"
+        try:
+            if _job_gen(project_id) != job_gen:
                 return
-            try:
+            factory = get_session_factory()
+            async with factory() as db:
+                project = await db.get(Project, project_id)
+                if not project:
+                    return
+                project_url = project.url
+                row = await get_or_create_status(db, project_id)
+                # 必须以 QUEUED 启动；取消/删除后不应再跑
+                if row.status != "QUEUED" or _job_gen(project_id) != job_gen:
+                    return
                 if project_id in _CANCEL_REQUESTED:
                     row.status = "INDEX_FAILED"
                     row.error = "用户取消索引"
+                    row.updated_at = datetime.utcnow()
                     await db.commit()
                     return
-                await _clone_and_index(db, row, project, owner, repo, mode, refresh)
-            except BaseException as exc:
-                # 含 CancelledError（BaseException）：必须落库，否则 UI 卡在 CLONING 或空错误
-                logger.exception(
-                    "索引流水线失败 project=%s status=%s err=%s",
-                    project_id,
-                    row.status,
-                    _format_pipeline_error(exc),
+                local_path = row.local_path
+
+            await _clone_and_index(
+                project_id,
+                owner,
+                repo,
+                mode=mode,
+                refresh=refresh,
+                project_url=project_url,
+                local_path=local_path,
+                job_gen=job_gen,
+            )
+        except BaseException as exc:
+            try:
+                factory = get_session_factory()
+                async with factory() as db:
+                    row = await get_or_create_status(db, project_id)
+                    phase = row.status
+            except Exception:
+                pass
+
+            logger.exception(
+                "索引流水线失败 project=%s status=%s err=%s",
+                project_id,
+                phase,
+                _format_pipeline_error(exc),
+            )
+            try:
+                if _job_gen(project_id) != job_gen:
+                    return
+                user_cancel = project_id in _CANCEL_REQUESTED or (
+                    isinstance(exc, asyncio.CancelledError)
+                    and "用户取消" in str(exc)
                 )
-                try:
-                    user_cancel = project_id in _CANCEL_REQUESTED or (
-                        isinstance(exc, asyncio.CancelledError)
-                        and "用户取消" in str(exc)
+                if user_cancel:
+                    await _patch_status(
+                        project_id,
+                        expected_gen=job_gen,
+                        status="INDEX_FAILED",
+                        error="用户取消索引",
                     )
-                    if user_cancel:
-                        row.status = "INDEX_FAILED"
-                        row.error = "用户取消索引"
-                    else:
-                        row.status = (
-                            "CLONE_FAILED"
-                            if row.status in ("CLONING", "QUEUED")
-                            else "INDEX_FAILED"
-                        )
-                        row.error = _format_pipeline_error(exc)
-                    await db.commit()
-                except Exception:
-                    logger.exception("写入失败状态时二次异常 project=%s", project_id)
-                if isinstance(exc, (KeyboardInterrupt, SystemExit)):
-                    raise
-            finally:
-                _CANCEL_REQUESTED.discard(project_id)
+                else:
+                    fail_status = (
+                        "CLONE_FAILED"
+                        if phase in ("CLONING", "QUEUED")
+                        else "INDEX_FAILED"
+                    )
+                    await _patch_status(
+                        project_id,
+                        expected_gen=job_gen,
+                        status=fail_status,
+                        error=_format_pipeline_error(exc),
+                    )
+            except Exception:
+                logger.exception("写入失败状态时二次异常 project=%s", project_id)
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
+        finally:
+            # worker 收尾始终清本项目 cancel，避免删除/取消后残留
+            _CANCEL_REQUESTED.discard(project_id)
+
+
+def _is_usable_git_checkout(path: Path) -> bool:
+    """可复用的工作区：有 .git，且至少有一个非 .git 条目（避免半截 clone 空壳）。"""
+    if not path.is_dir() or not (path / ".git").exists():
+        return False
+    try:
+        for child in path.iterdir():
+            if child.name != ".git":
+                return True
+    except OSError:
+        return False
+    return False
 
 
 async def _clone_and_index(
-    db: AsyncSession,
-    row: GraphIndexStatus,
-    project: Project,
+    project_id: UUID,
     owner: str,
     repo: str,
+    *,
     mode: str,
     refresh: bool,
+    project_url: str,
+    local_path: str | None,
+    job_gen: int,
 ) -> None:
+    """clone + index：长耗时步骤在 DB 会话外执行，避免 SQLite 长时间锁。"""
     settings = get_settings()
-    # 配额粗检
-    cache_root = _allowed_root() / "repo-cache"
-    cache_root.mkdir(parents=True, exist_ok=True)
-    _enforce_quota(cache_root, settings.repo_cache_quota_gb)
+    cache_root = _cache_root()
+    await asyncio.to_thread(_enforce_quota, cache_root, settings.repo_cache_quota_gb)
 
-    row.status = "CLONING"
-    await db.commit()
-    _raise_if_cancelled(project.id)
+    await _patch_status(
+        project_id,
+        expected_gen=job_gen,
+        status="CLONING",
+        clear_error=True,
+        index_mode=mode,
+    )
+    _raise_if_cancelled(project_id, job_gen)
 
-    token = None
+    token: str | None = None
     try:
+        from backend.database import get_session_factory
         from backend.services.app_state_service import get_or_create_app_state
 
-        state = await get_or_create_app_state(db)
-        _, token = primary_token(state)
+        factory = get_session_factory()
+        async with factory() as db:
+            state = await get_or_create_app_state(db)
+            _, token = primary_token(state)
     except Exception:
         token = None
 
-    dest = Path(row.local_path) if row.local_path else cache_dir_for(owner, repo, "head")
-    if refresh and dest.exists():
-        await _git_pull(dest)
-    else:
-        if dest.exists():
-            shutil.rmtree(dest, ignore_errors=True)
-        dest = cache_dir_for(owner, repo, "head")
-        await _git_shallow_clone(project.url, dest, token=token)
+    dest = _resolve_cache_dest(owner, repo, local_path, cache_root)
 
+    t_clone0 = time.perf_counter()
+    reuse = False
+
+    if _is_usable_git_checkout(dest) and _is_under_dir(dest, cache_root):
+        reuse = True
+        if refresh:
+            await _git_pull(dest)
+    else:
+        if dest.exists() and _is_under_dir(dest, cache_root):
+            await asyncio.to_thread(_safe_remove_dir, dest)
+        dest = cache_dir_for(owner, repo, "head")
+        timeout = float(settings.git_clone_timeout_sec)
+        try:
+            await asyncio.wait_for(
+                _git_shallow_clone(project_url, dest, token=token),
+                timeout=timeout,
+            )
+        except asyncio.TimeoutError as exc:
+            await _patch_status(
+                project_id,
+                expected_gen=job_gen,
+                status="CLONE_FAILED",
+                error=(
+                    f"浅克隆超时（{timeout:.0f}s）：{owner}/{repo}。"
+                    "请检查网络后重试，或改用 fast 模式。"
+                ),
+            )
+            _bump_job_gen(project_id)
+            raise RuntimeError(
+                f"浅克隆超时（{timeout:.0f}s）：{owner}/{repo}。请检查网络后重试，或改用 fast 模式。"
+            ) from exc
+
+    clone_ms = int((time.perf_counter() - t_clone0) * 1000)
     sha = await _git_rev_parse(dest)
     branch = await _git_branch(dest)
-    row.local_path = str(dest.resolve())
-    row.head_sha = sha
-    row.branch = branch
-    row.engine_project = engine_project_name(owner, repo)
-    _raise_if_cancelled(project.id)
-    row.status = "INDEXING"
-    await db.commit()
-    _raise_if_cancelled(project.id)
+    eng = engine_project_name(owner, repo)
+    _raise_if_cancelled(project_id, job_gen)
+    await _patch_status(
+        project_id,
+        expected_gen=job_gen,
+        status="INDEXING",
+        local_path=str(dest.resolve()),
+        head_sha=sha,
+        branch=branch,
+        engine_project=eng,
+        clear_error=True,
+    )
+    _raise_if_cancelled(project_id, job_gen)
 
     client = RpGraphClient()
     if not await client.health():
@@ -442,13 +872,37 @@ async def _clone_and_index(
             code=EC.GRAPH_ENGINE_UNAVAILABLE,
         )
 
+    t_idx0 = time.perf_counter()
+    idx_timeout = float(settings.graph_index_timeout_sec)
+
+    def _should_abandon() -> bool:
+        return not _job_alive(project_id, job_gen)
+
     try:
-        await client.index_repository(
-            str(dest.resolve()),
-            mode=mode,
-            name=row.engine_project,
-            persistence=True,
+        result = await asyncio.wait_for(
+            client.index_repository(
+                str(dest.resolve()),
+                mode=mode,
+                name=eng,
+                persistence=True,
+                should_abandon=_should_abandon,
+            ),
+            timeout=idx_timeout,
         )
+    except asyncio.TimeoutError as exc:
+        # 先落库失败，再作废本代，阻止线程收尾写 READY；引擎 should_abandon 跳过 persist
+        msg = (
+            f"索引超时（{idx_timeout:.0f}s）：{owner}/{repo}。"
+            "请改用 fast 模式或缩小仓库。"
+        )
+        await _patch_status(
+            project_id,
+            expected_gen=job_gen,
+            status="INDEX_FAILED",
+            error=msg,
+        )
+        _bump_job_gen(project_id)
+        raise RpGraphError(msg, code=EC.GRAPH_INDEX_FAILED) from exc
     except RpGraphError:
         raise
     except Exception as exc:
@@ -456,34 +910,72 @@ async def _clone_and_index(
             f"索引失败：{exc}", code=EC.GRAPH_INDEX_FAILED
         ) from exc
 
-    # 取 schema 统计
+    if isinstance(result, dict) and result.get("abandoned"):
+        raise asyncio.CancelledError("用户取消索引")
+
+    index_ms = int((time.perf_counter() - t_idx0) * 1000)
+    _raise_if_cancelled(project_id, job_gen)
+
+    node_count: int | None = None
+    edge_count: int | None = None
     try:
-        schema = await client.get_graph_schema(row.engine_project)
+        schema = await client.get_graph_schema(eng)
         node_count = sum(
             int(x.get("count") or 0) for x in (schema.get("node_labels") or [])
         )
         edge_count = sum(
             int(x.get("count") or 0) for x in (schema.get("edge_types") or [])
         )
-        row.node_count = node_count
-        row.edge_count = edge_count
     except Exception:
         logger.warning("无法读取 graph schema 统计", exc_info=True)
 
-    row.status = "READY"
-    row.indexed_at = datetime.utcnow()
-    row.error = None
-    await db.commit()
+    await _patch_status(
+        project_id,
+        expected_gen=job_gen,
+        status="READY",
+        clear_error=True,
+        node_count=node_count,
+        edge_count=edge_count,
+        indexed_at=datetime.utcnow(),
+        local_path=str(dest.resolve()),
+        head_sha=sha,
+        branch=branch,
+        engine_project=eng,
+    )
+    logger.info(
+        "索引完成 %s/%s mode=%s reuse=%s clone_ms=%s index_ms=%s nodes=%s",
+        owner,
+        repo,
+        mode,
+        reuse,
+        clone_ms,
+        index_ms,
+        node_count,
+    )
+
+
+def _dir_size_bytes(root: Path, *, max_files: int = 200_000) -> int:
+    """估算目录体积；限制扫描文件数，避免每次索引扫爆整个 cache。"""
+    total = 0
+    n = 0
+    try:
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d != ".trash"]
+            for name in filenames:
+                try:
+                    total += (Path(dirpath) / name).stat().st_size
+                except OSError:
+                    pass
+                n += 1
+                if n >= max_files:
+                    return total
+    except OSError:
+        pass
+    return total
 
 
 def _enforce_quota(cache_root: Path, quota_gb: float) -> None:
-    total = 0
-    for p in cache_root.rglob("*"):
-        if p.is_file():
-            try:
-                total += p.stat().st_size
-            except OSError:
-                pass
+    total = _dir_size_bytes(cache_root)
     if total > quota_gb * 1024**3:
         raise AppException(
             400,
@@ -498,32 +990,65 @@ async def _git_shallow_clone(
     dest.parent.mkdir(parents=True, exist_ok=True)
     clone_url = url
     if token and "github.com" in url:
-        # https://x-access-token:TOKEN@github.com/owner/repo.git
         parsed = urlparse(url)
         path = parsed.path or ""
         clone_url = f"https://x-access-token:{token}@github.com{path}"
         if not clone_url.endswith(".git"):
             clone_url += ".git"
 
-    # Windows：长路径 + symlink 回退（无管理员/开发者模式时）
-    await _run_cmd(["git", "config", "--global", "core.longpaths", "true"], check=False)
-    await _run_cmd(["git", "config", "--global", "core.symlinks", "false"], check=False)
-
-    # 优先 partial clone；旧 git / 代理不支持 filter 时回退
+    # 使用 -c 局部配置，避免污染用户全局 git config
+    staging = dest.parent / f".clone-{uuid.uuid4().hex[:10]}"
+    base = ["git", "-c", "core.longpaths=true", "-c", "core.symlinks=false"]
     attempts = [
-        ["git", "clone", "--depth", "1", "--filter=blob:none", "--single-branch", clone_url, str(dest)],
-        ["git", "clone", "--depth", "1", "--single-branch", clone_url, str(dest)],
+        [
+            *base,
+            "clone",
+            "--depth",
+            "1",
+            "--filter=blob:none",
+            "--single-branch",
+            clone_url,
+            str(staging),
+        ],
+        [
+            *base,
+            "clone",
+            "--depth",
+            "1",
+            "--single-branch",
+            clone_url,
+            str(staging),
+        ],
     ]
     last_err: Optional[BaseException] = None
-    for cmd in attempts:
-        if dest.exists():
-            shutil.rmtree(dest, ignore_errors=True)
-        try:
-            await _run_cmd(cmd)
-            return
-        except Exception as exc:
-            last_err = exc
-            logger.warning("浅克隆失败，尝试回退策略: %s", _format_pipeline_error(exc))
+    try:
+        for attempt_i, cmd in enumerate(attempts):
+            if staging.exists():
+                await asyncio.to_thread(_safe_remove_dir, staging)
+            try:
+                await _run_cmd(cmd)
+                if dest.exists():
+                    await asyncio.to_thread(_safe_remove_dir, dest)
+                staging.rename(dest)
+                return
+            except Exception as exc:
+                last_err = exc
+                logger.warning(
+                    "浅克隆失败 attempt=%s: %s",
+                    attempt_i,
+                    _format_pipeline_error(exc),
+                )
+                if staging.exists():
+                    try:
+                        await asyncio.to_thread(_safe_remove_dir, staging)
+                    except Exception:
+                        logger.warning("清理失败的 staging 目录失败: %s", staging)
+    finally:
+        if staging.exists():
+            try:
+                await asyncio.to_thread(_safe_remove_dir, staging)
+            except Exception:
+                logger.warning("最终清理 staging 失败: %s", staging)
     assert last_err is not None
     raise last_err
 
@@ -550,6 +1075,25 @@ async def _git_branch(dest: Path) -> str:
     return (out or "HEAD").strip() or "HEAD"
 
 
+def _run_cmd_sync(cmd: list[str], *, check: bool = True) -> str:
+    """线程内同步执行 git（部分 Windows 事件循环不支持 asyncio subprocess）。"""
+    try:
+        completed = subprocess.run(cmd, capture_output=True, check=False)
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "未找到 git 可执行文件，请确认已安装 Git 且 API 进程 PATH 可用"
+        ) from exc
+    if check and completed.returncode != 0:
+        err = (completed.stderr or completed.stdout or b"").decode(
+            "utf-8", errors="replace"
+        )[:1500]
+        safe_cmd = [_TOKEN_IN_URL_RE.sub(r"\1***:***@", c) for c in cmd]
+        raise RuntimeError(
+            f"命令失败 ({completed.returncode}): {' '.join(safe_cmd)}\n{err}"
+        )
+    return (completed.stdout or b"").decode("utf-8", errors="replace")
+
+
 async def _run_cmd(cmd: list[str], *, check: bool = True) -> str:
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -561,10 +1105,25 @@ async def _run_cmd(cmd: list[str], *, check: bool = True) -> str:
         raise RuntimeError(
             "未找到 git 可执行文件，请确认已安装 Git 且 API 进程 PATH 可用"
         ) from exc
-    stdout, stderr = await proc.communicate()
+    except NotImplementedError:
+        return await asyncio.to_thread(_run_cmd_sync, cmd, check=check)
+
+    try:
+        stdout, stderr = await proc.communicate()
+    except asyncio.CancelledError:
+        # wait_for 超时/取消时杀掉 git，避免孤儿进程与半截目录
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
+        try:
+            await proc.wait()
+        except Exception:
+            pass
+        raise
+
     if check and proc.returncode != 0:
         err = (stderr or stdout or b"").decode("utf-8", errors="replace")[:1500]
-        # 日志/错误里脱敏 token，不打印完整带凭证 URL
         safe_cmd = [_TOKEN_IN_URL_RE.sub(r"\1***:***@", c) for c in cmd]
         raise RuntimeError(f"命令失败 ({proc.returncode}): {' '.join(safe_cmd)}\n{err}")
     return (stdout or b"").decode("utf-8", errors="replace")

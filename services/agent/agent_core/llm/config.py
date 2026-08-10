@@ -6,9 +6,8 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from backend.models.app_state import AppState
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
