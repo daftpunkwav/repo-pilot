@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import type { CodeGraphData, CodeGraphNode } from './types';
 import { useCodeGraphStore } from '@/stores/codeGraphStore';
 import type { L1LayoutMode } from './l1Layout';
@@ -10,6 +10,8 @@ interface Props {
   onSelectPath: (path: string, nodeIds: Set<number>) => void;
   layoutMode: L1LayoutMode;
   onLayoutModeChange: (m: L1LayoutMode) => void;
+  /** 索引进度 / 就绪状态（并入左栏，对标 L0 GraphIndexProgressBar） */
+  statusSlot?: ReactNode;
 }
 
 interface DirNode {
@@ -18,6 +20,35 @@ interface DirNode {
   children: Map<string, DirNode>;
   nodeIds: Set<number>;
   directNodes: CodeGraphNode[];
+}
+
+const LAYOUTS: { id: L1LayoutMode; label: string }[] = [
+  { id: 'force', label: '力导向' },
+  { id: 'tree', label: '树状' },
+  { id: 'radial', label: '径向' },
+];
+
+/** 交互控件：点这些不触发收起 */
+const INTERACTIVE_SELECTOR = [
+  'button',
+  'a',
+  'input',
+  'select',
+  'textarea',
+  'label',
+  '[role="button"]',
+  '[role="group"]',
+  '.code-graph-search',
+  '.code-graph-layout-switch',
+  '.code-graph-filter-list',
+  '.code-graph-tree',
+  '.code-graph-dirs',
+  '.code-graph-statusbar',
+  '.check',
+].join(', ');
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && Boolean(target.closest(INTERACTIVE_SELECTOR));
 }
 
 /** 对齐 CBM Sidebar.buildFileTree */
@@ -94,14 +125,12 @@ function TreeItem({
   onSelect: (path: string, ids: Set<number>) => void;
   selectedPath: string | null;
 }) {
-  /* 默认展开前两级，便于进入次级目录（对齐 CBM 可点击展开） */
   const [expanded, setExpanded] = useState(depth < 2);
   const isSelected = selectedPath === dir.fullPath;
   const sorted = useMemo(
     () => [...dir.children.values()].sort((a, b) => a.name.localeCompare(b.name)),
     [dir.children],
   );
-  /* 按文件路径聚合符号，点击文件高亮该文件全部节点 */
   const fileGroups = useMemo(() => {
     const m = new Map<string, CodeGraphNode[]>();
     for (const n of dir.directNodes) {
@@ -123,9 +152,7 @@ function TreeItem({
           onSelect(dir.fullPath, dir.nodeIds);
         }}
       >
-        <span className="code-graph-tree__caret" aria-hidden>
-          {dir.children.size > 0 || fileGroups.length > 0 ? (expanded ? '▾' : '▸') : '·'}
-        </span>
+        <span className="code-graph-tree__caret">{expanded ? '▾' : '▸'}</span>
         <span className="code-graph-tree__name">{dir.name}</span>
         <span className="count">{dir.nodeIds.size}</span>
       </button>
@@ -140,41 +167,22 @@ function TreeItem({
               selectedPath={selectedPath}
             />
           ))}
-          {fileGroups.map(([fp, symbols]) => {
+          {fileGroups.map(([fp, nodes]) => {
+            const ids = new Set(nodes.map((n) => n.id));
             const fileName = fp.split('/').pop() || fp;
-            const ids = new Set(symbols.map((s) => s.id));
-            const fileSelected = selectedPath === fp;
+            const isFileOn = selectedPath === fp;
             return (
-              <div key={fp}>
-                <button
-                  type="button"
-                  className={`code-graph-tree__file${fileSelected ? ' is-on' : ''}`}
-                  style={{ paddingLeft: `${(depth + 1) * 14 + 8}px` }}
-                  onClick={() => onSelect(fp, ids)}
-                  title={fp}
-                >
-                  <span className="dot" style={{ background: symbols[0]?.color }} />
-                  <span className="code-graph-tree__name mono">{fileName}</span>
-                  <span className="count">{symbols.length}</span>
-                </button>
-                {fileSelected &&
-                  symbols
-                    .slice()
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((gn) => (
-                      <button
-                        key={gn.id}
-                        type="button"
-                        className="code-graph-tree__symbol"
-                        style={{ paddingLeft: `${(depth + 2) * 14 + 8}px` }}
-                        onClick={() => onSelect(fp, new Set([gn.id]))}
-                      >
-                        <span className="dot" style={{ background: gn.color }} />
-                        <span className="code-graph-tree__name mono">{gn.name}</span>
-                        <span className="lbl">{gn.kind || gn.label}</span>
-                      </button>
-                    ))}
-              </div>
+              <button
+                key={fp}
+                type="button"
+                className={`code-graph-tree__file${isFileOn ? ' is-on' : ''}`}
+                style={{ paddingLeft: `${(depth + 1) * 14 + 8}px` }}
+                onClick={() => onSelect(fp, ids)}
+              >
+                <span className="dot" style={{ background: nodes[0]?.color }} />
+                <span className="code-graph-tree__name mono">{fileName}</span>
+                <span className="count">{nodes.length}</span>
+              </button>
             );
           })}
         </>
@@ -183,18 +191,14 @@ function TreeItem({
   );
 }
 
-const LAYOUTS: { id: L1LayoutMode; label: string }[] = [
-  { id: 'force', label: '力导向' },
-  { id: 'tree', label: '树状' },
-  { id: 'radial', label: '径向' },
-];
-
+/** L1 左侧浮动过滤栏 · 对标 L0 GraphControls（空白点击收起） */
 export function CodeGraphSidebar({
   data,
   selectedPath,
   onSelectPath,
   layoutMode,
   onLayoutModeChange,
+  statusSlot,
 }: Props) {
   const {
     showLabels,
@@ -211,10 +215,13 @@ export function CodeGraphSidebar({
     nodeTypeFilter,
     searchQuery,
     setSearchQuery,
+    leftPanelCollapsed,
+    setLeftPanelCollapsed,
   } = useCodeGraphStore();
 
-  const [collapsed, setCollapsed] = useState(false);
   const [dirSearch, setDirSearch] = useState('');
+  const [kindsOpen, setKindsOpen] = useState(true);
+  const [deadOpen, setDeadOpen] = useState(false);
 
   const kindCounts = useMemo(() => {
     const m = new Map<string, number>();
@@ -251,23 +258,37 @@ export function CodeGraphSidebar({
       .slice(0, 50);
   }, [data, dirSearch]);
 
+  const handlePanelClick = (e: MouseEvent<HTMLElement>) => {
+    if (leftPanelCollapsed) return;
+    if (isInteractiveTarget(e.target)) return;
+    setLeftPanelCollapsed(true);
+  };
+
   return (
-    <aside className={`code-graph-sidebar glass-card glass-card--overview-inner${collapsed ? ' is-collapsed' : ''}`}>
-      <div className="code-graph-sidebar__chrome">
-        <span>{collapsed ? '滤' : '过滤'}</span>
+    <aside
+      className={`code-graph-sidebar glass-card glass-card--overview-outer${
+        leftPanelCollapsed ? ' is-collapsed' : ''
+      }`}
+      title={leftPanelCollapsed ? undefined : '点击空白处收起'}
+      onClick={handlePanelClick}
+    >
+      {leftPanelCollapsed ? (
         <button
           type="button"
           className="code-graph-sidebar__toggle"
-          title={collapsed ? '展开侧栏' : '折叠侧栏'}
-          onClick={() => setCollapsed((v) => !v)}
+          title="展开信息栏"
+          aria-label="展开信息栏"
+          aria-expanded={false}
+          onClick={() => setLeftPanelCollapsed(false)}
         >
-          {collapsed ? '⟩' : '⟨'}
+          ⟩
         </button>
-      </div>
-      {!collapsed && (
+      ) : (
         <>
-          <section>
-            <h3>布局</h3>
+          {statusSlot}
+
+          <div className="code-graph-sidebar__row">
+            <span className="code-graph-sidebar__label">布局</span>
             <div className="code-graph-layout-switch" role="group" aria-label="L1 布局">
               {LAYOUTS.map((l) => (
                 <button
@@ -280,88 +301,114 @@ export function CodeGraphSidebar({
                 </button>
               ))}
             </div>
-            <p className="code-graph-layout-hint">
-              力导向=服务球 · 树状/径向=架构层平面
-            </p>
-          </section>
+          </div>
 
           <label className="code-graph-search">
-            <span>搜索</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3" />
+            </svg>
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="符号 / 路径"
+              placeholder="搜索符号 / 路径"
             />
           </label>
 
-          <section>
-            <h3>节点类型</h3>
-            <ul className="code-graph-filter-list">
-              {kindCounts.map(([kind, count]) => {
-                const on = !nodeTypeFilter || nodeTypeFilter.has(kind);
-                return (
-                  <li key={kind}>
-                    <button
-                      type="button"
-                      className={on ? 'is-on' : ''}
-                      onClick={() => toggleNodeType(kind)}
-                    >
-                      <span className="dot" style={{ background: colorForLabel(kind) }} />
-                      {kind}
-                      <span className="count">{count}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
+          <div className="code-graph-sidebar__row">
+            <button
+              type="button"
+              className="code-graph-sidebar__section-toggle"
+              aria-expanded={kindsOpen}
+              onClick={() => setKindsOpen((v) => !v)}
+            >
+              <span className="code-graph-sidebar__label">节点类型</span>
+              <span className="code-graph-sidebar__caret" aria-hidden>
+                {kindsOpen ? '▾' : '▸'}
+              </span>
+            </button>
+            {kindsOpen && (
+              <ul className="code-graph-filter-list">
+                {kindCounts.map(([kind, count]) => {
+                  const on = !nodeTypeFilter || nodeTypeFilter.has(kind);
+                  return (
+                    <li key={kind}>
+                      <button
+                        type="button"
+                        className={on ? 'is-on' : ''}
+                        onClick={() => toggleNodeType(kind)}
+                      >
+                        <span className="dot" style={{ background: colorForLabel(kind) }} />
+                        {kind}
+                        <span className="count">{count}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
 
-          <section>
-            <h3>死代码 · {deadCount}</h3>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={colorByStatus}
-                onChange={(e) => setColorByStatus(e.target.checked)}
-              />
-              按状态着色
-            </label>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={showOnlyDead}
-                onChange={(e) => setShowOnlyDead(e.target.checked)}
-              />
-              仅显示死代码
-            </label>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={hideEntryPoints}
-                onChange={(e) => setHideEntryPoints(e.target.checked)}
-              />
-              隐藏入口点
-            </label>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={hideTests}
-                onChange={(e) => setHideTests(e.target.checked)}
-              />
-              隐藏测试
-            </label>
-            <label className="check">
-              <input
-                type="checkbox"
-                checked={showLabels}
-                onChange={(e) => setShowLabels(e.target.checked)}
-              />
-              显示标签
-            </label>
-          </section>
+          <div className="code-graph-sidebar__row">
+            <button
+              type="button"
+              className="code-graph-sidebar__section-toggle"
+              aria-expanded={deadOpen}
+              onClick={() => setDeadOpen((v) => !v)}
+            >
+              <span className="code-graph-sidebar__label">死代码 · {deadCount}</span>
+              <span className="code-graph-sidebar__caret" aria-hidden>
+                {deadOpen ? '▾' : '▸'}
+              </span>
+            </button>
+            {deadOpen && (
+              <div className="code-graph-sidebar__checks">
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={colorByStatus}
+                    onChange={(e) => setColorByStatus(e.target.checked)}
+                  />
+                  按状态着色
+                </label>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={showOnlyDead}
+                    onChange={(e) => setShowOnlyDead(e.target.checked)}
+                  />
+                  仅显示死代码
+                </label>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={hideEntryPoints}
+                    onChange={(e) => setHideEntryPoints(e.target.checked)}
+                  />
+                  隐藏入口点
+                </label>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={hideTests}
+                    onChange={(e) => setHideTests(e.target.checked)}
+                  />
+                  隐藏测试
+                </label>
+                <label className="check">
+                  <input
+                    type="checkbox"
+                    checked={showLabels}
+                    onChange={(e) => setShowLabels(e.target.checked)}
+                  />
+                  显示标签
+                </label>
+              </div>
+            )}
+          </div>
 
           <section className="code-graph-dirs">
-            <h3>目录</h3>
+            <span className="code-graph-sidebar__label">目录</span>
             <input
               className="code-graph-dir-search"
               value={dirSearch}

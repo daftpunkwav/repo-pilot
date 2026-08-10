@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { CodeGraphNode, CodeGraphEdge } from './types';
 import { colorForLabel } from './colors';
 
@@ -15,8 +15,6 @@ interface Props {
   projectId: string;
   onClose: () => void;
   onNavigate: (node: CodeGraphNode) => void;
-  collapsed?: boolean;
-  onCollapsedChange?: (v: boolean) => void;
 }
 
 /** 边类型展示名（对齐 CBM：calls / defines / similar to …） */
@@ -55,7 +53,6 @@ function formatEdgeType(raw: string): string {
   return raw.replace(/_/g, ' ').toLowerCase();
 }
 
-/** 语义分组标题：导入/依赖/定义/调用 */
 function semanticTitle(type: string, dir: 'in' | 'out'): string | null {
   const t = type.toUpperCase();
   if (t.includes('IMPORT')) return dir === 'out' ? '它导入了' : '谁导入了它';
@@ -69,20 +66,14 @@ function semanticTitle(type: string, dir: 'in' | 'out'): string | null {
   return null;
 }
 
-/** 右侧详情 —— 对齐 CBM：按边类型分组；可收起 */
+/** 右侧详情 —— 浮动玻璃层，对标 L0 node-detail */
 export function NodeDetailPanel({
   node,
   allNodes,
   allEdges,
   onClose,
   onNavigate,
-  collapsed = false,
-  onCollapsedChange,
 }: Props) {
-  const [localCollapsed, setLocalCollapsed] = useState(false);
-  const isCollapsed = onCollapsedChange ? collapsed : localCollapsed;
-  const setCollapsed = onCollapsedChange ?? setLocalCollapsed;
-
   const connections = useMemo(() => {
     if (!node) return [] as Connection[];
     const nodeMap = new Map(allNodes.map((n) => [n.id, n]));
@@ -112,10 +103,26 @@ export function NodeDetailPanel({
     return conns;
   }, [node, allNodes, allEdges]);
 
-  if (!node) return null;
+  const outbound = useMemo(
+    () => connections.filter((c) => c.direction === 'outbound'),
+    [connections],
+  );
+  const inbound = useMemo(
+    () => connections.filter((c) => c.direction === 'inbound'),
+    [connections],
+  );
 
-  const outbound = connections.filter((c) => c.direction === 'outbound');
-  const inbound = connections.filter((c) => c.direction === 'inbound');
+  const definedKinds = useMemo(() => {
+    const defs = outbound.filter((c) => /DEFINE|CONTAIN/i.test(c.edgeType));
+    const byKind = new Map<string, number>();
+    for (const d of defs) {
+      const k = d.node.kind || d.node.label || 'Unknown';
+      byKind.set(k, (byKind.get(k) || 0) + 1);
+    }
+    return [...byKind.entries()];
+  }, [outbound]);
+
+  if (!node) return null;
 
   const groupByType = (conns: Connection[]) => {
     const g = new Map<string, Connection[]>();
@@ -125,24 +132,10 @@ export function NodeDetailPanel({
     return [...g.entries()].sort((a, b) => b[1].length - a[1].length);
   };
 
-  const definedKinds = useMemo(() => {
-    const defs = outbound.filter((c) =>
-      /DEFINE|CONTAIN/i.test(c.edgeType),
-    );
-    const byKind = new Map<string, number>();
-    for (const d of defs) {
-      const k = d.node.kind || d.node.label || 'Unknown';
-      byKind.set(k, (byKind.get(k) || 0) + 1);
-    }
-    return [...byKind.entries()];
-  }, [outbound]);
-
   return (
-    <aside
-      className={`code-graph-detail glass-card glass-card--overview-inner${isCollapsed ? ' is-collapsed' : ''}`}
-    >
+    <aside className="code-graph-detail glass-card glass-card--overview-outer">
       <header>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div className="code-graph-detail__title-row">
             <span
               className="code-graph-detail__dot"
@@ -152,24 +145,12 @@ export function NodeDetailPanel({
           </div>
           <span className="kind">{node.kind || node.label}</span>
         </div>
-        <div className="code-graph-detail__head-actions">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => setCollapsed(!isCollapsed)}
-            aria-label={isCollapsed ? '展开' : '收起'}
-            title={isCollapsed ? '展开' : '收起'}
-          >
-            {isCollapsed ? '▾' : '▴'}
-          </button>
-          <button type="button" className="btn btn-ghost" onClick={onClose} aria-label="关闭">
-            ×
-          </button>
-        </div>
+        <button type="button" className="code-graph-detail__close" onClick={onClose} aria-label="关闭">
+          ×
+        </button>
       </header>
 
-      {!isCollapsed && (
-        <>
+      <div className="code-graph-detail__body">
           {node.file_path && (
             <p className="code-graph-detail__path mono">
               {node.file_path}
@@ -275,8 +256,7 @@ export function NodeDetailPanel({
           {connections.length === 0 && (
             <p className="code-graph-detail__empty">当前加载的子图中无入/出边</p>
           )}
-        </>
-      )}
+      </div>
     </aside>
   );
 }

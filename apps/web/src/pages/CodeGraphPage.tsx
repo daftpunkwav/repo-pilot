@@ -1,11 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { GraphScene, computeCameraTarget } from '@/components/graph-viz';
 import type { CameraTarget, CodeGraphNode } from '@/components/graph-viz';
 import { CodeGraphSidebar } from '@/components/code-graph/CodeGraphSidebar';
 import { NodeDetailPanel } from '@/components/code-graph/NodeDetailPanel';
 import { IndexStatusBar } from '@/components/code-graph/IndexStatusBar';
+import { GraphGuidePanel } from '@/components/graph/GraphGuidePanel';
 import { applyL1Layout, type L1LayoutMode } from '@/components/code-graph/l1Layout';
 import {
   useCodeGraph,
@@ -53,7 +54,6 @@ export function CodeGraphPage() {
   const [highlightedIds, setHighlightedIds] = useState<Set<number> | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [layoutMode, setLayoutMode] = useState<L1LayoutMode>('force');
-  const [detailCollapsed, setDetailCollapsed] = useState(false);
 
   const render = graphQ.data?.render;
   const filtered = useMemo(() => {
@@ -101,7 +101,6 @@ export function CodeGraphPage() {
 
   useEffect(() => {
     if (!filtered?.nodes.length) return;
-    /* 初次 / 切布局：总览；有选中时不强制 fit-all（避免「一选中就缩」） */
     if (selectedNode || selectedPath) return;
     const ids = new Set(filtered.nodes.map((n) => n.id));
     setCameraTarget(computeCameraTarget(filtered.nodes, ids));
@@ -116,10 +115,8 @@ export function CodeGraphPage() {
     }
     setSelectedPath(path);
     setHighlightedIds(nodeIds);
-    setDetailCollapsed(false);
     if (filtered) {
       setCameraTarget(computeCameraTarget(filtered.nodes, nodeIds));
-      /* 目录/文件选中：选一个代表节点打开右侧信息栏 */
       const candidates = filtered.nodes.filter((n) => nodeIds.has(n.id));
       const prefer =
         candidates.find((n) => (n.kind || n.label) === 'File') ||
@@ -131,7 +128,6 @@ export function CodeGraphPage() {
 
   const onNodeClick = (node: CodeGraphNode) => {
     selectNode(node);
-    setDetailCollapsed(false);
     if (!filtered) return;
     const neigh = new Set<number>([node.id]);
     for (const e of filtered.edges) {
@@ -139,98 +135,88 @@ export function CodeGraphPage() {
       if (e.target === node.id) neigh.add(e.source);
     }
     setHighlightedIds(neigh);
-    /* 聚焦选中节点本身，邻居仅高亮不扩大视野 */
     setCameraTarget(computeCameraTarget(filtered.nodes, new Set([node.id])));
   };
 
   const projectName = projectQ.data?.data?.name || id;
+  const statusSlot = (
+    <IndexStatusBar
+      status={status}
+      loading={statusQ.isLoading || trigger.isPending || refresh.isPending}
+      onIndex={(mode) => trigger.mutate(mode)}
+      onRefresh={(mode) => refresh.mutate(mode)}
+      nodeBudget={nodeBudget}
+      onBudgetChange={setNodeBudget}
+      totalNodes={filtered?.total_nodes ?? status?.node_count ?? undefined}
+      shownNodes={filtered?.nodes.length}
+      shownEdges={filtered?.edges.length}
+    />
+  );
 
   return (
     <div className="code-graph-page">
-      <header className="code-graph-breadcrumb glass-card glass-card--overview-inner">
-        <Link to="/graph">图谱</Link>
-        <span aria-hidden>/</span>
-        <span>{projectName}</span>
-        <span className="code-graph-breadcrumb__hint">代码知识图谱</span>
-      </header>
-
-      <IndexStatusBar
-        status={status}
-        loading={statusQ.isLoading || trigger.isPending || refresh.isPending}
-        onIndex={(mode) => trigger.mutate(mode)}
-        onRefresh={(mode) => refresh.mutate(mode)}
-        nodeBudget={nodeBudget}
-        onBudgetChange={setNodeBudget}
-        totalNodes={filtered?.total_nodes ?? status?.node_count ?? undefined}
-        shownNodes={filtered?.nodes.length}
-        shownEdges={filtered?.edges.length}
-      />
-
-      <div
-        className={`code-graph-layout${selectedNode ? ' has-detail' : ' no-detail'}`}
-      >
+      <div className="code-graph-stage">
         <CodeGraphSidebar
           data={filtered}
           selectedPath={selectedPath}
           onSelectPath={onSelectPath}
           layoutMode={layoutMode}
           onLayoutModeChange={setLayoutMode}
+          statusSlot={statusSlot}
         />
 
-        <main className="code-graph-stage">
-          {!ready && (
-            <div className="code-graph-empty glass-card glass-card--overview-inner">
-              <h2>尚未构建代码图谱</h2>
-              <p>
-                {status?.status === 'CLONE_FAILED' || status?.status === 'INDEX_FAILED'
-                  ? status.error || '克隆或索引失败，请重试'
-                  : status && ['QUEUED', 'CLONING', 'INDEXING'].includes(status.status)
-                    ? `正在处理：${status.status}`
-                    : '请先浅克隆 GitHub 仓库并构建代码图谱（自研引擎，无需第三方进程）。'}
-              </p>
-              {(!status ||
-                ['NONE', 'CLONE_FAILED', 'INDEX_FAILED', 'STALE'].includes(status.status)) && (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => trigger.mutate('moderate')}
-                  disabled={trigger.isPending}
-                >
-                  开始索引
-                </button>
-              )}
-            </div>
-          )}
+        {!ready && (
+          <div className="code-graph-empty glass-card glass-card--overview-inner">
+            <h2>尚未构建代码图谱</h2>
+            <p>
+              {status?.status === 'CLONE_FAILED' || status?.status === 'INDEX_FAILED'
+                ? status.error || '克隆或索引失败，请重试'
+                : status && ['QUEUED', 'CLONING', 'INDEXING'].includes(status.status)
+                  ? `正在处理：${status.status}`
+                  : '请先浅克隆 GitHub 仓库并构建代码图谱（自研引擎，无需第三方进程）。'}
+            </p>
+            {(!status ||
+              ['NONE', 'CLONE_FAILED', 'INDEX_FAILED', 'STALE'].includes(status.status)) && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => trigger.mutate('moderate')}
+                disabled={trigger.isPending}
+              >
+                开始索引
+              </button>
+            )}
+          </div>
+        )}
 
-          {ready && graphQ.isLoading && <LoadingSpinner />}
-          {ready && graphQ.isError && (
-            <div className="code-graph-empty glass-card glass-card--overview-inner">
-              <h2>加载代码图谱失败</h2>
-              <p>{(graphQ.error as Error)?.message || '无法获取布局数据'}</p>
-            </div>
-          )}
-          {ready && filtered && (
-            <GraphScene
-              data={filtered}
-              highlightedIds={highlightedIds}
-              cameraTarget={cameraTarget}
-              showLabels={showLabels}
-              enableBloom
-              display={{
-                ...DEFAULT_DISPLAY_SETTINGS,
-                edgeBrightness: 0.55,
-                nodeGlow: 0.85,
-                bloom: 0.22,
-              }}
-              onNodeClick={onNodeClick}
-              onBackgroundClick={() => {
-                selectNode(null);
-                setHighlightedIds(null);
-                setSelectedPath(null);
-              }}
-            />
-          )}
-        </main>
+        {ready && graphQ.isLoading && <LoadingSpinner />}
+        {ready && graphQ.isError && (
+          <div className="code-graph-empty glass-card glass-card--overview-inner">
+            <h2>加载代码图谱失败</h2>
+            <p>{(graphQ.error as Error)?.message || '无法获取布局数据'}</p>
+          </div>
+        )}
+        {ready && filtered && (
+          <GraphScene
+            data={filtered}
+            highlightedIds={highlightedIds}
+            cameraTarget={cameraTarget}
+            showLabels={showLabels}
+            enableBloom
+            display={{
+              ...DEFAULT_DISPLAY_SETTINGS,
+              edgeBrightness: 0.55,
+              nodeGlow: 0.85,
+              bloom: 0.22,
+            }}
+            onNodeClick={onNodeClick}
+            onBackgroundClick={() => {
+              selectNode(null);
+              setHighlightedIds(null);
+              setSelectedPath(null);
+            }}
+          />
+        )}
 
         {selectedNode && (
           <NodeDetailPanel
@@ -240,11 +226,22 @@ export function CodeGraphPage() {
             projectId={id!}
             onClose={() => selectNode(null)}
             onNavigate={onNodeClick}
-            collapsed={detailCollapsed}
-            onCollapsedChange={setDetailCollapsed}
           />
         )}
+
+        <div className="code-graph-footer glass-card glass-card--overview-inner">
+          <span className="stat-row">
+            <span className="stat-dot" />
+            <span className="stat-mono">
+              {filtered
+                ? `${filtered.nodes.length} 节点 / ${filtered.edges.length} 连线`
+                : projectName}
+            </span>
+          </span>
+        </div>
       </div>
+
+      <GraphGuidePanel selectedNodeId={id ?? null} />
     </div>
   );
 }

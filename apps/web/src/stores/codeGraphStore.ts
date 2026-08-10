@@ -13,6 +13,8 @@ interface CodeGraphState {
   selectedNode: CodeGraphNode | null;
   searchQuery: string;
   viewMode: 'structure' | 'cluster' | 'trace';
+  /** 左侧过滤栏是否收起 */
+  leftPanelCollapsed: boolean;
   setNodeTypeFilter: (v: Set<string> | null) => void;
   toggleNodeType: (kind: string) => void;
   setEdgeTypeFilter: (v: Set<string> | null) => void;
@@ -25,6 +27,7 @@ interface CodeGraphState {
   selectNode: (n: CodeGraphNode | null) => void;
   setSearchQuery: (q: string) => void;
   setViewMode: (m: CodeGraphState['viewMode']) => void;
+  setLeftPanelCollapsed: (collapsed: boolean) => void;
 }
 
 export const useCodeGraphStore = create<CodeGraphState>((set, get) => ({
@@ -39,6 +42,7 @@ export const useCodeGraphStore = create<CodeGraphState>((set, get) => ({
   selectedNode: null,
   searchQuery: '',
   viewMode: 'structure',
+  leftPanelCollapsed: false,
   setNodeTypeFilter: (v) => set({ nodeTypeFilter: v }),
   toggleNodeType: (kind) => {
     const cur = get().nodeTypeFilter;
@@ -61,4 +65,5 @@ export const useCodeGraphStore = create<CodeGraphState>((set, get) => ({
   selectNode: (n) => set({ selectedNode: n }),
   setSearchQuery: (q) => set({ searchQuery: q }),
   setViewMode: (m) => set({ viewMode: m }),
+  setLeftPanelCollapsed: (collapsed) => set({ leftPanelCollapsed: collapsed }),
 }));
