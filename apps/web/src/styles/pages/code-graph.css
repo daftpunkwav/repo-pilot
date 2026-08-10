@@ -227,22 +227,46 @@
   min-height: 0;
   border-radius: var(--radius-md, 12px);
   overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, var(--bg-50) 0%, var(--bg-100) 70%, var(--bg-200) 100%);
+}
+
+[data-theme='dark'] .code-graph-stage {
   background: #06090f;
 }
 
 .code-graph-tooltip {
-  background: rgba(12, 16, 24, 0.94);
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--bg-300);
   border-radius: 10px;
   padding: 0.4rem 0.55rem;
   font-size: 0.68rem;
   max-width: 220px;
   min-width: 120px;
-  color: rgba(245, 247, 250, 0.96);
+  color: var(--text-800);
   white-space: normal;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-md, 0 8px 20px rgba(0, 0, 0, 0.12));
   line-height: 1.35;
+}
+
+/* 屏幕空间悬停层：尺寸固定，仅随距离在区间内缩放 */
+.code-graph-canvas {
+  position: relative;
+}
+.code-graph-tooltip-layer {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 40;
+}
+.code-graph-tooltip--screen {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: min(228px, 38vw);
+  transform-origin: top left;
+  will-change: transform, left, top;
 }
 .code-graph-tooltip__row { display: flex; align-items: center; gap: 0.3rem; }
 .code-graph-tooltip__dot { width: 0.4rem; height: 0.4rem; border-radius: 50%; flex-shrink: 0; }
@@ -253,9 +277,9 @@
   white-space: nowrap;
   max-width: 140px;
 }
-.code-graph-tooltip__kind { color: rgba(170, 178, 192, 0.95); flex-shrink: 0; font-size: 0.62rem; }
+.code-graph-tooltip__kind { color: var(--text-500); flex-shrink: 0; font-size: 0.62rem; }
 .code-graph-tooltip__path {
-  color: rgba(170, 178, 192, 0.95);
+  color: var(--text-500);
   font-family: var(--font-mono, monospace);
   margin: 0.2rem 0 0;
   overflow: hidden;
@@ -265,13 +289,30 @@
 }
 .code-graph-tooltip__meta {
   margin: 0.15rem 0 0;
-  color: rgba(190, 198, 210, 0.95);
+  color: var(--text-500);
   font-size: 0.62rem;
 }
 .code-graph-tooltip__hint {
-  color: rgba(140, 150, 165, 0.95);
+  color: var(--text-400);
   margin: 0.2rem 0 0;
   font-size: 0.58rem;
+}
+
+[data-theme='dark'] .code-graph-tooltip {
+  background: rgba(12, 16, 24, 0.94);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: rgba(245, 247, 250, 0.96);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+[data-theme='dark'] .code-graph-tooltip__kind,
+[data-theme='dark'] .code-graph-tooltip__path {
+  color: rgba(170, 178, 192, 0.95);
+}
+[data-theme='dark'] .code-graph-tooltip__meta {
+  color: rgba(190, 198, 210, 0.95);
+}
+[data-theme='dark'] .code-graph-tooltip__hint {
+  color: rgba(140, 150, 165, 0.95);
 }
 
 .code-graph-empty {

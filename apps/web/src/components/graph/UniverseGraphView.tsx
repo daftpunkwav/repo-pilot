@@ -95,8 +95,6 @@ export function UniverseGraphView({
         cameraTarget={cameraTarget}
         showLabels
         enableBloom
-        forceDarkBackground
-        idleRotateMs={8_000}
         display={UNIVERSE_DISPLAY}
         onNodeClick={handleClick}
         onBackgroundClick={() => {

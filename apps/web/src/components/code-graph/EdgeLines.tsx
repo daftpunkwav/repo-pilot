@@ -12,6 +12,7 @@ interface EdgeLinesProps {
   /* User edge-brightness multiplier (see DisplaySettings). Layered on top of
    * the automatic density scale. */
   brightness?: number;
+  isDark?: boolean;
   /* When set, edge.target is looked up in this array instead of `nodes`.
    * Used for cross-galaxy edges where source lives in the primary graph
    * and target lives in a linked project's offset-adjusted nodes. */
@@ -66,6 +67,7 @@ export function EdgeLines({
   highlightedIds,
   opacity = 1.0,
   brightness = 1.0,
+  isDark = true,
   targetNodes,
 }: EdgeLinesProps) {
   const geometry = useMemo(() => {
@@ -104,10 +106,10 @@ export function EdgeLines({
       const sameCluster =
         getClusterKey(s.file_path) === getClusterKey(t.file_path);
 
-      /* ???? CBM ??????????????????? */
-      let intensity = sameCluster ? 0.14 : 0.035;
+      /* 浅色底用 NormalBlending + 更高不透明度；深色底保持加法混合 */
+      let intensity = sameCluster ? (isDark ? 0.14 : 0.52) : isDark ? 0.035 : 0.26;
       if (hasHighlight) {
-        intensity = sHL && tHL ? 0.28 : 0.02 * densityScale;
+        intensity = sHL && tHL ? (isDark ? 0.28 : 0.68) : (isDark ? 0.02 : 0.14) * densityScale;
       } else {
         intensity *= densityScale;
       }
@@ -125,6 +127,7 @@ export function EdgeLines({
       const edgeColor = new THREE.Color(
         EDGE_TYPE_COLORS[typeKey] ?? DEFAULT_EDGE_COLOR,
       );
+      if (!isDark) edgeColor.multiplyScalar(0.78);
       colors[off] = edgeColor.r * intensity;
       colors[off + 1] = edgeColor.g * intensity;
       colors[off + 2] = edgeColor.b * intensity;
@@ -144,15 +147,15 @@ export function EdgeLines({
       new THREE.BufferAttribute(colors.slice(0, validCount * 6), 3),
     );
     return geo;
-  }, [nodes, edges, highlightedIds, targetNodes, brightness]);
+  }, [nodes, edges, highlightedIds, targetNodes, brightness, isDark]);
 
   return (
     <lineSegments geometry={geometry}>
       <lineBasicMaterial
         vertexColors
         transparent
-        opacity={opacity}
-        blending={THREE.AdditiveBlending}
+        opacity={isDark ? opacity : Math.min(1, opacity * 0.92)}
+        blending={isDark ? THREE.AdditiveBlending : THREE.NormalBlending}
         depthWrite={false}
         toneMapped={false}
       />

@@ -14,6 +14,7 @@ interface NodeCloudProps {
   /* Multiplier on the per-node glow boost. 1 = full boost (sparse graphs),
    * 0 = flat colors (dense graphs). Adaptive default � user setting. */
   boost?: number;
+  isDark?: boolean;
 }
 
 /* Above this count instanced spheres stop paying off (vertex + matrix cost)
@@ -28,25 +29,32 @@ function sphereDetail(count: number): [number, number, number] {
   return [1, 10, 7];
 }
 
+function ensureLightContrast(tempColor: THREE.Color, isDark: boolean): void {
+  if (isDark) return;
+  const lum = 0.2126 * tempColor.r + 0.7152 * tempColor.g + 0.0722 * tempColor.b;
+  if (lum > 0.58) tempColor.multiplyScalar(0.68);
+  else if (lum < 0.22) tempColor.multiplyScalar(1.06);
+}
+
 function nodeColor(
   node: GraphNode,
   highlightedIds: Set<number> | null,
   opacity: number,
   boost: number,
   tempColor: THREE.Color,
+  isDark: boolean,
 ): [number, number, number] {
   const hasHighlight = highlightedIds && highlightedIds.size > 0;
   tempColor.set(node.color);
+  ensureLightContrast(tempColor, isDark);
   if (hasHighlight && !highlightedIds.has(node.id)) {
-    tempColor.multiplyScalar(0.15);
+    tempColor.multiplyScalar(isDark ? 0.15 : 0.32);
   } else {
-    /* Boost above 1.0 so bloom picks up the excess as glow corona. Blue hubs
-     * glow most, red leaves modestly, white/yellow least (see nodeGlowBoost).
-     * The boost amount also fades toward 1.0 (flat color) as density rises so
-     * dense graphs stay legible instead of blooming into a white blob. */
     const fullBoost = nodeGlowBoost(tempColor.r, tempColor.g, tempColor.b);
-    const applied = 1 + (fullBoost - 1) * boost;
+    const glowMix = isDark ? boost : boost * 0.4;
+    const applied = 1 + (fullBoost - 1) * glowMix;
     tempColor.multiplyScalar(applied);
+    if (!isDark) tempColor.multiplyScalar(0.92);
   }
   return [tempColor.r * opacity, tempColor.g * opacity, tempColor.b * opacity];
 }
@@ -82,6 +90,7 @@ function NodePoints({
   onClick,
   opacity,
   boost,
+  isDark,
 }: Required<NodeCloudProps>) {
   const { raycaster } = useThree();
 
@@ -103,13 +112,13 @@ function NodePoints({
       positions[i * 3] = n.x;
       positions[i * 3 + 1] = n.y;
       positions[i * 3 + 2] = n.z;
-      const [r, g, b] = nodeColor(n, highlightedIds, opacity, boost, tempColor);
+      const [r, g, b] = nodeColor(n, highlightedIds, opacity, boost, tempColor, isDark);
       colors[i * 3] = r;
       colors[i * 3 + 1] = g;
       colors[i * 3 + 2] = b;
     }
     return { positions, colors };
-  }, [nodes, highlightedIds, opacity, boost]);
+  }, [nodes, highlightedIds, opacity, boost, isDark]);
 
   return (
     <points
@@ -155,6 +164,7 @@ function NodeSpheres({
   onClick,
   opacity,
   boost,
+  isDark,
 }: Required<NodeCloudProps>) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const tempObj = useMemo(() => new THREE.Object3D(), []);
@@ -171,13 +181,14 @@ function NodeSpheres({
         opacity,
         boost,
         tempColor,
+        isDark,
       );
       arr[i * 3] = r;
       arr[i * 3 + 1] = g;
       arr[i * 3 + 2] = b;
     }
     return arr;
-  }, [nodes, highlightedIds, tempColor, opacity, boost]);
+  }, [nodes, highlightedIds, tempColor, opacity, boost, isDark]);
 
   /* Node positions are static (the layout is server-computed), so instance
    * matrices only change with the node set or the highlight �?never rebuild
@@ -238,6 +249,7 @@ export function NodeCloud({
   onClick,
   opacity = 1.0,
   boost = 1.0,
+  isDark = true,
 }: NodeCloudProps) {
   if (nodes.length > POINT_MODE_THRESHOLD) {
     return (
@@ -248,6 +260,7 @@ export function NodeCloud({
         onClick={onClick}
         opacity={opacity}
         boost={boost}
+        isDark={isDark}
       />
     );
   }
@@ -259,6 +272,7 @@ export function NodeCloud({
       onClick={onClick}
       opacity={opacity}
       boost={boost}
+      isDark={isDark}
     />
   );
 }

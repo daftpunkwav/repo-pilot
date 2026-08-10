@@ -216,7 +216,6 @@ export function CodeGraphPage() {
               cameraTarget={cameraTarget}
               showLabels={showLabels}
               enableBloom
-              forceDarkBackground
               display={{
                 ...DEFAULT_DISPLAY_SETTINGS,
                 edgeBrightness: 0.55,

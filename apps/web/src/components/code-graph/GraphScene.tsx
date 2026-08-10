@@ -7,8 +7,14 @@ import * as THREE from 'three';
 import { NodeCloud } from './NodeCloud';
 import { EdgeLines } from './EdgeLines';
 import { NodeLabels } from './NodeLabels';
-import { NodeTooltip } from './NodeTooltip';
+import { NodeTooltipContent, NodeTooltipTracker } from './NodeTooltip';
 import type { CodeGraphData, CodeGraphNode } from './types';
+import { useIsDarkTheme } from '@/hooks/useTheme';
+import {
+  BASE_AUTO_ROTATE_SPEED,
+  computeAutoRotateSpeed,
+  IDLE_ROTATE_MS,
+} from './graphAutoRotate';
 import {
   DEFAULT_DISPLAY_SETTINGS,
   bloomIntensityScale,
@@ -60,15 +66,14 @@ function CameraAnimator({
   return null;
 }
 
-const IDLE_TIMEOUT_MS = 60_000;
-
 function IdleAutoRotate({
   controlsRef,
-  idleMs = IDLE_TIMEOUT_MS,
+  idleMs = IDLE_ROTATE_MS,
 }: {
   controlsRef: React.RefObject<OrbitControlsImpl | null>;
   idleMs?: number;
 }) {
+  const { camera } = useThree();
   const lastInteraction = useRef(Date.now());
   const resetTimer = useCallback(() => {
     lastInteraction.current = Date.now();
@@ -87,9 +92,16 @@ function IdleAutoRotate({
   }, [resetTimer]);
 
   useFrame(() => {
-    if (!controlsRef.current) return;
-    controlsRef.current.autoRotate =
-      Date.now() - lastInteraction.current > idleMs;
+    const controls = controlsRef.current;
+    if (!controls) return;
+
+    const idle = Date.now() - lastInteraction.current > idleMs;
+    controls.autoRotate = idle;
+
+    if (idle) {
+      const dist = camera.position.distanceTo(controls.target);
+      controls.autoRotateSpeed = computeAutoRotateSpeed(dist);
+    }
   });
 
   return null;
@@ -107,8 +119,6 @@ interface GraphSceneProps {
   cameraTarget: CameraTarget | null;
   showLabels: boolean;
   enableBloom: boolean;
-  /** L0 宇宙图强制深空背景（与应用浅色壳可并存） */
-  forceDarkBackground?: boolean;
   /** 空闲多久后自动旋转（毫秒） */
   idleRotateMs?: number;
   display?: DisplaySettings;
@@ -122,21 +132,24 @@ export function GraphScene({
   cameraTarget,
   showLabels,
   enableBloom,
-  forceDarkBackground = false,
-  idleRotateMs = IDLE_TIMEOUT_MS,
+  idleRotateMs = IDLE_ROTATE_MS,
   display = DEFAULT_DISPLAY_SETTINGS,
   onNodeClick,
   onBackgroundClick,
 }: GraphSceneProps) {
   const [hovered, setHovered] = useState<CodeGraphNode | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const isDark = useIsDarkTheme();
 
   const bg = useMemo(() => {
-    if (forceDarkBackground || enableBloom) return '#06090f';
-    return readCssColor('--bg-base', '#f4f6fa');
-  }, [enableBloom, forceDarkBackground]);
+    if (isDark) return '#06090f';
+    return readCssColor('--bg-100', '#f7f7fa');
+  }, [isDark]);
 
-  const nodeBoost = nodeBoostScale(data.nodes.length) * display.nodeGlow;
+  const useBloom = enableBloom && isDark;
+  const nodeBoost =
+    nodeBoostScale(data.nodes.length) * display.nodeGlow * (isDark ? 1 : 0.55);
   const bloomIntensity =
     BASE_BLOOM_INTENSITY * bloomIntensityScale(data.nodes.length) * display.bloom;
 
@@ -162,6 +175,17 @@ export function GraphScene({
 
   return (
     <div className="code-graph-canvas" style={{ width: '100%', height: '100%' }}>
+      <div className="code-graph-tooltip-layer" aria-hidden={!hovered}>
+        {hovered && (
+          <div
+            ref={tooltipRef}
+            className="code-graph-tooltip code-graph-tooltip--screen"
+            style={{ visibility: 'hidden' }}
+          >
+            <NodeTooltipContent node={hovered} />
+          </div>
+        )}
+      </div>
       <Canvas
         camera={{ position: [0, 0, 800], fov: 50, near: 0.1, far: 100000 }}
         style={{ background: bg }}
@@ -174,19 +198,20 @@ export function GraphScene({
         onPointerMissed={onBackgroundClick}
       >
         <color attach="background" args={[bg]} />
-        <ambientLight intensity={enableBloom ? 0.5 : 0.85} />
-        <pointLight position={[500, 500, 500]} intensity={enableBloom ? 0.6 : 0.35} />
+        <ambientLight intensity={useBloom ? 0.5 : isDark ? 0.85 : 0.95} />
+        <pointLight position={[500, 500, 500]} intensity={useBloom ? 0.6 : isDark ? 0.35 : 0.28} />
         <pointLight
           position={[-300, -200, -300]}
-          intensity={enableBloom ? 0.4 : 0.2}
-          color={enableBloom ? '#6040ff' : '#94a3b8'}
+          intensity={useBloom ? 0.4 : isDark ? 0.2 : 0.12}
+          color={useBloom ? '#6040ff' : isDark ? '#94a3b8' : '#cbd5e1'}
         />
 
         <EdgeLines
           nodes={nodes as never}
           edges={edges as never}
           highlightedIds={highlightedIds}
-          brightness={display.edgeBrightness}
+          brightness={display.edgeBrightness * (isDark ? 1 : 1.35)}
+          isDark={isDark}
         />
         <NodeCloud
           nodes={nodes as never}
@@ -194,17 +219,20 @@ export function GraphScene({
           onHover={setHovered as never}
           onClick={onNodeClick as never}
           boost={nodeBoost}
+          isDark={isDark}
         />
         {showLabels && (
           <NodeLabels nodes={nodes as never} highlightedIds={highlightedIds} />
         )}
 
-        {hovered && <NodeTooltip node={hovered as never} />}
+        {hovered && (
+          <NodeTooltipTracker node={hovered as never} tooltipRef={tooltipRef} />
+        )}
 
         <CameraAnimator target={cameraTarget} controlsRef={controlsRef} />
         <IdleAutoRotate controlsRef={controlsRef} idleMs={idleRotateMs} />
 
-        {enableBloom && (
+        {useBloom && (
           <EffectComposer multisampling={GRAPH_COMPOSER_MULTISAMPLING}>
             <Bloom
               luminanceThreshold={nodes.length > 1200 ? 0.48 : 0.22}
@@ -222,9 +250,10 @@ export function GraphScene({
           dampingFactor={0.08}
           rotateSpeed={0.5}
           zoomSpeed={1.5}
+          zoomToCursor
           minDistance={10}
           maxDistance={50000}
-          autoRotateSpeed={0.55}
+          autoRotateSpeed={BASE_AUTO_ROTATE_SPEED}
         />
       </Canvas>
     </div>

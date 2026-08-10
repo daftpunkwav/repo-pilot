@@ -843,41 +843,46 @@
   height: 100%;
 }
 
-/* L0 宇宙图画布：深空底，对齐 CBM */
+/* L0 宇宙图画布：浅色默认，深色主题保留深空底 */
 .graph-stage--universe {
-  background:
-    radial-gradient(ellipse at 50% 42%, #121826 0%, #06090f 58%, #03050a 100%);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-.graph-stage--universe .graph-toolbar,
-.graph-stage--universe .graph-statusbar,
-.graph-stage--universe .node-detail {
-  color: rgba(255, 255, 255, 0.88);
+  background: radial-gradient(circle at 50% 45%, var(--bg-50) 0%, var(--bg-100) 70%, var(--bg-200) 100%);
+  border-color: var(--bg-300);
 }
 .graph-stage--universe {
   --graph-panel-w: min(224px, calc(100% - 24px));
 }
-.graph-stage--universe .graph-search,
-.graph-stage--universe .graph-threshold,
-.graph-stage--universe .view-switch,
-.graph-stage--universe .layout-switch {
+.graph-stage--list {
+  background: var(--bg-100);
+  overflow: hidden;
+}
+
+[data-theme='dark'] .graph-stage--universe {
+  background:
+    radial-gradient(ellipse at 50% 42%, #121826 0%, #06090f 58%, #03050a 100%);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme='dark'] .graph-stage--universe .graph-toolbar,
+[data-theme='dark'] .graph-stage--universe .graph-statusbar,
+[data-theme='dark'] .graph-stage--universe .node-detail {
+  color: rgba(255, 255, 255, 0.88);
+}
+[data-theme='dark'] .graph-stage--universe .graph-search,
+[data-theme='dark'] .graph-stage--universe .graph-threshold,
+[data-theme='dark'] .graph-stage--universe .view-switch,
+[data-theme='dark'] .graph-stage--universe .layout-switch {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.14);
   color: rgba(255, 255, 255, 0.75);
 }
-.graph-stage--universe .graph-search input {
+[data-theme='dark'] .graph-stage--universe .graph-search input {
   color: rgba(255, 255, 255, 0.92);
 }
-.graph-stage--universe .legend-item {
+[data-theme='dark'] .graph-stage--universe .legend-item {
   color: rgba(255, 255, 255, 0.72);
 }
-.graph-stage--universe .graph-hint,
-.graph-stage--universe .graph-statusbar {
+[data-theme='dark'] .graph-stage--universe .graph-hint,
+[data-theme='dark'] .graph-stage--universe .graph-statusbar {
   color: rgba(255, 255, 255, 0.7);
-}
-.graph-stage--list {
-  background: var(--bg-100);
-  overflow: hidden;
 }
 
 /* 索引详细：工具栏入口 + 三页签弹窗 */
