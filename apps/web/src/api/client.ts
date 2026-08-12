@@ -34,8 +34,8 @@ import type {
   UserProfile,
   LlmUsageSummary,
 } from './types';
-// 契约类型权威源：@repopilot/types（经 ./types 再导出）
-export type { paths, components, User as ContractUser } from '@repopilot/types';
+// 契约类型权威源：types（经 ./types 再导出）
+export type { paths, components, User as ContractUser } from 'types';
 
 /**
  * IApiClient — Mock 和 Real 实现的统一接口契约

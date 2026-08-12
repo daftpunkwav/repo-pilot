@@ -1,5 +1,5 @@
 {
-  "name": "@repopilot/web",
+  "name": "web",
   "private": true,
   "version": "2.0.0",
   "type": "module",
@@ -22,7 +22,7 @@
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
     "@react-three/postprocessing": "^3.0.4",
-    "@repopilot/types": "*",
+    "types": "*",
     "@tanstack/react-query": "^5.101.2",
     "@types/three": "^0.183.1",
     "clsx": "^2.1.1",

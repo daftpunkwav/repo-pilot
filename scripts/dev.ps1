@@ -85,7 +85,7 @@ $api = Start-Process -PassThru -NoNewWindow -FilePath "python" -ArgumentList @(
 ) -WorkingDirectory "$Root\services\api"
 
 $web = Start-Process -PassThru -NoNewWindow -FilePath "cmd.exe" -ArgumentList @(
-    "/c", "npm", "run", "dev", "-w", "@repopilot/web"
+    "/c", "npm", "run", "dev", "-w", "web"
 ) -WorkingDirectory $Root
 
 Write-Host "API  PID $($api.Id)  |  Web PID $($web.Id)" -ForegroundColor Green

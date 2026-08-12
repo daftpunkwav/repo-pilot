@@ -23,8 +23,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@repopilot/types": ["../../packages/types/src/index.ts"],
-      "@repopilot/types/*": ["../../packages/types/src/*"]
+      "types": ["../../packages/types/src/index.ts"],
+      "types/*": ["../../packages/types/src/*"]
     }
   },
   "include": ["src"]

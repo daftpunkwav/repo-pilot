@@ -1,5 +1,5 @@
 {
-  "name": "@repopilot/ui",
+  "name": "ui",
   "version": "0.1.0",
   "private": true,
   "description": "Web / Desktop 共享 React 组件库",

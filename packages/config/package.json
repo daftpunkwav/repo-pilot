@@ -1,5 +1,5 @@
 {
-  "name": "@repopilot/config",
+  "name": "config",
   "version": "0.1.0",
   "private": true,
   "description": "共享 TypeScript / ESLint / Tailwind 配置"

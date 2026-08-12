@@ -1,7 +1,7 @@
 /**
  * Web API / 领域类型。
  *
- * - 与后端契约对齐的类型：从 `@repopilot/types` 再导出（OpenAPI 权威源）
+ * - 与后端契约对齐的类型：从 `types` 再导出（OpenAPI 权威源）
  * - 前端专属（SSE、反问 UI、图谱可视化等）：本文件定义
  */
 export type {
@@ -68,19 +68,19 @@ export type {
   ProgressUpdate,
   SetProjectTagsBody,
   SetProjectTagsResult,
-} from '@repopilot/types';
+} from 'types';
 
 /** @deprecated 请优先用 ProjectCreate */
-export type { ProjectCreate as CreateProjectInput } from '@repopilot/types';
+export type { ProjectCreate as CreateProjectInput } from 'types';
 
 /** Stars 列表查询结果（别名） */
-export type { StarsList as StarsListResult } from '@repopilot/types';
+export type { StarsList as StarsListResult } from 'types';
 
 // ========================================
 // 前端查询参数 / 图谱 / Agent UI（OpenAPI 未建模或需收紧）
 // ========================================
 
-import type { ProjectProgress } from '@repopilot/types';
+import type { ProjectProgress } from 'types';
 
 export interface ProjectListParams {
   search?: string;

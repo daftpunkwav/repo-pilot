@@ -1,5 +1,5 @@
 {
-  "name": "@repopilot/types",
+  "name": "types",
   "version": "0.1.0",
   "private": true,
   "description": "由 OpenAPI 生成的共享 TypeScript 类型",

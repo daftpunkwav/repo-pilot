@@ -1,5 +1,5 @@
 /** HTTP 客户端 —— 真实后端请求（本地单机无认证） */
-import type { ApiResponse } from '@repopilot/types';
+import type { ApiResponse } from 'types';
 
 const API_PREFIX = '/api/v1';
 
