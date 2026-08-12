@@ -2,17 +2,21 @@
 from __future__ import annotations
 
 import asyncio
-import os
+import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
 from api_backend.services.index_data_adapter import adapt_layout
 from graph_engine_runtime.index_pipeline import (
+    _build_credential_args,
+    _git_pull,
     _git_shallow_clone,
     engine_project_name,
     parse_github_owner_repo,
 )
+from repopilot_shared import error_codes as EC
+from repopilot_shared.exceptions import AppException
 
 
 def test_parse_github_owner_repo():
@@ -62,14 +66,11 @@ def test_parse_invalid_url_raises():
         parse_github_owner_repo("https://example.com/not-github")
 
 
-def test_git_shallow_clone_token_not_in_cmdline_and_helper_works(
+def test_git_shallow_clone_token_not_in_cmdline_and_helper_order(
     monkeypatch, tmp_path: Path
 ):
-    """SEC-003 回归：token 只经 env 注入，绝不进入命令行；内联 credential helper
-    语法在本机 git（Windows 含 Git for Windows 默认 manager helper）下可用。
-
-    用 monkeypatch 拦截 _run_cmd 记录命令；helper 语法用 `git credential fill`
-    离线验证（不联网，免 PAT/私有仓依赖）。
+    """SEC-003 回归（纯逻辑，不依赖真实 git）：token 只经 env 注入绝不进
+    命令行；-c 是累加语义，必须先清空系统级 helper 再注入内联 helper。
     """
     dest = tmp_path / "repo"
     url = "https://github.com/octocat/Hello-World"
@@ -89,17 +90,32 @@ def test_git_shallow_clone_token_not_in_cmdline_and_helper_works(
     assert cmd, "应已构造 clone 命令"
     joined = " ".join(cmd)
     assert "ghp_TEST_TOKEN" not in joined, "token 不得进入命令行参数"
+    assert captured["env"]["RP_GRAPH_GIT_TOKEN"] == "ghp_TEST_TOKEN"
 
-    # -c 是累加语义：必须先在注入内联 helper 前清空系统级 helper
-    # （Git for Windows 默认 credential.helper=manager，不清空会先问 manager
-    #  导致非交互 clone 挂起）
-    helper_entry = [c for c in cmd if c.startswith("credential.helper=!f()")]
-    assert len(helper_entry) == 1, "应注入唯一的内联 credential helper"
-    idx = cmd.index(helper_entry[0])
+    # 注入的内联 helper（值含 $RP_GRAPH_GIT_TOKEN 展开），与清空条目区分
+    helper_entries = [
+        c for c in cmd
+        if c.startswith("credential.helper=") and "$RP_GRAPH_GIT_TOKEN" in c
+    ]
+    assert len(helper_entries) == 1, "应注入唯一的内联 credential helper"
+    idx = cmd.index(helper_entries[0])
     assert cmd.index("credential.helper=") < idx, "注入前必须先清空既有 helper"
 
-    # helper 语法离线可用性验证（git credential fill 不联网）
-    helper = helper_entry[0].removeprefix("credential.helper=")
+
+@pytest.mark.skipif(
+    shutil.which("git") is None,
+    reason="本机无 git，跳过 helper 语法离线验证",
+)
+def test_git_shallow_clone_helper_works_offline():
+    """内联 credential helper 语法在本机 git（含 Git for Windows 默认 manager
+    helper）下可用：`git credential fill` 离线验证（不联网，免 PAT 依赖）。
+    复用生产函数 `_build_credential_args` 构造，避免测试复制实现。
+    """
+    credential_args, env = _build_credential_args("ghp_TEST_TOKEN")
+    helper_entry = next(
+        c for c in credential_args if "$RP_GRAPH_GIT_TOKEN" in c
+    )
+    helper = helper_entry.removeprefix("credential.helper=")
     payload = "protocol=https\nhost=github.com\n\n"
     got = subprocess.run(
         [
@@ -115,7 +131,7 @@ def test_git_shallow_clone_token_not_in_cmdline_and_helper_works(
         capture_output=True,
         text=True,
         timeout=30,
-        env={**os.environ, "RP_GRAPH_GIT_TOKEN": "ghp_TEST_TOKEN"},
+        env=env,
     )
     assert got.returncode == 0, f"credential fill 失败: {got.stderr}"
     assert "username=x-access-token" in got.stdout
@@ -137,3 +153,50 @@ def test_git_shallow_clone_anonymous_no_helper(monkeypatch, tmp_path: Path):
         asyncio.run(_git_shallow_clone("https://github.com/octocat/Hello-World", dest))
 
     assert "credential.helper" not in " ".join(captured["cmd"])
+
+
+def test_git_pull_passes_token_via_env(monkeypatch, tmp_path: Path):
+    """SEC-001 回归：refresh 路径 `_git_pull` 同样注入 credential helper，
+    token 只经 env 传递，不进命令行（与 clone 路径一致）。
+    """
+    dest = tmp_path / "repo"
+    captured: dict = {}
+
+    async def _fake_run_cmd(cmd, *, check=True, env=None):
+        captured["cmd"] = cmd
+        captured["env"] = env
+        raise AssertionError("测试不应真正执行 git fetch")
+
+    monkeypatch.setattr("graph_engine_runtime.index_pipeline._run_cmd", _fake_run_cmd)
+
+    with pytest.raises(AssertionError):
+        asyncio.run(_git_pull(dest, token="ghp_TEST_TOKEN"))
+
+    cmd = captured["cmd"]
+    assert cmd, "应已构造 fetch 命令"
+    joined = " ".join(cmd)
+    assert "ghp_TEST_TOKEN" not in joined, "token 不得进入命令行参数"
+    assert captured["env"]["RP_GRAPH_GIT_TOKEN"] == "ghp_TEST_TOKEN"
+
+    helper_entries = [
+        c for c in cmd
+        if c.startswith("credential.helper=") and "$RP_GRAPH_GIT_TOKEN" in c
+    ]
+    assert len(helper_entries) == 1, "应注入唯一的内联 credential helper"
+    idx = cmd.index(helper_entries[0])
+    assert cmd.index("credential.helper=") < idx, "注入前必须先清空既有 helper"
+
+
+def test_git_shallow_clone_rejects_non_github_host(tmp_path: Path):
+    """SEC-007 回归：非 github.com host 在入口即被拒绝（SSRF 防线），
+    不执行 git clone。
+    """
+    dest = tmp_path / "repo"
+    with pytest.raises(AppException) as exc:
+        asyncio.run(
+            _git_shallow_clone(
+                "https://169.254.169.254/github.com/foo/bar", dest
+            )
+        )
+    assert exc.value.detail["code"] == EC.PROJECT_URL_INVALID
+    assert "仅支持 https://github.com" in exc.value.detail["message"]

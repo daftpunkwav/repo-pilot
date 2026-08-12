@@ -836,7 +836,7 @@ async def _clone_and_index(
     if _is_usable_git_checkout(dest) and _is_under_dir(dest, cache_root):
         reuse = True
         if refresh:
-            await _git_pull(dest)
+            await _git_pull(dest, token=token)
     else:
         if dest.exists() and _is_under_dir(dest, cache_root):
             await asyncio.to_thread(_safe_remove_dir, dest)
@@ -1016,34 +1016,64 @@ def _enforce_quota(cache_root: Path, quota_gb: float) -> None:
         )
 
 
+def _build_credential_args(token: str | None) -> tuple[list[str], dict | None]:
+    """构造 git credential 注入参数（`-c` 前缀段 + 子进程 env）。
+
+    - token 为 None：匿名访问，不注入任何 helper。
+    - 有 token：先 `-c credential.helper=` 清空（-c 是累加而非替换，系统级
+      credential.helper=manager 会先接管 credential fill 导致非交互挂起），
+      再注入内联 helper；token 仅经 env 传给 helper 子进程，不进 cmdline。
+    - token 含换行/空字符会截断 helper 的 echo 输出、覆盖 username 字段
+      （credential 协议无转义机制），直接拒绝（SEC-004）。
+    """
+    if token is None:
+        return [], None
+    if any(ch in token for ch in ("\n", "\r", "\x00")):
+        raise AppException(
+            400,
+            EC.GITHUB_PAT_INVALID,
+            "GitHub PAT 含非法控制字符（换行/空字符）",
+        )
+    helper = (
+        "!f() { echo username=x-access-token; "
+        "echo \"password=$RP_GRAPH_GIT_TOKEN\"; }; f"
+    )
+    env = os.environ.copy()
+    env["RP_GRAPH_GIT_TOKEN"] = token
+    return (
+        ["-c", "credential.helper=", "-c", f"credential.helper={helper}"],
+        env,
+    )
+
+
 async def _git_shallow_clone(
     url: str, dest: Path, *, token: str | None = None
 ) -> None:
+    # SSRF 防线：仅允许 github.com。有 token 时 clone_url 会被强制改写为
+    # https://github.com/...，但无 token 匿名 clone 原样透传 url，须在此拒绝
+    # 非 github.com host，防止服务器侧 git clone 打到内网/回环地址（SEC-007）。
+    parsed = urlparse(url)
+    host = (parsed.hostname or "").lower()
+    if host != "github.com":
+        raise AppException(
+            400,
+            EC.PROJECT_URL_INVALID,
+            f"仅支持 https://github.com 仓库: {url}",
+        )
+
     dest.parent.mkdir(parents=True, exist_ok=True)
     clone_url = url
-    env: dict | None = None
-    if token and "github.com" in url:
-        parsed = urlparse(url)
+    if token:
         path = parsed.path or ""
         clone_url = f"https://github.com{path}"
         if not clone_url.endswith(".git"):
             clone_url += ".git"
-        # 经 credential helper + 子进程 env 注入 token，避免明文 PAT 出现在
-        # 命令行参数（Linux /proc/<pid>/cmdline 与 Windows 进程枚举均可见）。
-        env = os.environ.copy()
-        env["RP_GRAPH_GIT_TOKEN"] = token
-        helper = (
-            "!f() { echo username=x-access-token; "
-            "echo \"password=$RP_GRAPH_GIT_TOKEN\"; }; f"
-        )
 
+    credential_args, env = _build_credential_args(token)
     # 使用 -c 局部配置，避免污染用户全局 git config
     staging = dest.parent / f".clone-{uuid.uuid4().hex[:10]}"
     base = ["git", "-c", "core.longpaths=true", "-c", "core.symlinks=false"]
-    if env is not None:
-        # 先以空串清空（-c 是累加而非替换，系统级 credential.helper=manager
-        # 会先接管 credential fill 导致非交互 clone 挂起），再注入内联 helper。
-        base += ["-c", "credential.helper=", "-c", f"credential.helper={helper}"]
+    base += credential_args
     attempts = [
         [
             *base,
@@ -1098,8 +1128,14 @@ async def _git_shallow_clone(
     raise last_err
 
 
-async def _git_pull(dest: Path) -> None:
-    await _run_cmd(["git", "-C", str(dest), "fetch", "--depth", "1"])
+async def _git_pull(dest: Path, *, token: str | None = None) -> None:
+    # refresh 路径同样注入凭据：fetch 对私有仓库需要 credential helper，
+    # 否则系统级 manager helper 接管（凭据混淆/非交互挂起，与 clone 同类 bug）。
+    credential_args, env = _build_credential_args(token)
+    await _run_cmd(
+        ["git", "-C", str(dest), *credential_args, "fetch", "--depth", "1"],
+        env=env,
+    )
     branch = await _git_branch(dest)
     await _run_cmd(
         ["git", "-C", str(dest), "reset", "--hard", f"origin/{branch}"],
