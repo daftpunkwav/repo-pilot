@@ -4,7 +4,7 @@ import os
 import pytest
 from api_backend.config import get_settings
 from api_backend.core.security import decrypt_secret, encrypt_secret
-from repopilot_shared.security import crypto as shared_crypto
+from py_shared.security import crypto as shared_crypto
 
 
 @pytest.fixture(autouse=True)

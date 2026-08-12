@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 from api_backend.config import get_settings
-from repopilot_shared.database import Base  # noqa: F401
+from py_shared.database import Base  # noqa: F401
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,

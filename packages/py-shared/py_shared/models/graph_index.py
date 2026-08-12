@@ -9,7 +9,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstr
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from repopilot_shared.database import Base
+from py_shared.database import Base
 
 
 class GraphIndexStatus(Base):

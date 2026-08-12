@@ -1,5 +1,5 @@
 [project]
-name = "repopilot-api"
+name = "api"
 version = "2.0.0"
 description = "RepoPilot API - unified backend (auth, projects, notes, graph, agent, settings)"
 requires-python = ">=3.11"
@@ -20,7 +20,7 @@ dependencies = [
     "litellm>=1.40.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.25.0",
-    "repopilot-py-shared",  # 共享模型/工具/Contract（workspace 内部包）
+    "py-shared",  # 共享模型/工具/Contract（workspace 内部包）
 ]
 
 [project.optional-dependencies]

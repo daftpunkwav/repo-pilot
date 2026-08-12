@@ -1,5 +1,5 @@
 [project]
-name = "repopilot-agent"
+name = "agent"
 version = "0.3.0"
 description = "RepoPilot Agent 运行时 — Hub / Scout / Mentor 等"
 requires-python = ">=3.11"
@@ -14,7 +14,7 @@ dependencies = [
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
     "python-dotenv>=1.0.0",
-    "repopilot-py-shared",  # 共享模型/工具/Contract（workspace 内部包）
+    "py-shared",  # 共享模型/工具/Contract（workspace 内部包）
 ]
 
 [project.optional-dependencies]

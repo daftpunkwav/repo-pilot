@@ -6,9 +6,9 @@ on:
   pull_request:
     branches: [main]
 
-# backend 测试分层:实际测试在仓库根 tests/(含 pytest.ini + conftest.py),
-# pytest.ini 的 pythonpath 指向 services/api 与 services/agent。
-# 必须从 tests/ 目录运行,否则找不到 pytest.ini 与 conftest。
+# backend 测试分层:实际测试在仓库根 tests/(含 conftest.py),
+# 根 pyproject.toml 的 [tool.pytest.ini_options] 负责 pythonpath 注入
+# (services/api、services/agent、services/graph_engine、packages/py-shared)。
 
 jobs:
   backend:
@@ -31,10 +31,10 @@ jobs:
         # 从 uv.lock 导出 requirements 后由 pip-audit 扫描(仅生产依赖)
         run: uv export --frozen --no-dev | uvx pip-audit -r -
       - name: 跑单元测试
-        # 测试在仓库根 tests/(含 pytest.ini + conftest.py),必须从仓库根运行。
+        # 测试在仓库根 tests/(含 conftest.py),从仓库根运行。
         # PYTHONPATH 设为仓库根,使 `from tests.sse_util import ...` 这类
         # 顶层包导入生效(tests/ 无 __init__.py,需靠 PYTHONPATH 暴露为包)。
-        # pytest.ini 的 pythonpath 字段另负责注入 services/api 与 services/agent。
+        # 根 pyproject.toml 的 [tool.pytest.ini_options] 另负责注入 services/* 与 py-shared。
         working-directory: .
         env:
           PYTHONPATH: .

@@ -1,5 +1,5 @@
 """共享安全工具。"""
-from repopilot_shared.security.crypto import (
+from py_shared.security.crypto import (
     decrypt_secret,
     encrypt_secret,
     ensure_encrypted_secret,

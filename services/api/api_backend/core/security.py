@@ -2,20 +2,20 @@
 安全工具 —— 敏感字段 at-rest 加密（Fernet）
 
 本地单机已移除 JWT / 密码哈希；保留 encrypt/decrypt 供 GitHub PAT、LLM Key 使用。
-权威实现已下沉到 repopilot_shared.security.crypto（参数化 key_material），
+权威实现已下沉到 py_shared.security.crypto（参数化 key_material），
 此处为薄封装：注入 api_backend 配置的密钥材料。
 """
 from api_backend.config import get_settings
-from repopilot_shared.security.crypto import (  # noqa: F401
+from py_shared.security.crypto import (  # noqa: F401
     decrypt_secret as _shared_decrypt,
 )
-from repopilot_shared.security.crypto import (  # noqa: F401
+from py_shared.security.crypto import (  # noqa: F401
     encrypt_secret as _shared_encrypt,
 )
-from repopilot_shared.security.crypto import (  # noqa: F401
+from py_shared.security.crypto import (  # noqa: F401
     ensure_encrypted_secret as _shared_ensure,
 )
-from repopilot_shared.security.crypto import is_encrypted_secret as _shared_is_enc
+from py_shared.security.crypto import is_encrypted_secret as _shared_is_enc
 
 
 def _encryption_key_material() -> str:

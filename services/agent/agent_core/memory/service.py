@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from repopilot_shared.models.agent import AgentMessage, AgentSession
+from py_shared.models.agent import AgentMessage, AgentSession
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

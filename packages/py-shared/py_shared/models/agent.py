@@ -9,7 +9,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Table, Tex
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from repopilot_shared.database import Base
+from py_shared.database import Base
 
 # 单例学习者画像固定主键
 LEARNER_PROFILE_ID = 1

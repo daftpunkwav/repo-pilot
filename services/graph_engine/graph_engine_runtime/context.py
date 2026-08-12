@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
-from repopilot_shared.contracts.app_state import AppStateServicePort
+from py_shared.contracts.app_state import AppStateServicePort
 
 # services/graph_engine/graph_engine_runtime/context.py → parents[3] = 仓库根
 _REPO_ROOT = Path(__file__).resolve().parents[3]

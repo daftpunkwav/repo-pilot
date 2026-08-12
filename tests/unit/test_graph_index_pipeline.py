@@ -15,8 +15,8 @@ from graph_engine_runtime.index_pipeline import (
     engine_project_name,
     parse_github_owner_repo,
 )
-from repopilot_shared import error_codes as EC
-from repopilot_shared.exceptions import AppException
+from py_shared import error_codes as EC
+from py_shared.exceptions import AppException
 
 
 def test_parse_github_owner_repo():

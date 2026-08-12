@@ -139,7 +139,7 @@ def test_settings_update_llm_api_base_rejects_dns_to_private(monkeypatch):
         ]
 
     monkeypatch.setattr(
-        "repopilot_shared.security.url_safety.socket.getaddrinfo", fake_getaddrinfo
+        "py_shared.security.url_safety.socket.getaddrinfo", fake_getaddrinfo
     )
     with pytest.raises(ValidationError):
         SettingsUpdate(llm_api_base="https://evil.example.com/v1")
@@ -154,7 +154,7 @@ def test_settings_update_llm_api_base_allows_public_dns(monkeypatch):
         ]
 
     monkeypatch.setattr(
-        "repopilot_shared.security.url_safety.socket.getaddrinfo", fake_getaddrinfo
+        "py_shared.security.url_safety.socket.getaddrinfo", fake_getaddrinfo
     )
     obj = SettingsUpdate(llm_api_base="https://api.openai.com/v1")
     assert obj.llm_api_base == "https://api.openai.com/v1"

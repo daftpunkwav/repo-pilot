@@ -8,7 +8,7 @@ from typing import Optional
 
 from fastapi import HTTPException, status
 
-from repopilot_shared.error_codes import VALIDATION_ERROR
+from py_shared.error_codes import VALIDATION_ERROR
 
 
 class AppException(HTTPException):

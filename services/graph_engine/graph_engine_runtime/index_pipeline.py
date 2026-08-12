@@ -16,10 +16,10 @@ from typing import Any, Optional
 from urllib.parse import urlparse
 from uuid import UUID
 
-from repopilot_shared import error_codes as EC
-from repopilot_shared.exceptions import AppException, NotFoundError
-from repopilot_shared.models.graph_index import GraphIndexStatus
-from repopilot_shared.models.project import Project
+from py_shared import error_codes as EC
+from py_shared.exceptions import AppException, NotFoundError
+from py_shared.models.graph_index import GraphIndexStatus
+from py_shared.models.project import Project
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 

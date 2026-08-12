@@ -94,7 +94,7 @@ class LLMProvider:
                 "::1",
             )
             if not is_local_ollama:
-                from repopilot_shared.security.url_safety import (
+                from py_shared.security.url_safety import (
                     assert_safe_outbound_https_url,
                 )
 

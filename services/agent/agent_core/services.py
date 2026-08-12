@@ -1,6 +1,6 @@
 """agent_core 业务服务契约容器。
 
-agent_core 只依赖 py-shared 的 Protocol（repopilot_shared.contracts）；
+agent_core 只依赖 py-shared 的 Protocol（py_shared.contracts）；
 宿主（agent_runtime 的 EmbeddedAgentRuntime / 独立进程入口 / 测试 conftest）
 在启动时调用 register_agent_services() 注入 api_backend 的实现。
 """
@@ -8,12 +8,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from repopilot_shared.contracts.app_state import AppStateServicePort
-from repopilot_shared.contracts.github import GitHubClientPort
-from repopilot_shared.contracts.llm_usage import LLMUsagePort
-from repopilot_shared.contracts.profile import ProfileServicePort
-from repopilot_shared.contracts.session import SessionQueryPort
-from repopilot_shared.contracts.settings import SettingsServicePort
+from py_shared.contracts.app_state import AppStateServicePort
+from py_shared.contracts.github import GitHubClientPort
+from py_shared.contracts.llm_usage import LLMUsagePort
+from py_shared.contracts.profile import ProfileServicePort
+from py_shared.contracts.session import SessionQueryPort
+from py_shared.contracts.settings import SettingsServicePort
 
 
 class AgentServices:

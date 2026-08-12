@@ -7,9 +7,9 @@ from typing import Literal, Optional
 from urllib.parse import urlparse
 from uuid import UUID
 
+from py_shared.schemas.project import ImportRepoItem  # noqa: F401
+from py_shared.security.url_safety import is_blocked_ip
 from pydantic import BaseModel, Field, field_validator, model_validator
-from repopilot_shared.schemas.project import ImportRepoItem  # noqa: F401
-from repopilot_shared.security.url_safety import is_blocked_ip
 
 ProjectProgress = Literal["none", "learning", "learned", "mastered"]
 ProjectSource = Literal["github", "manual"]

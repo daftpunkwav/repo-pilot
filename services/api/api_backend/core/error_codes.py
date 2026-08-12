@@ -1,5 +1,5 @@
 """报错码常量 —— 已下沉 py-shared，此处 re-export 兼容既有 import。"""
-from repopilot_shared.error_codes import (  # noqa: F401
+from py_shared.error_codes import (  # noqa: F401
     AGENT_ANALYZE_FAILED,
     AGENT_CHAT_FAILED,
     AGENT_CLASSIFY_FAILED,

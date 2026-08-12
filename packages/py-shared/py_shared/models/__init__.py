@@ -1,5 +1,5 @@
 """共享 ORM 模型聚合导出(api_backend / agent_core 共用)。"""
-from repopilot_shared.models.agent import (
+from py_shared.models.agent import (
     LEARNER_PROFILE_ID,
     AgentMessage,
     AgentSession,
@@ -8,9 +8,9 @@ from repopilot_shared.models.agent import (
     UserProfile,
     agent_session_projects,
 )
-from repopilot_shared.models.app_state import APP_STATE_ID, AppState
-from repopilot_shared.models.graph_index import GraphIndexStatus
-from repopilot_shared.models.project import Project, Tag, project_tags
+from py_shared.models.app_state import APP_STATE_ID, AppState
+from py_shared.models.graph_index import GraphIndexStatus
+from py_shared.models.project import Project, Tag, project_tags
 
 __all__ = [
     "AgentMessage",

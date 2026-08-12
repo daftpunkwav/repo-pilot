@@ -7,7 +7,7 @@ import threading  # §4.2.6 ensure_tools_loaded 锁
 from typing import Any
 from uuid import UUID
 
-from repopilot_shared.models.project import Project
+from py_shared.models.project import Project
 
 from agent_core.tools.registry import tool
 
@@ -1712,7 +1712,7 @@ async def import_github_repos(
     repos: list | None = None,
     **kw,
 ):
-    from repopilot_shared.schemas.project import ImportRepoItem
+    from py_shared.schemas.project import ImportRepoItem
 
     ports = _ports(context)
     items: list[ImportRepoItem] = []

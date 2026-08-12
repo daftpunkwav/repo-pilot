@@ -9,7 +9,7 @@ from typing import Optional
 from sqlalchemy import DateTime, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from repopilot_shared.database import Base
+from py_shared.database import Base
 
 # 单行表固定主键
 APP_STATE_ID = 1

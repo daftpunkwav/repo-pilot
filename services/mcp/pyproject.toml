@@ -1,5 +1,5 @@
 [project]
-name = "repopilot-mcp"
+name = "mcp"
 version = "0.1.0"
 description = "RepoPilot MCP Server — 对外暴露 GitHub / 文档 / 代码等 MCP 工具"
 requires-python = ">=3.11"

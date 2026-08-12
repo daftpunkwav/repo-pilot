@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any, Literal, Optional
 
 import httpx
-from repopilot_shared import error_codes as EC
+from py_shared import error_codes as EC
 
 from graph_engine_runtime.context import get_runtime_context
 

@@ -9,7 +9,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from repopilot_shared.models.app_state import AppState
+from py_shared.models.app_state import AppState
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -142,7 +142,7 @@ def _load_settings_dict(state: AppState) -> dict[str, Any]:
 
 
 def _decrypt_key(stored: Any) -> str:
-    from repopilot_shared.security.crypto import decrypt_secret
+    from py_shared.security.crypto import decrypt_secret
 
     return (decrypt_secret(stored, _key_material()) or "").strip()
 
@@ -197,7 +197,7 @@ def _config_from_provider(
     *,
     model_override: str | None = None,
 ) -> LLMConfig | None:
-    from repopilot_shared.security.crypto import is_encrypted_secret
+    from py_shared.security.crypto import is_encrypted_secret
 
     stored = p.get("api_key")
     api_key = _decrypt_key(stored)
@@ -249,7 +249,7 @@ def build_llm_config_from_settings(
             return cfg
 
     # 兼容：仅有顶层扁平 key
-    from repopilot_shared.security.crypto import is_encrypted_secret
+    from py_shared.security.crypto import is_encrypted_secret
 
     stored = raw.get("llm_api_key")
     api_key = _decrypt_key(stored)
@@ -277,7 +277,7 @@ def build_llm_config_from_settings(
 
 def llm_config_status(raw: dict[str, Any]) -> str:
     """诊断用：ok | missing | decrypt_failed。"""
-    from repopilot_shared.security.crypto import is_encrypted_secret
+    from py_shared.security.crypto import is_encrypted_secret
 
     p = _pick_provider(raw)
     stored = (p or {}).get("api_key") if p else raw.get("llm_api_key")
