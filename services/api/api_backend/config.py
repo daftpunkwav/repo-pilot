@@ -70,6 +70,14 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
 
     # Agent 独立进程（可选）。设置后 API 可将 SSE 转发至该基址；未设置则同进程 Hub。
+    rp_agent_disabled: bool = Field(
+        default=False,
+        description=(
+            "RP_AGENT_DISABLED：彻底禁用 Agent 服务（含 API 进程内 Hub）。"
+            "设为 true 时 agent 模块不加载（503 兜底），lifespan 不注册 agent 业务服务；"
+            "graph 运行层 app_state 注入跳过。用于前端报错联调/最小化拓扑"
+        ),
+    )
     agent_base_url: Optional[str] = Field(
         default=None,
         description="例如 http://127.0.0.1:19877；空则 Agent 与 API 同进程",
@@ -83,6 +91,13 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
 
     # 图谱 C 引擎 sidecar（迁入 services/graph_engine/graph_engine_core）
+    rp_graph_disabled: bool = Field(
+        default=False,
+        description=(
+            "RP_GRAPH_DISABLED：彻底禁用图谱引擎（含进程内 Python 回退）。"
+            "设为 true 时 graph_l1 模块不加载（503 兜底），graph_l0 纯 DB 投影不受影响；用于前端报错联调"
+        ),
+    )
     rp_graph_allowed_root: str = Field(
         default_factory=lambda: str(DATA_DIR),
         description="RP_GRAPH_ALLOWED_ROOT：引擎可索引根；仓库缓存落其下 repo-cache/",

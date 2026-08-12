@@ -6,6 +6,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from api_backend.api.deps import get_db
+from api_backend.config import get_settings
 from api_backend.core import error_codes as EC
 from api_backend.core.exceptions import AppException, NotFoundError
 from api_backend.core.responses import wrap_data
@@ -18,6 +19,13 @@ from graph_engine_runtime import index_pipeline as pipeline
 from graph_engine_runtime.client import RpGraphClient, RpGraphError
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+
+# RP_GRAPH_DISABLED=1 时模块加载失败 → safe_load_router 捕获 → /api/v1/graph/* 返回 503
+# （模块容错挂载设计：单域失败不阻塞 app 启动；graph_l0 纯 DB 投影不受影响）
+if get_settings().rp_graph_disabled:
+    raise RuntimeError(
+        "图谱引擎已禁用（RP_GRAPH_DISABLED=1）；graph_l1 索引/查询不可用"
+    )
 
 router = APIRouter(prefix="/graph", tags=["graph-l1"])
 

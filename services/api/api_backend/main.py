@@ -53,29 +53,44 @@ async def lifespan(_app: FastAPI):
 
     # Graph 运行层：注入上下文并常驻索引 worker（lifespan 内 create_task，脱离请求 cancel scope）
     # Agent/Graph 运行层：注入 api_backend 业务服务契约（agent_core 只依赖 Protocol）
-    from agent_core import services as _agent_services
     from api_backend.database import get_session_factory as _get_factory
-    from api_backend.services.agent_services_bridge import build_agent_services
     from api_backend.services.github_accounts import primary_token
-    from graph_engine_runtime.context import GraphRuntimeContext
-    from graph_engine_runtime.runtime import EmbeddedGraphRuntime
 
-    agent_services = build_agent_services()
-    _agent_services.register_agent_services(agent_services)
+    # 禁用 Agent（RP_AGENT_DISABLED=1）时跳过注册；graph 运行层的 app_state 注入置空
+    # （GraphRuntimeContext.app_state_service 可空：索引流水线跳过对应步骤）
+    graph_agent_services = None
+    if not settings.rp_agent_disabled:
+        from agent_core import services as _agent_services
+        from api_backend.services.agent_services_bridge import build_agent_services
 
-    graph_runtime = EmbeddedGraphRuntime(
-        context=GraphRuntimeContext(
-            settings=settings,
-            get_session_factory=_get_factory,
-            primary_token=primary_token,
-            app_state_service=agent_services.app_state,  # 复用 bridge 的 Embedded Adapter
+        agent_services = build_agent_services()
+        _agent_services.register_agent_services(agent_services)
+        graph_agent_services = agent_services
+
+    if not settings.rp_graph_disabled:
+        # 禁用图谱（RP_GRAPH_DISABLED=1）时跳过整个运行层：不构造 EmbeddedGraphRuntime、
+        # 不起索引 worker、不注入 graph 上下文；graph_l1 路由 import 期已 fail（503 兜底）
+        from graph_engine_runtime.context import GraphRuntimeContext
+        from graph_engine_runtime.runtime import EmbeddedGraphRuntime
+
+        graph_runtime = EmbeddedGraphRuntime(
+            context=GraphRuntimeContext(
+                settings=settings,
+                get_session_factory=_get_factory,
+                primary_token=primary_token,
+                # 复用 bridge 的 Embedded Adapter；agent 禁用时为 None
+                app_state_service=(
+                    graph_agent_services.app_state if graph_agent_services else None
+                ),
+            )
         )
-    )
-    try:
-        await graph_runtime.start_worker()
+        try:
+            await graph_runtime.start_worker()
+            yield
+        finally:
+            await graph_runtime.stop_worker()
+    else:
         yield
-    finally:
-        await graph_runtime.stop_worker()
 
 
 app = FastAPI(title=settings.app_name, version="2.0.0", lifespan=lifespan)
@@ -202,6 +217,11 @@ async def health():
 )
 async def module_unavailable(module: str, rest: str):
     status = get_module_status(module)
+    # graph 域由子域 graph_l0 / graph_l1 组成（模块名与 URL 前缀不一致）；
+    # 任一子域未加载时，graph 前缀未匹配路径按该子域状态返回 503
+    if status is None and module == "graph":
+        sub = [get_module_status(n) for n in ("graph_l0", "graph_l1")]
+        status = next((s for s in sub if s is not None and not s.loaded), None)
     if status and not status.loaded:
         return JSONResponse(
             status_code=503,
