@@ -2,7 +2,7 @@
 
 AI 驱动的开源项目学习平台。
 
-**技术栈版本：** FastAPI + React + TypeScript（代码版本已推进至 **v2.0.0**，产品文档层仍在向 v2 对齐；当前实现以 `apps/web` + `services/api` 为准，详见 `docs/product/`）
+**技术栈版本：** FastAPI + React + TypeScript（代码版本已推进至 **v2.0.0**，产品文档层仍在向 v2 对齐；当前实现以 `apps/web` + `services/api` + `services/agent` + `services/graph_engine` 为准，详见 `docs/product/`）
 
 ## Monorepo 结构
 
@@ -12,8 +12,9 @@ RepoPilot/
 │   ├── web/          # React Web 前端
 │   └── desktop/      # 桌面壳（规划中）
 ├── services/
-│   ├── api/          # FastAPI 后端（认证/CRUD/图谱；Agent 兼容 shim）
-│   ├── agent/        # Agent 服务（agent_core 权威实现 + agent_runtime 独立进程）
+│   ├── api/          # FastAPI 后端（api_backend/：认证/CRUD/图谱 REST；Agent shim）
+│   ├── agent/        # Agent（agent_core 权威实现 + agent_runtime 独立进程）
+│   ├── graph_engine/ # 图谱（graph_engine_core + graph_engine_runtime + layout）
 │   └── mcp/          # MCP Server（规划中）
 ├── packages/         # 共享库（types 已生成契约 / ui / prompts / …）
 ├── docs/
@@ -22,8 +23,9 @@ RepoPilot/
 
 完整说明见 [`docs/architecture/REPO_LAYOUT.md`](docs/architecture/REPO_LAYOUT.md)。
 
-> **实现状态速览（截至 2026-08-04）：**
+> **实现状态速览（截至 2026-08-12）：**
 > - `apps/web`、`services/api` 已实现核心页面与端点；Agent 权威代码在 `services/agent/agent_core/`（默认与 API 同进程，可经 `AGENT_BASE_URL` 独立部署）。开发环境（`.env.development`）默认 `VITE_USE_MOCK=false` 走真实后端；未设置时客户端默认 Mock。
+> - 图谱引擎在 `services/graph_engine/`：`graph_engine_core`（C sidecar `rp-graph-engine`）+ `graph_engine_runtime`（Python 回退 `rp_graph`）+ `layout`（可选 native 布局）。
 > - `packages/types` 已由 OpenAPI 生成契约并被 `apps/web` 使用（`@repopilot/types`）；`contracts/` 含 openapi.json；`ui` / `prompts` / `py-shared` / `config` 仍为占位。
 > - `services/mcp`、`apps/desktop` 仍为占位或规划。
 
@@ -31,7 +33,8 @@ RepoPilot/
 
 - API：`services/api` — FastAPI + SQLAlchemy 2.0 + SQLite + LiteLLM Multi-Agent
 - Web：`apps/web` — React 19 + TypeScript + Vite 7 + Zustand + React Query
-- Agent：**7 个 Agent**：Hub 统筹调度 + Scout/Mentor/Navigator/Curator/Scribe/Atlas（BYOK）；权威实现在 `services/agent/agent_core/`（`services/api/backend/agents/` 为兼容 shim），默认与 API 同进程
+- Agent：**7 个 Agent**：Hub 统筹调度 + Scout/Mentor/Navigator/Curator/Scribe/Atlas（BYOK）；权威实现在 `services/agent/agent_core/`（`services/api/api_backend/agents/` 为兼容 shim），默认与 API 同进程
+- 图谱：`services/graph_engine` — C sidecar（`graph_engine_core` / `rp-graph-engine`）+ Python 回退（`graph_engine_runtime` / `rp_graph`）
 - 桌面：`apps/desktop` — pywebview（规划中，尚未实现）
 
 ### 启用真实后端（关闭 Mock）
@@ -66,7 +69,7 @@ pip install -e "./services/api[dev]"
 ```bash
 # 推荐：与 Vite 代理一致（部分 Windows 环境 19876 会幽灵占用）
 npm run dev:api
-# 或：uvicorn backend.main:app --reload --host 127.0.0.1 --port 19878 --app-dir services/api
+# 或：uvicorn api_backend.main:app --reload --host 127.0.0.1 --port 19878 --app-dir services/api
 ```
 
 ### Web
@@ -89,13 +92,21 @@ npm run dev:web
 | 服务 | 默认端口 | 绑定地址 | 环境变量覆盖 |
 |------|----------|----------|--------------|
 | Web（Vite dev） | 5173 | 127.0.0.1 | `VITE_PORT` |
-| API（uvicorn） | 19878 | 127.0.0.1（显式） | 命令行 `--port` |
-| Agent Runtime（uvicorn） | 19877 | 127.0.0.1（显式） | 命令行 `--port` |
+| API（uvicorn） | 19878 | 127.0.0.1（显式） | `API_PORT` |
+| Agent Runtime（uvicorn） | 19877 | 127.0.0.1（显式） | `AGENT_PORT` |
 | 图谱引擎 sidecar | 9750 | 127.0.0.1 | `RP_GRAPH_ENGINE_PORT` |
 
 - **开发代理目标**：`apps/web/vite.config.ts`，默认 `http://127.0.0.1:19878`，可用 `VITE_API_TARGET` 覆盖；同时代理 `/api` 与 `/health`（后端健康检查）。
 - **Vite 端口占用**：已启用 `strictPort`，占用即报错，不会静默顺延；显式改端口请用 `VITE_PORT=xxxx npm run dev:web`。
-- **CORS 白名单**：后端 `CORS_ALLOW_ORIGINS`（默认含 5173/5174/5175/4173/5193 的 localhost 与 127.0.0.1 双写）。**改动前端端口时务必同步该变量**；配置含 `*` 时启动会 fail-fast 报错（与 `allow_credentials=True` 冲突）。
+- **后端端口覆盖**：`API_PORT=19999 npm run dev:api`（`AGENT_PORT` 同理）；`scripts/dev.ps1` 也读取 `API_PORT`。
+- **端口占用排查**：启动报 `Address already in use` / `WinError 10048` 时——
+  ```bash
+  # Windows
+  netstat -ano | findstr 19878
+  # Linux / macOS
+  lsof -i :19878
+  ```
+- **CORS 白名单**：后端 `CORS_ALLOW_ORIGINS`（默认含 5173/5174/5175/4173/5193 的 localhost 与 127.0.0.1 双写）。**同源代理模式（`VITE_API_BASE_URL` 留空）改前端端口无需处理 CORS**；**直连跨源模式（设置了 `VITE_API_BASE_URL`）改动前端端口必须同步该变量**，否则 REST/SSE 被浏览器拦截。配置含 `*` 时启动会 fail-fast 报错（与 `allow_credentials=True` 冲突）。
 - 完整环境变量清单见 `.env.example`。
 
 ## 生产部署

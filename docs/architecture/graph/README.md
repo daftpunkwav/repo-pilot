@@ -2,7 +2,7 @@
 
 > 版本： 2026-08-09 | 状态： **方向性文档（草案，待评审）**
 >
-> **2026-08-11 更新**：C 索引引擎已迁入 [`services/graph_engine/c`](../../../services/graph_engine/c)（MIT 源码迁自 codebase-memory-mcp），默认 sidecar `127.0.0.1:9750`；不再依赖 `vendor/` 或外部全局 CBM 安装。下文中「外挂 codebase-memory-mcp / :9749」表述视为历史方案。
+> **2026-08-12 更新**：C 索引引擎在 [`services/graph_engine/graph_engine_core`](../../../services/graph_engine/graph_engine_core)（MIT 源码迁自 codebase-memory-mcp），默认 sidecar `127.0.0.1:9750`；Python 回退在 `graph_engine_runtime/`。下文中「外挂 codebase-memory-mcp / :9749」或路径 `services/graph_engine/c` 视为历史方案。
 >
 > 本文档定义 RepoPilot 图谱子系统的**演进方向与关键决策**，是后续 PRD/SPEC 修订与开发实施的输入。
 > 本文档**不包含**接口定义、字段设计、组件实现等细节；落地前须按 `docs/README.md` §1 的权威性规则，将本文档的结论升级为 `product/` 层文档（PRD/SPEC）的修订。
@@ -29,9 +29,9 @@ RepoPilot 当前已有**一层**图谱：项目级相似度图。
 
 | 层 | 现状 | 关键位置 |
 |----|------|---------|
-| 后端 | `GET /api/v1/graph/`：对当前用户的全部 Project 做 TF-IDF + 语言/分类/名称重叠的 O(n²) 相似度计算，**实时计算、无持久化** | `services/api/backend/api/graph.py`、`services/api/backend/services/graph_service.py` |
+| 后端 | `GET /api/v1/graph/`：对当前用户的全部 Project 做 TF-IDF + 语言/分类/名称重叠的 O(n²) 相似度计算，**实时计算、无持久化** | `services/api/api_backend/api/graph.py`、`services/api/api_backend/services/graph_service.py` |
 | 前端 | `/graph` 路由：D3 SVG 力导向图；单击出详情抽屉、双击跳 `/projects/:id`；有搜索高亮、相似度滑块、分类筛选、Mock/Real 双轨 | `apps/web/src/pages/GraphPage.tsx`、`apps/web/src/components/graph/{ForceGraph,GraphControls,GraphGuidePanel}.tsx` |
-| 数据 | Project 仅记录 GitHub URL / 语言 / 分类 / 笔记等元信息，**无本地代码路径、无任何代码级结构数据** | `services/api/backend/models/project.py` |
+| 数据 | Project 仅记录 GitHub URL / 语言 / 分类 / 笔记等元信息，**无本地代码路径、无任何代码级结构数据** | `services/api/api_backend/models/project.py` |
 | 设计文档 | v1 阶段文档 `docs/design/v1/process/06-GRAPH.md`（仅覆盖项目相似度图） | — |
 | 进程占位 | `services/mcp` 为占位进程；SPEC 曾规划 `graph_cache` 表，后被"实时计算"替代 | `docs/development/PROGRESS_REPORT.md` §4.1 |
 

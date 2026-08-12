@@ -12,7 +12,7 @@
 
 ## 1. 问题定义
 
-用户在 RepoPilot 导入的是 **GitHub 云端 URL**（`projects.url`，schema 强制 `github.com`，见 `services/api/backend/schemas/project.py:45-50`）。L1 代码图谱要求把项目内部的文件/类/函数/调用等结构化成图。中间必须经历：
+用户在 RepoPilot 导入的是 **GitHub 云端 URL**（`projects.url`，schema 强制 `github.com`，见 `services/api/api_backend/schemas/project.py:45-50`）。L1 代码图谱要求把项目内部的文件/类/函数/调用等结构化成图。中间必须经历：
 
 ```
 GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎索引  ──③──▶  可查询/可渲染
@@ -22,7 +22,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 
 - **【引擎约束】引擎只吃本地路径**：`index_repository(repo_path=...)` 要求磁盘上的绝对路径，**不会自己 clone 远程仓库**【验证，参考项目文档】。
 - **【引擎约束】`CBM_ALLOWED_ROOT` 锁定索引目录**：引擎只索引该根目录下的路径，越界拒绝【验证】。这意味着 RepoPilot 的落盘目录必须落在该根下，或二者对齐。
-- **【验证】RepoPilot 当前无任何本地代码落盘机制**：`import_repos`（`services/api/backend/services/project_service.py:179`）只拉 GitHub 元数据（语言/描述/stars）入库，从不 clone 代码；`projects` 表无本地路径字段（`models/project.py`）。
+- **【验证】RepoPilot 当前无任何本地代码落盘机制**：`import_repos`（`services/api/api_backend/services/project_service.py:179`）只拉 GitHub 元数据（语言/描述/stars）入库，从不 clone 代码；`projects` 表无本地路径字段（`models/project.py`）。
 
 因此 ①（云端→本地）**必须由 RepoPilot 自己解决**，引擎不代劳。
 
@@ -62,7 +62,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
   - 一次 clone 拿到完整代码与目录结构，引擎吃到**原生真实路径**（符合其约束）。
   - `--filter=blob:none`（部分克隆）只按需拉 blob，`--depth 1` 不拉历史，**显著快于全量 clone 且省磁盘**。
   - 增量更新廉价：`git fetch --depth 1 && git reset --hard origin/<branch>`。
-  - 私有仓复用 RepoPilot 现有 GitHub token（`github_client.py` 已支持 `Authorization: Bearer`，`services/api/backend/services/github_client.py:33-34`）。
+  - 私有仓复用 RepoPilot 现有 GitHub token（`github_client.py` 已支持 `Authorization: Bearer`，`services/api/api_backend/services/github_client.py:33-34`）。
   - 保留引擎 Branch 语义：`git_common_dir`/`head_sha`/`branch` 等会被引擎写入 `Branch` 节点与 `HAS_BRANCH` 边【验证：RepoPilot 索引产出 `Branch`×1、`HAS_BRANCH`×1】。
 - **代价**：大仓磁盘占用；需磁盘治理（§5）。
 - **Windows 注意**：路径长度与符号链接（部分仓用）需在 `core.longpaths=true` 与 `git config --local core.symlinks false` 处理【待 Phase 1 实测】。
@@ -142,7 +142,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 
 - 状态持久化于 RepoPilot DB（一张映射/状态表：`project_id ↔ 引擎 project 名 ↔ local_path ↔ head_sha ↔ status ↔ indexed_at ↔ error`）。这也回应了 SPEC 曾规划、后被实时计算替代的 `graph_cache` 表——v2 下持久化重新必要（方向 README §D3）。
 - 并发：本地单用户场景先**串行**（同时只 1 个索引任务），后续按资源评估放开有限并发。
-- 异步：索引分钟级，前端轮询或 SSE 推送状态（复用现有 SSE 能力，`services/api/backend/services/agent_service.py` 已有 SSE 基建）。
+- 异步：索引分钟级，前端轮询或 SSE 推送状态（复用现有 SSE 能力，`services/api/api_backend/services/agent_service.py` 已有 SSE 基建）。
 
 ---
 

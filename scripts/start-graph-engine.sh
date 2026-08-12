@@ -9,7 +9,7 @@ mkdir -p "$DATA_ROOT"
 
 export RP_GRAPH_ALLOWED_ROOT="$DATA_ROOT"
 export RP_GRAPH_ENGINE_PORT="${RP_GRAPH_ENGINE_PORT:-9750}"
-export PYTHONPATH="$ROOT/services/graph_engine/python${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="$ROOT/services/graph_engine/graph_engine_runtime${PYTHONPATH:+:$PYTHONPATH}"
 
 echo "rp-graph-engine sidecar → 127.0.0.1:${RP_GRAPH_ENGINE_PORT}"
 echo "RP_GRAPH_ALLOWED_ROOT=${RP_GRAPH_ALLOWED_ROOT}"

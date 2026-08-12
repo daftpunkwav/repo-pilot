@@ -1,0 +1,2 @@
+# 兼容上游脚本；RepoPilot 请优先使用 Makefile.rp
+include Makefile.rp

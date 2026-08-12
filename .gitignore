@@ -85,6 +85,7 @@ data/repopilot.db.bak*
 data/*.db-shm
 data/*.db-wal
 
-# ?? C ??????
-services/graph_engine/c/build/
+# 图谱引擎构建产物（C sidecar + layout CMake；全局 build/ 已覆盖，此处显式声明）
+services/graph_engine/graph_engine_core/build/
+services/graph_engine/layout/build/
 

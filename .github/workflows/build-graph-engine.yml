@@ -1,13 +1,13 @@
-name: Build Graph Engine
+name: Build Graph Layout
 
 on:
   push:
     paths:
-      - "services/graph_engine/**"
+      - "services/graph_engine/layout/**"
       - ".github/workflows/build-graph-engine.yml"
   pull_request:
     paths:
-      - "services/graph_engine/**"
+      - "services/graph_engine/layout/**"
       - ".github/workflows/build-graph-engine.yml"
 
 jobs:
@@ -19,7 +19,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
-        working-directory: services/graph_engine
+        working-directory: services/graph_engine/layout
 
     steps:
       - uses: actions/checkout@v4
@@ -36,10 +36,10 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Get-ChildItem -Path build -Recurse -File |
-            Where-Object { $_.Name -in @('rp-graph-engine.exe', 'rp_layout.dll') } |
+            Where-Object { $_.Name -in @('rp-layout-cli.exe', 'rp_layout.dll') } |
             ForEach-Object { Copy-Item $_.FullName -Destination dist -Force }
-          if (-not (Test-Path dist/rp-graph-engine.exe)) {
-            throw "未找到 rp-graph-engine.exe"
+          if (-not (Test-Path dist/rp-layout-cli.exe)) {
+            throw "未找到 rp-layout-cli.exe"
           }
           if (-not (Test-Path dist/rp_layout.dll)) {
             throw "未找到 rp_layout.dll"
@@ -50,15 +50,15 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           mkdir -p dist
-          find build -type f \( -name 'rp-graph-engine' -o -name 'librp_layout.so' -o -name 'rp_layout.so' \) \
+          find build -type f \( -name 'rp-layout-cli' -o -name 'librp_layout.so' -o -name 'rp_layout.so' \) \
             -exec cp -t dist {} +
-          test -f dist/rp-graph-engine
+          test -f dist/rp-layout-cli
           test -f dist/librp_layout.so -o -f dist/rp_layout.so
           ls -la dist
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: rp-graph-engine-${{ matrix.os }}
-          path: services/graph_engine/dist/
+          name: rp-layout-${{ matrix.os }}
+          path: services/graph_engine/layout/dist/
           if-no-files-found: error
