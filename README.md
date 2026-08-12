@@ -84,8 +84,11 @@ npm run dev:web
 ### 一键开发（Windows）
 
 ```powershell
-.\scripts\dev.ps1
+.\scripts\dev.ps1          # 默认两进程：API + Web
+.\scripts\dev.ps1 -All     # 四进程：+ 独立 Agent（:19877）+ 图谱 sidecar（:9750）
 ```
+
+`-All` 自动为 API 注入 `AGENT_BASE_URL` / `AGENT_INTERNAL_TOKEN` / `RP_GRAPH_ENGINE_URL`，使对话走独立 Agent 进程、图谱走独立引擎进程。图谱档位见 `scripts/start-graph-engine.ps1`（C 引擎 `rp-graph-engine.exe` 优先，未构建时回退 Python `rp_graph`）。
 
 ## 端口与环境变量
 
@@ -95,6 +98,8 @@ npm run dev:web
 | API（uvicorn） | 19878 | 127.0.0.1（显式） | `API_PORT` |
 | Agent Runtime（uvicorn） | 19877 | 127.0.0.1（显式） | `AGENT_PORT` |
 | 图谱引擎 sidecar | 9750 | 127.0.0.1 | `RP_GRAPH_ENGINE_PORT` |
+
+**进程拓扑**：默认两进程（API 进程内含 Agent 与进程内 `rp_graph`）；`npm run dev:agent` 或 `dev.ps1 -All` 拉起独立 Agent 进程（API 经 `AGENT_BASE_URL` 转发 SSE）；`dev.ps1 -All` / `-GraphEngine` 或 `scripts\start-graph-engine.ps1` 拉起图谱 sidecar（`build\c\rp-graph-engine.exe` 存在时用 C 引擎，否则回退 Python）。
 
 - **开发代理目标**：`apps/web/vite.config.ts`，默认 `http://127.0.0.1:19878`，可用 `VITE_API_TARGET` 覆盖；同时代理 `/api` 与 `/health`（后端健康检查）。
 - **Vite 端口占用**：已启用 `strictPort`，占用即报错，不会静默顺延；显式改端口请用 `VITE_PORT=xxxx npm run dev:web`。
