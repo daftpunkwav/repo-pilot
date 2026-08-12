@@ -1502,7 +1502,8 @@ async def stream_classify_project(
         ))
         return
 
-    session = await create_session(db, project_id=project_id, title=f"分类 {project.name}"
+    session = await create_session(
+        db, project_id=project_id, title=f"分类 {project.name}"
     )
     hint = user_hint or ""
     prompt = (
@@ -1541,7 +1542,8 @@ async def stream_generate_note(
         ))
         return
 
-    session = await create_session(db, project_id=project_id, title=f"笔记 {project.name}"
+    session = await create_session(
+        db, project_id=project_id, title=f"笔记 {project.name}"
     )
     mode_norm = mode if mode in ("project", "standalone") else "project"
     topic_text = topic or project.name
@@ -1562,6 +1564,8 @@ async def stream_generate_note(
         error_prefix="笔记生成",
     ):
         yield chunk
+
+
 async def get_context_window(
     db: AsyncSession, session_id: UUID | None
 ) -> ContextWindowStatsOut:
