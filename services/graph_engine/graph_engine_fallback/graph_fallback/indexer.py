@@ -1,6 +1,6 @@
 """静态解析索引 —— 对照 codebase-memory-mcp 多遍流水线（结构/定义/文档 Section）。
 
-目标节点类型对齐 CBM：
+目标节点类型对齐原生引擎：
 Project / Branch / Folder / File / Module / Section / Function / Method /
 Class / Interface / Type / Variable / Route / Decorator / EnvVar / Macro
 """
@@ -36,7 +36,7 @@ SKIP_DIRS = {
     "__snapshots__",
 }
 
-# 对照 CBM discover：代码 + Markdown/配置等都会进图
+# 对照原生引擎 discover：代码 + Markdown/配置等都会进图
 CODE_EXT = {
     ".py",
     ".pyi",
@@ -91,7 +91,7 @@ MODE_LIMITS = {
     # fast：少文件，仍含 md Section（否则节点数会严重偏低）
     "fast": {"max_files": 800, "max_bytes": 400_000, "layout_iters": 0},
     "moderate": {"max_files": 8_000, "max_bytes": 1_500_000, "layout_iters": 0},
-    # full：对齐 CBM 量级；服务端不做力导向
+    # full：对齐原生引擎 量级；服务端不做力导向
     "full": {"max_files": 100_000, "max_bytes": 5_000_000, "layout_iters": 0},
     "cross-repo-intelligence": {"max_files": 0, "max_bytes": 0, "layout_iters": 0},
 }
@@ -112,11 +112,11 @@ JS_ARROW_RE = re.compile(
     r"(?:export\s+)?(?:const|let|var)\s+([A-Za-z_][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_][\w$]*)\s*=>",
 )
 JS_VAR_RE = re.compile(
-    # 仅列首声明 = 模块顶层（对齐 CBM Variable，避免缩进 const 爆炸）
+    # 仅列首声明 = 模块顶层（对齐原生引擎 Variable，避免缩进 const 爆炸）
     r"(?m)^(export\s+)?(?:const|let|var)\s+([A-Za-z_][\w$]*)\s*=",
 )
 JS_METHOD_RE = re.compile(
-    # class 体内缩进方法（启发式，对齐 CBM Method 量级）
+    # class 体内缩进方法（启发式，对齐原生引擎 Method 量级）
     r"(?m)^[ \t]{2,8}(?:async\s+)?(?:static\s+)?(?:async\s+)?(?:get|set\s+)?([A-Za-z_][\w$]*)\s*\([^)]*\)\s*\{",
 )
 JS_IMPORT_RE = re.compile(
@@ -158,7 +158,7 @@ def _nid(project: str, qn: str) -> str:
 
 
 def _module_qn(project: str, rel: str) -> str:
-    """对齐 CBM ModuleQN：project.path.to.file（保留 __init__）。"""
+    """对齐原生引擎 ModuleQN：project.path.to.file（保留 __init__）。"""
     norm = rel.replace("\\", "/").removesuffix("/")
     parts = [project] + [p for p in norm.split("/") if p]
     return ".".join(parts)
@@ -337,7 +337,7 @@ def index_repository(
         parent_id = folder_ids.get("" if parent == "." else parent, project_id)
         store.add_edge(Edge(source=parent_id, target=fid, type="CONTAINS_FILE"))
 
-        # Module（每个可解析文件一个，对齐 CBM）
+        # Module（每个可解析文件一个，对齐原生引擎）
         mod_qn = _module_qn(store.project, rel)
         mid = _nid(store.project, f"Module:{mod_qn}")
         store.add_node(
@@ -513,7 +513,7 @@ def _index_markdown(
     module_id: str,
     qn_to_id: dict[str, str],
 ) -> None:
-    """CBM：atx/setext heading → Section。"""
+    """原生引擎：atx/setext heading → Section。"""
     seen: set[str] = set()
     for m in MD_HEADING_RE.finditer(text):
         title = m.group(2).strip()
@@ -680,7 +680,7 @@ def _index_python(
             if not isinstance(target, ast.Name):
                 return
             name = target.id
-            # 跳过过于琐碎的模块级绑定，贴近 CBM 对「有意义声明」的偏好
+            # 跳过过于琐碎的模块级绑定，贴近原生引擎对「有意义声明」的偏好
             if name in {"__all__", "__version__", "__author__"}:
                 return
             qn = f"{mod}.{name}"

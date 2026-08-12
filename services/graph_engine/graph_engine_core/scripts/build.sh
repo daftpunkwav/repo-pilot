@@ -43,7 +43,7 @@ Make passthrough (VAR=VAL, forwarded verbatim):
   EXTRA_CFLAGS= EXTRA_LDFLAGS=   Sanitizer soak builds (see _soak.yml).
 
 Environment:
-  CBM_NO_CCACHE=1  Disable the compiler cache (build correctness is identical;
+  ENGINE_NO_CCACHE=1  Disable the compiler cache (build correctness is identical;
                    only speed changes).
 
 Callers: _build.yml (all release artifacts) · pr.yml pr-smoke · every
@@ -59,13 +59,13 @@ done
 # Pre-parse --arch flag before sourcing env.sh
 for arg in "$@"; do
     case "$arg" in
-        --arch=*) export CBM_ARCH="${arg#--arch=}" ;;
+        --arch=*) export ENGINE_ARCH="${arg#--arch=}" ;;
     esac
 done
 prev_arg=""
 for arg in "$@"; do
     if [[ "${prev_arg:-}" == "--arch" ]]; then
-        export CBM_ARCH="$arg"
+        export ENGINE_ARCH="$arg"
     fi
     prev_arg="$arg"
 done
@@ -135,7 +135,7 @@ done
 CFLAGS_EXTRA=""
 if [[ -n "$VERSION" ]]; then
     CLEAN_VERSION="${VERSION#v}"
-    CFLAGS_EXTRA="-DCBM_VERSION=\"\\\"$CLEAN_VERSION\\\"\""
+    CFLAGS_EXTRA="-DENGINE_VERSION=\"\\\"$CLEAN_VERSION\\\"\""
 fi
 
 print_env "build.sh"
@@ -145,24 +145,24 @@ echo "  ui=$WITH_UI version=${VERSION:-dev}"
 verify_compiler "$CC"
 
 # Step 1: Clean C build artifacts only (not node_modules — npm ci handles that)
-cbm_remove_build_dir "$ROOT" "$BUILD_DIR"
+engine_remove_build_dir "$ROOT" "$BUILD_DIR"
 
 # Step 2: Build (Makefile applies $ARCHFLAGS for the target arch on macOS)
 # UI asset 服务已移除(RepoPilot 前端在 apps/web),--with-ui 不再有独立构建目标。
 if $WITH_UI; then
     echo "build.sh: warning: --with-ui 已弃用(前端资源服务已移除),按标准目标构建" >&2
 fi
-make -j"$NPROC" -f Makefile.cbm rp-graph-engine \
+make -j"$NPROC" -f Makefile graph-engine \
     CFLAGS_EXTRA="$CFLAGS_EXTRA" "${EXTRA_MAKE_ARGS[@]+"${EXTRA_MAKE_ARGS[@]}"}"
 
 # Stage the integration-template asset next to the binary so the dev/CI build
-# mirrors the release archive layout. The binary resolves cbm-integrations.json
-# next to itself, in $CBM_ASSETS_DIR, or under ~/.cbm/assets/<sha256>/; a plain
+# mirrors the release archive layout. The binary resolves engine-integrations.json
+# next to itself, in $ENGINE_ASSETS_DIR, or under ~/.engine/assets/<sha256>/; a plain
 # build/c binary has none of those, so install/uninstall (which render the
 # templates to verify hash and ownership) would fail closed exactly as they do
 # for a user who deleted the file. Copying it here keeps `install` working
 # straight out of a build tree — smoke, local dev, and the release packaging all
 # then see the same adjacency.
-cp "$ROOT/assets/cbm-integrations.json" "$BUILD_DIR/cbm-integrations.json"
+cp "$ROOT/assets/engine-integrations.json" "$BUILD_DIR/engine-integrations.json"
 
-echo "=== Build complete: ${BUILD_DIR}/codebase-memory-mcp ==="
+echo "=== Build complete: ${BUILD_DIR}/graph-engine ==="

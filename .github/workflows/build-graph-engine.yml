@@ -36,13 +36,13 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Get-ChildItem -Path build -Recurse -File |
-            Where-Object { $_.Name -in @('rp-layout-cli.exe', 'rp_layout.dll') } |
+            Where-Object { $_.Name -in @('graph-layout-cli.exe', 'graph_layout.dll') } |
             ForEach-Object { Copy-Item $_.FullName -Destination dist -Force }
-          if (-not (Test-Path dist/rp-layout-cli.exe)) {
-            throw "未找到 rp-layout-cli.exe"
+          if (-not (Test-Path dist/graph-layout-cli.exe)) {
+            throw "未找到 graph-layout-cli.exe"
           }
-          if (-not (Test-Path dist/rp_layout.dll)) {
-            throw "未找到 rp_layout.dll"
+          if (-not (Test-Path dist/graph_layout.dll)) {
+            throw "未找到 graph_layout.dll"
           }
           Get-ChildItem dist
 
@@ -50,15 +50,15 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           mkdir -p dist
-          find build -type f \( -name 'rp-layout-cli' -o -name 'librp_layout.so' -o -name 'rp_layout.so' \) \
+          find build -type f \( -name 'graph-layout-cli' -o -name 'libgraph_layout.so' -o -name 'graph_layout.so' \) \
             -exec cp -t dist {} +
-          test -f dist/rp-layout-cli
-          test -f dist/librp_layout.so -o -f dist/rp_layout.so
+          test -f dist/graph-layout-cli
+          test -f dist/libgraph_layout.so -o -f dist/graph_layout.so
           ls -la dist
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: rp-layout-${{ matrix.os }}
+          name: graph-layout-${{ matrix.os }}
           path: services/graph_engine/layout/dist/
           if-no-files-found: error

@@ -1,4 +1,4 @@
-"""RepoPilot 自研图谱引擎 —— 对标 CBM 工具面契约。"""
+"""Voyager 自研图谱引擎 —— 对齐原生 C 引擎工具面契约。"""
 from __future__ import annotations
 
 import re

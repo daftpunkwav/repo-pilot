@@ -11,40 +11,40 @@
  *
  * All allocations are page-aligned and zeroed by the OS.
  */
-#ifndef CBM_VMEM_H
-#define CBM_VMEM_H
+#ifndef ENGINE_VMEM_H
+#define ENGINE_VMEM_H
 
 #include <stdbool.h>
 #include <stddef.h>
 
 /* Initialize vmem with a budget = ram_fraction * total_physical_ram.
  * Thread-safe: only the first call takes effect.
- * Must be called before any cbm_vmem_alloc() calls. */
-void cbm_vmem_init(double ram_fraction);
+ * Must be called before any engine_vmem_alloc() calls. */
+void engine_vmem_init(double ram_fraction);
 
 /* Allocate size bytes via mmap/VirtualAlloc.
  * Returns page-aligned, zeroed memory. NULL on failure.
  * Tracks allocation against the budget and logs pressure events. */
-void *cbm_vmem_alloc(size_t size);
+void *engine_vmem_alloc(size_t size);
 
-/* Free memory previously allocated by cbm_vmem_alloc.
+/* Free memory previously allocated by engine_vmem_alloc.
  * size must match the original allocation size. */
-void cbm_vmem_free(void *ptr, size_t size);
+void engine_vmem_free(void *ptr, size_t size);
 
 /* Current total allocated bytes (atomic). */
-size_t cbm_vmem_allocated(void);
+size_t engine_vmem_allocated(void);
 
 /* Peak allocated bytes seen so far. */
-size_t cbm_vmem_peak(void);
+size_t engine_vmem_peak(void);
 
 /* Total budget in bytes. */
-size_t cbm_vmem_budget(void);
+size_t engine_vmem_budget(void);
 
 /* Returns true if current allocation exceeds the budget. */
-bool cbm_vmem_over_budget(void);
+bool engine_vmem_over_budget(void);
 
 /* Per-worker budget hint: budget / num_workers.
  * For monitoring/logging only — workers never block. */
-size_t cbm_vmem_worker_budget(int num_workers);
+size_t engine_vmem_worker_budget(int num_workers);
 
-#endif /* CBM_VMEM_H */
+#endif /* ENGINE_VMEM_H */

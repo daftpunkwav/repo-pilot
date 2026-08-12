@@ -1,4 +1,4 @@
-# RepoPilot：构建迁入的 C 图谱引擎（rp-graph-engine）
+# RepoPilot：构建迁入的 C 图谱引擎（graph-engine）
 # 优先 WSL；否则尝试本机 MinGW make。
 
 param(
@@ -16,7 +16,7 @@ if ($Help) {
 用法: .\scripts\build.ps1 [-Jobs N]
 
 在 services/graph_engine/graph_engine_core 下编译迁入的 C 引擎。
-产物: build/c/rp-graph-engine（或 .exe）
+产物: build/c/graph-engine（或 .exe）
 注: UI asset 服务已移除，-WithUi 参数保留仅为兼容旧调用，无实际效果。
 "@
     exit 0
@@ -36,7 +36,7 @@ function Test-Wsl {
 }
 
 $j = if ($Jobs -gt 0) { $Jobs } else { [Math]::Max(2, [Environment]::ProcessorCount - 1) }
-$target = "rp-graph-engine"
+$target = "graph-engine"
 
 Write-Host "==> 构建目标: $target  -j$j" -ForegroundColor Cyan
 
@@ -53,7 +53,7 @@ for p in root.rglob('*.sh'):
 if (Test-Wsl) {
     $wslPath = (& wsl.exe wslpath -a $Root).Trim()
     Write-Host "==> 使用 WSL: $wslPath" -ForegroundColor Cyan
-    & wsl.exe -e bash -lc "set -euo pipefail; cd '$wslPath'; make -f Makefile.rp -j$j $target"
+    & wsl.exe -e bash -lc "set -euo pipefail; cd '$wslPath'; make -f Makefile -j$j $target"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 } else {
     $make = Get-Command make -ErrorAction SilentlyContinue
@@ -62,15 +62,15 @@ if (Test-Wsl) {
         Write-Error "未找到 WSL，且本机缺少 make/gcc。请安装 WSL 或 MinGW。"
     }
     Write-Host "==> 使用本机 MinGW make/gcc" -ForegroundColor Cyan
-    & make -f Makefile.rp -j$j $target
+    & make -f Makefile -j$j $target
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
 $candidates = @(
-    (Join-Path $Root "build\c\rp-graph-engine.exe"),
-    (Join-Path $Root "build\c\rp-graph-engine"),
-    (Join-Path $Root "build\c\codebase-memory-mcp.exe"),
-    (Join-Path $Root "build\c\codebase-memory-mcp")
+    (Join-Path $Root "build\c\graph-engine.exe"),
+    (Join-Path $Root "build\c\graph-engine"),
+    (Join-Path $Root "build\c\graph-engine.exe"),
+    (Join-Path $Root "build\c\graph-engine")
 )
 $found = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
 if ($found) {

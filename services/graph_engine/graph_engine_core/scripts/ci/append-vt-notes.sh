@@ -9,7 +9,7 @@ set -euo pipefail
 
 VT_ASSOCIATIONS="${VT_ASSOCIATIONS:-binaries/associations.tsv}"
 VT_RESULTS_PATH="${VT_RESULTS_PATH:-binaries/vt-results.tsv}"
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/cbm-vt-notes.XXXXXX")"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/engine-vt-notes.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 
 gh release view "$VERSION" \
@@ -27,8 +27,8 @@ import urllib.parse
 from typing import Dict, List, Sequence, Tuple
 
 
-START = "<!-- cbm-security-verification:start -->"
-END = "<!-- cbm-security-verification:end -->"
+START = "<!-- engine-security-verification:start -->"
+END = "<!-- engine-security-verification:end -->"
 ASSOCIATION_FIELDS = (
     "association_type",
     "archive",
@@ -106,12 +106,12 @@ asset_base = (
 )
 association_meta, associations = read_tsv(
     association_path,
-    "cbm-release-scan-associations-v3",
+    "engine-release-scan-associations-v3",
     ASSOCIATION_FIELDS,
 )
 result_meta, results = read_tsv(
     results_path,
-    "cbm-virustotal-results-v1",
+    "engine-virustotal-results-v1",
     RESULT_FIELDS,
 )
 if association_meta.get("associations") != len(associations):

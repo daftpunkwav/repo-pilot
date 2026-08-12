@@ -2,12 +2,12 @@
  * service.h — Stable daemon rendezvous and build-compatibility policy.
  *
  * The rendezvous key deliberately excludes executable path, release version,
- * build fingerprint, cache directory, and ABI values. Every stateful CBM
+ * build fingerprint, cache directory, and ABI values. Every stateful engine
  * frontend for one OS account must meet at one endpoint; the HELLO comparison
  * then either admits the exact build or returns an explicit conflict.
  */
-#ifndef CBM_DAEMON_SERVICE_H
-#define CBM_DAEMON_SERVICE_H
+#ifndef ENGINE_DAEMON_SERVICE_H
+#define ENGINE_DAEMON_SERVICE_H
 
 #include "daemon/daemon.h"
 
@@ -15,9 +15,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define CBM_DAEMON_VERSION_TEXT_SIZE 64U
-#define CBM_DAEMON_BUILD_FINGERPRINT_SIZE 65U
-#define CBM_DAEMON_CONFLICT_MESSAGE_SIZE 512U
+#define ENGINE_DAEMON_VERSION_TEXT_SIZE 64U
+#define ENGINE_DAEMON_BUILD_FINGERPRINT_SIZE 65U
+#define ENGINE_DAEMON_CONFLICT_MESSAGE_SIZE 512U
 
 typedef struct {
     const char *semantic_version;
@@ -30,49 +30,49 @@ typedef struct {
     uint32_t protocol_abi;
     uint32_t store_abi;
     uint32_t feature_abi;
-} cbm_daemon_build_identity_t;
+} engine_daemon_build_identity_t;
 
 typedef enum {
-    CBM_DAEMON_HELLO_INVALID = 0,
-    CBM_DAEMON_HELLO_COMPATIBLE,
-    CBM_DAEMON_HELLO_VERSION_CONFLICT,
-    CBM_DAEMON_HELLO_BUILD_CONFLICT,
-    CBM_DAEMON_HELLO_PROTOCOL_ABI_CONFLICT,
-    CBM_DAEMON_HELLO_STORE_ABI_CONFLICT,
-    CBM_DAEMON_HELLO_FEATURE_ABI_CONFLICT,
-    CBM_DAEMON_HELLO_CACHE_CONFLICT,
-} cbm_daemon_hello_status_t;
+    ENGINE_DAEMON_HELLO_INVALID = 0,
+    ENGINE_DAEMON_HELLO_COMPATIBLE,
+    ENGINE_DAEMON_HELLO_VERSION_CONFLICT,
+    ENGINE_DAEMON_HELLO_BUILD_CONFLICT,
+    ENGINE_DAEMON_HELLO_PROTOCOL_ABI_CONFLICT,
+    ENGINE_DAEMON_HELLO_STORE_ABI_CONFLICT,
+    ENGINE_DAEMON_HELLO_FEATURE_ABI_CONFLICT,
+    ENGINE_DAEMON_HELLO_CACHE_CONFLICT,
+} engine_daemon_hello_status_t;
 
 typedef struct {
-    cbm_daemon_hello_status_t status;
-    char active_version[CBM_DAEMON_VERSION_TEXT_SIZE];
-    char active_build_fingerprint[CBM_DAEMON_BUILD_FINGERPRINT_SIZE];
-    char requested_version[CBM_DAEMON_VERSION_TEXT_SIZE];
-    char requested_build_fingerprint[CBM_DAEMON_BUILD_FINGERPRINT_SIZE];
-    char active_cache_fingerprint[CBM_DAEMON_BUILD_FINGERPRINT_SIZE];
-    char requested_cache_fingerprint[CBM_DAEMON_BUILD_FINGERPRINT_SIZE];
-} cbm_daemon_conflict_t;
+    engine_daemon_hello_status_t status;
+    char active_version[ENGINE_DAEMON_VERSION_TEXT_SIZE];
+    char active_build_fingerprint[ENGINE_DAEMON_BUILD_FINGERPRINT_SIZE];
+    char requested_version[ENGINE_DAEMON_VERSION_TEXT_SIZE];
+    char requested_build_fingerprint[ENGINE_DAEMON_BUILD_FINGERPRINT_SIZE];
+    char active_cache_fingerprint[ENGINE_DAEMON_BUILD_FINGERPRINT_SIZE];
+    char requested_cache_fingerprint[ENGINE_DAEMON_BUILD_FINGERPRINT_SIZE];
+} engine_daemon_conflict_t;
 
 /* Stable product key. OS-account isolation is supplied by the IPC runtime
  * directory / current-user ACL, never by caller-provided identity text. */
-bool cbm_daemon_rendezvous_key(char out[CBM_DAEMON_KEY_SIZE]);
+bool engine_daemon_rendezvous_key(char out[ENGINE_DAEMON_KEY_SIZE]);
 
 /* SHA-256 of the exact executable bytes, encoded as 64 lowercase hex
  * characters plus NUL. This is captured once at process startup. */
-bool cbm_daemon_build_fingerprint_file(const char *path,
-                                       char out[CBM_DAEMON_BUILD_FINGERPRINT_SIZE]);
+bool engine_daemon_build_fingerprint_file(const char *path,
+                                       char out[ENGINE_DAEMON_BUILD_FINGERPRINT_SIZE]);
 
-cbm_daemon_hello_status_t cbm_daemon_hello_compare(const cbm_daemon_build_identity_t *active,
-                                                   const cbm_daemon_build_identity_t *requested,
-                                                   cbm_daemon_conflict_t *conflict_out);
+engine_daemon_hello_status_t engine_daemon_hello_compare(const engine_daemon_build_identity_t *active,
+                                                   const engine_daemon_build_identity_t *requested,
+                                                   engine_daemon_conflict_t *conflict_out);
 
-bool cbm_daemon_conflict_format(const cbm_daemon_conflict_t *conflict, char *out, size_t out_size);
+bool engine_daemon_conflict_format(const engine_daemon_conflict_t *conflict, char *out, size_t out_size);
 
 /* Append one secret-free NDJSON conflict event. A persistent owner-only
  * <log_path>.lock serializes validation, rotation, and append across daemon
  * processes; cap_bytes rotates one complete prior generation to <log_path>.1
  * before appending a record that would cross the cap. */
-bool cbm_daemon_conflict_log_append(const char *log_path, const cbm_daemon_conflict_t *conflict,
+bool engine_daemon_conflict_log_append(const char *log_path, const engine_daemon_conflict_t *conflict,
                                     size_t cap_bytes);
 
-#endif /* CBM_DAEMON_SERVICE_H */
+#endif /* ENGINE_DAEMON_SERVICE_H */

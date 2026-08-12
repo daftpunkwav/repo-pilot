@@ -1,5 +1,5 @@
-#ifndef CBM_GIT_CONTEXT_H
-#define CBM_GIT_CONTEXT_H
+#ifndef ENGINE_GIT_CONTEXT_H
+#define ENGINE_GIT_CONTEXT_H
 
 #include <stdbool.h>
 
@@ -17,11 +17,11 @@ typedef struct {
     char *branch_slug;
     char *head_sha;
     char *base_sha;
-} cbm_git_context_t;
+} engine_git_context_t;
 
-int cbm_git_context_resolve(const char *path, cbm_git_context_t *out);
-void cbm_git_context_free(cbm_git_context_t *ctx);
-char *cbm_git_context_branch_qn(const char *project_name, const cbm_git_context_t *ctx);
-int cbm_git_context_props_json(const cbm_git_context_t *ctx, char *buf, int buf_size);
+int engine_git_context_resolve(const char *path, engine_git_context_t *out);
+void engine_git_context_free(engine_git_context_t *ctx);
+char *engine_git_context_branch_qn(const char *project_name, const engine_git_context_t *ctx);
+int engine_git_context_props_json(const engine_git_context_t *ctx, char *buf, int buf_size);
 
 #endif

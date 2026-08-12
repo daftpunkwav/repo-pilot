@@ -2,9 +2,9 @@
  * userconfig.h — User-defined file extension → language mappings.
  *
  * Reads extra_extensions from two optional JSON config files:
- *   Global:  $XDG_CONFIG_HOME/codebase-memory-mcp/config.json
- *            (falls back to ~/.config/codebase-memory-mcp/config.json)
- *   Project: {repo_root}/.codebase-memory.json
+ *   Global:  $XDG_CONFIG_HOME/graph-engine/config.json
+ *            (falls back to ~/.config/graph-engine/config.json)
+ *   Project: {repo_root}/.graph-engine.json
  *
  * Project config wins over global. Unknown language values warn and are
  * skipped (fail-open). Missing files are silently ignored.
@@ -14,63 +14,63 @@
  *
  * The language string matching is case-insensitive.
  */
-#ifndef CBM_USERCONFIG_H
-#define CBM_USERCONFIG_H
+#ifndef ENGINE_USERCONFIG_H
+#define ENGINE_USERCONFIG_H
 
-#include "cbm.h" /* CBMLanguage */
+#include "engine.h" /* EngineLanguage */
 #include "foundation/sha256.h"
 
 /* ── Types ──────────────────────────────────────────────────────── */
 
 typedef struct {
     char *ext;        /* file extension including dot, e.g. ".blade.php" */
-    CBMLanguage lang; /* resolved language enum */
-} cbm_userext_t;
+    EngineLanguage lang; /* resolved language enum */
+} engine_userext_t;
 
 typedef struct {
-    cbm_userext_t *entries; /* heap-allocated array */
+    engine_userext_t *entries; /* heap-allocated array */
     int count;              /* number of entries */
-    /* Digests of the exact bytes/state consumed by cbm_userconfig_load(). */
-    char global_source_sha256[CBM_SHA256_HEX_LEN + 1];
-    char project_source_sha256[CBM_SHA256_HEX_LEN + 1];
-} cbm_userconfig_t;
+    /* Digests of the exact bytes/state consumed by engine_userconfig_load(). */
+    char global_source_sha256[ENGINE_SHA256_HEX_LEN + 1];
+    char project_source_sha256[ENGINE_SHA256_HEX_LEN + 1];
+} engine_userconfig_t;
 
 /* ── API ────────────────────────────────────────────────────────── */
 
 /*
  * Load user config from global + project files, merge (project wins).
  * repo_path: absolute path to the repository root (for project config).
- * Returns a heap-allocated cbm_userconfig_t (caller must free via
- * cbm_userconfig_free). Returns NULL only on allocation failure.
+ * Returns a heap-allocated engine_userconfig_t (caller must free via
+ * engine_userconfig_free). Returns NULL only on allocation failure.
  * Missing config files are silently ignored.
  */
-cbm_userconfig_t *cbm_userconfig_load(const char *repo_path);
+engine_userconfig_t *engine_userconfig_load(const char *repo_path);
 
 /*
  * Look up a file extension in the user config.
  * ext: extension including dot, e.g. ".blade.php"
- * Returns the mapped CBMLanguage, or CBM_LANG_COUNT if not found.
+ * Returns the mapped EngineLanguage, or ENGINE_LANG_COUNT if not found.
  */
-CBMLanguage cbm_userconfig_lookup(const cbm_userconfig_t *cfg, const char *ext);
+EngineLanguage engine_userconfig_lookup(const engine_userconfig_t *cfg, const char *ext);
 
-/* Free a cbm_userconfig_t returned by cbm_userconfig_load. NULL-safe. */
-void cbm_userconfig_free(cbm_userconfig_t *cfg);
+/* Free a engine_userconfig_t returned by engine_userconfig_load. NULL-safe. */
+void engine_userconfig_free(engine_userconfig_t *cfg);
 
 /* ── Integration hook ───────────────────────────────────────────── */
 
 /*
- * Set the process-global user config that cbm_language_for_extension()
+ * Set the process-global user config that engine_language_for_extension()
  * will consult before the built-in table.
  * cfg may be NULL to clear the override.
  * Not thread-safe — call before spawning worker threads.
  */
-void cbm_set_user_lang_config(const cbm_userconfig_t *cfg);
+void engine_set_user_lang_config(const engine_userconfig_t *cfg);
 
 /*
  * Get the currently active process-global user config.
  * Returns NULL if none has been set.
- * Called internally by cbm_language_for_extension().
+ * Called internally by engine_language_for_extension().
  */
-const cbm_userconfig_t *cbm_get_user_lang_config(void);
+const engine_userconfig_t *engine_get_user_lang_config(void);
 
-#endif /* CBM_USERCONFIG_H */
+#endif /* ENGINE_USERCONFIG_H */

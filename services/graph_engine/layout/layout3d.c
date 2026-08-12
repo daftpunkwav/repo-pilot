@@ -1,32 +1,32 @@
 /*
- * rp_layout / rp-layout-cli：可选 C 加速布局。
- * 无此库时 Python force_layout_3d 兜底。勿与 graph_engine_core 的 rp-graph-engine 混淆。
+ * graph_layout / graph-layout-cli：可选 C 加速布局。
+ * 无此库时 Python force_layout_3d 兜底。勿与 graph_engine_core 的 graph-engine 混淆。
  */
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
 #ifdef _WIN32
-#define RP_EXPORT __declspec(dllexport)
+#define GRAPH_LAYOUT_EXPORT __declspec(dllexport)
 #else
-#define RP_EXPORT
+#define GRAPH_LAYOUT_EXPORT
 #endif
 
 typedef struct {
   float x, y, z;
   float size;
   int in_calls;
-} RpNode;
+} LayoutNode;
 
 typedef struct {
   int source;
   int target;
-} RpEdge;
+} LayoutEdge;
 
-RP_EXPORT void rp_layout3d(
-    RpNode *nodes,
+GRAPH_LAYOUT_EXPORT void graph_layout3d(
+    LayoutNode *nodes,
     int n_nodes,
-    const RpEdge *edges,
+    const LayoutEdge *edges,
     int n_edges,
     int iterations
 ) {
@@ -110,12 +110,12 @@ RP_EXPORT void rp_layout3d(
   free(fx); free(fy); free(fz);
 }
 
-/* 简易 CLI：rp-layout-cli --version */
-#ifdef RP_GRAPH_CLI
+/* 简易 CLI：graph-layout-cli --version */
+#ifdef LAYOUT_CLI
 #include <stdio.h>
 int main(int argc, char **argv) {
   (void)argc; (void)argv;
-  printf("rp-layout-cli 0.1.0\n");
+  printf("graph-layout-cli 0.1.0\n");
   return 0;
 }
 #endif

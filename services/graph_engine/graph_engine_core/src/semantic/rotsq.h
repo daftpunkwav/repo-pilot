@@ -30,38 +30,38 @@
  * estimated IP directly (rotation preserves norms up to the fixed scale,
  * which cancels in the scale factors).
  */
-#ifndef CBM_SEMANTIC_ROTSQ_H
-#define CBM_SEMANTIC_ROTSQ_H
+#ifndef ENGINE_SEMANTIC_ROTSQ_H
+#define ENGINE_SEMANTIC_ROTSQ_H
 
 #include <stdint.h>
 
 enum {
-    CBM_RSQ_IN_DIM = 768,                 /* input dimension (CBM_SEM_DIM) */
-    CBM_RSQ_DIM = 1024,                   /* padded pow2 rotation dimension */
-    CBM_RSQ_BITS = 4,                     /* bits per coordinate */
-    CBM_RSQ_LEVELS = 15,                  /* (1 << CBM_RSQ_BITS) - 1 */
-    CBM_RSQ_CODE_BYTES = CBM_RSQ_DIM / 2, /* two 4-bit codes per byte */
+    ENGINE_RSQ_IN_DIM = 768,                 /* input dimension (ENGINE_SEM_DIM) */
+    ENGINE_RSQ_DIM = 1024,                   /* padded pow2 rotation dimension */
+    ENGINE_RSQ_BITS = 4,                     /* bits per coordinate */
+    ENGINE_RSQ_LEVELS = 15,                  /* (1 << ENGINE_RSQ_BITS) - 1 */
+    ENGINE_RSQ_CODE_BYTES = ENGINE_RSQ_DIM / 2, /* two 4-bit codes per byte */
 };
 
 typedef struct {
-    uint8_t codes[CBM_RSQ_CODE_BYTES]; /* packed 4-bit codes, little nibble first */
+    uint8_t codes[ENGINE_RSQ_CODE_BYTES]; /* packed 4-bit codes, little nibble first */
     float scale;                       /* per-vector dequant scale  */
     float offset;                      /* per-vector dequant offset */
     int32_t code_sum;                  /* Σ codes (for the IP expansion) */
-} cbm_rsq_code_t;
+} engine_rsq_code_t;
 
-/* Encode a CBM_RSQ_IN_DIM float vector (zero-padded to CBM_RSQ_DIM, rotated,
+/* Encode a ENGINE_RSQ_IN_DIM float vector (zero-padded to ENGINE_RSQ_DIM, rotated,
  * quantized). Deterministic: the rotation is fixed at build time. */
-void cbm_rsq_encode(const float *v, cbm_rsq_code_t *out);
+void engine_rsq_encode(const float *v, engine_rsq_code_t *out);
 
 /* Estimated inner product of the two ORIGINAL vectors from their codes.
  * Deterministic pure function of the codes. */
-float cbm_rsq_ip(const cbm_rsq_code_t *a, const cbm_rsq_code_t *b);
+float engine_rsq_ip(const engine_rsq_code_t *a, const engine_rsq_code_t *b);
 
-/* Dequantize a code into the ROTATED space (CBM_RSQ_DIM floats). Note: this
+/* Dequantize a code into the ROTATED space (ENGINE_RSQ_DIM floats). Note: this
  * is the rotated basis, not the original one — fine for basis-agnostic
  * consumers (LSH hyperplane signs), wrong for anything expecting original
  * coordinates. */
-void cbm_rsq_decode(const cbm_rsq_code_t *c, float *out);
+void engine_rsq_decode(const engine_rsq_code_t *c, float *out);
 
-#endif /* CBM_SEMANTIC_ROTSQ_H */
+#endif /* ENGINE_SEMANTIC_ROTSQ_H */

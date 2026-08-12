@@ -1,5 +1,5 @@
 """
-RepoPilot 图谱客户端。
+Voyager 图谱客户端。
 
 优先连接 `GRAPH_ENGINE_URL` 指向的本仓 C 引擎 sidecar（`services/graph_engine/graph_engine_core`）；
 未配置或 sidecar 不健康时回退进程内 Python `graph_fallback.GraphEngine`。
@@ -45,7 +45,7 @@ def _local_engine():
 
 
 def _unwrap_mcp_result(result: Any) -> Any:
-    """解析 CBM/MCP tools/call 的 content / structuredContent。"""
+    """解析 引擎/MCP tools/call 的 content / structuredContent。"""
     if not isinstance(result, dict):
         return result
     if result.get("isError"):
@@ -113,7 +113,7 @@ class GraphEngineClient:
     ) -> dict[str, Any]:
         if self.base_url and await self._sidecar_ok():
             params = {"project": project, "max_nodes": str(max_nodes)}
-            # 自研 sidecar 兼容 graph 参数；CBM 忽略未知 query
+            # 自研 sidecar 兼容 graph 参数；原生引擎忽略未知 query
             if await self.flavor() != "native":
                 params["graph"] = graph
             return await self._http_get("/api/layout", params)
@@ -219,7 +219,7 @@ class GraphEngineClient:
         persistence: bool = True,
         should_abandon: Any = None,
     ) -> Any:
-        """本地引擎可传 should_abandon；CBM sidecar 通过轮询 index-status 检查放弃。"""
+        """本地引擎可传 should_abandon；原生 sidecar 通过轮询 index-status 检查放弃。"""
         if self.base_url and await self._sidecar_ok():
             flavor = await self.flavor()
             if flavor == "native":
@@ -369,7 +369,7 @@ class GraphEngineClient:
         return await self.call_tool("search_code", {"project": project, **kwargs})
 
     async def trace_path(self, project: str, **kwargs: Any) -> Any:
-        """对齐 CBM：优先 function_name；兼容本地引擎的 symbol/start。"""
+        """对齐原生引擎：优先 function_name；兼容本地引擎的 symbol/start。"""
         args = {"project": project, **kwargs}
         if "function_name" not in args:
             sym = args.pop("symbol", None) or args.pop("start", None)
@@ -399,7 +399,7 @@ class GraphEngineClient:
         return await self.call_tool("get_graph_schema", {"project": project})
 
     async def drop_project(self, project: str) -> Any:
-        """删除引擎侧图谱。CBM：DELETE /api/project；自研：RPC/本地 drop_project。"""
+        """删除引擎侧图谱。原生引擎：DELETE /api/project；自研：RPC/本地 drop_project。"""
         name = (project or "").strip()
         if not name:
             raise GraphEngineError("缺少 project 名称", code=EC.GRAPH_QUERY_FAILED)

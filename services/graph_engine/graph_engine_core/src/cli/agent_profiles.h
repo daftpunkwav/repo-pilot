@@ -1,8 +1,8 @@
 /*
- * agent_profiles.h — Canonical tiered codebase-memory agent profiles.
+ * agent_profiles.h — Canonical tiered graph-engine agent profiles.
  */
-#ifndef CBM_CLI_AGENT_PROFILES_H
-#define CBM_CLI_AGENT_PROFILES_H
+#ifndef ENGINE_CLI_AGENT_PROFILES_H
+#define ENGINE_CLI_AGENT_PROFILES_H
 
 #include <stdbool.h>
 
@@ -11,59 +11,59 @@ extern "C" {
 #endif
 
 typedef enum {
-    CBM_GRAPH_TIER_SCOUT = 0,
-    CBM_GRAPH_TIER_VERIFY,
-    CBM_GRAPH_TIER_AUDIT,
-    CBM_GRAPH_TIER_COUNT
-} cbm_graph_tier_t;
+    ENGINE_GRAPH_TIER_SCOUT = 0,
+    ENGINE_GRAPH_TIER_VERIFY,
+    ENGINE_GRAPH_TIER_AUDIT,
+    ENGINE_GRAPH_TIER_COUNT
+} engine_graph_tier_t;
 
 typedef enum {
-    CBM_GRAPH_ACCESS_DIRECT = 0,
-    CBM_GRAPH_ACCESS_HANDOFF,
-    CBM_GRAPH_ACCESS_COUNT
-} cbm_graph_access_t;
+    ENGINE_GRAPH_ACCESS_DIRECT = 0,
+    ENGINE_GRAPH_ACCESS_HANDOFF,
+    ENGINE_GRAPH_ACCESS_COUNT
+} engine_graph_access_t;
 
 typedef enum {
-    CBM_GRAPH_DIALECT_CLAUDE = 0,
-    CBM_GRAPH_DIALECT_CODEX,
-    CBM_GRAPH_DIALECT_GEMINI,
-    CBM_GRAPH_DIALECT_QWEN,
-    CBM_GRAPH_DIALECT_COPILOT,
-    CBM_GRAPH_DIALECT_OPENCODE,
-    CBM_GRAPH_DIALECT_KILO,
-    CBM_GRAPH_DIALECT_KIRO,
-    CBM_GRAPH_DIALECT_JUNIE,
-    CBM_GRAPH_DIALECT_QODER,
-    CBM_GRAPH_DIALECT_CODEBUDDY,
-    CBM_GRAPH_DIALECT_FACTORY,
-    CBM_GRAPH_DIALECT_VIBE,
-    CBM_GRAPH_DIALECT_AUGMENT,
-    CBM_GRAPH_DIALECT_CURSOR,
-    CBM_GRAPH_DIALECT_ROVO,
-    CBM_GRAPH_DIALECT_POCHI,
-    CBM_GRAPH_DIALECT_COUNT
-} cbm_graph_profile_dialect_t;
+    ENGINE_GRAPH_DIALECT_CLAUDE = 0,
+    ENGINE_GRAPH_DIALECT_CODEX,
+    ENGINE_GRAPH_DIALECT_GEMINI,
+    ENGINE_GRAPH_DIALECT_QWEN,
+    ENGINE_GRAPH_DIALECT_COPILOT,
+    ENGINE_GRAPH_DIALECT_OPENCODE,
+    ENGINE_GRAPH_DIALECT_KILO,
+    ENGINE_GRAPH_DIALECT_KIRO,
+    ENGINE_GRAPH_DIALECT_JUNIE,
+    ENGINE_GRAPH_DIALECT_QODER,
+    ENGINE_GRAPH_DIALECT_CODEBUDDY,
+    ENGINE_GRAPH_DIALECT_FACTORY,
+    ENGINE_GRAPH_DIALECT_VIBE,
+    ENGINE_GRAPH_DIALECT_AUGMENT,
+    ENGINE_GRAPH_DIALECT_CURSOR,
+    ENGINE_GRAPH_DIALECT_ROVO,
+    ENGINE_GRAPH_DIALECT_POCHI,
+    ENGINE_GRAPH_DIALECT_COUNT
+} engine_graph_profile_dialect_t;
 
-/* Stable profile identifier. VERIFY intentionally retains "codebase-memory". */
-const char *cbm_graph_tier_slug(cbm_graph_tier_t tier);
-const char *cbm_graph_tier_display_name(cbm_graph_tier_t tier);
-bool cbm_graph_dialect_direct_capable(cbm_graph_profile_dialect_t dialect);
+/* Stable profile identifier. VERIFY intentionally retains "graph-engine". */
+const char *engine_graph_tier_slug(engine_graph_tier_t tier);
+const char *engine_graph_tier_display_name(engine_graph_tier_t tier);
+bool engine_graph_dialect_direct_capable(engine_graph_profile_dialect_t dialect);
 
 /* Returns malloc-owned profile content, or NULL for invalid/unsafe combinations.
  * binary_path is required for direct Kiro and Codex profiles and ignored otherwise. */
-char *cbm_render_graph_profile(cbm_graph_profile_dialect_t dialect, cbm_graph_tier_t tier,
-                               cbm_graph_access_t access, const char *binary_path);
+char *engine_render_graph_profile(engine_graph_profile_dialect_t dialect, engine_graph_tier_t tier,
+                               engine_graph_access_t access, const char *binary_path);
 
 /* v0.9.1-rc.1 direct Codex rendering (server table without a transport), kept
  * so install/uninstall can recognize and migrate those files. */
-char *cbm_render_graph_profile_codex_rc1(cbm_graph_tier_t tier);
+char *engine_render_graph_profile_codex_rc1(engine_graph_tier_t tier);
 
 /* Vibe stores the behavioral prompt separately from its TOML agent definition.
  * Other integrations may also use this as the canonical contract text. */
-char *cbm_render_graph_prompt(cbm_graph_tier_t tier, cbm_graph_access_t access);
+char *engine_render_graph_prompt(engine_graph_tier_t tier, engine_graph_access_t access);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* CBM_CLI_AGENT_PROFILES_H */
+#endif /* ENGINE_CLI_AGENT_PROFILES_H */
