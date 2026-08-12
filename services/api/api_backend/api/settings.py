@@ -58,8 +58,7 @@ async def test_llm(
         model = model or settings.llm_model or settings.llm_default_model
 
     try:
-        from agent_core.llm.config import build_llm_config_from_user
-        from agent_core.llm.provider import LLMProvider
+        from agent_runtime.runtime import get_agent_runtime
     except ImportError as e:
         return wrap_data(
             LlmTestOut(
@@ -72,25 +71,9 @@ async def test_llm(
         )
 
     try:
-        cfg = await build_llm_config_from_user(
-            db,
-            provider_id=provider_id,
-            model_override=model,
+        result = await get_agent_runtime().test_llm(
+            db, provider_id=provider_id, model_override=model
         )
-        if not cfg:
-            return wrap_data(
-                LlmTestOut(
-                    success=False,
-                    latency_ms=0,
-                    model=model or "",
-                    error="未配置 API Key，请先保存密钥",
-                    provider_id=provider_id,
-                )
-            )
-        if model:
-            cfg.model = model
-        provider = LLMProvider(cfg)
-        result = await provider.test_connection(model_override=model)
     except Exception as e:
         return wrap_data(
             LlmTestOut(
@@ -104,19 +87,19 @@ async def test_llm(
 
     await record_llm_test(
         db,
-        success=result.success,
-        latency_ms=result.latency_ms,
-        model=result.model or model or "",
+        success=result["ok"],
+        latency_ms=result["latency_ms"],
+        model=result["model"] or model or "",
     )
     return wrap_data(
         LlmTestOut(
-            success=result.success,
-            latency_ms=result.latency_ms,
-            model=result.model or model or "",
-            reply=result.reply,
-            error=result.error,
-            litellm_model=result.litellm_model,
-            provider_id=cfg.provider_id or provider_id,
+            success=result["ok"],
+            latency_ms=result["latency_ms"],
+            model=result["model"] or model or "",
+            reply=result.get("reply") or "",
+            error=result.get("error") or "",
+            litellm_model=result.get("litellm_model") or "",
+            provider_id=result.get("provider_id") or provider_id,
         )
     )
 

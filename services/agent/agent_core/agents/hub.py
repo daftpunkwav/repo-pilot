@@ -10,9 +10,9 @@ from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 from uuid import UUID
 
-from api_backend.services.app_state_service import get_or_create_app_state
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from agent_core import services as _agent_svc
 from agent_core.agents.intent import IntentClassifier, IntentResult
 from agent_core.agents.react import EngineResult, ReActEngine
 from agent_core.agents.registry import AgentDefinition, get_registry
@@ -363,12 +363,12 @@ class HubService:
         llm = LLMProvider(llm_config)
         permissions = {}
         try:
-            state = await get_or_create_app_state(self.db)
+            state = await _agent_svc.app_state().get_or_create_app_state(self.db)
             await self.db.refresh(state, attribute_names=["agent_permissions"])
             permissions = json.loads(state.agent_permissions or "{}")
         except Exception:
             try:
-                state = await get_or_create_app_state(self.db)
+                state = await _agent_svc.app_state().get_or_create_app_state(self.db)
                 permissions = json.loads(state.agent_permissions or "{}")
             except json.JSONDecodeError:
                 logger.warning("app_state agent_permissions parse failed")

@@ -1,9 +1,9 @@
 """
 Agent API —— 会话管理、对话 SSE、反问、分析、专用入口
 """
+import json
 from uuid import UUID
 
-from agent_core.agents.stream_events import encode_stream_item, format_sse
 from api_backend.api.deps import get_db
 from api_backend.config import get_settings
 from api_backend.core.limiter import limiter
@@ -60,10 +60,11 @@ def _agent_module_down_stream() -> StreamingResponse:
     """Agent 模块未就绪时返回结构化 SSE 错误。"""
 
     async def event_gen():
-        yield encode_stream_item(format_sse(
-            "error",
+        payload = json.dumps(
             {"code": "AGENT_MODULE_DOWN", "message": "Agent 模块未就绪"},
-        ))
+            ensure_ascii=False,
+        )
+        yield "event: error\ndata: " + payload + "\n\n"
 
     return StreamingResponse(event_gen(), media_type="text/event-stream")
 

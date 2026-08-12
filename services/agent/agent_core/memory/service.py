@@ -7,10 +7,11 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from api_backend.services.profile_service import get_or_create_profile, profile_to_out
 from repopilot_shared.models.agent import AgentMessage, AgentSession
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from agent_core import services as _agent_svc
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +42,13 @@ class MemoryService:
         return msgs
 
     async def get_user_profile_dict(self) -> dict[str, Any]:
-        row = await get_or_create_profile(self.db)
-        out = profile_to_out(row)
+        row = await _agent_svc.profile().get_or_create_profile(self.db)
+        out = _agent_svc.profile().profile_to_out(row)
         return out.model_dump()
 
     async def get_short_memory(self, agent_id: str) -> list[dict]:
         """Agent 私有短期记忆（存于 user_profiles.agent_prefs）。"""
-        row = await get_or_create_profile(self.db)
+        row = await _agent_svc.profile().get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         short = prefs.get("short_memory", {})
         if not isinstance(short, dict):
@@ -58,7 +59,7 @@ class MemoryService:
     async def append_short_memory(
         self, agent_id: str, entry: dict[str, Any], max_items: int = 12
     ) -> None:
-        row = await get_or_create_profile(self.db)
+        row = await _agent_svc.profile().get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         if not isinstance(prefs, dict):
             prefs = {}
@@ -73,7 +74,7 @@ class MemoryService:
         await self.db.commit()
 
     async def get_long_memory(self) -> list[dict]:
-        row = await get_or_create_profile(self.db)
+        row = await _agent_svc.profile().get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         items = prefs.get("memory_items", []) if isinstance(prefs, dict) else []
         return items if isinstance(items, list) else []
@@ -119,7 +120,7 @@ class MemoryService:
     async def _enqueue_pending_proposal(
         self, proposal: dict[str, Any]
     ) -> None:
-        row = await get_or_create_profile(self.db)
+        row = await _agent_svc.profile().get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         if not isinstance(prefs, dict):
             prefs = {}
@@ -140,7 +141,7 @@ class MemoryService:
         self, proposal_id: str
     ) -> dict[str, Any]:
         """用户确认后合并提案。"""
-        row = await get_or_create_profile(self.db)
+        row = await _agent_svc.profile().get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         if not isinstance(prefs, dict):
             prefs = {}
@@ -164,7 +165,7 @@ class MemoryService:
         self, proposal_id: str
     ) -> dict[str, Any]:
         """用户拒绝提案。"""
-        row = await get_or_create_profile(self.db)
+        row = await _agent_svc.profile().get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         if not isinstance(prefs, dict):
             prefs = {}
@@ -191,7 +192,7 @@ class MemoryService:
             await self._merge_preference(proposal)
 
     async def _merge_long_memory(self, proposal: dict) -> None:
-        row = await get_or_create_profile(self.db)
+        row = await _agent_svc.profile().get_or_create_profile(self.db)
         prefs = self._parse(row.agent_prefs, {})
         if not isinstance(prefs, dict):
             prefs = {}
@@ -234,7 +235,7 @@ class MemoryService:
 
     async def _merge_tech_profile(self, proposal: dict) -> None:
         """技术熟练度：证据加权，并同步到侧栏 tech memory_items。"""
-        row = await get_or_create_profile(self.db)
+        row = await _agent_svc.profile().get_or_create_profile(self.db)
         tech = self._parse(row.tech_profile, {})
         if not isinstance(tech, dict):
             tech = {}
@@ -292,7 +293,7 @@ class MemoryService:
         await self.db.commit()
 
     async def _merge_preference(self, proposal: dict) -> None:
-        row = await get_or_create_profile(self.db)
+        row = await _agent_svc.profile().get_or_create_profile(self.db)
         prefs_data = self._parse(row.preferences, {})
         if not isinstance(prefs_data, dict):
             prefs_data = {}

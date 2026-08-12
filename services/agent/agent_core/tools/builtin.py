@@ -223,9 +223,9 @@ async def fetch_github_repo(
     )
     if not owner or not repo:
         return {"error": "需要合法的 owner/repo"}
-    from api_backend.services.github_client import fetch_repo_info
+    from agent_core import services as _agent_svc
 
-    return await fetch_repo_info(owner, repo)
+    return await _agent_svc.github().fetch_repo_info(owner, repo)
 
 
 @tool(
@@ -267,9 +267,9 @@ async def fetch_readme(
     )
     if not owner or not repo:
         return {"error": "需要合法的 owner/repo"}
-    from api_backend.services.github_client import fetch_readme_text
+    from agent_core import services as _agent_svc
 
-    text = await fetch_readme_text(owner, repo)
+    text = await _agent_svc.github().fetch_readme_text(owner, repo)
     if text is None:
         return {"error": "无法获取 README", "owner": owner, "repo": repo}
     return {
@@ -1021,11 +1021,7 @@ async def propose_memory(
     timeout_ms=5_000,
 )
 async def get_learner_info(fields: list[str] | None = None, context=None, **kw):
-    from api_backend.services.profile_service import (
-        LEARNER_INFO_FIELDS,
-        get_user_profile,
-        select_learner_info,
-    )
+    from agent_core import services as _agent_svc
 
     requested = fields or []
     if isinstance(requested, str):
@@ -1033,12 +1029,12 @@ async def get_learner_info(fields: list[str] | None = None, context=None, **kw):
     if not isinstance(requested, list) or not requested:
         return {
             "error": "fields 必填且至少一项",
-            "available_fields": sorted(LEARNER_INFO_FIELDS),
+            "available_fields": sorted(_agent_svc.profile().LEARNER_INFO_FIELDS),
         }
     # 限制单次请求字段数，避免「假装按需实则全拉」
     capped = [str(f).strip() for f in requested if str(f).strip()][:6]
-    profile = await get_user_profile(context.db)
-    return select_learner_info(profile, capped)
+    profile = await _agent_svc.profile().get_user_profile(context.db)
+    return _agent_svc.profile().select_learner_info(profile, capped)
 
 
 @tool(

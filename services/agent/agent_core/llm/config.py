@@ -149,9 +149,9 @@ def _decrypt_key(stored: Any) -> str:
 
 def _providers_from_raw(raw: dict[str, Any]) -> list[dict[str, Any]]:
     try:
-        from api_backend.services.settings_service import ensure_providers
+        from agent_core import services as _agent_svc
 
-        ensure_providers(raw)
+        _agent_svc.settings().ensure_providers(raw)
     except Exception:
         pass
     providers = raw.get("llm_providers")
@@ -297,15 +297,15 @@ async def load_user_settings_dict(
     db: AsyncSession,
 ) -> dict[str, Any]:
     """与 LLM 配置同源：强制刷新 AppState.settings_json。"""
-    from api_backend.services.app_state_service import get_or_create_app_state
+    from agent_core import services as _agent_svc
 
-    state = await get_or_create_app_state(db)
+    state = await _agent_svc.app_state().get_or_create_app_state(db)
     await db.refresh(state, attribute_names=["settings_json", "agent_permissions"])
     raw = _load_settings_dict(state)
     try:
-        from api_backend.services.settings_service import ensure_providers
+        from agent_core import services as _agent_svc
 
-        ensure_providers(raw)
+        _agent_svc.settings().ensure_providers(raw)
     except Exception:
         pass
     return raw

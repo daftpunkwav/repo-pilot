@@ -71,10 +71,10 @@ class ContextBuilder:
         speaking_style: str = "default",
         permissions: dict | None = None,
     ) -> AgentRunContext:
-        from api_backend.services.agent_service import get_session_project_ids
+        from agent_core import services as _agent_svc
 
         # 会话绑定的多项目 + 调用方传入的主项目
-        bound_ids = await get_session_project_ids(self.db, session_id)
+        bound_ids = await _agent_svc.session_query().get_session_project_ids(self.db, session_id)
         if project_id and project_id not in bound_ids:
             bound_ids = [project_id, *bound_ids]
 

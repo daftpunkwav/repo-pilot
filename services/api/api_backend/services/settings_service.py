@@ -24,9 +24,9 @@ AGENT_IDS = ("hub", "scout", "mentor", "navigator", "curator", "scribe", "atlas"
 def derive_agent_ids() -> tuple[str, ...]:
     """优先从 agent_core registry 派生；不可用时回退到静态 AGENT_IDS。"""
     try:
-        from agent_core.agents.registry import get_registry as _get_reg
+        from agent_runtime.runtime import get_agent_runtime
 
-        return tuple(d.id for d in _get_reg().list_all())
+        return tuple(d.id for d in get_agent_runtime().list_agent_definitions())
     except Exception:
         return AGENT_IDS
 

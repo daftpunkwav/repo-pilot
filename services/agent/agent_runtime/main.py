@@ -38,6 +38,13 @@ _agent_secret = (get_settings().secret_key or "").encode("utf-8")
 if len(_agent_secret) < 32:
     raise ValueError("SECRET_KEY 长度必须至少为 32 字节，请设置足够强度的随机密钥")
 
+# 注入 agent_core 业务服务契约（Embedded Adapter 由 api_backend 提供）
+from api_backend.services.agent_services_bridge import build_agent_services  # noqa: E402
+
+from agent_runtime.runtime import EmbeddedAgentRuntime  # noqa: E402
+
+_ = EmbeddedAgentRuntime(services=build_agent_services())
+
 
 def _require_internal_token(token: str | None) -> None:
     from api_backend.config import get_settings

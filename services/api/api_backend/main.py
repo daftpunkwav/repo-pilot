@@ -76,6 +76,11 @@ async def lifespan(_app: FastAPI):
             app_state_service=_AppStateServiceAdapter(get_or_create_app_state),
         )
     )
+    # Agent 运行层：注入 api_backend 业务服务契约（agent_core 只依赖 Protocol）
+    from agent_runtime.runtime import EmbeddedAgentRuntime
+    from api_backend.services.agent_services_bridge import build_agent_services
+
+    _ = EmbeddedAgentRuntime(services=build_agent_services())
     try:
         await graph_runtime.start_worker()
         yield

@@ -1,5 +1,4 @@
 """本机身份与学习者画像 API（无认证）"""
-from agent_core.memory.service import MemoryService
 from api_backend.api.deps import get_db
 from api_backend.core.responses import wrap_data
 from api_backend.schemas.common import DataResponse
@@ -56,8 +55,9 @@ async def accept_memory_proposal(
     db: AsyncSession = Depends(get_db),
 ):
     """确认并写入一条待处理记忆提案。"""
-    mem = MemoryService(db)
-    result = await mem.accept_memory_proposal(proposal_id)
+    from agent_runtime.runtime import get_agent_runtime
+
+    result = await get_agent_runtime().accept_memory_proposal(db, proposal_id)
     if not result.get("ok"):
         raise HTTPException(
             status_code=404,
@@ -79,8 +79,9 @@ async def reject_memory_proposal(
     db: AsyncSession = Depends(get_db),
 ):
     """拒绝一条待处理记忆提案。"""
-    mem = MemoryService(db)
-    result = await mem.reject_memory_proposal(proposal_id)
+    from agent_runtime.runtime import get_agent_runtime
+
+    result = await get_agent_runtime().reject_memory_proposal(db, proposal_id)
     if not result.get("ok"):
         raise HTTPException(
             status_code=404,

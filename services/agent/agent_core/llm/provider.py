@@ -449,9 +449,9 @@ def _coerce_content(content: Any) -> str:
 def _normalize_usage(raw: Any) -> dict[str, int]:
     """将 LiteLLM / 厂商 usage 归一化为含命中字段的 dict。"""
     try:
-        from api_backend.services.llm_usage_parse import parse_usage_details
+        from agent_core import services as _agent_svc
 
-        return parse_usage_details(raw)
+        return _agent_svc.llm_usage().parse_usage_details(raw)
     except Exception:
         if not raw:
             return {}
@@ -502,13 +502,13 @@ def _maybe_record_usage(
     if not usage:
         return
     try:
-        from api_backend.services.llm_usage_service import record_parsed_usage_fire_and_forget
+        from agent_core import services as _agent_svc
 
         display_model = _strip_litellm_model_prefix(model)
         prov = (provider or "").strip()
         if prov.lower() == "litellm":
             prov = "unknown"
-        record_parsed_usage_fire_and_forget(
+        _agent_svc.llm_usage().record_parsed_usage_fire_and_forget(
             usage,
             model=display_model or model,
             provider=(prov or "unknown")[:64],

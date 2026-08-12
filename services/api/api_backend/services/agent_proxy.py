@@ -1,6 +1,7 @@
 """API → Agent 独立进程 SSE 代理。"""
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any, AsyncIterator
 from uuid import UUID
@@ -42,15 +43,11 @@ async def proxy_agent_chat_sse(
             if resp.status_code >= 400:
                 body = (await resp.aread()).decode("utf-8", errors="replace")[:500]
                 logger.error("agent proxy HTTP %s: %s", resp.status_code, body)
-                from agent_core.agents.stream_events import format_sse
-
-                yield format_sse(
-                    "error",
-                    {
-                        "code": "AGENT_PROXY_ERROR",
-                        "message": f"Agent 进程返回 HTTP {resp.status_code}",
-                    },
-                ).to_sse().encode("utf-8")
+                _err = json.dumps(
+                    {'code': 'AGENT_PROXY_ERROR', 'message': f'Agent 进程返回 HTTP {resp.status_code}'},
+                    ensure_ascii=False,
+                )
+                yield ('event: error' + chr(10) + 'data: ' + _err + chr(10) + chr(10)).encode('utf-8')
                 return
             async for chunk in resp.aiter_bytes():
                 if chunk:

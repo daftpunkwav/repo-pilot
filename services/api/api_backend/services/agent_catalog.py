@@ -62,8 +62,8 @@ def get_agent_profiles() -> list[AgentProfileOut]:
     维护，本文件 AGENT_PROFILES 保留为 e2e/文档展示用的静态快照。
     """
     try:
-        from agent_core.agents.registry import get_registry as _get_reg
-        defs = _get_reg().list_all()
+        from agent_runtime.runtime import get_agent_runtime
+        defs = get_agent_runtime().list_agent_definitions()
         return [
             AgentProfileOut(
                 id=d.id,
