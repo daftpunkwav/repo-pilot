@@ -20,13 +20,11 @@ def _fernet_for(material: str) -> Fernet:
     return Fernet(base64.urlsafe_b64encode(digest))
 
 
-def is_encrypted_secret(value: str | None, key_material: str) -> bool:
-    """判断存储值是否为加密密文（参数化 key_material 以保持签名一致）。"""
+def is_encrypted_secret(value: str | None) -> bool:
+    """判断存储值是否为加密密文（仅前缀判断，与密钥无关）。"""
     if not value:
         return False
-    if not value.startswith(_SECRET_PREFIX):
-        return False
-    return True
+    return value.startswith(_SECRET_PREFIX)
 
 
 def encrypt_secret(plain: str, key_material: str) -> str:
@@ -58,6 +56,6 @@ def ensure_encrypted_secret(
     """若为历史明文则加密；返回 (存储值, 是否发生了迁移)。"""
     if value is None or value == "":
         return value, False
-    if is_encrypted_secret(value, key_material):
+    if is_encrypted_secret(value):
         return value, False
     return encrypt_secret(value, key_material), True

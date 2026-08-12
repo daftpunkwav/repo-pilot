@@ -13,12 +13,17 @@ Set-Location $Root
 
 if ($Help) {
     Write-Host @"
-用法: .\scripts\build.ps1 [-WithUi] [-Jobs N]
+用法: .\scripts\build.ps1 [-Jobs N]
 
 在 services/graph_engine/graph_engine_core 下编译迁入的 C 引擎。
 产物: build/c/rp-graph-engine（或 .exe）
+注: UI asset 服务已移除，-WithUi 参数保留仅为兼容旧调用，无实际效果。
 "@
     exit 0
+}
+
+if ($WithUi) {
+    Write-Host "警告: -WithUi 已弃用（前端资源服务已移除），按标准目标构建。" -ForegroundColor Yellow
 }
 
 function Test-Wsl {
@@ -31,7 +36,7 @@ function Test-Wsl {
 }
 
 $j = if ($Jobs -gt 0) { $Jobs } else { [Math]::Max(2, [Environment]::ProcessorCount - 1) }
-$target = if ($WithUi) { "cbm-with-ui" } else { "rp-graph-engine" }
+$target = "rp-graph-engine"
 
 Write-Host "==> 构建目标: $target  -j$j" -ForegroundColor Cyan
 

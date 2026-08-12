@@ -15,9 +15,7 @@ from repopilot_shared.security.crypto import (  # noqa: F401
 from repopilot_shared.security.crypto import (  # noqa: F401
     ensure_encrypted_secret as _shared_ensure,
 )
-
-# 落库密文前缀；无此前缀视为历史明文（兼容旧数据）
-_SECRET_PREFIX = "enc:v1:"
+from repopilot_shared.security.crypto import is_encrypted_secret as _shared_is_enc
 
 
 def _encryption_key_material() -> str:
@@ -30,7 +28,8 @@ def _encryption_key_material() -> str:
 
 
 def is_encrypted_secret(value: str | None) -> bool:
-    return bool(value and value.startswith(_SECRET_PREFIX))
+    """判断存储值是否为加密密文（委托 shared 权威实现）。"""
+    return _shared_is_enc(value)
 
 
 def encrypt_secret(plain: str) -> str:

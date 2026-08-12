@@ -148,13 +148,12 @@ verify_compiler "$CC"
 cbm_remove_build_dir "$ROOT" "$BUILD_DIR"
 
 # Step 2: Build (Makefile applies $ARCHFLAGS for the target arch on macOS)
+# UI asset 服务已移除(RepoPilot 前端在 apps/web),--with-ui 不再有独立构建目标。
 if $WITH_UI; then
-    make -j"$NPROC" -f Makefile.cbm cbm-with-ui \
-        CFLAGS_EXTRA="$CFLAGS_EXTRA" "${EXTRA_MAKE_ARGS[@]+"${EXTRA_MAKE_ARGS[@]}"}"
-else
-    make -j"$NPROC" -f Makefile.cbm cbm \
-        CFLAGS_EXTRA="$CFLAGS_EXTRA" "${EXTRA_MAKE_ARGS[@]+"${EXTRA_MAKE_ARGS[@]}"}"
+    echo "build.sh: warning: --with-ui 已弃用(前端资源服务已移除),按标准目标构建" >&2
 fi
+make -j"$NPROC" -f Makefile.cbm rp-graph-engine \
+    CFLAGS_EXTRA="$CFLAGS_EXTRA" "${EXTRA_MAKE_ARGS[@]+"${EXTRA_MAKE_ARGS[@]}"}"
 
 # Stage the integration-template asset next to the binary so the dev/CI build
 # mirrors the release archive layout. The binary resolves cbm-integrations.json
@@ -165,21 +164,5 @@ fi
 # straight out of a build tree — smoke, local dev, and the release packaging all
 # then see the same adjacency.
 cp "$ROOT/assets/cbm-integrations.json" "$BUILD_DIR/cbm-integrations.json"
-
-if $WITH_UI; then
-    shopt -s nullglob
-    UI_PACKS=("$BUILD_DIR"/cbm-ui-*.pack)
-    shopt -u nullglob
-    if [ "${#UI_PACKS[@]}" -ne 1 ]; then
-        echo "build.sh: UI build did not produce exactly one content-addressed asset pack" >&2
-        exit 1
-    fi
-    UI_PACK_NAME="$(basename "${UI_PACKS[0]}")"
-    if ! [[ "$UI_PACK_NAME" =~ ^cbm-ui-[0-9a-f]{64}\.pack$ ]]; then
-        echo "build.sh: invalid UI asset pack name: $UI_PACK_NAME" >&2
-        exit 1
-    fi
-    echo "=== UI assets: ${UI_PACKS[0]} ==="
-fi
 
 echo "=== Build complete: ${BUILD_DIR}/codebase-memory-mcp ==="

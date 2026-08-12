@@ -5,6 +5,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from repopilot_shared.models.app_state import AppState
@@ -16,12 +17,29 @@ logger = logging.getLogger(__name__)
 def _key_material() -> str:
     """与 api_backend Settings 同源的密钥材料（SECRETS_ENCRYPTION_KEY 优先，回退 SECRET_KEY）。
 
-    阶段 2 过渡：直接读环境变量；阶段 4 由 Contract 注入统一管理。
+    阶段 2 过渡：优先环境变量，兜底仓库根 .env（与 Settings.env_file 同源），
+    避免 .env-only 部署下 agent 侧拿到空密钥导致 LLM Key 解密失败；
+    阶段 4 由 Contract 注入统一管理。
     """
-    custom = (os.environ.get("SECRETS_ENCRYPTION_KEY") or "").strip()
-    if custom:
-        return custom
-    return os.environ.get("SECRET_KEY") or ""
+
+    def _pick(secret_key: str | None, enc_key: str | None) -> str:
+        custom = (enc_key or "").strip()
+        if custom:
+            return custom
+        return (secret_key or "").strip()
+
+    material = _pick(os.environ.get("SECRET_KEY"), os.environ.get("SECRETS_ENCRYPTION_KEY"))
+    if material:
+        return material
+    # 兜底：仓库根 .env（Settings 的 env_file 之一）；不覆盖环境变量
+    try:
+        from dotenv import dotenv_values
+
+        repo_root = Path(__file__).resolve().parents[4]  # llm/config.py -> 仓库根
+        vals = dotenv_values(repo_root / ".env")
+        return _pick(vals.get("SECRET_KEY"), vals.get("SECRETS_ENCRYPTION_KEY"))
+    except Exception:
+        return ""
 
 
 @dataclass
@@ -181,7 +199,7 @@ def _config_from_provider(
     stored = p.get("api_key")
     api_key = _decrypt_key(stored)
     if not api_key:
-        if stored and is_encrypted_secret(str(stored), _key_material()):
+        if stored and is_encrypted_secret(str(stored)):
             logger.warning(
                 "供应商 %s API Key 解密失败，请重新保存密钥",
                 p.get("display_name") or p.get("id"),
@@ -233,7 +251,7 @@ def build_llm_config_from_settings(
     stored = raw.get("llm_api_key")
     api_key = _decrypt_key(stored)
     if not api_key:
-        if stored and is_encrypted_secret(str(stored), _key_material()):
+        if stored and is_encrypted_secret(str(stored)):
             logger.warning(
                 "llm_api_key 解密失败（enc:v1 密文存在但无法解密），"
                 "请用户在设置页重新保存 API Key"
@@ -267,7 +285,7 @@ def llm_config_status(raw: dict[str, Any]) -> str:
     plain = _decrypt_key(stored)
     if plain:
         return "ok"
-    if is_encrypted_secret(str(stored), _key_material()):
+    if is_encrypted_secret(str(stored)):
         return "decrypt_failed"
     return "missing"
 

@@ -319,19 +319,15 @@ CBM_TEST_BINARY="$WATCHDOG_BINARY" bash "$ROOT/tests/test_worker_error_response.
 # skipping it silently would hide the gap. Run it by hand:
 #   make -f Makefile.cbm cbm TEST_SEAMS=1 && bash tests/test_hook_conflict_notice.sh
 
-# Step 5e: `daemon start --open` is the only UI startup operation that waits
-# synchronously. Build the real product against a tiny deterministic external
-# pack (no npm/network dependency) and prove it waits for the CBM HTTP root,
-# rejects a foreign occupied port, and fails closed when the pack is missing.
-# This runs here, after the other seam-bearing product guards, so every native
-# local-CI leg exercises the exact executable behavior without lengthening the
-# daemon's asynchronous startup critical path.
-echo "=== Step 5e: daemon UI --open readiness ==="
-make -j"$NPROC" -f Makefile.cbm cbm-with-ui TEST_SEAMS=1 \
-    UI_ASSET_PREBUILT=1 UI_ASSET_DIST="$ROOT/tests/fixtures/ui-readiness" \
-    UI_ASSET_MANIFEST="$BUILD_DIR/generated/ui_asset_readiness_manifest.c" \
-    ${MAKE_ARGS[@]+"${MAKE_ARGS[@]}"}
-python3 "$ROOT/tests/test_daemon_open_readiness.py" "$ROOT/$BUILD_DIR/codebase-memory-mcp"
+# Step 5e: `daemon start --open` 的 UI readiness 校验依赖 cbm-with-ui 目标
+# 与 tests/fixtures/ui-readiness；前端资源服务已移除(RepoPilot 前端在 apps/web)，
+# 该步骤连同其依赖一并失效，注释保留上下文。
+# echo "=== Step 5e: daemon UI --open readiness ==="
+# make -j"$NPROC" -f Makefile.cbm cbm-with-ui TEST_SEAMS=1 \
+#     UI_ASSET_PREBUILT=1 UI_ASSET_DIST="$ROOT/tests/fixtures/ui-readiness" \
+#     UI_ASSET_MANIFEST="$BUILD_DIR/generated/ui_asset_readiness_manifest.c" \
+#     ${MAKE_ARGS[@]+"${MAKE_ARGS[@]}"}
+# python3 "$ROOT/tests/test_daemon_open_readiness.py" "$ROOT/$BUILD_DIR/codebase-memory-mcp"
 
 # Step 6: security-strings URL allow-list regression. The MSYS2 CLANG64 toolchain
 # bakes its package-tracker URL into the static Windows .exe; the binary string

@@ -36,9 +36,8 @@ typedef struct {
     cbm_ui_asset_cache_t cache;
 } cbm_ui_asset_t;
 
-/* Defined by asset_pack_stub.c for standard builds, asset_manifest_stub.c for
- * test runners, or the generated manifest for UI builds. No frontend payload
- * bytes live in any of them. */
+/* Defined by asset_pack_stub.c for all builds (前端资源服务已移除，仅存 stub
+ * 兼容既有 include/符号). No frontend payload bytes live in it. */
 extern const char CBM_UI_ASSET_PACK_NAME[];
 extern const char CBM_UI_ASSET_SHA256[];
 extern const uint64_t CBM_UI_ASSET_SIZE;
