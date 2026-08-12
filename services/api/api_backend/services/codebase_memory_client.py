@@ -1,5 +1,5 @@
 """
-[deprecated] 外部 CBM 客户端已移除。
+[deprecated] 外部原生引擎客户端已移除。
 
 保留模块名以免旧 import 瞬间炸掉；全部转发至 GraphEngineClient。
 """

@@ -3,7 +3,7 @@ import { create } from 'zustand';
 /** L0 图谱视图模式（展示形态） */
 export type GraphViewMode = 'force' | 'list';
 
-/** L0 力导向画布内的几何布局（对标 CBM 力导向/树状/径向） */
+/** L0 力导向画布内的几何布局（对标原生引擎 力导向/树状/径向） */
 export type GraphLayoutMode = 'force' | 'tree' | 'radial';
 
 interface GraphState {

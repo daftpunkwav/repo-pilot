@@ -29,7 +29,7 @@ export const GRAPH_COMPOSER_MULTISAMPLING = 0;
 
 /** OrbitControls / 相机动画共用距离上下限 */
 export const CAMERA_MIN_DISTANCE = 20;
-/** 与 CBM 一致：引擎布局跨度可达数千，需留足 zoom-out */
+/** 与原生引擎一致：引擎布局跨度可达数千，需留足 zoom-out */
 export const CAMERA_MAX_DISTANCE = 50000;
 
 export interface CameraTarget {
@@ -321,7 +321,7 @@ export function computeCameraTarget(
       if (d > maxDist) maxDist = d;
     }
   }
-  /* 对齐 CBM：按簇半径 ×3 取景，单点/小簇有最小距离 */
+  /* 对齐原生引擎：按簇半径 ×3 取景，单点/小簇有最小距离 */
   const spreadDist = maxDist * 3;
   const minDist = count <= 5 ? 300 : count <= 12 ? 220 : 200;
   const distance = clampCameraDistance(Math.max(minDist, spreadDist));

@@ -96,7 +96,7 @@ export function CodeGraphPage() {
     if (showOnlyDead) nodes = nodes.filter((n) => n.status === 'dead');
     if (hideTests) nodes = nodes.filter((n) => n.status !== 'test');
     if (hideEntryPoints) nodes = nodes.filter((n) => n.status !== 'entry');
-    /* 对齐 CBM deadCodeView：按 status 重着色，覆盖引擎恒星色 */
+    /* 对齐原生引擎 deadCodeView：按 status 重着色，覆盖引擎恒星色 */
     if (colorByStatus) {
       nodes = nodes.map((n) => ({
         ...n,

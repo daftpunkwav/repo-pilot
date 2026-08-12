@@ -52,7 +52,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
   return target instanceof Element && Boolean(target.closest(INTERACTIVE_SELECTOR));
 }
 
-/** 对齐 CBM Sidebar.buildFileTree */
+/** 对齐原生引擎 Sidebar.buildFileTree */
 function buildFileTree(nodes: CodeGraphNode[]): DirNode {
   const root: DirNode = {
     name: '/',

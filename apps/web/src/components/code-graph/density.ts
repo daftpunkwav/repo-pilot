@@ -1,8 +1,8 @@
 /* Visual density compensation for L1 graph.
  *
  * White-blob failure is dominated by additive EDGES (~80k lines crossing the
- * center). Voyager ribbon edges + glass nodes + bloom stack harder than CBM
- * thin lines, so we ease earlier and harder than upstream CBM defaults.
+ * center). Voyager ribbon edges + glass nodes + bloom stack harder than 原生引擎
+ * thin lines, so we ease earlier and harder than 原生引擎默认值.
  *
  * Manual DisplaySettings (?????) ride ON TOP of these scales: 1.00� = auto.
  */

@@ -1,5 +1,5 @@
 /**
- * L0 3D 宇宙图视图 —— 复用 L1 GraphScene（CBM 风格点云 + OrbitControls）
+ * L0 3D 宇宙图视图 —— 复用 L1 GraphScene（原生引擎风格点云 + OrbitControls）
  */
 import { useEffect, useMemo, useState } from 'react';
 import type { GraphData, GraphNode } from '@/api/types';

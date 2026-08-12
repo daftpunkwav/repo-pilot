@@ -266,9 +266,9 @@ class GraphEngineClient:
         name: Optional[str],
         should_abandon: Any,
     ) -> dict[str, Any]:
-        """CBM Graph UI：POST /api/index + 轮询 /api/index-status。
+        """原生引擎 UI：POST /api/index + 轮询 /api/index-status。
 
-        注意：CBM UI 的 /rpc index_repository 已禁用；mode 由 C 引擎默认管线决定
+        注意：原生 UI 的 /rpc index_repository 已禁用；mode 由 C 引擎默认管线决定
         （等价于 full/LSP，质量高于自研 Python 索引）。
         """
         root = str(Path(repo_path).resolve()).replace("\\", "/")
@@ -436,7 +436,7 @@ class GraphEngineClient:
     async def list_cross_edges(self) -> list[dict[str, Any]]:
         if self.base_url and await self._sidecar_ok():
             if await self.flavor() == "native":
-                # CBM Graph UI 无此路由；跨仓边由引擎内部维护
+                # 原生引擎 UI 无此路由；跨仓边由引擎内部维护
                 return []
             data = await self._http_get("/api/cross-edges", {})
             return data.get("edges") or []
@@ -447,7 +447,7 @@ class GraphEngineClient:
             return False
         try:
             async with httpx.AsyncClient(timeout=2.5) as client:
-                # CBM Graph UI：无 /health，用 /api/ui-config
+                # 原生引擎 UI：无 /health，用 /api/ui-config
                 try:
                     resp = await client.get(f"{self.base_url}/api/ui-config")
                     if resp.status_code == 200:

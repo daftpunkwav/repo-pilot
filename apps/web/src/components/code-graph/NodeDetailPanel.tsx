@@ -17,7 +17,7 @@ interface Props {
   onNavigate: (node: CodeGraphNode) => void;
 }
 
-/** 边类型展示名（对齐 CBM：calls / defines / similar to …） */
+/** 边类型展示名（对齐原生引擎：calls / defines / similar to …） */
 const EDGE_LABEL: Record<string, string> = {
   CALLS: 'calls',
   IMPORTS: 'imports',

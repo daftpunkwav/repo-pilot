@@ -1,4 +1,4 @@
-/** 节点类型 / 状态着色 —— 对齐 CBM graph-ui/src/lib/colors.ts 并扩展 */
+/** 节点类型 / 状态着色 —— 对齐原生引擎 graph-ui/src/lib/colors.ts 并扩展 */
 const LABEL_COLORS: Record<string, string> = {
   Project: '#e11d48',
   Package: '#f97316',

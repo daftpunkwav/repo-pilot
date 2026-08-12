@@ -165,7 +165,7 @@ function createEdgeRibbonMaterial(isDark: boolean) {
     transparent: true,
     depthWrite: false,
     depthTest: true,
-    /* 暗色对齐 CBM：加法混合让连线形成星云辉光 */
+    /* 暗色对齐原生引擎：加法混合让连线形成星云辉光 */
     blending: isDark ? THREE.AdditiveBlending : THREE.NormalBlending,
     toneMapped: false,
     side: THREE.DoubleSide,
@@ -198,7 +198,7 @@ export function EdgeLines({
         ? controls.target
         : fallbackTarget.current;
     const dist = camera.position.distanceTo(target);
-    /* 暗色少做远距压暗，保留 CBM 式星云连线；浅色仍用 fade 防黑疙瘩 */
+    /* 暗色少做远距压暗，保留 原生引擎式星云连线；浅色仍用 fade 防黑疙瘩 */
     const fade = isDark
       ? Math.max(0.72, computeLightEdgeZoomFade(dist))
       : computeLightEdgeZoomFade(dist);

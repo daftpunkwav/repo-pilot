@@ -1,5 +1,5 @@
 /**
- * L1 图谱对比度面板 — 对齐 CBM DisplaySettingsMenu
+ * L1 图谱对比度面板 — 对齐原生引擎 DisplaySettingsMenu
  * 滑杆叠在自动密度补偿之上：1.00× = 跟随自适应
  */
 import { useEffect, useRef, useState } from 'react';

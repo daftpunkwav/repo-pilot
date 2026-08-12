@@ -31,7 +31,7 @@
     radial-gradient(ellipse at 50% 42%, #121826 0%, #06090f 58%, #03050a 100%);
 }
 
-/* 右上角对比度面板 · 对齐 CBM DisplaySettingsMenu */
+/* 右上角对比度面板 · 对齐原生引擎 DisplaySettingsMenu */
 .code-graph-display-dock {
   position: absolute;
   top: 12px;

@@ -118,7 +118,7 @@ class Settings(BaseSettings):
     )
     graph_cache_dir: str = Field(
         default_factory=lambda: str(DATA_DIR / "graph-engine-cache"),
-        description="GRAPH_CACHE_DIR：写入 C 引擎的缓存目录（原 CBM_CACHE_DIR，图谱 SQLite 根）",
+        description="GRAPH_CACHE_DIR：写入 C 引擎的缓存目录（原缓存目录变量，图谱 SQLite 根）",
     )
     graph_auto_start: bool = Field(
         default=True,

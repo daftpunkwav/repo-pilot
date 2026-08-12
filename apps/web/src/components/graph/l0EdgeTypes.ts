@@ -1,5 +1,5 @@
 /**
- * L0 关系边类型与图例色（对齐 CBM 分色细线）
+ * L0 关系边类型与图例色（对齐原生引擎 分色细线）
  */
 export const L0_EDGE_TYPES = [
   { id: 'similarity', label: '相似', color: '#2dd4bf' },
