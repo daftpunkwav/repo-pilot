@@ -11,8 +11,8 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-# §4.3.1: 优先使用环境变量 REPOPILOT_ROOT，缺失时回退 parents[5]（保留旧行为）
-ROOT = Path(os.environ.get("REPOPILOT_ROOT") or Path(__file__).resolve().parents[5])
+# §4.3.1: 优先使用环境变量 PROJECT_ROOT，缺失时回退 parents[5]（保留旧行为）
+ROOT = Path(os.environ.get("PROJECT_ROOT") or Path(__file__).resolve().parents[5])
 import sys
 
 sys.path.insert(0, str(ROOT / "services" / "api"))

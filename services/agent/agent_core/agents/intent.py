@@ -53,10 +53,10 @@ class IntentClassifier:
 
     FAST_RULES: list[tuple[re.Pattern[str], str]] = _derive_fast_rules()
 
-    # §4.2.8: 多意图连接词；可经 REPOPILOT_MULTI_KEYWORDS 环境变量覆盖（逗号分隔）
+    # §4.2.8: 多意图连接词；可经 INTENT_KEYWORDS 环境变量覆盖（逗号分隔）
     _BASE_MULTI_KEYWORDS = ("并且", "同时", "另外", "还有", "以及", "并帮我", "再帮我", "然后")
     MULTI_KEYWORDS = list(_BASE_MULTI_KEYWORDS)
-    _OVERRIDE_KW = os.environ.get("REPOPILOT_MULTI_KEYWORDS")
+    _OVERRIDE_KW = os.environ.get("INTENT_KEYWORDS")
     if _OVERRIDE_KW:
         MULTI_KEYWORDS = [k.strip() for k in _OVERRIDE_KW.split(",") if k.strip()]
 

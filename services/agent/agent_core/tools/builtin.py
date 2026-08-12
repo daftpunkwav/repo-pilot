@@ -384,7 +384,7 @@ async def search_code_graph(
     **kw,
 ):
     from graph_engine_runtime import index_pipeline as pipeline
-    from graph_engine_runtime.client import RpGraphClient, RpGraphError
+    from graph_engine_runtime.client import GraphEngineClient, GraphEngineError
 
     try:
         pid = UUID(project_id)
@@ -398,7 +398,7 @@ async def search_code_graph(
             "status": status["status"],
             "hint": "先调用 trigger_code_index",
         }
-    client = RpGraphClient()
+    client = GraphEngineClient()
     try:
         return await client.search_graph(
             status["engine_project"],
@@ -409,7 +409,7 @@ async def search_code_graph(
             limit=limit or 200,
             offset=offset or 0,
         )
-    except RpGraphError as exc:
+    except GraphEngineError as exc:
         return {"error": exc.message, "code": exc.code}
 
 
@@ -435,7 +435,7 @@ async def search_code(
     **kw,
 ):
     from graph_engine_runtime import index_pipeline as pipeline
-    from graph_engine_runtime.client import RpGraphClient, RpGraphError
+    from graph_engine_runtime.client import GraphEngineClient, GraphEngineError
 
     try:
         pid = UUID(project_id)
@@ -444,12 +444,12 @@ async def search_code(
     status = await pipeline.get_status_out(context.db, pid)
     if status["status"] != "READY":
         return {"error": "项目尚未索引就绪", "code": "GRAPH_NOT_INDEXED", "status": status["status"]}
-    client = RpGraphClient()
+    client = GraphEngineClient()
     try:
         return await client.search_code(
             status["engine_project"], pattern=pattern, limit=limit or 50
         )
-    except RpGraphError as exc:
+    except GraphEngineError as exc:
         return {"error": exc.message, "code": exc.code}
 
 
@@ -487,7 +487,7 @@ async def trace_calls(
     **kw,
 ):
     from graph_engine_runtime import index_pipeline as pipeline
-    from graph_engine_runtime.client import RpGraphClient, RpGraphError
+    from graph_engine_runtime.client import GraphEngineClient, GraphEngineError
 
     try:
         pid = UUID(project_id)
@@ -496,7 +496,7 @@ async def trace_calls(
     status = await pipeline.get_status_out(context.db, pid)
     if status["status"] != "READY":
         return {"error": "项目尚未索引就绪", "code": "GRAPH_NOT_INDEXED", "status": status["status"]}
-    client = RpGraphClient()
+    client = GraphEngineClient()
     try:
         return await client.trace_path(
             status["engine_project"],
@@ -505,7 +505,7 @@ async def trace_calls(
             depth=depth or 3,
             kind=kind or "calls",
         )
-    except RpGraphError as exc:
+    except GraphEngineError as exc:
         return {"error": exc.message, "code": exc.code}
 
 
@@ -531,7 +531,7 @@ async def query_graph(
     **kw,
 ):
     from graph_engine_runtime import index_pipeline as pipeline
-    from graph_engine_runtime.client import RpGraphClient, RpGraphError
+    from graph_engine_runtime.client import GraphEngineClient, GraphEngineError
 
     try:
         pid = UUID(project_id)
@@ -540,12 +540,12 @@ async def query_graph(
     status = await pipeline.get_status_out(context.db, pid)
     if status["status"] != "READY":
         return {"error": "项目尚未索引就绪", "code": "GRAPH_NOT_INDEXED", "status": status["status"]}
-    client = RpGraphClient()
+    client = GraphEngineClient()
     try:
         return await client.query_graph(
             status["engine_project"], query, limit=min(limit or 1000, 100_000)
         )
-    except RpGraphError as exc:
+    except GraphEngineError as exc:
         return {"error": exc.message, "code": exc.code}
 
 
@@ -561,7 +561,7 @@ async def query_graph(
 )
 async def get_graph_schema_tool(context=None, project_id: str = "", **kw):
     from graph_engine_runtime import index_pipeline as pipeline
-    from graph_engine_runtime.client import RpGraphClient, RpGraphError
+    from graph_engine_runtime.client import GraphEngineClient, GraphEngineError
 
     try:
         pid = UUID(project_id)
@@ -570,10 +570,10 @@ async def get_graph_schema_tool(context=None, project_id: str = "", **kw):
     status = await pipeline.get_status_out(context.db, pid)
     if status["status"] != "READY":
         return {"error": "项目尚未索引就绪", "code": "GRAPH_NOT_INDEXED", "status": status["status"]}
-    client = RpGraphClient()
+    client = GraphEngineClient()
     try:
         return await client.get_graph_schema(status["engine_project"])
-    except RpGraphError as exc:
+    except GraphEngineError as exc:
         return {"error": exc.message, "code": exc.code}
 
 
@@ -589,7 +589,7 @@ async def get_graph_schema_tool(context=None, project_id: str = "", **kw):
 )
 async def get_project_architecture(context=None, project_id: str = "", **kw):
     from graph_engine_runtime import index_pipeline as pipeline
-    from graph_engine_runtime.client import RpGraphClient, RpGraphError
+    from graph_engine_runtime.client import GraphEngineClient, GraphEngineError
 
     try:
         pid = UUID(project_id)
@@ -598,10 +598,10 @@ async def get_project_architecture(context=None, project_id: str = "", **kw):
     status = await pipeline.get_status_out(context.db, pid)
     if status["status"] != "READY":
         return {"error": "项目尚未索引就绪", "code": "GRAPH_NOT_INDEXED", "status": status["status"]}
-    client = RpGraphClient()
+    client = GraphEngineClient()
     try:
         return await client.get_architecture(status["engine_project"])
-    except RpGraphError as exc:
+    except GraphEngineError as exc:
         return {"error": exc.message, "code": exc.code}
 
 
@@ -625,7 +625,7 @@ async def get_code_snippet_from_graph(
     **kw,
 ):
     from graph_engine_runtime import index_pipeline as pipeline
-    from graph_engine_runtime.client import RpGraphClient, RpGraphError
+    from graph_engine_runtime.client import GraphEngineClient, GraphEngineError
 
     try:
         pid = UUID(project_id)
@@ -634,10 +634,10 @@ async def get_code_snippet_from_graph(
     status = await pipeline.get_status_out(context.db, pid)
     if status["status"] != "READY":
         return {"error": "项目尚未索引就绪", "code": "GRAPH_NOT_INDEXED", "status": status["status"]}
-    client = RpGraphClient()
+    client = GraphEngineClient()
     try:
         return await client.get_code_snippet(status["engine_project"], qualified_name)
-    except RpGraphError as exc:
+    except GraphEngineError as exc:
         return {"error": exc.message, "code": exc.code}
 
 

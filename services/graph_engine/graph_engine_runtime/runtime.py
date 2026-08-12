@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 from graph_engine_runtime import index_pipeline, sidecar
-from graph_engine_runtime.client import RpGraphClient
+from graph_engine_runtime.client import GraphEngineClient
 from graph_engine_runtime.context import (
     GraphRuntimeContext,
     set_runtime_context,
@@ -19,7 +19,7 @@ from graph_engine_runtime.context import (
 class GraphRuntimeInterface(Protocol):
     """Graph 引擎统一接口（api_backend / agent_core 只依赖此接口）。"""
 
-    # —— 引擎访问（C sidecar 优先，Python rp_graph 回退） ——
+    # —— 引擎访问（C sidecar 优先，Python graph_fallback 回退） ——
     async def health(self) -> bool: ...
     async def fetch_layout(self, project: str, **kwargs: Any) -> dict[str, Any]: ...
     async def index_repository(self, repo_path: str, **kwargs: Any) -> Any: ...
@@ -54,30 +54,30 @@ class EmbeddedGraphRuntime:
         self._ctx = context
         self._auto_start_sidecar = auto_start_sidecar
 
-    # —— 引擎访问（透传 RpGraphClient） ——
+    # —— 引擎访问（透传 GraphEngineClient） ——
     async def health(self) -> bool:
-        return await RpGraphClient().health()
+        return await GraphEngineClient().health()
 
     async def fetch_layout(self, project: str, **kwargs: Any) -> dict[str, Any]:
-        return await RpGraphClient().fetch_layout(project, **kwargs)
+        return await GraphEngineClient().fetch_layout(project, **kwargs)
 
     async def index_repository(self, repo_path: str, **kwargs: Any) -> Any:
-        return await RpGraphClient().index_repository(repo_path, **kwargs)
+        return await GraphEngineClient().index_repository(repo_path, **kwargs)
 
     async def search_graph(self, project: str, **kwargs: Any) -> Any:
-        return await RpGraphClient().search_graph(project, **kwargs)
+        return await GraphEngineClient().search_graph(project, **kwargs)
 
     async def trace_path(self, project: str, **kwargs: Any) -> Any:
-        return await RpGraphClient().trace_path(project, **kwargs)
+        return await GraphEngineClient().trace_path(project, **kwargs)
 
     async def drop_project(self, project: str) -> Any:
-        return await RpGraphClient().drop_project(project)
+        return await GraphEngineClient().drop_project(project)
 
     async def list_cross_edges(self) -> list[dict[str, Any]]:
-        return await RpGraphClient().list_cross_edges()
+        return await GraphEngineClient().list_cross_edges()
 
     async def call_tool(self, name: str, arguments: dict[str, Any] | None = None) -> Any:
-        return await RpGraphClient().call_tool(name, arguments)
+        return await GraphEngineClient().call_tool(name, arguments)
 
     # —— 索引 job 状态机（透传 index_pipeline） ——
     async def trigger_index(self, db: Any, project_id: Any, **kwargs: Any) -> dict:
@@ -99,8 +99,8 @@ class EmbeddedGraphRuntime:
     async def start_worker(self) -> None:
         """拉起 C sidecar（可选）并启动常驻索引 worker 池。"""
         settings = self._ctx.settings
-        if self._auto_start_sidecar and getattr(settings, "rp_graph_auto_start", True) and (
-            (settings.rp_graph_engine_url or "").strip()
+        if self._auto_start_sidecar and getattr(settings, "graph_fallback_auto_start", True) and (
+            (settings.graph_fallback_engine_url or "").strip()
         ):
             try:
                 await sidecar.ensure_graph_engine_sidecar()

@@ -12,7 +12,7 @@ npm run test:api        # 等价: pytest tests -q
 npm run test:web
 
 # 前端 E2E（Playwright，强制 VITE_USE_MOCK=true）
-npm run test:e2e -w @repopilot/web
+npm run test:e2e -w web
 
 # 全量
 npm run test

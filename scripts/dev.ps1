@@ -1,7 +1,7 @@
 ﻿# 并行启动开发服务
 # 默认两进程：API（:19878）+ Web（:5173）
 # -All：四进程 —— 额外启动独立 Agent（:19877）+ 图谱 sidecar（:9750）
-# 图谱档位见 start-graph-engine.ps1（C 引擎优先，缺失回退 Python rp_graph）
+# 图谱档位见 start-graph-engine.ps1（C 引擎优先，缺失回退 Python graph_fallback）
 param(
     [switch]$GraphEngine,   # 单独启用图谱 sidecar（不起 Agent）
     [switch]$All            # 四进程：API + Web + Agent + 图谱 sidecar
@@ -11,7 +11,7 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
-Write-Host "RepoPilot dev — API :19878, Web :5173" -ForegroundColor Cyan
+Write-Host "Voyager dev — API :19878, Web :5173" -ForegroundColor Cyan
 if ($All) {
     Write-Host "四进程模式（-All）：+ Agent :19877 + 图谱 sidecar :9750" -ForegroundColor Cyan
 } elseif ($GraphEngine) {
@@ -26,8 +26,8 @@ if (-not $env:SECRET_KEY) {
     Write-Host "SECRET_KEY not set, generated a development key" -ForegroundColor Yellow
 }
 
-# 图谱 sidecar（-GraphEngine / -All / RP_GRAPH_START_SIDECAR=1 触发）
-$startGraph = $GraphEngine -or $All -or ($env:RP_GRAPH_START_SIDECAR -eq "1")
+# 图谱 sidecar（-GraphEngine / -All / GRAPH_START_SIDECAR=1 触发）
+$startGraph = $GraphEngine -or $All -or ($env:GRAPH_START_SIDECAR -eq "1")
 $graph = $null
 $graphPort = $null
 if ($startGraph) {
@@ -35,7 +35,7 @@ if ($startGraph) {
     $graph = Start-Process -PassThru -NoNewWindow -FilePath "powershell.exe" -ArgumentList @(
         "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $startScript
     ) -WorkingDirectory $Root
-    $graphPort = if ($env:RP_GRAPH_ENGINE_PORT) { $env:RP_GRAPH_ENGINE_PORT } else { "9750" }
+    $graphPort = if ($env:GRAPH_ENGINE_PORT) { $env:GRAPH_ENGINE_PORT } else { "9750" }
     Write-Host "Graph sidecar PID $($graph.Id) → 127.0.0.1:$graphPort" -ForegroundColor Cyan
     # 等待 sidecar 就绪，避免 API 启动期 ensure 重复拉起争抢端口
     for ($i = 0; $i -lt 20; $i++) {
@@ -67,7 +67,7 @@ if ($All) {
         }
     }
     # 图谱 sidecar URL（与上面启动的 sidecar 端口一致）
-    if (-not $env:RP_GRAPH_ENGINE_URL) { $env:RP_GRAPH_ENGINE_URL = "http://127.0.0.1:$graphPort" }
+    if (-not $env:GRAPH_ENGINE_URL) { $env:GRAPH_ENGINE_URL = "http://127.0.0.1:$graphPort" }
 
     $agentPort = if ($env:AGENT_PORT) { $env:AGENT_PORT } else { "19877" }
     $agent = Start-Process -PassThru -NoNewWindow -FilePath "python" -ArgumentList @(

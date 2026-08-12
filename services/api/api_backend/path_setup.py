@@ -1,4 +1,4 @@
-"""确保同仓服务路径可导入（agent_core / rp_graph 等）。"""
+"""确保同仓服务路径可导入（agent_core / graph_fallback 等）。"""
 from __future__ import annotations
 
 import sys

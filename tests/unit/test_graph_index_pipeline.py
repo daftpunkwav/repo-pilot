@@ -90,12 +90,12 @@ def test_git_shallow_clone_token_not_in_cmdline_and_helper_order(
     assert cmd, "应已构造 clone 命令"
     joined = " ".join(cmd)
     assert "ghp_TEST_TOKEN" not in joined, "token 不得进入命令行参数"
-    assert captured["env"]["RP_GRAPH_GIT_TOKEN"] == "ghp_TEST_TOKEN"
+    assert captured["env"]["GRAPH_GIT_TOKEN"] == "ghp_TEST_TOKEN"
 
-    # 注入的内联 helper（值含 $RP_GRAPH_GIT_TOKEN 展开），与清空条目区分
+    # 注入的内联 helper（值含 $GRAPH_GIT_TOKEN 展开），与清空条目区分
     helper_entries = [
         c for c in cmd
-        if c.startswith("credential.helper=") and "$RP_GRAPH_GIT_TOKEN" in c
+        if c.startswith("credential.helper=") and "$GRAPH_GIT_TOKEN" in c
     ]
     assert len(helper_entries) == 1, "应注入唯一的内联 credential helper"
     idx = cmd.index(helper_entries[0])
@@ -113,7 +113,7 @@ def test_git_shallow_clone_helper_works_offline():
     """
     credential_args, env = _build_credential_args("ghp_TEST_TOKEN")
     helper_entry = next(
-        c for c in credential_args if "$RP_GRAPH_GIT_TOKEN" in c
+        c for c in credential_args if "$GRAPH_GIT_TOKEN" in c
     )
     helper = helper_entry.removeprefix("credential.helper=")
     payload = "protocol=https\nhost=github.com\n\n"
@@ -176,11 +176,11 @@ def test_git_pull_passes_token_via_env(monkeypatch, tmp_path: Path):
     assert cmd, "应已构造 fetch 命令"
     joined = " ".join(cmd)
     assert "ghp_TEST_TOKEN" not in joined, "token 不得进入命令行参数"
-    assert captured["env"]["RP_GRAPH_GIT_TOKEN"] == "ghp_TEST_TOKEN"
+    assert captured["env"]["GRAPH_GIT_TOKEN"] == "ghp_TEST_TOKEN"
 
     helper_entries = [
         c for c in cmd
-        if c.startswith("credential.helper=") and "$RP_GRAPH_GIT_TOKEN" in c
+        if c.startswith("credential.helper=") and "$GRAPH_GIT_TOKEN" in c
     ]
     assert len(helper_entries) == 1, "应注入唯一的内联 credential helper"
     idx = cmd.index(helper_entries[0])

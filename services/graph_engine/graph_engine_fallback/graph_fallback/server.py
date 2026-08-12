@@ -1,5 +1,5 @@
 """
-可选 HTTP sidecar：python -m rp_graph.server
+可选 HTTP sidecar：python -m graph_fallback.server
 供独立进程托管（P5 / 大规模索引）。
 """
 from __future__ import annotations
@@ -30,7 +30,7 @@ class Handler(BaseHTTPRequestHandler):
         eng = Handler.eng
         parsed = urlparse(self.path)
         if parsed.path == "/health":
-            self._json(200, {"status": "ok", "engine": "rp-graph-engine"})
+            self._json(200, {"status": "ok", "engine": "graph-engine"})
             return
         if parsed.path == "/api/layout":
             qs = parse_qs(parsed.query)
@@ -105,11 +105,11 @@ def _dispatch(eng, name: str, args: dict):
 
 
 def main() -> None:
-    root = os.environ.get("RP_GRAPH_ALLOWED_ROOT") or os.environ.get("CBM_ALLOWED_ROOT")
-    port = int(os.environ.get("RP_GRAPH_ENGINE_PORT") or "9750")
+    root = os.environ.get("GRAPH_ALLOWED_ROOT")
+    port = int(os.environ.get("GRAPH_ENGINE_PORT") or "9750")
     Handler.eng = get_engine(data_root=root)
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"rp-graph-engine listening on 127.0.0.1:{port}", flush=True)
+    print(f"graph-engine listening on 127.0.0.1:{port}", flush=True)
     server.serve_forever()
 
 

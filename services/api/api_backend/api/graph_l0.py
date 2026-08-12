@@ -1,6 +1,6 @@
 """
 L0 项目宇宙图 API —— 与 L1 代码索引域故障隔离。
-本模块禁止 import graph_l1 / rp_graph 索引引擎。
+本模块禁止 import graph_l1 / graph_fallback 索引引擎。
 """
 from __future__ import annotations
 

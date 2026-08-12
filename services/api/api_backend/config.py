@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
 
     # 数据库
-    database_url: str = f"sqlite:///{DATA_DIR / 'repopilot.db'}"
+    database_url: str = f"sqlite:///{DATA_DIR / 'app.db'}"
 
     # 密钥：SECRET_KEY 必填；敏感字段 at-rest 加密可另设 SECRETS_ENCRYPTION_KEY
     secret_key: str = Field(
@@ -70,10 +70,10 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
 
     # Agent 独立进程（可选）。设置后 API 可将 SSE 转发至该基址；未设置则同进程 Hub。
-    rp_agent_disabled: bool = Field(
+    agent_disabled: bool = Field(
         default=False,
         description=(
-            "RP_AGENT_DISABLED：彻底禁用 Agent 服务（含 API 进程内 Hub）。"
+            "AGENT_DISABLED：彻底禁用 Agent 服务（含 API 进程内 Hub）。"
             "设为 true 时 agent 模块不加载（503 兜底），lifespan 不注册 agent 业务服务；"
             "graph 运行层 app_state 注入跳过。用于前端报错联调/最小化拓扑"
         ),
@@ -91,47 +91,38 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
 
     # 图谱 C 引擎 sidecar（迁入 services/graph_engine/graph_engine_core）
-    rp_graph_disabled: bool = Field(
+    graph_disabled: bool = Field(
         default=False,
         description=(
-            "RP_GRAPH_DISABLED：彻底禁用图谱引擎（含进程内 Python 回退）。"
+            "GRAPH_DISABLED：彻底禁用图谱引擎（含进程内 Python 回退）。"
             "设为 true 时 graph_l1 模块不加载（503 兜底），graph_l0 纯 DB 投影不受影响；用于前端报错联调"
         ),
     )
-    rp_graph_allowed_root: str = Field(
+    graph_allowed_root: str = Field(
         default_factory=lambda: str(DATA_DIR),
-        description="RP_GRAPH_ALLOWED_ROOT：引擎可索引根；仓库缓存落其下 repo-cache/",
+        description="GRAPH_ALLOWED_ROOT：引擎可索引根；仓库缓存落其下 repo-cache/",
     )
-    rp_graph_engine_url: str = Field(
+    graph_engine_url: str = Field(
         default="",
         description=(
             "图谱引擎 sidecar HTTP 基址。默认空 = 严格两进程模式（进程内 Python 回退，装即用）；"
             "设为 http://127.0.0.1:9750 等则启用 C sidecar（需构建二进制，见 services/graph_engine/README.md）。"
         ),
     )
-    rp_graph_engine_bin: str = Field(
+    graph_engine_bin: str = Field(
         default="",
         description=(
-            "RP_GRAPH_ENGINE_BIN：本仓 rp-graph-engine 可执行文件路径；"
+            "GRAPH_ENGINE_BIN：本仓 graph-engine 可执行文件路径；"
             "空则尝试 services/graph_engine/graph_engine_core/build/c/ 下约定产物"
         ),
     )
-    rp_graph_cache_dir: str = Field(
+    graph_cache_dir: str = Field(
         default_factory=lambda: str(DATA_DIR / "graph-engine-cache"),
-        description="RP_GRAPH_CACHE_DIR：写入 C 引擎的 CBM_CACHE_DIR（图谱 SQLite 根）",
+        description="GRAPH_CACHE_DIR：写入 C 引擎的缓存目录（原 CBM_CACHE_DIR，图谱 SQLite 根）",
     )
-    rp_graph_auto_start: bool = Field(
+    graph_auto_start: bool = Field(
         default=True,
-        description="API 启动时若 sidecar 不健康则尝试拉起 RP_GRAPH_ENGINE_BIN",
-    )
-    # 兼容旧环境变量名（勿在新代码中直接依赖）
-    cbm_allowed_root: str = Field(
-        default_factory=lambda: str(DATA_DIR),
-        description="[deprecated] 请改用 RP_GRAPH_ALLOWED_ROOT",
-    )
-    cbm_ui_base_url: str = Field(
-        default="",
-        description="[deprecated] 请改用 RP_GRAPH_ENGINE_URL",
+        description="API 启动时若 sidecar 不健康则尝试拉起 GRAPH_ENGINE_BIN",
     )
     repo_cache_quota_gb: float = Field(
         default=2.0,

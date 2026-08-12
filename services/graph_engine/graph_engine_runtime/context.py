@@ -18,12 +18,11 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 class GraphSettings(Protocol):
     """graph 运行所需的配置子集（由宿主 api_backend 的 Settings 实现）。"""
 
-    rp_graph_allowed_root: str
-    rp_graph_engine_url: str
-    rp_graph_engine_bin: str
-    rp_graph_cache_dir: str
-    rp_graph_auto_start: bool
-    cbm_allowed_root: str
+    graph_allowed_root: str
+    graph_engine_url: str
+    graph_engine_bin: str
+    graph_cache_dir: str
+    graph_auto_start: bool
     repo_cache_quota_gb: float
     index_concurrency: int
     git_clone_timeout_sec: float

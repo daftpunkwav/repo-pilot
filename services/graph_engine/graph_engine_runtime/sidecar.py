@@ -1,5 +1,5 @@
 """
-图谱 C 引擎 sidecar 生命周期：健康检查与按需拉起本仓 rp-graph-engine。
+图谱 C 引擎 sidecar 生命周期：健康检查与按需拉起本仓 graph-engine。
 """
 from __future__ import annotations
 
@@ -31,8 +31,8 @@ def _default_bin_candidates() -> list[Path]:
         / "c"
     )
     names = (
-        "rp-graph-engine.exe",
-        "rp-graph-engine",
+        "graph-engine.exe",
+        "graph-engine",
         "codebase-memory-mcp.exe",
         "codebase-memory-mcp",
     )
@@ -40,14 +40,14 @@ def _default_bin_candidates() -> list[Path]:
 
 
 def resolve_engine_bin() -> Optional[Path]:
-    """解析可执行文件：RP_GRAPH_ENGINE_BIN > 约定构建产物路径。"""
+    """解析可执行文件：GRAPH_ENGINE_BIN > 约定构建产物路径。"""
     settings = get_runtime_context().settings
-    configured = (getattr(settings, "rp_graph_engine_bin", None) or "").strip()
+    configured = (getattr(settings, "graph_engine_bin", None) or "").strip()
     if configured:
         p = Path(configured)
         if p.is_file():
             return p.resolve()
-        logger.warning("RP_GRAPH_ENGINE_BIN 不存在：%s", configured)
+        logger.warning("GRAPH_ENGINE_BIN 不存在：%s", configured)
     for cand in _default_bin_candidates():
         if cand.is_file():
             return cand.resolve()
@@ -62,7 +62,7 @@ def _port_from_url(url: str) -> int:
 
 
 async def sidecar_healthy(base_url: str, *, timeout: float = 2.0) -> bool:
-    """与 RpGraphClient 一致：CBM 用 /api/ui-config，自研用 /health。"""
+    """与 GraphEngineClient 一致：原生引擎用 /api/ui-config，自研用 /health。"""
     base = (base_url or "").rstrip("/")
     if not base:
         return False
@@ -85,7 +85,7 @@ async def ensure_graph_engine_sidecar() -> bool:
     global _proc
     ctx = get_runtime_context()
     settings = ctx.settings
-    url = (settings.rp_graph_engine_url or "").strip()
+    url = (settings.graph_engine_url or "").strip()
     if not url:
         return False
     if await sidecar_healthy(url):
@@ -94,25 +94,25 @@ async def ensure_graph_engine_sidecar() -> bool:
     bin_path = resolve_engine_bin()
     if not bin_path:
         logger.info(
-            "图谱 sidecar 不健康且未找到 rp-graph-engine 二进制；将回退进程内 Python（若可用）"
+            "图谱 sidecar 不健康且未找到 graph-engine 二进制；将回退进程内 Python（若可用）"
         )
         return False
 
     port = _port_from_url(url)
     cache_dir = Path(
-        getattr(settings, "rp_graph_cache_dir", None)
+        getattr(settings, "graph_cache_dir", None)
         or (ctx.repo_root / "data" / "graph-engine-cache")
     )
     cache_dir.mkdir(parents=True, exist_ok=True)
-    allowed = getattr(settings, "rp_graph_allowed_root", None) or str(
+    allowed = getattr(settings, "graph_allowed_root", None) or str(
         ctx.repo_root / "data"
     )
 
     env = os.environ.copy()
-    env["CBM_CACHE_DIR"] = str(cache_dir.resolve())
-    env["CBM_ALLOWED_ROOT"] = str(Path(allowed).resolve())
+    env["GRAPH_CACHE_DIR"] = str(cache_dir.resolve())
+    env["GRAPH_ALLOWED_ROOT"] = str(Path(allowed).resolve())
     # 与 HTTP 索引边界一致
-    env.setdefault("RP_GRAPH_ALLOWED_ROOT", env["CBM_ALLOWED_ROOT"])
+    env.setdefault("GRAPH_ALLOWED_ROOT", env["GRAPH_ALLOWED_ROOT"])
 
     cmd = [
         str(bin_path),

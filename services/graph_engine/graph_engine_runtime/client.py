@@ -1,8 +1,8 @@
 """
 RepoPilot 图谱客户端。
 
-优先连接 `RP_GRAPH_ENGINE_URL` 指向的本仓 C 引擎 sidecar（`services/graph_engine/graph_engine_core`）；
-未配置或 sidecar 不健康时回退进程内 Python `rp_graph.GraphEngine`。
+优先连接 `GRAPH_ENGINE_URL` 指向的本仓 C 引擎 sidecar（`services/graph_engine/graph_engine_core`）；
+未配置或 sidecar 不健康时回退进程内 Python `graph_fallback.GraphEngine`。
 """
 from __future__ import annotations
 
@@ -21,15 +21,15 @@ from graph_engine_runtime.context import get_runtime_context
 
 logger = logging.getLogger(__name__)
 
-# rp_graph（Python 回退实现）位于 graph_engine_fallback 包；运行层与回退层同目录插入 sys.path
+# graph_fallback（Python 回退实现）位于 graph_engine_fallback 包；运行层与回退层同目录插入 sys.path
 _ENGINE_PY = Path(__file__).resolve().parent.parent / "graph_engine_fallback"
 if _ENGINE_PY.is_dir() and str(_ENGINE_PY) not in sys.path:
     sys.path.insert(0, str(_ENGINE_PY))
 
-SidecarFlavor = Literal["cbm", "rp_graph", "unknown"]
+EngineFlavor = Literal["native", "fallback", "unknown"]
 
 
-class RpGraphError(Exception):
+class GraphEngineError(Exception):
     def __init__(self, message: str, *, code: str = EC.GRAPH_QUERY_FAILED):
         super().__init__(message)
         self.message = message
@@ -37,10 +37,10 @@ class RpGraphError(Exception):
 
 
 def _local_engine():
-    from rp_graph import get_engine
+    from graph_fallback import get_engine
 
     settings = get_runtime_context().settings
-    root = getattr(settings, "rp_graph_allowed_root", None) or settings.cbm_allowed_root
+    root = getattr(settings, "graph_allowed_root", None)
     return get_engine(data_root=root)
 
 
@@ -55,7 +55,7 @@ def _unwrap_mcp_result(result: Any) -> Any:
             first = content[0]
             if isinstance(first, dict) and first.get("text"):
                 msg = str(first["text"])
-        raise RpGraphError(msg, code=EC.GRAPH_QUERY_FAILED)
+        raise GraphEngineError(msg, code=EC.GRAPH_QUERY_FAILED)
     structured = result.get("structuredContent")
     if structured is not None:
         return structured
@@ -75,18 +75,18 @@ def _norm_path(path: str) -> str:
     return str(Path(path).resolve()).replace("\\", "/").rstrip("/").lower()
 
 
-class RpGraphClient:
-    """统一引擎端口：sidecar（CBM C / rp_graph）或进程内引擎。"""
+class GraphEngineClient:
+    """统一引擎端口：sidecar（原生 C / graph_fallback）或进程内引擎。"""
 
     def __init__(self, base_url: str | None = None, timeout: float = 300.0):
         settings = get_runtime_context().settings
         url = base_url
         if url is None:
-            url = getattr(settings, "rp_graph_engine_url", None) or ""
+            url = getattr(settings, "graph_engine_url", None) or ""
         self.base_url = (url or "").rstrip("/")
         self.timeout = timeout
         self._rpc_id = 0
-        self._flavor: SidecarFlavor | None = None
+        self._flavor: EngineFlavor | None = None
 
     async def health(self) -> bool:
         if self.base_url:
@@ -97,7 +97,7 @@ class RpGraphClient:
             logger.warning("自研图谱引擎不可用: %s", exc)
             return False
 
-    async def flavor(self) -> SidecarFlavor:
+    async def flavor(self) -> EngineFlavor:
         if not self.base_url:
             return "unknown"
         if self._flavor is None:
@@ -114,7 +114,7 @@ class RpGraphClient:
         if self.base_url and await self._sidecar_ok():
             params = {"project": project, "max_nodes": str(max_nodes)}
             # 自研 sidecar 兼容 graph 参数；CBM 忽略未知 query
-            if await self.flavor() != "cbm":
+            if await self.flavor() != "native":
                 params["graph"] = graph
             return await self._http_get("/api/layout", params)
         try:
@@ -125,7 +125,7 @@ class RpGraphClient:
                 graph=graph,
             )
         except Exception as exc:
-            raise RpGraphError(
+            raise GraphEngineError(
                 f"读取布局失败：{exc}", code=EC.GRAPH_QUERY_FAILED
             ) from exc
 
@@ -200,14 +200,14 @@ class RpGraphClient:
                 )
             if name == "drop_project":
                 return eng.drop_project(args.get("project") or args.get("name") or "")
-            raise RpGraphError(f"未知工具：{name}", code=EC.GRAPH_QUERY_FAILED)
+            raise GraphEngineError(f"未知工具：{name}", code=EC.GRAPH_QUERY_FAILED)
 
         try:
             return await asyncio.to_thread(_sync_call)
-        except RpGraphError:
+        except GraphEngineError:
             raise
         except Exception as exc:
-            raise RpGraphError(str(exc), code=EC.GRAPH_QUERY_FAILED) from exc
+            raise GraphEngineError(str(exc), code=EC.GRAPH_QUERY_FAILED) from exc
 
     async def index_repository(
         self,
@@ -222,8 +222,8 @@ class RpGraphClient:
         """本地引擎可传 should_abandon；CBM sidecar 通过轮询 index-status 检查放弃。"""
         if self.base_url and await self._sidecar_ok():
             flavor = await self.flavor()
-            if flavor == "cbm":
-                return await self._cbm_index(
+            if flavor == "native":
+                return await self._native_index(
                     repo_path,
                     name=name,
                     should_abandon=should_abandon,
@@ -254,12 +254,12 @@ class RpGraphClient:
 
         try:
             return await asyncio.to_thread(_sync)
-        except RpGraphError:
+        except GraphEngineError:
             raise
         except Exception as exc:
-            raise RpGraphError(str(exc), code=EC.GRAPH_QUERY_FAILED) from exc
+            raise GraphEngineError(str(exc), code=EC.GRAPH_QUERY_FAILED) from exc
 
-    async def _cbm_index(
+    async def _native_index(
         self,
         repo_path: str,
         *,
@@ -280,13 +280,13 @@ class RpGraphClient:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(f"{self.base_url}/api/index", json=payload)
         except Exception as exc:
-            raise RpGraphError(
-                f"CBM 启动索引失败：{exc}", code=EC.GRAPH_ENGINE_UNAVAILABLE
+            raise GraphEngineError(
+                f"原生引擎启动索引失败：{exc}", code=EC.GRAPH_ENGINE_UNAVAILABLE
             ) from exc
 
         if resp.status_code not in (200, 202):
-            raise RpGraphError(
-                f"CBM 索引拒绝 HTTP {resp.status_code}：{resp.text[:300]}",
+            raise GraphEngineError(
+                f"原生引擎索引拒绝 HTTP {resp.status_code}：{resp.text[:300]}",
                 code=EC.GRAPH_INDEX_FAILED,
             )
 
@@ -320,8 +320,8 @@ class RpGraphClient:
                 if status == "done":
                     break
                 if status == "error":
-                    last_error = str(matched.get("error") or "CBM 索引失败")
-                    raise RpGraphError(last_error, code=EC.GRAPH_INDEX_FAILED)
+                    last_error = str(matched.get("error") or "原生引擎索引失败")
+                    raise GraphEngineError(last_error, code=EC.GRAPH_INDEX_FAILED)
             elif jobs == []:
                 # 槽位已清空：用 project-health 确认是否已落库
                 proj = (name or "").strip()
@@ -332,13 +332,13 @@ class RpGraphClient:
 
             await asyncio.sleep(1.5)
         else:
-            raise RpGraphError(
-                f"CBM 索引超时（>{int(self.timeout)}s）",
+            raise GraphEngineError(
+                f"原生引擎索引超时（>{int(self.timeout)}s）",
                 code=EC.GRAPH_INDEX_FAILED,
             )
 
         proj = (name or "").strip()
-        out: dict[str, Any] = {"ok": True, "project": proj or root, "engine": "cbm"}
+        out: dict[str, Any] = {"ok": True, "project": proj or root, "engine": "native"}
         if proj:
             health = await self._project_health(proj)
             if health.get("status") == "healthy":
@@ -402,9 +402,9 @@ class RpGraphClient:
         """删除引擎侧图谱。CBM：DELETE /api/project；自研：RPC/本地 drop_project。"""
         name = (project or "").strip()
         if not name:
-            raise RpGraphError("缺少 project 名称", code=EC.GRAPH_QUERY_FAILED)
+            raise GraphEngineError("缺少 project 名称", code=EC.GRAPH_QUERY_FAILED)
         if self.base_url and await self._sidecar_ok():
-            if await self.flavor() == "cbm":
+            if await self.flavor() == "native":
                 try:
                     async with httpx.AsyncClient(timeout=30.0) as client:
                         # name 可能含特殊字符，走 query
@@ -415,15 +415,15 @@ class RpGraphClient:
                         )
                         if resp.status_code == 200:
                             return resp.json() if resp.content else {"deleted": True}
-                        raise RpGraphError(
-                            f"CBM 删除项目失败 HTTP {resp.status_code}：{resp.text[:200]}",
+                        raise GraphEngineError(
+                            f"原生引擎删除项目失败 HTTP {resp.status_code}：{resp.text[:200]}",
                             code=EC.GRAPH_QUERY_FAILED,
                         )
-                except RpGraphError:
+                except GraphEngineError:
                     raise
                 except Exception as exc:
-                    raise RpGraphError(
-                        f"CBM 删除项目失败：{exc}", code=EC.GRAPH_ENGINE_UNAVAILABLE
+                    raise GraphEngineError(
+                        f"原生引擎删除项目失败：{exc}", code=EC.GRAPH_ENGINE_UNAVAILABLE
                     ) from exc
             return await self._http_rpc("drop_project", {"project": name})
         return await asyncio.to_thread(_local_engine().drop_project, name)
@@ -435,7 +435,7 @@ class RpGraphClient:
 
     async def list_cross_edges(self) -> list[dict[str, Any]]:
         if self.base_url and await self._sidecar_ok():
-            if await self.flavor() == "cbm":
+            if await self.flavor() == "native":
                 # CBM Graph UI 无此路由；跨仓边由引擎内部维护
                 return []
             data = await self._http_get("/api/cross-edges", {})
@@ -451,15 +451,15 @@ class RpGraphClient:
                 try:
                     resp = await client.get(f"{self.base_url}/api/ui-config")
                     if resp.status_code == 200:
-                        self._flavor = "cbm"
+                        self._flavor = "native"
                         return True
                 except Exception:
                     pass
-                # 自研 rp_graph.server
+                # 自研 graph_fallback.server
                 try:
                     resp = await client.get(f"{self.base_url}/health")
                     if resp.status_code == 200:
-                        self._flavor = "rp_graph"
+                        self._flavor = "fallback"
                         return True
                 except Exception:
                     pass
@@ -488,16 +488,16 @@ class RpGraphClient:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 resp = await client.get(f"{self.base_url}{path}", params=params)
                 if resp.status_code != 200:
-                    raise RpGraphError(
+                    raise GraphEngineError(
                         f"引擎 HTTP {resp.status_code}：{resp.text[:300]}",
                         code=EC.GRAPH_QUERY_FAILED,
                     )
                 data = resp.json()
                 return data if isinstance(data, dict) else {"result": data}
-        except RpGraphError:
+        except GraphEngineError:
             raise
         except Exception as exc:
-            raise RpGraphError(
+            raise GraphEngineError(
                 f"引擎请求失败：{exc}", code=EC.GRAPH_ENGINE_UNAVAILABLE
             ) from exc
 
@@ -513,20 +513,20 @@ class RpGraphClient:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 resp = await client.post(f"{self.base_url}/rpc", json=payload)
                 if resp.status_code != 200:
-                    raise RpGraphError(
+                    raise GraphEngineError(
                         f"引擎 rpc HTTP {resp.status_code}",
                         code=EC.GRAPH_QUERY_FAILED,
                     )
                 data = resp.json()
-        except RpGraphError:
+        except GraphEngineError:
             raise
         except Exception as exc:
-            raise RpGraphError(
+            raise GraphEngineError(
                 f"引擎 rpc 失败：{exc}", code=EC.GRAPH_ENGINE_UNAVAILABLE
             ) from exc
         if isinstance(data, dict) and data.get("error"):
             err = data["error"]
             msg = err.get("message") if isinstance(err, dict) else str(err)
-            raise RpGraphError(msg or "引擎错误", code=EC.GRAPH_QUERY_FAILED)
+            raise GraphEngineError(msg or "引擎错误", code=EC.GRAPH_QUERY_FAILED)
         result = data.get("result") if isinstance(data, dict) else data
         return _unwrap_mcp_result(result)

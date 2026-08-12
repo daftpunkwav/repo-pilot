@@ -16,15 +16,15 @@ from api_backend.schemas.graph import IndexTriggerBody, SearchBody, TraceBody
 from api_backend.services.index_data_adapter import adapt_layout
 from fastapi import APIRouter, Depends, Query
 from graph_engine_runtime import index_pipeline as pipeline
-from graph_engine_runtime.client import RpGraphClient, RpGraphError
+from graph_engine_runtime.client import GraphEngineClient, GraphEngineError
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# RP_GRAPH_DISABLED=1 时模块加载失败 → safe_load_router 捕获 → /api/v1/graph/* 返回 503
+# GRAPH_DISABLED=1 时模块加载失败 → safe_load_router 捕获 → /api/v1/graph/* 返回 503
 # （模块容错挂载设计：单域失败不阻塞 app 启动；graph_l0 纯 DB 投影不受影响）
-if get_settings().rp_graph_disabled:
+if get_settings().graph_disabled:
     raise RuntimeError(
-        "图谱引擎已禁用（RP_GRAPH_DISABLED=1）；graph_l1 索引/查询不可用"
+        "图谱引擎已禁用（GRAPH_DISABLED=1）；graph_l1 索引/查询不可用"
     )
 
 router = APIRouter(prefix="/graph", tags=["graph-l1"])
@@ -154,12 +154,12 @@ async def get_code_graph(
             EC.GRAPH_NOT_INDEXED,
             f"项目尚未索引就绪（当前状态：{status['status']}）。请先在项目详情页构建代码图谱。",
         )
-    client = RpGraphClient()
+    client = GraphEngineClient()
     try:
         raw = await client.fetch_layout(
             status["engine_project"], max_nodes=max_nodes
         )
-    except RpGraphError as exc:
+    except GraphEngineError as exc:
         raise AppException(502, exc.code, exc.message) from exc
     return wrap_data(adapt_layout(raw).model_dump())
 
@@ -170,10 +170,10 @@ async def get_project_architecture(
     db: AsyncSession = Depends(get_db),
 ):
     engine = await _require_ready_engine(db, project_id)
-    client = RpGraphClient()
+    client = GraphEngineClient()
     try:
         data = await client.get_architecture(engine)
-    except RpGraphError as exc:
+    except GraphEngineError as exc:
         raise AppException(502, exc.code, exc.message) from exc
     return wrap_data(data if isinstance(data, dict) else {"result": data})
 
@@ -185,7 +185,7 @@ async def trace_project_symbol(
     db: AsyncSession = Depends(get_db),
 ):
     engine = await _require_ready_engine(db, project_id)
-    client = RpGraphClient()
+    client = GraphEngineClient()
     try:
         data = await client.trace_path(
             engine,
@@ -193,7 +193,7 @@ async def trace_project_symbol(
             direction=body.direction,
             depth=body.depth,
         )
-    except RpGraphError as exc:
+    except GraphEngineError as exc:
         raise AppException(502, exc.code, exc.message) from exc
     return wrap_data(data if isinstance(data, dict) else {"result": data})
 
@@ -205,7 +205,7 @@ async def search_project_graph(
     db: AsyncSession = Depends(get_db),
 ):
     engine = await _require_ready_engine(db, project_id)
-    client = RpGraphClient()
+    client = GraphEngineClient()
     try:
         data = await client.search_graph(
             engine,
@@ -213,7 +213,7 @@ async def search_project_graph(
             label=body.label,
             limit=body.limit,
         )
-    except RpGraphError as exc:
+    except GraphEngineError as exc:
         raise AppException(502, exc.code, exc.message) from exc
     return wrap_data(data if isinstance(data, dict) else {"result": data})
 
@@ -224,10 +224,10 @@ async def get_project_graph_schema(
     db: AsyncSession = Depends(get_db),
 ):
     engine = await _require_ready_engine(db, project_id)
-    client = RpGraphClient()
+    client = GraphEngineClient()
     try:
         data = await client.get_graph_schema(engine)
-    except RpGraphError as exc:
+    except GraphEngineError as exc:
         raise AppException(502, exc.code, exc.message) from exc
     return wrap_data(data if isinstance(data, dict) else {"result": data})
 

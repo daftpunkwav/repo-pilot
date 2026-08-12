@@ -56,10 +56,10 @@ async def lifespan(_app: FastAPI):
     from api_backend.database import get_session_factory as _get_factory
     from api_backend.services.github_accounts import primary_token
 
-    # 禁用 Agent（RP_AGENT_DISABLED=1）时跳过注册；graph 运行层的 app_state 注入置空
+    # 禁用 Agent（AGENT_DISABLED=1）时跳过注册；graph 运行层的 app_state 注入置空
     # （GraphRuntimeContext.app_state_service 可空：索引流水线跳过对应步骤）
     graph_agent_services = None
-    if not settings.rp_agent_disabled:
+    if not settings.agent_disabled:
         from agent_core import services as _agent_services
         from api_backend.services.agent_services_bridge import build_agent_services
 
@@ -67,8 +67,8 @@ async def lifespan(_app: FastAPI):
         _agent_services.register_agent_services(agent_services)
         graph_agent_services = agent_services
 
-    if not settings.rp_graph_disabled:
-        # 禁用图谱（RP_GRAPH_DISABLED=1）时跳过整个运行层：不构造 EmbeddedGraphRuntime、
+    if not settings.graph_disabled:
+        # 禁用图谱（GRAPH_DISABLED=1）时跳过整个运行层：不构造 EmbeddedGraphRuntime、
         # 不起索引 worker、不注入 graph 上下文；graph_l1 路由 import 期已 fail（503 兜底）
         from graph_engine_runtime.context import GraphRuntimeContext
         from graph_engine_runtime.runtime import EmbeddedGraphRuntime

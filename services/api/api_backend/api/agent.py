@@ -52,10 +52,10 @@ from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
-# RP_AGENT_DISABLED=1 时模块加载失败 → safe_load_router 捕获 → /api/v1/agent/* 返回 503
+# AGENT_DISABLED=1 时模块加载失败 → safe_load_router 捕获 → /api/v1/agent/* 返回 503
 # （模块容错挂载设计：单域失败不阻塞 app 启动）
-if get_settings().rp_agent_disabled:
-    raise RuntimeError("Agent 服务已禁用（RP_AGENT_DISABLED=1）；agent 端点不可用")
+if get_settings().agent_disabled:
+    raise RuntimeError("Agent 服务已禁用（AGENT_DISABLED=1）；agent 端点不可用")
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 settings = get_settings()

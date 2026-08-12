@@ -23,7 +23,7 @@ from py_shared.models.project import Project
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from graph_engine_runtime.client import RpGraphClient, RpGraphError
+from graph_engine_runtime.client import GraphEngineClient, GraphEngineError
 from graph_engine_runtime.context import get_runtime_context
 
 logger = logging.getLogger(__name__)
@@ -249,7 +249,7 @@ def classify_index_error(error: str | None) -> str:
         k in low
         for k in (
             "engine",
-            "rp_graph",
+            "graph_fallback",
             "502",
             "503",
             "500",
@@ -330,7 +330,7 @@ def engine_project_name(owner: str, repo: str) -> str:
 def _allowed_root() -> Path:
     settings = get_runtime_context().settings
     return Path(
-        getattr(settings, "rp_graph_allowed_root", None) or settings.cbm_allowed_root
+        getattr(settings, "graph_fallback_allowed_root", None) 
     )
 
 
@@ -586,7 +586,7 @@ async def delete_index(db: AsyncSession, project_id: UUID) -> dict:
         engine_name = engine_project_name(owner, repo)
     if engine_name:
         try:
-            await RpGraphClient().drop_project(engine_name)
+            await GraphEngineClient().drop_project(engine_name)
         except Exception:
             logger.warning(
                 "删除引擎图谱失败 engine=%s", engine_name, exc_info=True
@@ -879,11 +879,11 @@ async def _clone_and_index(
     )
     _raise_if_cancelled(project_id, job_gen)
 
-    client = RpGraphClient(timeout=float(settings.graph_index_timeout_sec))
+    client = GraphEngineClient(timeout=float(settings.graph_index_timeout_sec))
     if not await client.health():
-        raise RpGraphError(
+        raise GraphEngineError(
             "图谱引擎不可用。请构建并启动本仓 C 引擎（services/graph_engine/graph_engine_core，默认 http://127.0.0.1:9750），"
-            "或检查 RP_GRAPH_ENGINE_URL / RP_GRAPH_ENGINE_BIN；亦可清空 URL 以回退 Python rp_graph。",
+            "或检查 GRAPH_ENGINE_URL / GRAPH_ENGINE_BIN；亦可清空 URL 以回退 Python graph_fallback。",
             code=EC.GRAPH_ENGINE_UNAVAILABLE,
         )
 
@@ -917,11 +917,11 @@ async def _clone_and_index(
             error=msg,
         )
         _bump_job_gen(project_id)
-        raise RpGraphError(msg, code=EC.GRAPH_INDEX_FAILED) from exc
-    except RpGraphError:
+        raise GraphEngineError(msg, code=EC.GRAPH_INDEX_FAILED) from exc
+    except GraphEngineError:
         raise
     except Exception as exc:
-        raise RpGraphError(
+        raise GraphEngineError(
             f"索引失败：{exc}", code=EC.GRAPH_INDEX_FAILED
         ) from exc
 
@@ -1036,10 +1036,10 @@ def _build_credential_args(token: str | None) -> tuple[list[str], dict | None]:
         )
     helper = (
         "!f() { echo username=x-access-token; "
-        "echo \"password=$RP_GRAPH_GIT_TOKEN\"; }; f"
+        "echo \"password=$GRAPH_GIT_TOKEN\"; }; f"
     )
     env = os.environ.copy()
-    env["RP_GRAPH_GIT_TOKEN"] = token
+    env["GRAPH_GIT_TOKEN"] = token
     return (
         ["-c", "credential.helper=", "-c", f"credential.helper={helper}"],
         env,

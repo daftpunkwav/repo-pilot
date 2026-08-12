@@ -1007,7 +1007,7 @@ async def build_graph(
 
 async def build_cross_edges(db: AsyncSession) -> list[dict]:
     """从已 READY 项目跑/读取跨仓边；引擎不可用时返回空列表（不影响 L0 相似度）。"""
-    from graph_engine_runtime.client import RpGraphClient, RpGraphError
+    from graph_engine_runtime.client import GraphEngineClient, GraphEngineError
     from py_shared.models.graph_index import GraphIndexStatus
 
     result = await db.execute(
@@ -1021,7 +1021,7 @@ async def build_cross_edges(db: AsyncSession) -> list[dict]:
         r.engine_project: str(r.project_id) for r in rows if r.engine_project
     }
     names = list(engine_to_project.keys())
-    client = RpGraphClient()
+    client = GraphEngineClient()
     if not await client.health():
         return []
 
@@ -1032,7 +1032,7 @@ async def build_cross_edges(db: AsyncSession) -> list[dict]:
             mode="cross-repo-intelligence",
             target_projects=names,
         )
-    except RpGraphError:
+    except GraphEngineError:
         return []
 
     edges: list[dict] = []
