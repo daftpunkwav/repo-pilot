@@ -88,10 +88,10 @@ class Settings(BaseSettings):
         description="RP_GRAPH_ALLOWED_ROOT：引擎可索引根；仓库缓存落其下 repo-cache/",
     )
     rp_graph_engine_url: str = Field(
-        default="http://127.0.0.1:9750",
+        default="",
         description=(
-            "图谱引擎 sidecar HTTP 基址（默认 http://127.0.0.1:9750）。"
-            "设为空字符串可强制仅用进程内 Python 回退。"
+            "图谱引擎 sidecar HTTP 基址。默认空 = 严格两进程模式（进程内 Python 回退，装即用）；"
+            "设为 http://127.0.0.1:9750 等则启用 C sidecar（需构建二进制，见 services/graph_engine/README.md）。"
         ),
     )
     rp_graph_engine_bin: str = Field(

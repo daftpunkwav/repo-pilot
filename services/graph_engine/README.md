@@ -13,7 +13,7 @@
 **命名边界：** 对外用 `rp-*` / `RP_GRAPH_*`；`graph_engine_core` 内部可仍为 `cbm_*` / `CBM_*` / `internal/cbm/`。  
 **勿混淆：** ① Python 发行包名 `repopilot-graph-engine`（本服务的 wheel）与 C sidecar 二进制 `rp-graph-engine`（`graph_engine_core/build/c/` 产物）是两样东西；② `rp-layout-cli` 只做布局，非索引 sidecar。
 
-## 默认：C 引擎 sidecar（`graph_engine_core`）
+## 可选：C 引擎 sidecar（`graph_engine_core`，性能增强）
 
 构建与运行见 [`graph_engine_core/README.md`](graph_engine_core/README.md)。
 
@@ -27,10 +27,10 @@ $env:RP_GRAPH_ENGINE_URL = "http://127.0.0.1:9750"
 
 API 启动时若配置了 `RP_GRAPH_ENGINE_BIN`（或在约定路径找到二进制），会在 sidecar 不健康时自动拉起。
 
-## 回退：Python 运行时（`graph_engine_runtime/rp_graph`）
+## 默认：Python 运行时（`graph_engine_runtime/rp_graph`，进程内）
 
-当 `RP_GRAPH_ENGINE_URL` 未设置或 sidecar 不可达时，回退到进程内 `rp_graph`。  
-新功能与索引质量以 `graph_engine_core` 为准；Python 路径仅作兼容。
+默认（`RP_GRAPH_ENGINE_URL` 空）走进程内 `rp_graph`，装即用、严格两进程拓扑（前端 + 后端单进程）。
+新功能与索引质量以 `graph_engine_core` 为准；需要 C 引擎性能时见上节（构建二进制 + 设 `RP_GRAPH_ENGINE_URL`）。
 
 可选 sidecar：
 
