@@ -38,11 +38,11 @@ RepoPilot/
 | `docs/design/v1/frontend/` | 设计归档 | **历史 Mock 沙盒**；主线代码在 `apps/web/` |
 | `backend/`（仓库根） | `services/api/api_backend/` | API 服务 Python 包（import 为 `api_backend.*`） |
 | `backend/api/` | `services/api/api_backend/api/` | FastAPI 路由 |
-| `backend/agents/` | `services/agent/agent_core/agents/`（权威）；`services/api/api_backend/agents/` 为 shim | 物理实现已迁入 Agent 服务；API 侧保留 `api_backend.agents.*` 导入兼容 |
+| `backend/agents/` | `services/agent/agent_core/agents/` | 物理实现已迁入 Agent 服务；api 直接 `import agent_core`（兼容 shim 已移除） |
 | `backend/llm/` / `tools/` / `memory/` | `services/agent/agent_core/{llm,tools,memory}/` | 同上 |
 | `backend/config.py` | `services/api/api_backend/config.py` | 配置入口 |
 | `backend/migrations/` | `services/api/api_backend/migrations/` | **Alembic 已启用**（唯一迁移 `6096bed38e20_initial_schema`，启动期 `upgrade head`）；`schema_sync.py` 已废弃 |
-| `backend/agents/hub.py` 等 | `services/agent/agent_core/agents/{hub,react,registry,intent,question,stream_events,...}.py` | 权威实现（2026-08-03 迁入）；`services/api/api_backend/agents/*` 仅为转发 shim |
+| `backend/agents/hub.py` 等 | `services/agent/agent_core/agents/{hub,react,registry,intent,question,stream_events,...}.py` | 权威实现（2026-08-03 迁入；2026-08-12 移除 `api_backend` 兼容 shim，直接 import） |
 | `pyproject.toml`（根） | 根 + `services/api/pyproject.toml` | 根为 workspace；API 依赖在 `services/api/` |
 | `data/*.db` | `data/*.db`（仓库根） | 路径未变 |
 | 外挂 `codebase-memory-mcp` / 全局 CBM | `services/graph_engine/graph_engine_core/` | 源码已迁入；对外二进制 `rp-graph-engine`；内部符号可仍为 `cbm_*` |

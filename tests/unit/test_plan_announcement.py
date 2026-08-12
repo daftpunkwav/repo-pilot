@@ -1,5 +1,5 @@
 """plan_execute 过早把「执行计划」当最终答复的检测"""
-from api_backend.agents.react import is_plan_announcement
+from agent_core.agents.react import is_plan_announcement
 
 
 def test_detects_hub_execution_plan_list():

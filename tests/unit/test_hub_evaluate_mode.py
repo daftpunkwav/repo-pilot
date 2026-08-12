@@ -1,14 +1,14 @@
 ﻿# -*- coding: utf-8 -*-
 """Hub evaluate loop: re-dispatch, dedupe, cap."""
 import pytest
-from api_backend.agents.hub import (
+from agent_core.agents.hub import (
     MAX_HUB_DISPATCH_ROUNDS,
     HubService,
     _dispatch_fingerprint,
     apply_evaluate_mode,
     apply_merge_mode,
 )
-from api_backend.agents.registry import AGENT_DEFINITIONS
+from agent_core.agents.registry import AGENT_DEFINITIONS
 
 from tests.sse_util import join_sse
 
@@ -67,10 +67,10 @@ def test_max_hub_dispatch_rounds_is_bounded():
 
 @pytest.mark.asyncio
 async def test_dispatch_evaluate_loop_nested_expert_merges(monkeypatch):
-    from api_backend.agents.react import EngineResult
+    from agent_core.agents.react import EngineResult
 
     service = HubService.__new__(HubService)
-    from api_backend.agents.types import AgentEngineConfig
+    from agent_core.agents.types import AgentEngineConfig
     service.config = AgentEngineConfig()
     service.registry = type("R", (), {"has": staticmethod(lambda aid: True)})()
     memory_calls = []
@@ -135,10 +135,10 @@ async def test_dispatch_evaluate_loop_nested_expert_merges(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch):
-    from api_backend.agents.react import EngineResult
+    from agent_core.agents.react import EngineResult
 
     service = HubService.__new__(HubService)
-    from api_backend.agents.types import AgentEngineConfig
+    from agent_core.agents.types import AgentEngineConfig
     service.config = AgentEngineConfig()
     service.registry = type("R", (), {"has": staticmethod(lambda aid: True)})()
     memory_calls = []
@@ -195,10 +195,10 @@ async def test_dispatch_evaluate_loop_hub_passthrough_skips_rewrite(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_dispatch_evaluate_loop_can_re_dispatch_until_cap(monkeypatch):
-    from api_backend.agents.react import EngineResult
+    from agent_core.agents.react import EngineResult
 
     service = HubService.__new__(HubService)
-    from api_backend.agents.types import AgentEngineConfig
+    from agent_core.agents.types import AgentEngineConfig
     service.config = AgentEngineConfig()
     service.registry = type(
         "R",

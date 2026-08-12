@@ -57,11 +57,27 @@ RepoPilot/
 |------|------|----------|
 | Web | ✅ 已实现核心功能 | `apps/web/`（全部 MVP 页面、路由、Mock/Real 双轨 API 客户端已就位） |
 | API | ✅ 已实现核心端点 | `services/api/api_backend/`（Auth/Projects/Categories/Tags/Notes/Graph/Settings/Agent 等） |
-| Agent | ✅ 核心已迁入 | 实现在 `services/agent/agent_core/`（agents/llm/tools/memory）；`services/api/api_backend/{agents,llm,tools,memory}` 为兼容 shim；`agent_runtime` 可独立 SSE（:19877，经 `AGENT_BASE_URL` 代理） |
+| Agent | ✅ 核心已迁入 | 实现在 `services/agent/agent_core/`（agents/llm/tools/memory，api 直接 import）；`agent_runtime` 可独立 SSE（:19877，经 `AGENT_BASE_URL` 代理） |
 | Graph Engine | ✅ 已落地 | `graph_engine_core/`（C sidecar `rp-graph-engine`）；`graph_engine_runtime/rp_graph` 回退；`layout/`（CMake：`rp_layout` + `rp-layout-cli`） |
 | MCP | ⬜ 占位 | `services/mcp/`（v1.4+ 规划） |
 | Desktop | ⬜ 占位 | `apps/desktop/`（规划中，尚未实现） |
 | Packages | 🟡 部分落地 | `types/` 已由 OpenAPI 生成并被 `apps/web` 使用（`@repopilot/types`）；`contracts/` 含 openapi.json；`ui/prompts/py-shared/config` 仍为占位 |
+
+## 默认运行拓扑（本地工具模式）
+
+默认**严格两进程**，所有服务能力内聚到后端单进程：
+
+| 进程 | 端口 | 包含 |
+|------|------|------|
+| 前端 Web | 5173 | `apps/web`（Vite dev） |
+| 后端 API | 19878 | `api_backend`（REST/CRUD）+ `agent_core`（import）+ `rp_graph`（Python 回退） |
+
+`services/` 下的多目录（`api`/`agent`/`graph_engine`/`mcp`）是**逻辑/功能分区**（代码维护用），不是进程划分：`agent_core`、`rp_graph` 都是后端进程 import 的库，默认无独立端口。
+
+**可选独立进程**（需要隔离/扩缩容时显式启用）：
+- Agent Runtime `:19877`（`npm run dev:agent` + api 设 `AGENT_BASE_URL`）
+- Graph C sidecar `:9750`（设 `RP_GRAPH_ENGINE_URL` + 构建二进制；默认空 = Python 回退）
+- MCP（v1.4+ 规划，stdio/HTTP）
 
 ## 服务拆分触发条件
 

@@ -1,6 +1,6 @@
 """Agent 工作流策略：速度档位与流式路径"""
-from api_backend.agents.react import ReActEngine
-from api_backend.agents.registry import AGENT_DEFINITIONS, GLOBAL_OUTPUT_RULES, render_soul
+from agent_core.agents.react import ReActEngine
+from agent_core.agents.registry import AGENT_DEFINITIONS, GLOBAL_OUTPUT_RULES, render_soul
 
 
 def test_scout_is_react_fast_lane():
@@ -54,7 +54,7 @@ def test_effective_max_iter_uses_agent_def():
 
 
 def test_llm_config_status_missing_and_ok():
-    from api_backend.llm.config import llm_config_status
+    from agent_core.llm.config import llm_config_status
 
     assert llm_config_status({}) == "missing"
     assert llm_config_status({"llm_api_key": "sk-plain"}) == "ok"

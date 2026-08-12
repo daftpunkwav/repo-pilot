@@ -4,9 +4,9 @@
 不碰真实 LLM 与数据库。
 """
 
-from api_backend.agents.hub import HubService
-from api_backend.agents.react import EngineResult
-from api_backend.llm.provider import LLMProvider
+from agent_core.agents.hub import HubService
+from agent_core.agents.react import EngineResult
+from agent_core.llm.provider import LLMProvider
 from api_backend.services.sse_stream import format_sse
 
 

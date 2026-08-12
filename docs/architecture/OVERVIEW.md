@@ -47,7 +47,7 @@ flowchart TB
     MCP --> AGENT
 ```
 
-**当前现状：** Multi-Agent 运行时**权威实现已迁入 `services/agent/agent_core/`**；API 侧 `services/api/api_backend/{agents,llm,tools,memory}` 为兼容 shim（转发到 `agent_core`）。默认与 API 同进程，也可经 `AGENT_BASE_URL` + `agent_runtime`（:19877）独立部署：
+**当前现状：** Multi-Agent 运行时**权威实现已迁入 `services/agent/agent_core/`**，api 直接 import（2026-08-12 移除 `api_backend` 兼容 shim）。默认与 API 同进程，也可经 `AGENT_BASE_URL` + `agent_runtime`（:19877）独立部署：
 
 | 模块 | 路径（权威） | 职责 |
 |------|------|------|

@@ -8,10 +8,11 @@ from datetime import datetime
 from typing import Any, AsyncIterator
 from uuid import UUID
 
-from api_backend.agents.hub import HubService
+from agent_core.agents.hub import HubService
+from agent_core.llm.config import build_llm_config_from_user
+from agent_core.memory.service import MemoryService
+from agent_core.tools.builtin import ensure_tools_loaded
 from api_backend.core import stream_cancel
-from api_backend.llm.config import build_llm_config_from_user
-from api_backend.memory.service import MemoryService
 from api_backend.models.agent import AgentMessage, AgentSession, agent_session_projects
 from api_backend.schemas.agent import (
     AgentMessageOut,
@@ -22,7 +23,6 @@ from api_backend.schemas.agent import (
 )
 from api_backend.services.project_service import get_project
 from api_backend.services.sse_stream import StreamEvent, encode_stream_item, format_sse
-from api_backend.tools.builtin import ensure_tools_loaded
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -288,7 +288,7 @@ async def update_session(
     active_agent: str | None = None,
 ) -> AgentSessionOut | None:
     """更新会话。返回 None 表示会话不存在；非法字段抛 ValueError。"""
-    from api_backend.agents.registry import AGENT_DEFINITIONS
+    from agent_core.agents.registry import AGENT_DEFINITIONS
 
     session = await db.get(AgentSession, session_id)
     if not session:
@@ -949,7 +949,7 @@ async def stream_analyze(
     depth: str = "quick",
     agent_id: str | None = None,
 ) -> AsyncIterator[str]:
-    from api_backend.agents.registry import get_registry
+    from agent_core.agents.registry import get_registry
     from api_backend.services.project_service import get_project
 
     try:
@@ -1046,14 +1046,14 @@ async def stream_import_assist(
     import re
     from dataclasses import replace
 
-    from api_backend.agents.react import EngineResult, ReActEngine
-    from api_backend.agents.registry import get_registry
-    from api_backend.llm.config import build_llm_config_from_user
-    from api_backend.llm.provider import LLMProvider
-    from api_backend.memory.context import ContextBuilder
-    from api_backend.memory.service import MemoryService
+    from agent_core.agents.react import EngineResult, ReActEngine
+    from agent_core.agents.registry import get_registry
+    from agent_core.llm.config import build_llm_config_from_user
+    from agent_core.llm.provider import LLMProvider
+    from agent_core.memory.context import ContextBuilder
+    from agent_core.memory.service import MemoryService
+    from agent_core.tools.registry import ToolRegistry, global_registry
     from api_backend.services.sse_stream import format_sse
-    from api_backend.tools.registry import ToolRegistry, global_registry
 
     available = list(context.get("available_repo_keys") or [])
     selected = list(context.get("selected_repo_keys") or [])

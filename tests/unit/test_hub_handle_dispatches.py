@@ -4,8 +4,8 @@ direct(单专家流式转 subagent 事件)、must_serial(串行)、并行(gather
 均用 monkeypatch _run_agent 返回固定 EngineResult,不碰真实 LLM。
 """
 
-from api_backend.agents.hub import DispatchRoundOutcome, HubService
-from api_backend.agents.react import EngineResult
+from agent_core.agents.hub import DispatchRoundOutcome, HubService
+from agent_core.agents.react import EngineResult
 
 from tests.sse_util import join_sse
 
@@ -31,7 +31,7 @@ class FakeMemory:
 
 def make_service(monkeypatch, *, run_agent_result: EngineResult | None = None):
     service = HubService.__new__(HubService)
-    from api_backend.agents.types import AgentEngineConfig
+    from agent_core.agents.types import AgentEngineConfig
     service.config = AgentEngineConfig()
     service.registry = FakeRegistry()
     service.memory = FakeMemory()
@@ -99,7 +99,7 @@ def test_direct_single_expert_streams_subagent(monkeypatch):
 
 def test_direct_converts_thinking_text_to_subagent_channels(monkeypatch):
     service = HubService.__new__(HubService)
-    from api_backend.agents.types import AgentEngineConfig
+    from agent_core.agents.types import AgentEngineConfig
     service.config = AgentEngineConfig()
     service.registry = FakeRegistry()
     service.memory = FakeMemory()
@@ -174,7 +174,7 @@ def test_parallel_dispatch_gather(monkeypatch):
 
 def test_direct_question_intercept(monkeypatch):
     service = HubService.__new__(HubService)
-    from api_backend.agents.types import AgentEngineConfig
+    from agent_core.agents.types import AgentEngineConfig
     service.config = AgentEngineConfig()
     service.registry = FakeRegistry()
     service.memory = FakeMemory()

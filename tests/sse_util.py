@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
-from api_backend.agents.stream_events import StreamEvent, encode_stream_item
+from agent_core.agents.stream_events import StreamEvent, encode_stream_item
 
 
 def join_sse(chunks: Iterable[Any]) -> str:

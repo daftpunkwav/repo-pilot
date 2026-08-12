@@ -58,8 +58,8 @@ async def test_llm(
         model = model or settings.llm_model or settings.llm_default_model
 
     try:
-        from api_backend.llm.config import build_llm_config_from_user
-        from api_backend.llm.provider import LLMProvider
+        from agent_core.llm.config import build_llm_config_from_user
+        from agent_core.llm.provider import LLMProvider
     except ImportError as e:
         return wrap_data(
             LlmTestOut(

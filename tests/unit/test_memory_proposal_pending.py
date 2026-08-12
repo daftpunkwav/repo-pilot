@@ -5,8 +5,8 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_propose_then_accept_via_api(client: AsyncClient, auth_headers: dict):
+    from agent_core.memory.service import MemoryService
     from api_backend.database import get_session_factory
-    from api_backend.memory.service import MemoryService
 
     me = await client.get("/api/v1/user/me", headers=auth_headers)
     assert me.status_code == 200
@@ -43,8 +43,8 @@ async def test_propose_then_accept_via_api(client: AsyncClient, auth_headers: di
 
 @pytest.mark.asyncio
 async def test_reject_memory_proposal(client: AsyncClient, auth_headers: dict):
+    from agent_core.memory.service import MemoryService
     from api_backend.database import get_session_factory
-    from api_backend.memory.service import MemoryService
 
     me = await client.get("/api/v1/user/me", headers=auth_headers)
     factory = get_session_factory()

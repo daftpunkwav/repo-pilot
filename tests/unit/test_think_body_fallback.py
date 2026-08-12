@@ -1,6 +1,6 @@
 """专家空正文 / THINK 未闭合时，正文不得被吞进思考区"""
-from api_backend.agents.react import _strip_think_markers
-from api_backend.agents.think_stream import THINK_END, THINK_START, split_complete_text
+from agent_core.agents.react import _strip_think_markers
+from agent_core.agents.think_stream import THINK_END, THINK_START, split_complete_text
 
 
 def test_unclosed_think_becomes_body():

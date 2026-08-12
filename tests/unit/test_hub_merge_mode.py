@@ -1,6 +1,6 @@
 """Hub 汇总模式：禁止再调度、专家摘要截断"""
-from api_backend.agents.hub import HubService, _clip_expert_text, apply_merge_mode
-from api_backend.agents.registry import AGENT_DEFINITIONS
+from agent_core.agents.hub import HubService, _clip_expert_text, apply_merge_mode
+from agent_core.agents.registry import AGENT_DEFINITIONS
 
 
 def test_clip_expert_text_short():
@@ -38,7 +38,7 @@ def test_apply_merge_mode_disables_plan_execute_and_tools():
 
 
 def test_structure_expert_summary_keeps_headings():
-    from api_backend.agents.hub import structure_expert_summary
+    from agent_core.agents.hub import structure_expert_summary
 
     text = "# 阶段 1\n正文很多\n## 阶段 2\n更多"
     out = structure_expert_summary("mentor", text)

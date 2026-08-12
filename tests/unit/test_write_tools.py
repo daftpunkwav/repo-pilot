@@ -6,18 +6,18 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-from api_backend.agents.registry import AGENT_DEFINITIONS
-from api_backend.config import get_settings
-from api_backend.database import get_session_factory, init_db, reset_database
-from api_backend.models.project import Project
-from api_backend.tools.builtin import (
+from agent_core.agents.registry import AGENT_DEFINITIONS
+from agent_core.tools.builtin import (
     create_note_tool,
     ensure_tools_loaded,
     set_project_category,
     set_project_tags_tool,
     update_project_progress,
 )
-from api_backend.tools.registry import global_registry
+from agent_core.tools.registry import global_registry
+from api_backend.config import get_settings
+from api_backend.database import get_session_factory, init_db, reset_database
+from api_backend.models.project import Project
 
 
 @pytest.fixture

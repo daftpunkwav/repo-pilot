@@ -3,7 +3,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-from api_backend.tools.registry import ToolDefinition, ToolRegistry
+from agent_core.tools.registry import ToolDefinition, ToolRegistry
 
 
 @pytest.mark.asyncio

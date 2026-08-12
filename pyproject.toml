@@ -27,15 +27,3 @@ explicit_package_bases = true
 namespace_packages = true
 plugins = ["pydantic.mypy"]
 ignore_missing_imports = true
-
-# 兼容 shim（api_backend/agents|memory|tools|llm/*.py）通过 globals().update() 从
-# agent_core 动态 re-export 符号，静态分析无法追踪属预期；运行时已验证可用。
-# 此处对消费 shim 的模块豁免 attr-defined（仅 shim 注入的符号报此错）。
-[[tool.mypy.overrides]]
-module = [
-    "api_backend.services.agent_service",
-    "api_backend.services.sse_stream",
-    "api_backend.api.settings",
-    "api_backend.api.user",
-]
-disable_error_code = ["attr-defined"]

@@ -12,7 +12,7 @@
 | `agent_core/memory` | 运行上下文与记忆服务 |
 | `agent_runtime` | FastAPI：`/health`、内部 SSE chat |
 
-API 侧 `services/api/api_backend/{agents,llm,tools,memory}` 为 **兼容 shim**（re-export `agent_core`），测试与 CRUD 服务可继续 `from api_backend.agents...`。
+API 侧 `services/api/api_backend` 直接 import `agent_core`（2026-08-12 移除兼容 shim）；测试与服务用 `from agent_core.agents...`。
 
 ## 启动
 

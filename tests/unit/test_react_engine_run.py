@@ -12,10 +12,10 @@
 - CoT 两阶段(thinking/text_delta 通道分流、usage 累加、phase1 失败中止)
 """
 
-from api_backend.agents.react import EngineResult, ReActEngine
-from api_backend.agents.registry import AgentDefinition
-from api_backend.llm.provider import LLMChunk, LLMCompleteResult
-from api_backend.memory.context import AgentRunContext
+from agent_core.agents.react import EngineResult, ReActEngine
+from agent_core.agents.registry import AgentDefinition
+from agent_core.llm.provider import LLMChunk, LLMCompleteResult
+from agent_core.memory.context import AgentRunContext
 
 from tests.sse_util import join_sse
 

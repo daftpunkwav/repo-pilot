@@ -63,8 +63,8 @@ def test_assert_safe_outbound_allows_fake_ip_dns(monkeypatch):
 
 def test_llm_provider_blocks_unsafe_api_base(monkeypatch):
     """出站 kwargs 构建时若 base 解析到内网则 RuntimeError。"""
-    from api_backend.llm.config import LLMConfig
-    from api_backend.llm.provider import LLMProvider
+    from agent_core.llm.config import LLMConfig
+    from agent_core.llm.provider import LLMProvider
 
     def fake_getaddrinfo(host, *args, **kwargs):
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.168.0.9", 0))]

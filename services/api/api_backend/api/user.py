@@ -1,7 +1,7 @@
 """本机身份与学习者画像 API（无认证）"""
+from agent_core.memory.service import MemoryService
 from api_backend.api.deps import get_db
 from api_backend.core.responses import wrap_data
-from api_backend.memory.service import MemoryService
 from api_backend.schemas.common import DataResponse
 from api_backend.schemas.profile import UserProfileOut, UserProfileUpdate
 from api_backend.schemas.user import UserOut

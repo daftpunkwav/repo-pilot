@@ -12,7 +12,7 @@ RepoPilot/
 │   ├── web/          # React Web 前端
 │   └── desktop/      # 桌面壳（规划中）
 ├── services/
-│   ├── api/          # FastAPI 后端（api_backend/：认证/CRUD/图谱 REST；Agent shim）
+│   ├── api/          # FastAPI 后端（api_backend/：认证/CRUD/图谱 REST；import agent_core）
 │   ├── agent/        # Agent（agent_core 权威实现 + agent_runtime 独立进程）
 │   ├── graph_engine/ # 图谱（graph_engine_core + graph_engine_runtime + layout）
 │   └── mcp/          # MCP Server（规划中）
@@ -33,7 +33,7 @@ RepoPilot/
 
 - API：`services/api` — FastAPI + SQLAlchemy 2.0 + SQLite + LiteLLM Multi-Agent
 - Web：`apps/web` — React 19 + TypeScript + Vite 7 + Zustand + React Query
-- Agent：**7 个 Agent**：Hub 统筹调度 + Scout/Mentor/Navigator/Curator/Scribe/Atlas（BYOK）；权威实现在 `services/agent/agent_core/`（`services/api/api_backend/agents/` 为兼容 shim），默认与 API 同进程
+- Agent：**7 个 Agent**：Hub 统筹调度 + Scout/Mentor/Navigator/Curator/Scribe/Atlas（BYOK）；权威实现在 `services/agent/agent_core/`（api 直接 import），默认与 API 同进程
 - 图谱：`services/graph_engine` — C sidecar（`graph_engine_core` / `rp-graph-engine`）+ Python 回退（`graph_engine_runtime` / `rp_graph`）
 - 桌面：`apps/desktop` — pywebview（规划中，尚未实现）
 
