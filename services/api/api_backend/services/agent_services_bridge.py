@@ -1,7 +1,8 @@
 """api_backend → agent_core 业务服务契约的 Embedded Adapter。
 
 将 api_backend 各业务服务的模块级函数包装为 repopilot_shared.contracts 的
-Protocol 实现，由 agent_runtime.EmbeddedAgentRuntime 构造时注入 agent_core。
+Protocol 实现，由宿主（api_backend.main lifespan / agent_runtime 入口 / 测试）
+经 register_agent_services() 注入 agent_core。
 """
 from __future__ import annotations
 

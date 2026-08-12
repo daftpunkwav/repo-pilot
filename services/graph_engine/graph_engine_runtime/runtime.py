@@ -124,6 +124,8 @@ def get_graph_runtime() -> GraphRuntimeInterface:
     """返回已注入的运行时；未初始化则显式报错（对齐 get_runtime_context fast-fail）。
 
     禁止静默降级为空配置：graph 操作有副作用（clone/索引），配置遗漏应在启动期暴露。
+    注：当前无调用方（api 路由直连 EmbeddedGraphRuntime），保留供未来
+    Embedded/Remote 双模式切换时使用。
     """
     global _graph_runtime
     if _graph_runtime is None:

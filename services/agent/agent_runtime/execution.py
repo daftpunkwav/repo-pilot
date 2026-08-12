@@ -1436,6 +1436,9 @@ async def _run_direct_agent_stream(
     """统一"直接 agent 流"执行：Hub 单 agent 直答 + 异常转 error SSE。
 
     stream_trending_scout / stream_classify_project / stream_generate_note 共用。
+    错误契约：仅 Hub 调用（agent 执行）失败转 error SSE；调用方在进入 helper 前
+    的 setup（会话创建/项目校验/prompt 拼装）失败直接抛出（与 stream_chat/
+    stream_analyze 的既有模式一致——try 从 Hub 调用开始，DB/setup 错误冒为 500）。
     """
     try:
         hub = HubService(db)

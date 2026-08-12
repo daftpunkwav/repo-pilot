@@ -1041,7 +1041,9 @@ async def _git_shallow_clone(
     staging = dest.parent / f".clone-{uuid.uuid4().hex[:10]}"
     base = ["git", "-c", "core.longpaths=true", "-c", "core.symlinks=false"]
     if env is not None:
-        base += ["-c", f"credential.helper={helper}"]
+        # 先以空串清空（-c 是累加而非替换，系统级 credential.helper=manager
+        # 会先接管 credential fill 导致非交互 clone 挂起），再注入内联 helper。
+        base += ["-c", "credential.helper=", "-c", f"credential.helper={helper}"]
     attempts = [
         [
             *base,

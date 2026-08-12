@@ -32,7 +32,7 @@ _services = AgentServices()
 
 
 def register_agent_services(services: AgentServices) -> None:
-    """注入宿主实现（幂等；EmbeddedAgentRuntime 构造 / agent_runtime 入口 / 测试）。"""
+    """注入宿主实现（幂等；宿主 lifespan / agent_runtime 入口 / 测试 conftest）。"""
     global _services
     _services = services
 
