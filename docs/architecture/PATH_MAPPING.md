@@ -17,7 +17,7 @@ RepoPilot/
 │   ├── api/api_backend/     # FastAPI（import api_backend.*）
 │   ├── agent/agent_core + agent_runtime
 │   ├── graph_engine/graph_engine_core + graph_engine_runtime + layout
-│   └── mcp/mcp_server       # 占位，v1.4+
+│   └── mcp/mcp_runtime      # MCP 运行层（占位，v1.4+）
 ├── packages/                # 跨服务共享库
 ├── docs/
 │   └── design/v1/frontend/  # v1 设计归档（已迁入 apps/web）

@@ -19,7 +19,7 @@
 ```bash
 cd services/mcp
 pip install -e .
-python -m mcp_server
+python -m mcp_runtime
 ```
 
 ## 与 Agent 的区别

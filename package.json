@@ -50,6 +50,9 @@
     "services/graph_engine/graph_engine_runtime/**/*.py": [
       "ruff check --fix"
     ],
+    "services/graph_engine/graph_engine_fallback/**/*.py": [
+      "ruff check --fix"
+    ],
     ".env": [
       "echo '错误: .env 文件禁止提交,请先从暂存区移除!' && exit 1"
     ],

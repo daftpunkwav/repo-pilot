@@ -20,10 +20,11 @@ RepoPilot/
 │   │   └── agent_runtime/   # 独立进程入口（main.py）
 │   ├── graph_engine/
 │   │   ├── graph_engine_core/     # C 索引 sidecar（对外 rp-graph-engine）
-│   │   ├── graph_engine_runtime/  # Python 回退（import rp_graph）
+│   │   ├── graph_engine_fallback/  # Python 回退（import rp_graph）
+│   │   ├── graph_engine_runtime/  # Graph 运行层（job/C-py fallback/sidecar）
 │   │   └── layout/                # 可选 native 布局（CMake / rp_layout）
 │   └── mcp/
-│       └── mcp_server/      # MCP 包（占位，v1.4+）
+│       └── mcp_runtime/     # MCP 运行层（占位，v1.4+）
 │
 ├── packages/                # 跨应用/服务共享库
 │   ├── types/               # TS 类型（OpenAPI 生成）
@@ -58,7 +59,7 @@ RepoPilot/
 | Web | ✅ 已实现核心功能 | `apps/web/`（全部 MVP 页面、路由、Mock/Real 双轨 API 客户端已就位） |
 | API | ✅ 已实现核心端点 | `services/api/api_backend/`（Auth/Projects/Categories/Tags/Notes/Graph/Settings/Agent 等） |
 | Agent | ✅ 核心已迁入 | 实现在 `services/agent/agent_core/`（agents/llm/tools/memory，api 直接 import）；`agent_runtime` 可独立 SSE（:19877，经 `AGENT_BASE_URL` 代理） |
-| Graph Engine | ✅ 已落地 | `graph_engine_core/`（C sidecar `rp-graph-engine`）；`graph_engine_runtime/rp_graph` 回退；`layout/`（CMake：`rp_layout` + `rp-layout-cli`） |
+| Graph Engine | ✅ 已落地 | `graph_engine_core/`（C sidecar `rp-graph-engine`）；`graph_engine_fallback/rp_graph` 回退；`graph_engine_runtime/` 运行层（job/C-py fallback/sidecar）；`layout/`（CMake：`rp_layout` + `rp-layout-cli`） |
 | MCP | ⬜ 占位 | `services/mcp/`（v1.4+ 规划） |
 | Desktop | ⬜ 占位 | `apps/desktop/`（规划中，尚未实现） |
 | Packages | 🟡 部分落地 | `types/` 已由 OpenAPI 生成并被 `apps/web` 使用（`@repopilot/types`）；`contracts/` 含 openapi.json；`ui/prompts/py-shared/config` 仍为占位 |
@@ -109,10 +110,10 @@ RepoPilot/
 
 | 服务目录 | 发行名 / import | 说明 |
 |----------|-----------------|------|
-| `services/api` | 发行 `repopilot-api`；import `api_backend.*` | 包名已从 `backend` 对齐为 `api_backend`（与 agent_core/graph_engine_core/mcp_server 一致） |
+| `services/api` | 发行 `repopilot-api`；import `api_backend.*` | 包名已从 `backend` 对齐为 `api_backend`（与 agent_core/graph_engine_core/mcp_runtime 一致） |
 | `services/agent` | 发行 `repopilot-agent`；import `agent_core` / `agent_runtime` | 与目录名一致 |
-| `services/graph_engine` | 发行 `repopilot-graph-engine`；import `rp_graph` | 代码在 `graph_engine_runtime/rp_graph/`；C sidecar 二进制名仍为 `rp-graph-engine`（与发行包名区分） |
-| `services/mcp` | 发行 `repopilot-mcp`；import `mcp_server` | 占位 |
+| `services/graph_engine` | 发行 `repopilot-graph-engine`；import `rp_graph` | 回退实现在 `graph_engine_fallback/rp_graph/`；运行层 `graph_engine_runtime/`（client/index_pipeline/sidecar/runtime）；C sidecar 二进制名仍为 `rp-graph-engine`（与发行包名区分） |
+| `services/mcp` | 发行 `repopilot-mcp`；import `mcp_runtime` | 占位（v1.4+） |
 
 ## 数据目录
 

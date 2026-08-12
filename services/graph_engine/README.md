@@ -7,7 +7,8 @@
 | 路径 | 对齐 | 职责 | 对外名 |
 |------|------|------|--------|
 | [`graph_engine_core/`](graph_engine_core/) | `agent_core` | 权威 C 索引/查询引擎（MIT，迁自 codebase-memory-mcp） | **`rp-graph-engine`** |
-| [`graph_engine_runtime/`](graph_engine_runtime/) | `agent_runtime` | Python 回退实现与可选 HTTP 进程（`python -m rp_graph.server`） | 包 `rp_graph` / 发行名 `repopilot-graph-engine` |
+| [`graph_engine_fallback/`](graph_engine_fallback/) | `graph_engine_fallback` | Python 降级实现（C 不可用时回退，含可选 HTTP 进程 `python -m rp_graph.server`） | 包 `rp_graph` |
+| [`graph_engine_runtime/`](graph_engine_runtime/) | `agent_runtime` | Graph 运行层（job 管理 / C-py fallback / sidecar / 对外服务） | 发行名 `repopilot-graph-engine` |
 | [`layout/`](layout/) | （可选加速） | 3D 布局 native 库（CMake） | 库 **`rp_layout`**，CLI **`rp-layout-cli`** |
 
 **命名边界：** 对外用 `rp-*` / `RP_GRAPH_*`；`graph_engine_core` 内部可仍为 `cbm_*` / `CBM_*` / `internal/cbm/`。  
@@ -27,7 +28,7 @@ $env:RP_GRAPH_ENGINE_URL = "http://127.0.0.1:9750"
 
 API 启动时若配置了 `RP_GRAPH_ENGINE_BIN`（或在约定路径找到二进制），会在 sidecar 不健康时自动拉起。
 
-## 默认：Python 运行时（`graph_engine_runtime/rp_graph`，进程内）
+## 默认：Python 回退（`graph_engine_fallback/rp_graph`，进程内）
 
 默认（`RP_GRAPH_ENGINE_URL` 空）走进程内 `rp_graph`，装即用、严格两进程拓扑（前端 + 后端单进程）。
 新功能与索引质量以 `graph_engine_core` 为准；需要 C 引擎性能时见上节（构建二进制 + 设 `RP_GRAPH_ENGINE_URL`）。

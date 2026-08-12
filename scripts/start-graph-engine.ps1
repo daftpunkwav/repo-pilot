@@ -8,7 +8,7 @@ if (-not (Test-Path $dataRoot)) {
     New-Item -ItemType Directory -Force -Path $dataRoot | Out-Null
 }
 
-$pyPath = Join-Path $Root "services\graph_engine\graph_engine_runtime"
+$pyPath = Join-Path $Root "services\graph_engine\graph_engine_fallback"
 if ($env:PYTHONPATH) {
     $env:PYTHONPATH = "$pyPath;$env:PYTHONPATH"
 } else {

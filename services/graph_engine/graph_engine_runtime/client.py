@@ -21,8 +21,8 @@ from graph_engine_runtime.context import get_runtime_context
 
 logger = logging.getLogger(__name__)
 
-# client.py 位于 graph_engine_runtime 包根；插入该目录使 rp_graph（Python 回退实现）可顶层导入
-_ENGINE_PY = Path(__file__).resolve().parent
+# rp_graph（Python 回退实现）位于 graph_engine_fallback 包；运行层与回退层同目录插入 sys.path
+_ENGINE_PY = Path(__file__).resolve().parent.parent / "graph_engine_fallback"
 if _ENGINE_PY.is_dir() and str(_ENGINE_PY) not in sys.path:
     sys.path.insert(0, str(_ENGINE_PY))
 

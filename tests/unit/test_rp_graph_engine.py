@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "services" / "graph_engine" / "graph_engine_runtime"))
+sys.path.insert(0, str(ROOT / "services" / "graph_engine" / "graph_engine_fallback"))
 
 from rp_graph import GraphEngine  # noqa: E402
 
