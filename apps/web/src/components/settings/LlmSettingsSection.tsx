@@ -54,7 +54,7 @@ export function LlmSettingsSection({
       return;
     }
     if (!selectedId || !providers.some((p) => p.id === selectedId)) {
-      setSelectedId(settings.llm_default_provider_id || providers[0]!.id);
+      setSelectedId(settings.llm_default_provider_id || providers[0]?.id || null);
     }
   }, [providers, selectedId, settings.llm_default_provider_id]);
 

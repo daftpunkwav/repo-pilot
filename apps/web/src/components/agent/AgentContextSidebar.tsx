@@ -182,12 +182,14 @@ export function AgentContextSidebar({
   const goals = profile?.goals ?? [];
 
   // 技术栈：优先 memory_items tech；若空则从 tech_proficiency 派生
+  // 兜底空数组每次渲染生成新引用，故在 useMemo 内部兜底避免依赖失稳
   const techChips = useMemo(() => {
-    const fromMem = memoryItems.filter((m) => m.category === 'tech');
+    const items = profile?.memory_items ?? [];
+    const fromMem = items.filter((m) => m.category === 'tech');
     if (fromMem.length > 0) return fromMem.map((m) => m.content);
     const tech = profile?.tech_proficiency ?? {};
     return Object.entries(tech).map(([k, v]) => `${k}: ${v}`);
-  }, [memoryItems, profile?.tech_proficiency]);
+  }, [profile?.memory_items, profile?.tech_proficiency]);
 
   const startEditing = (category: MemoryItem['category'] | 'goal') => {
     setEditingCategory(category);

@@ -19,8 +19,8 @@ function buildWeekColumns(heatmap: LlmUsageSummary['heatmap']) {
   if (!heatmap.length) return [] as Array<Array<(typeof heatmap)[number] | null>>;
 
   const byDate = new Map(heatmap.map((c) => [c.date, c]));
-  const first = new Date(`${heatmap[0]!.date}T12:00:00`);
-  const last = new Date(`${heatmap[heatmap.length - 1]!.date}T12:00:00`);
+  const first = new Date(`${heatmap[0]?.date ?? ''}T12:00:00`);
+  const last = new Date(`${heatmap[heatmap.length - 1]?.date ?? ''}T12:00:00`);
 
   // 对齐到周日开始
   const start = new Date(first);
@@ -35,7 +35,8 @@ function buildWeekColumns(heatmap: LlmUsageSummary['heatmap']) {
 
   while (cursor <= end) {
     const key = ymdLocal(cursor);
-    const inRange = key >= heatmap[0]!.date && key <= heatmap[heatmap.length - 1]!.date;
+    const inRange =
+      key >= (heatmap[0]?.date ?? '') && key <= (heatmap[heatmap.length - 1]?.date ?? '');
     col.push(inRange ? byDate.get(key) ?? { date: key, calls: 0, intensity: 0 } : null);
     if (col.length === 7) {
       columns.push(col);

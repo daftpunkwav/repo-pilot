@@ -42,7 +42,8 @@ export function ImportStarsDrawer({ open, onClose }: ImportStarsDrawerProps) {
     DEFAULT_IMPORT_REPO_FILTER
   );
 
-  const stars = starsResult?.items ?? [];
+  // 兜底空数组包进 useMemo，避免每次渲染生成新引用导致下游 useMemo 依赖失稳
+  const stars = useMemo(() => starsResult?.items ?? [], [starsResult?.items]);
 
   const filteredStars = useMemo(
     () => filterAndSortStarRepos(stars, filters),

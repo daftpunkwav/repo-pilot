@@ -384,18 +384,18 @@ export const useAgentStore = create<AgentState>((set, get) => ({
         }
         // §4.1.10: SSE handler 上下文，把 set/get 与 set 闭包转接
         const ctx: SseHandlerCtx = {
-          set: (partial) => set(partial as any),
-          get: () => get() as any,
+          set: (partial) => set(partial as Parameters<typeof set>[0]),
+          get: () => get(),
         };
         switch (event.event) {
           case 'text_delta': {
             // §4.1.10: 委托给独立 handler，便于单测与维护
-            HANDLERS.text_delta!(event, ctx);
+            HANDLERS.text_delta?.(event, ctx);
             break;
           }
           case 'thinking': {
             // §4.1.10: 委托给独立 handler
-            HANDLERS.thinking!(event, ctx);
+            HANDLERS.thinking?.(event, ctx);
             break;
           }
           case 'question': {
@@ -638,13 +638,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           case 'subagent_thinking': {
             if (!stillOnOrigin()) break;
             // §4.1.10: 委托给独立 handler
-            HANDLERS.subagent_thinking!(event, ctx);
+            HANDLERS.subagent_thinking?.(event, ctx);
             break;
           }
           case 'subagent_text': {
             if (!stillOnOrigin()) break;
             // §4.1.10: 委托给独立 handler
-            HANDLERS.subagent_text!(event, ctx);
+            HANDLERS.subagent_text?.(event, ctx);
             break;
           }
           case 'subagent_done': {
@@ -705,13 +705,13 @@ export const useAgentStore = create<AgentState>((set, get) => ({
           }
           case 'done': {
             // §4.1.10: 仅作中间信号（防止多次 done 重复）；主流程在循环结束后统一落库
-            HANDLERS.done!(event, ctx);
+            HANDLERS.done?.(event, ctx);
             break;
           }
           case 'error': {
             if (!stillOnOrigin()) break;
             // §4.1.10: 委托给独立 handler
-            HANDLERS.error!(event, ctx);
+            HANDLERS.error?.(event, ctx);
             break;
           }
           default:

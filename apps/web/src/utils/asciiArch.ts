@@ -13,7 +13,7 @@ function isMarkdownTableSeparator(line: string): boolean {
   const t = line.trim();
   if (!t.includes('-') || !t.includes('|')) return false;
   // 去掉单元格后应几乎只剩 | : - 空白
-  const stripped = t.replace(/[\s|:\-]/g, '');
+  const stripped = t.replace(/[\s|:-]/g, '');
   return stripped.length === 0 && (t.match(/\|/g) ?? []).length >= 2;
 }
 
@@ -37,7 +37,8 @@ export function looksLikeMarkdownTable(text: string): boolean {
   const sepIdx = lines.findIndex(isMarkdownTableSeparator);
   if (sepIdx < 0) return false;
   // 分隔行上下应有表格行
-  const hasHeader = sepIdx > 0 && isMarkdownTableRow(lines[sepIdx - 1]!);
+  const headerLine = lines[sepIdx - 1];
+  const hasHeader = sepIdx > 0 && headerLine !== undefined && isMarkdownTableRow(headerLine);
   const bodyRows = lines.slice(sepIdx + 1).filter(isMarkdownTableRow);
   return hasHeader && (bodyRows.length >= 1 || lines.length <= 3);
 }
@@ -102,7 +103,7 @@ export function tryParseAsciiArchLayers(text: string): AsciiArchLayer[] | null {
       .filter((l) => l.trim().length > 0);
     bucket = [];
     if (!cleaned.length) return;
-    const title = cleaned[0]!.trim();
+    const title = cleaned[0]?.trim() ?? '';
     const rest = cleaned.slice(1).map((l) => l.trim()).filter(Boolean);
     layers.push({ title, lines: rest });
   };

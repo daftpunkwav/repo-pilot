@@ -63,11 +63,13 @@ export function QuestionPanel({ question, onSubmit, onSkip }: QuestionPanelProps
       return;
     }
     setInvalidIds(new Set());
-    // 按题目顺序提交，带上 question_id
-    const ordered = question.questions.map((q) => {
-      const a = answers[q.id]!;
-      return { ...a, question_id: q.id };
-    });
+    // 按题目顺序提交，带上 question_id（missing 已在上方校验，此处跳过空答案兜底类型）
+    const ordered = question.questions
+      .map((q) => {
+        const a = answers[q.id];
+        return a ? { ...a, question_id: q.id } : null;
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null);
     onSubmit(ordered);
   };
 

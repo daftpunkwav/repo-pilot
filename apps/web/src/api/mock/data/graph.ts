@@ -6,8 +6,9 @@ function enrichNodes(): GraphData['nodes'] {
   const byCat = new Map<string, string[]>();
   for (const p of MOCK_PROJECTS) {
     const cid = p.category_id || 'misc';
-    if (!byCat.has(cid)) byCat.set(cid, []);
-    byCat.get(cid)!.push(p.id);
+    const bucket = byCat.get(cid) ?? [];
+    bucket.push(p.id);
+    byCat.set(cid, bucket);
   }
   const sizes = new Map<string, number>();
   for (const [cid, ids] of byCat) sizes.set(cid, ids.length);

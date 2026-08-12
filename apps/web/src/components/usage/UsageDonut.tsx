@@ -48,7 +48,7 @@ export function UsageDonut({ usage }: UsageDonutProps) {
     if (rest > 0) list.push({ key: '其他', tokens: rest });
     return list.map((r, i) => ({
       ...r,
-      color: USAGE_CHART_COLORS[i % USAGE_CHART_COLORS.length]!,
+      color: USAGE_CHART_COLORS[i % USAGE_CHART_COLORS.length] ?? '#8e8e93',
     }));
   }, [usage, mode]);
 

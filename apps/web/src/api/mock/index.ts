@@ -807,25 +807,25 @@ export class MockApiClient implements IApiClient {
       };
     });
     const by_provider = providers.map((provider, i) => {
-      const row = by_model[Math.min(i, by_model.length - 1)]!;
+      const row = by_model[Math.min(i, by_model.length - 1)];
       return {
         provider,
-        prompt_tokens: row.prompt_tokens,
-        prompt_cached_tokens: row.prompt_cached_tokens,
-        prompt_uncached_tokens: row.prompt_uncached_tokens,
-        completion_tokens: row.completion_tokens,
-        total_tokens: row.total_tokens,
-        calls: row.calls,
+        prompt_tokens: row?.prompt_tokens ?? 0,
+        prompt_cached_tokens: row?.prompt_cached_tokens ?? 0,
+        prompt_uncached_tokens: row?.prompt_uncached_tokens ?? 0,
+        completion_tokens: row?.completion_tokens ?? 0,
+        total_tokens: row?.total_tokens ?? 0,
+        calls: row?.calls ?? 0,
       };
     });
-    const topRow = by_model[0]!;
+    const topRow = by_model[0];
     const top = {
-      provider: providers[0]!,
-      model: topRow.model,
-      label: topRow.label,
-      total_tokens: topRow.total_tokens,
-      calls: topRow.calls,
-      share: totals.total_tokens ? topRow.total_tokens / totals.total_tokens : 0,
+      provider: providers[0] ?? '',
+      model: topRow?.model ?? '',
+      label: topRow?.label ?? '',
+      total_tokens: topRow?.total_tokens ?? 0,
+      calls: topRow?.calls ?? 0,
+      share: totals.total_tokens && topRow ? topRow.total_tokens / totals.total_tokens : 0,
     };
     return wrapResponse({
       days,
@@ -839,9 +839,9 @@ export class MockApiClient implements IApiClient {
         {
           id: '1',
           created_at: new Date(now - 60000).toISOString(),
-          model: models[0]!,
-          provider: providers[0]!,
-          label: `${providers[0]!}/${models[0]!}`,
+          model: models[0] ?? '',
+          provider: providers[0] ?? '',
+          label: `${providers[0] ?? ''}/${models[0] ?? ''}`,
           agent_id: 'scout',
           prompt_tokens: 1200,
           prompt_cached_tokens: 400,
@@ -852,9 +852,9 @@ export class MockApiClient implements IApiClient {
         {
           id: '2',
           created_at: new Date(now - 300000).toISOString(),
-          model: models[1]!,
-          provider: providers[1]!,
-          label: `${providers[1]!}/${models[1]!}`,
+          model: models[1] ?? '',
+          provider: providers[1] ?? '',
+          label: `${providers[1] ?? ''}/${models[1] ?? ''}`,
           agent_id: 'atlas',
           prompt_tokens: 900,
           prompt_cached_tokens: 100,

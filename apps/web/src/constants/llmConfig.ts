@@ -121,7 +121,10 @@ export function createProviderFromPreset(presetId: string): {
   configured: boolean;
   api_key_masked: string | null;
 } {
-  const preset = findProviderPreset(presetId) ?? findProviderPreset('custom')!;
+  const preset = findProviderPreset(presetId) ?? findProviderPreset('custom') ?? LLM_PROVIDER_PRESETS[0];
+  if (!preset) {
+    throw new Error('内置 custom 供应商预设缺失');
+  }
   return {
     id: crypto.randomUUID(),
     preset_id: preset.id,

@@ -15,7 +15,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 type NotesView = 'split' | 'list-only' | 'edit-only' | 'preview-only';
 
 /** 新建草稿 id 为 'new'；其余（UUID / mock n_*）均视为已有笔记 */
-function isPersistedNoteId(id: string | null | undefined): boolean {
+function isPersistedNoteId(id: string | null | undefined): id is string {
   return Boolean(id && id !== 'new');
 }
 
@@ -150,7 +150,7 @@ export function NotesPage() {
     }
     try {
       if (isPersistedNoteId(editingNoteId)) {
-        await updateNote.mutateAsync({ id: editingNoteId!, title, content });
+        await updateNote.mutateAsync({ id: editingNoteId, title, content });
       } else if (newProjectId) {
         await createNote.mutateAsync({
           projectId: newProjectId,
@@ -404,7 +404,7 @@ export function NotesPage() {
         danger
         onConfirm={() => {
           if (isPersistedNoteId(editingNoteId)) {
-            void deleteNote.mutateAsync(editingNoteId!);
+            void deleteNote.mutateAsync(editingNoteId);
           }
           setDeleteOpen(false);
         }}
