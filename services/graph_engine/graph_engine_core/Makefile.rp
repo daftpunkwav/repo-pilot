@@ -42,7 +42,8 @@ IS_GCC := $(shell echo | $(CC) -dM -E - 2>/dev/null | grep -q '__GNUC__' && ! ec
 GCC_ONLY_FLAGS :=
 ifeq ($(IS_GCC),yes)
 GCC_ONLY_FLAGS := -Wno-format-truncation -Wno-unused-result \
-                  -Wno-stringop-truncation -Wno-alloc-size-larger-than
+                  -Wno-stringop-truncation -Wno-alloc-size-larger-than \
+                  -Wno-unused-const-variable -Wno-unused-function
 endif
 
 # -Wdate-time: with -Werror, any use of __DATE__/__TIME__/__TIMESTAMP__ fails the
