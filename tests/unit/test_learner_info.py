@@ -1,6 +1,6 @@
 """select_learner_info / 画像字段白名单"""
-from backend.schemas.profile import LearnerIdentityOut, UserProfileOut
-from backend.services.profile_service import select_learner_info
+from api_backend.schemas.profile import LearnerIdentityOut, UserProfileOut
+from api_backend.services.profile_service import select_learner_info
 
 
 def test_select_learner_info_subset():

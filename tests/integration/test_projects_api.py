@@ -90,7 +90,7 @@ async def test_project_readme_endpoint(client: AsyncClient, auth_headers: dict, 
         return "# Hello\n\nWorld"
 
     monkeypatch.setattr(
-        "backend.api.projects.fetch_readme_text",
+        "api_backend.api.projects.fetch_readme_text",
         fake_readme,
     )
 
@@ -106,7 +106,7 @@ async def test_project_readme_endpoint(client: AsyncClient, auth_headers: dict, 
     async def empty_readme(*_a, **_k):
         return None
 
-    monkeypatch.setattr("backend.api.projects.fetch_readme_text", empty_readme)
+    monkeypatch.setattr("api_backend.api.projects.fetch_readme_text", empty_readme)
     res2 = await client.get(f"/api/v1/projects/{pid}/readme", headers=auth_headers)
     assert res2.status_code == 200
     assert res2.json()["data"]["source"] == "empty"

@@ -2,7 +2,7 @@
 from types import SimpleNamespace
 from uuid import uuid4
 
-from backend.memory.context import AgentRunContext, ContextBuilder
+from api_backend.memory.context import AgentRunContext, ContextBuilder
 
 
 def test_build_system_prompt_injects_guidelines():

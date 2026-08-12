@@ -11,11 +11,11 @@ def test_alembic_upgrade_creates_core_tables(tmp_path: Path):
     db_path = tmp_path / "alembic_smoke.db"
     os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
     # 清 Settings 缓存
-    from backend.config import get_settings
+    from api_backend.config import get_settings
 
     get_settings.cache_clear()
 
-    from backend.config import REPO_ROOT
+    from api_backend.config import REPO_ROOT
 
     cfg = Config(str(REPO_ROOT / "alembic.ini"))
     command.upgrade(cfg, "head")

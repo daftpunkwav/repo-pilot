@@ -6,11 +6,10 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-
-from backend.config import get_settings
-from backend.database import get_session_factory, init_db, reset_database
-from backend.models.project import Project
-from backend.tools.builtin import get_project_detail
+from api_backend.config import get_settings
+from api_backend.database import get_session_factory, init_db, reset_database
+from api_backend.models.project import Project
+from api_backend.tools.builtin import get_project_detail
 
 
 @pytest.fixture

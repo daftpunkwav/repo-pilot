@@ -51,7 +51,7 @@
 
 **`main.py:25-35` 顶部平铺 import 所有 router：**
 ```python
-from backend.api import (
+from api_backend.api import (
     agent, auth, categories, github, graph, notes, overview, projects,
     settings as settings_api, tags, user,
 )
@@ -66,7 +66,7 @@ from backend.api import (
 
 **业务→agent 是单向**：`project_service` / `note_service` / `graph_service` **都不 import agent_service**（grep 确认无反向耦合）。✅ agent 挂了业务不受影响。
 
-**agent_service.py 是 1558 行巨型模块**（`services/api/backend/services/agent_service.py`），`stream_import_assist`（out_degree 23）、`stream_chat`（out_degree 19）跨服务耦合重。
+**agent_service.py 是 1558 行巨型模块**（`services/api/api_backend/services/agent_service.py`），`stream_import_assist`（out_degree 23）、`stream_chat`（out_degree 19）跨服务耦合重。
 
 ### 2.3 前端错误处理现状（关键缺口）
 
@@ -103,7 +103,7 @@ from backend.api import (
 ### 2.5 数据层
 
 - `init_db()`（`database.py:73-91`）：`alembic upgrade head`，不 create_all。
-- migrations 在 `services/api/backend/migrations/alembic/versions/`，4 个版本，初始 `6096bed38e20`。
+- migrations 在 `services/api/api_backend/migrations/alembic/versions/`，4 个版本，初始 `6096bed38e20`。
 - `alembic.ini` 在仓库根。
 - 启动期无其他初始化（agent tools 在 import 时注册）。
 
@@ -168,7 +168,7 @@ from backend.api import (
 所有业务异常用统一格式（已有 `core/responses.py` 的 `wrap_data`，错误侧补 `wrap_error`）：
 
 ```python
-# 新增：services/api/backend/core/responses.py
+# 新增：services/api/api_backend/core/responses.py
 def wrap_error(code: str, message: str, status_code: int = 503, **extra) -> HTTPException:
     """统一错误响应：{detail:{code, message, ...}}"""
     return HTTPException(
@@ -205,13 +205,13 @@ export function describeError(code: string) {
 
 ### 5.2 改动位置
 
-- `services/api/backend/main.py:25-35`（平铺 import）→ 改为容错挂载
-- `services/api/backend/main.py:106-116`（include_router）→ 改为容错 include
-- 新增 `services/api/backend/core/module_registry.py`（模块状态登记）
+- `services/api/api_backend/main.py:25-35`（平铺 import）→ 改为容错挂载
+- `services/api/api_backend/main.py:106-116`（include_router）→ 改为容错 include
+- 新增 `services/api/api_backend/core/module_registry.py`（模块状态登记）
 
 ### 5.3 核心代码
 
-**新增 `services/api/backend/core/module_registry.py`：**
+**新增 `services/api/api_backend/core/module_registry.py`：**
 
 ```python
 """模块注册表 —— 记录各域模块的加载状态，支持故障隔离。"""
@@ -269,7 +269,7 @@ def is_module_available(name: str) -> bool:
     return s is not None and s.loaded
 ```
 
-**改造 `services/api/backend/main.py`（替换 :25-35 与 :106-116）：**
+**改造 `services/api/api_backend/main.py`（替换 :25-35 与 :106-116）：**
 
 ```python
 """FastAPI 应用入口 —— v2.0（模块容错挂载）"""
@@ -283,13 +283,13 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-from backend.config import get_settings
-from backend.core.limiter import limiter
-from backend.core.middleware import setup_middleware
-from backend.core.csrf import CsrfMiddleware
-from backend.core.module_registry import safe_load_router, all_module_statuses
-from backend.database import get_session_factory, init_db
-from backend.services.seed_service import seed_preset_categories
+from api_backend.config import get_settings
+from api_backend.core.limiter import limiter
+from api_backend.core.middleware import setup_middleware
+from api_backend.core.csrf import CsrfMiddleware
+from api_backend.core.module_registry import safe_load_router, all_module_statuses
+from api_backend.database import get_session_factory, init_db
+from api_backend.services.seed_service import seed_preset_categories
 
 settings = get_settings()
 api = settings.api_v1_prefix
@@ -323,17 +323,17 @@ setup_middleware(app)
 # —— 模块容错挂载：单域失败不阻塞 app 启动 ——
 # 每个域用 lambda 延迟 import，失败记入 module_registry
 _MODULES: list[tuple[str, callable]] = [
-    ("auth",       lambda: __import__("backend.api.auth", fromlist=["router"]).router),
-    ("projects",   lambda: __import__("backend.api.projects", fromlist=["router"]).router),
-    ("categories", lambda: __import__("backend.api.categories", fromlist=["router"]).router),
-    ("notes",      lambda: __import__("backend.api.notes", fromlist=["router"]).router),
-    ("graph",      lambda: __import__("backend.api.graph", fromlist=["router"]).router),
-    ("tags",       lambda: __import__("backend.api.tags", fromlist=["router"]).router),
-    ("overview",   lambda: __import__("backend.api.overview", fromlist=["router"]).router),
-    ("user",       lambda: __import__("backend.api.user", fromlist=["router"]).router),
-    ("agent",      lambda: __import__("backend.api.agent", fromlist=["router"]).router),
-    ("github",     lambda: __import__("backend.api.github", fromlist=["router"]).router),
-    ("settings",   lambda: __import__("backend.api.settings", fromlist=["router"]).router),
+    ("auth",       lambda: __import__("api_backend.api.auth", fromlist=["router"]).router),
+    ("projects",   lambda: __import__("api_backend.api.projects", fromlist=["router"]).router),
+    ("categories", lambda: __import__("api_backend.api.categories", fromlist=["router"]).router),
+    ("notes",      lambda: __import__("api_backend.api.notes", fromlist=["router"]).router),
+    ("graph",      lambda: __import__("api_backend.api.graph", fromlist=["router"]).router),
+    ("tags",       lambda: __import__("api_backend.api.tags", fromlist=["router"]).router),
+    ("overview",   lambda: __import__("api_backend.api.overview", fromlist=["router"]).router),
+    ("user",       lambda: __import__("api_backend.api.user", fromlist=["router"]).router),
+    ("agent",      lambda: __import__("api_backend.api.agent", fromlist=["router"]).router),
+    ("github",     lambda: __import__("api_backend.api.github", fromlist=["router"]).router),
+    ("settings",   lambda: __import__("api_backend.api.settings", fromlist=["router"]).router),
 ]
 
 for _name, _loader in _MODULES:
@@ -354,7 +354,7 @@ async def health():
 # —— 模块级 503 兜底：未加载成功的域，其前缀路由统一返回 503 ——
 @app.api_route(f"{api}/{{module}}/{{rest:path}}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"])
 async def module_unavailable(module: str, rest: str):
-    from backend.core.module_registry import get_module_status
+    from api_backend.core.module_registry import get_module_status
     status = get_module_status(module)
     if status and not status.loaded:
         return JSONResponse(
@@ -580,16 +580,16 @@ export function EmbedAgentChat({ mode, onUnavailable, ...rest }: EmbedAgentChatP
 
 #### C-1：替换鉴权依赖
 
-**`services/api/backend/api/deps.py`** —— `get_current_user` → `get_local_user`：
+**`services/api/api_backend/api/deps.py`** —— `get_current_user` → `get_local_user`：
 
 ```python
-# services/api/backend/api/deps.py（改造后）
+# services/api/api_backend/api/deps.py（改造后）
 """依赖注入 —— 本地单机模式，无认证，返回单例本地学习者。"""
 from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from backend.database import get_session
-from backend.models.user import User
+from api_backend.database import get_session
+from api_backend.models.user import User
 
 # 固定的本地学习者 ID（首启时自动创建）
 LOCAL_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
@@ -628,18 +628,18 @@ get_current_user = get_local_user
 
 #### C-2：删除认证路由与中间件
 
-**`services/api/backend/main.py`**：
+**`services/api/api_backend/main.py`**：
 - 从 `_MODULES` 列表移除 `("auth", ...)` 一行。
 - 移除 `_LoginBodyCacheMiddleware`（main.py:51-93）及其 `app.add_middleware` 调用。
 - 移除 `CsrfMiddleware`（无认证无需 CSRF）——**待确认**：CSRF 也保护非认证写操作，保留与否见 §11 风险。
 
 **删除文件**：
-- `services/api/backend/api/auth.py`（整个文件）
-- `services/api/backend/services/auth_service.py`
-- `services/api/backend/core/auth_cookies.py`
-- `services/api/backend/core/security.py` 中的 `create_access_token`/`decode_token`/`hash_password`/`verify_password`/`create_refresh_token_value`/`hash_refresh_token`（保留 `encrypt_secret`/`decrypt_secret`/`ensure_encrypted_secret`/`is_encrypted_secret`/`_fernet`，GitHub PAT 加密仍用）。
+- `services/api/api_backend/api/auth.py`（整个文件）
+- `services/api/api_backend/services/auth_service.py`
+- `services/api/api_backend/core/auth_cookies.py`
+- `services/api/api_backend/core/security.py` 中的 `create_access_token`/`decode_token`/`hash_password`/`verify_password`/`create_refresh_token_value`/`hash_refresh_token`（保留 `encrypt_secret`/`decrypt_secret`/`ensure_encrypted_secret`/`is_encrypted_secret`/`_fernet`，GitHub PAT 加密仍用）。
 
-**`services/api/backend/models/user.py`**：
+**`services/api/api_backend/models/user.py`**：
 - 删除 `RefreshToken` 类（整个表）。
 - `User` 类删除 `password_hash`、`token_version` 字段；保留 `username`（固定 "local"）、`github_accounts`、`agent_permissions`、`settings_json`、`email`、`avatar_url`。
 
@@ -657,7 +657,7 @@ get_current_user = get_local_user
 
 #### C-4：Alembic 迁移
 
-新增迁移 `services/api/backend/migrations/alembic/versions/<新rev>_remove_auth.py`：
+新增迁移 `services/api/api_backend/migrations/alembic/versions/<新rev>_remove_auth.py`：
 
 ```python
 """remove auth system (local single-user)
@@ -737,15 +737,15 @@ Agent 端点（尤其 `stream_analyze`/`stream_trending_scout`/`stream_classify_
 
 ### 8.2 改动位置
 
-- `services/api/backend/api/agent.py` 各 SSE 端点（:268-297 analyze、:339-354 trending-scout、:357-375 classify、:378-397 note/generate）
-- `services/api/backend/services/agent_service.py` 对应 stream 函数
+- `services/api/api_backend/api/agent.py` 各 SSE 端点（:268-297 analyze、:339-354 trending-scout、:357-375 classify、:378-397 note/generate）
+- `services/api/api_backend/services/agent_service.py` 对应 stream 函数
 
 ### 8.3 核心代码
 
 **为无兜底的 stream 函数补外层 try/except（以 stream_analyze 为例）：**
 
 ```python
-# services/api/backend/services/agent_service.py（stream_analyze 改造，:948-1030）
+# services/api/api_backend/services/agent_service.py（stream_analyze 改造，:948-1030）
 async def stream_analyze(db, user, project_id, agent_id, question, permissions, ...):
     try:
         # ... 原有逻辑 ...
@@ -766,8 +766,8 @@ async def stream_analyze(db, user, project_id, agent_id, question, permissions, 
 **Agent 模块不可用检测**：`agent.py` 路由层在调用 agent_service 前，检查模块状态：
 
 ```python
-# services/api/backend/api/agent.py（各 SSE 端点入口加检查）
-from backend.core.module_registry import is_module_available
+# services/api/api_backend/api/agent.py（各 SSE 端点入口加检查）
+from api_backend.core.module_registry import is_module_available
 
 @router.post("/import-assist")
 async def import_assist(...):
@@ -800,7 +800,7 @@ async def import_assist(...):
 > **单一权威源**：[`ERROR_CODES.md`](./ERROR_CODES.md)  
 > 同步实现：
 > - `apps/web/src/utils/errorCodes.ts`
-> - `services/api/backend/core/error_codes.py`
+> - `services/api/api_backend/core/error_codes.py`
 >
 > 本节不再维护副本。新增/改名码时改上述三处，并跑 `tests/unit/test_error_codes_sync.py`。
 >
@@ -871,9 +871,9 @@ cd apps/web && npx playwright test
 
 | 结论 | 证据位置 |
 |------|---------|
-| 平铺 import 致启动耦合 | `services/api/backend/main.py:25-35` |
+| 平铺 import 致启动耦合 | `services/api/api_backend/main.py:25-35` |
 | lifespan 不初始化 agent | `main.py:37-45` |
-| agent tools import 时注册 | `services/api/backend/services/agent_service.py:28` |
+| agent tools import 时注册 | `services/api/api_backend/services/agent_service.py:28` |
 | 业务不 import agent_service | grep 确认 project_service/note_service/graph_service 无反向 import |
 | agent_service 巨型 | `services/agent_service.py` 1558 行，stream_import_assist out_degree 23 |
 | 前端 code 恒 'API_ERROR' | `apps/web/src/api/real/http.ts:69,202` |
@@ -881,10 +881,10 @@ cd apps/web && npx playwright test
 | 无错误码映射表 | grep ERROR_CODES/errorMap 无命中 |
 | agentPanel 必填 | `apps/web/src/components/project/ImportAgentModal.tsx:10` |
 | 导入 fallback | `apps/web/src/components/project/ImportUrlsModal.tsx:148-163` |
-| User 表混装 | `services/api/backend/models/user.py:26-28` |
+| User 表混装 | `services/api/api_backend/models/user.py:26-28` |
 | get_current_user 11 模块依赖 | deps.py:54-110 + 各 api 模块 Depends |
-| UserProfile 独立表 | `services/api/backend/models/agent.py:33` |
-| token 在 github_accounts JSON | `services/api/backend/services/github_accounts.py:44` |
+| UserProfile 独立表 | `services/api/api_backend/models/agent.py:33` |
+| token 在 github_accounts JSON | `services/api/api_backend/services/github_accounts.py:44` |
 | 4 个 stream 无兜底 | agent_service.py stream_analyze/stream_trending_scout/stream_classify_project/stream_generate_note |
-| migrations 位置 | `services/api/backend/migrations/alembic/versions/` 4 个版本 |
-| init_db alembic upgrade | `services/api/backend/database.py:73-91` |
+| migrations 位置 | `services/api/api_backend/migrations/alembic/versions/` 4 个版本 |
+| init_db alembic upgrade | `services/api/api_backend/database.py:73-91` |

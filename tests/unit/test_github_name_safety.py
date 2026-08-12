@@ -1,5 +1,5 @@
 """GitHub owner/repo 路径安全校验"""
-from backend.tools.builtin import _parse_owner_repo, _safe_github_name
+from api_backend.tools.builtin import _parse_owner_repo, _safe_github_name
 
 
 def test_safe_github_name_accepts_normal():

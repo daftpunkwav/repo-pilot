@@ -1,9 +1,9 @@
 """LLM 用量解析与 settings 多供应商迁移单元测试。"""
 from __future__ import annotations
 
-from backend.models.app_state import AppState
-from backend.services.llm_usage_parse import parse_usage_details
-from backend.services.settings_service import ensure_providers, settings_to_out
+from api_backend.models.app_state import AppState
+from api_backend.services.llm_usage_parse import parse_usage_details
+from api_backend.services.settings_service import ensure_providers, settings_to_out
 
 
 def test_parse_usage_openai_cached_details():
@@ -130,7 +130,7 @@ def test_settings_to_out_exposes_providers():
 
 
 def test_normalize_strips_api_format_prefix():
-    from backend.services.llm_usage_service import (
+    from api_backend.services.llm_usage_service import (
         format_provider_model,
         normalize_model_name,
         normalize_provider_name,

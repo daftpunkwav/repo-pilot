@@ -3,8 +3,7 @@ import ipaddress
 import socket
 
 import pytest
-
-from backend.core.url_safety import (
+from api_backend.core.url_safety import (
     assert_safe_outbound_https_url,
     is_blocked_ip,
     validate_public_https_url,
@@ -32,7 +31,7 @@ def test_validate_rejects_dns_to_private(monkeypatch):
     def fake_getaddrinfo(host, *args, **kwargs):
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.1.2.3", 0))]
 
-    monkeypatch.setattr("backend.core.url_safety.socket.getaddrinfo", fake_getaddrinfo)
+    monkeypatch.setattr("api_backend.core.url_safety.socket.getaddrinfo", fake_getaddrinfo)
     with pytest.raises(ValueError, match="禁止"):
         validate_public_https_url("https://evil.example.com/v1")
 
@@ -46,7 +45,7 @@ def test_assert_safe_outbound_allows_public(monkeypatch):
     def fake_getaddrinfo(host, *args, **kwargs):
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 0))]
 
-    monkeypatch.setattr("backend.core.url_safety.socket.getaddrinfo", fake_getaddrinfo)
+    monkeypatch.setattr("api_backend.core.url_safety.socket.getaddrinfo", fake_getaddrinfo)
     url = "https://api.openai.com/v1"
     assert assert_safe_outbound_https_url(url) == url
 
@@ -57,20 +56,20 @@ def test_assert_safe_outbound_allows_fake_ip_dns(monkeypatch):
     def fake_getaddrinfo(host, *args, **kwargs):
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("198.18.0.34", 0))]
 
-    monkeypatch.setattr("backend.core.url_safety.socket.getaddrinfo", fake_getaddrinfo)
+    monkeypatch.setattr("api_backend.core.url_safety.socket.getaddrinfo", fake_getaddrinfo)
     url = "https://api.minimaxi.com/anthropic"
     assert assert_safe_outbound_https_url(url) == url
 
 
 def test_llm_provider_blocks_unsafe_api_base(monkeypatch):
     """出站 kwargs 构建时若 base 解析到内网则 RuntimeError。"""
-    from backend.llm.config import LLMConfig
-    from backend.llm.provider import LLMProvider
+    from api_backend.llm.config import LLMConfig
+    from api_backend.llm.provider import LLMProvider
 
     def fake_getaddrinfo(host, *args, **kwargs):
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("192.168.0.9", 0))]
 
-    monkeypatch.setattr("backend.core.url_safety.socket.getaddrinfo", fake_getaddrinfo)
+    monkeypatch.setattr("api_backend.core.url_safety.socket.getaddrinfo", fake_getaddrinfo)
     cfg = LLMConfig(
         provider="openai",
         model="gpt-4o",

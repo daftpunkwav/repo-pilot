@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
-from backend.models.project import Project
+from api_backend.models.project import Project
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_core.llm.config import LLMConfig
@@ -71,7 +71,7 @@ class ContextBuilder:
         speaking_style: str = "default",
         permissions: dict | None = None,
     ) -> AgentRunContext:
-        from backend.services.agent_service import get_session_project_ids
+        from api_backend.services.agent_service import get_session_project_ids
 
         # 会话绑定的多项目 + 调用方传入的主项目
         bound_ids = await get_session_project_ids(self.db, session_id)
@@ -103,7 +103,7 @@ class ContextBuilder:
         code_of_conduct = get_agent_code_of_conduct(raw_settings)
         agent_guideline = get_agent_guideline(raw_settings, agent_id)
 
-        from backend.ports.sqlalchemy_adapters import build_tool_ports
+        from api_backend.ports.sqlalchemy_adapters import build_tool_ports
 
         return AgentRunContext(
             session_id=session_id,

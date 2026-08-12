@@ -2,14 +2,12 @@
 from __future__ import annotations
 
 import os
-from uuid import uuid4
 
 import pytest
-
-from backend.config import get_settings
-from backend.database import get_session_factory, init_db, reset_database
-from backend.models.project import Project
-from backend.ports.sqlalchemy_adapters import build_tool_ports
+from api_backend.config import get_settings
+from api_backend.database import get_session_factory, init_db, reset_database
+from api_backend.models.project import Project
+from api_backend.ports.sqlalchemy_adapters import build_tool_ports
 
 
 @pytest.fixture

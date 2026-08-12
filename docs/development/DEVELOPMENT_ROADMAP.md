@@ -18,7 +18,7 @@
 >
 > 权威来源: `v1/PRD/PRD.md` · `v1/SPEC/TECHNICAL_SPEC.md` · `v1/MVP/MVP_SCOPE.md`
 >
-> **仓库布局：** Monorepo。路径见 [`docs/architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)（API → `services/api/backend/`，Web → `apps/web/`）。
+> **仓库布局：** Monorepo。路径见 [`docs/architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)（API → `services/api/api_backend/`，Web → `apps/web/`）。
 >
 > **本文档定位:** 历史计划视角（风险评估、依赖、参考资源）；**不替代** `PROGRESS_REPORT.md`。
 
@@ -91,7 +91,7 @@
 **关键文件：**
 - `pyproject.toml` + `services/api/pyproject.toml` (API 依赖)
 - `apps/web/package.json` (正式 Web 脚手架；v1 Mock 依赖已归档不再维护)
-- `services/api/backend/migrations/` (数据库迁移)
+- `services/api/api_backend/migrations/` (数据库迁移)
 - `.github/workflows/ci.yml` (CI 配置)
 - `.pre-commit-config.yaml` (pre-commit 配置)
 
@@ -127,10 +127,10 @@
 **验收标准：** AC-01, AC-02, AC-03, AC-15 通过；前后端联通
 
 **关键文件：**
-- `backend/main.py`, `backend/database.py`, `backend/core/security.py`
-- `backend/core/middleware.py` (LogSanitizer, 速率限制)
-- `backend/api/auth.py`, `backend/api/deps.py`
-- `backend/migrations/versions/001_initial.py`
+- `api_backend/main.py`, `api_backend/database.py`, `api_backend/core/security.py`
+- `api_backend/core/middleware.py` (LogSanitizer, 速率限制)
+- `api_backend/api/auth.py`, `api_backend/api/deps.py`
+- `api_backend/migrations/versions/001_initial.py`
 - `frontend/src/main.tsx`, `frontend/src/App.tsx`
 - `frontend/src/router.tsx`
 - `frontend/src/store/authStore.ts`
@@ -168,11 +168,11 @@
 **验收标准：** AC-04, AC-05, AC-08, AC-09, AC-10, AC-16 通过
 
 **关键文件：**
-- `backend/services/project_service.py`
-- `backend/services/category_service.py`
-- `backend/services/tag_service.py`
-- `backend/services/classification_service.py` (规则引擎)
-- `backend/api/projects.py`, `backend/api/categories.py`, `backend/api/tags.py`
+- `api_backend/services/project_service.py`
+- `api_backend/services/category_service.py`
+- `api_backend/services/tag_service.py`
+- `api_backend/services/classification_service.py` (规则引擎)
+- `api_backend/api/projects.py`, `api_backend/api/categories.py`, `api_backend/api/tags.py`
 - `frontend/src/pages/DashboardPage.tsx`
 - `frontend/src/pages/ProjectDetailPage.tsx`
 - `frontend/src/components/project/`
@@ -203,9 +203,9 @@
 **验收标准：** AC-06, AC-07 通过
 
 **关键文件：**
-- `backend/services/github_service.py`
-- `backend/api/github.py`
-- `backend/models/user_github_account.py` (新模型)
+- `api_backend/services/github_service.py`
+- `api_backend/api/github.py`
+- `api_backend/models/user_github_account.py` (新模型)
 
 **风险：**
 - GitHub API 速率限制（5000/h 需 PAT，60/h 匿名） → 解决：强制 PAT
@@ -234,9 +234,9 @@
 **验收标准：** AC-11, AC-12 通过
 
 **关键文件：**
-- `backend/services/note_service.py`
-- `backend/services/graph_service.py`
-- `backend/api/notes.py`, `backend/api/graph.py`
+- `api_backend/services/note_service.py`
+- `api_backend/services/graph_service.py`
+- `api_backend/api/notes.py`, `api_backend/api/graph.py`
 - `frontend/src/components/note/`
 - `frontend/src/pages/GraphPage.tsx`
 - `frontend/src/components/graph/`
@@ -262,9 +262,9 @@
 **验收标准：** AC-13 通过
 
 **关键文件：**
-- `backend/services/llm_provider.py`
-- `backend/core/security.py` (SecureKeyStore)
-- `backend/api/settings.py`
+- `api_backend/services/llm_provider.py`
+- `api_backend/core/security.py` (SecureKeyStore)
+- `api_backend/api/settings.py`
 
 ---
 
@@ -286,12 +286,12 @@
 **验收标准：** Agent 单元测试通过
 
 **关键文件：**
-- `backend/agents/` 目录结构（scout/mentor/navigator/curator/scribe/hub）
-- `backend/services/agent_service.py`
-- `backend/services/hub_service.py`
-- `backend/services/react_engine.py`
-- `backend/tools/registry.py`
-- `backend/tools/project_tools.py`, `backend/tools/web_tools.py`, `backend/tools/memory_tools.py`, `backend/tools/question_tools.py`
+- `api_backend/agents/` 目录结构（scout/mentor/navigator/curator/scribe/hub）
+- `api_backend/services/agent_service.py`
+- `api_backend/services/hub_service.py`
+- `api_backend/services/react_engine.py`
+- `api_backend/tools/registry.py`
+- `api_backend/tools/project_tools.py`, `api_backend/tools/web_tools.py`, `api_backend/tools/memory_tools.py`, `api_backend/tools/question_tools.py`
 
 ---
 
@@ -314,8 +314,8 @@
 **验收标准：** AC-19 通过
 
 **关键文件：**
-- `backend/api/agent.py`
-- `backend/core/events.py` (StreamEventType)
+- `api_backend/api/agent.py`
+- `api_backend/core/events.py` (StreamEventType)
 
 ---
 
@@ -363,9 +363,9 @@
 **验收标准：** AC-20 通过
 
 **关键文件：**
-- `backend/services/memory_service.py`
-- `backend/services/history_compressor.py`
-- `backend/models/user_profile.py`
+- `api_backend/services/memory_service.py`
+- `api_backend/services/history_compressor.py`
+- `api_backend/models/user_profile.py`
 
 ---
 
@@ -385,7 +385,7 @@
 **验收标准：** AC-17 通过
 
 **关键文件：**
-- `backend/services/project_analysis_service.py`
+- `api_backend/services/project_analysis_service.py`
 
 ---
 

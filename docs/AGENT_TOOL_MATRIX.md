@@ -1,7 +1,7 @@
 # Agent & Tool 矩阵（§4.1.12 — 文档真源）
 
 > 所有产品/技术文档以本表为准。本文档由代码推导，定期与
-> `services/api/backend/services/settings_service.py` (AGENT_IDS) 与
+> `services/api/api_backend/services/settings_service.py` (AGENT_IDS) 与
 > `services/agent/agent_core/tools/builtin.py` (@tool 装饰器) 同步核对。
 
 ## Agent 列表（代码实际注册数：7）
@@ -55,6 +55,6 @@
 
 ## 同步流程
 
-- 修改 `services/api/backend/services/settings_service.py:AGENT_IDS` → 同步本表 §Agent
+- 修改 `services/api/api_backend/services/settings_service.py:AGENT_IDS` → 同步本表 §Agent
 - 修改 `services/agent/agent_core/tools/builtin.py`（新增/删除 `@tool`） → 同步本表 §工具
 - 修订 v1/v2 PRD、PROGRESS_REPORT 之前先查本表

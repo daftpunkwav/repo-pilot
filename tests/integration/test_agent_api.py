@@ -32,14 +32,14 @@ async def test_agent_analyze_accepts_agent_id(client: AsyncClient, auth_headers:
     project_id = create.json()["data"]["id"]
 
     async def fake_direct(*_a, **_k):
-        from backend.services.sse_stream import format_sse
+        from api_backend.services.sse_stream import format_sse
 
         yield format_sse("thinking", {"content": "plan…"})
         yield format_sse("text_delta", {"content": "分析完成"})
         yield format_sse("done", {"usage": {"tokens": 4}, "iterations": 1})
 
     monkeypatch.setattr(
-        "backend.services.agent_service.HubService.handle_direct_agent",
+        "api_backend.services.agent_service.HubService.handle_direct_agent",
         fake_direct,
     )
 

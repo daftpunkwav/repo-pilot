@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from backend.models.app_state import AppState
+from api_backend.models.app_state import AppState
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -109,14 +109,14 @@ def _load_settings_dict(state: AppState) -> dict[str, Any]:
 
 
 def _decrypt_key(stored: Any) -> str:
-    from backend.core.security import decrypt_secret
+    from api_backend.core.security import decrypt_secret
 
     return (decrypt_secret(stored) or "").strip()
 
 
 def _providers_from_raw(raw: dict[str, Any]) -> list[dict[str, Any]]:
     try:
-        from backend.services.settings_service import ensure_providers
+        from api_backend.services.settings_service import ensure_providers
 
         ensure_providers(raw)
     except Exception:
@@ -164,7 +164,7 @@ def _config_from_provider(
     *,
     model_override: str | None = None,
 ) -> LLMConfig | None:
-    from backend.core.security import is_encrypted_secret
+    from api_backend.core.security import is_encrypted_secret
 
     stored = p.get("api_key")
     api_key = _decrypt_key(stored)
@@ -216,7 +216,7 @@ def build_llm_config_from_settings(
             return cfg
 
     # 兼容：仅有顶层扁平 key
-    from backend.core.security import is_encrypted_secret
+    from api_backend.core.security import is_encrypted_secret
 
     stored = raw.get("llm_api_key")
     api_key = _decrypt_key(stored)
@@ -244,7 +244,7 @@ def build_llm_config_from_settings(
 
 def llm_config_status(raw: dict[str, Any]) -> str:
     """诊断用：ok | missing | decrypt_failed。"""
-    from backend.core.security import is_encrypted_secret
+    from api_backend.core.security import is_encrypted_secret
 
     p = _pick_provider(raw)
     stored = (p or {}).get("api_key") if p else raw.get("llm_api_key")
@@ -264,13 +264,13 @@ async def load_user_settings_dict(
     db: AsyncSession,
 ) -> dict[str, Any]:
     """与 LLM 配置同源：强制刷新 AppState.settings_json。"""
-    from backend.services.app_state_service import get_or_create_app_state
+    from api_backend.services.app_state_service import get_or_create_app_state
 
     state = await get_or_create_app_state(db)
     await db.refresh(state, attribute_names=["settings_json", "agent_permissions"])
     raw = _load_settings_dict(state)
     try:
-        from backend.services.settings_service import ensure_providers
+        from api_backend.services.settings_service import ensure_providers
 
         ensure_providers(raw)
     except Exception:

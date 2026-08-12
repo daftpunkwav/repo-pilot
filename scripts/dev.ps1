@@ -29,8 +29,10 @@ if ($startGraph) {
 }
 
 # 端口与 vite.config.ts / npm run dev:api 对齐（19876 在部分 Windows 环境会幽灵占用）
+# 可用 $env:API_PORT 覆盖后端端口（与 npm run dev:api 的 API_PORT 一致）
+$apiPort = if ($env:API_PORT) { $env:API_PORT } else { "19878" }
 $api = Start-Process -PassThru -NoNewWindow -FilePath "python" -ArgumentList @(
-    "-m", "uvicorn", "backend.main:app", "--reload", "--host", "127.0.0.1", "--port", "19878"
+    "-m", "uvicorn", "api_backend.main:app", "--reload", "--host", "127.0.0.1", "--port", $apiPort
 ) -WorkingDirectory "$Root\services\api"
 
 $web = Start-Process -PassThru -NoNewWindow -FilePath "cmd.exe" -ArgumentList @(

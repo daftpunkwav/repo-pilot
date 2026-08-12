@@ -1,7 +1,7 @@
 # RepoPilot API 服务
 
 传统后端：**用户认证、项目管理、笔记、图谱、Overview、设置**。  
-Agent 对话 HTTP 入口与推理逻辑暂在本服务（`backend/api/agent.py`、`backend/agents/`）。
+Agent 对话 HTTP 入口与推理逻辑暂在本服务（`api_backend/api/agent.py`、`api_backend/agents/`）。
 
 版本：`2.0.0`（与根包一致）。
 
@@ -16,7 +16,7 @@ pip install -e "./services/api[dev]"
 # 启动（端口与 apps/web Vite 代理一致：19878）
 npm run dev:api
 # 或：
-# uvicorn backend.main:app --reload --host 127.0.0.1 --port 19878 --app-dir services/api
+# uvicorn api_backend.main:app --reload --host 127.0.0.1 --port 19878 --app-dir services/api
 ```
 
 健康检查：`GET http://127.0.0.1:19878/health`  
@@ -26,7 +26,7 @@ API 前缀：`/api/v1`（auth / projects / categories / tags / notes / graph / o
 
 ```
 services/api/
-└── backend/
+└── api_backend/
     ├── api/         # FastAPI 路由
     ├── agents/      # Multi-Agent（Hub + 6 专家；待迁至 services/agent）
     ├── core/        # 安全、中间件

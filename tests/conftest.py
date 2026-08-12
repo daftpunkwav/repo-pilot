@@ -8,7 +8,7 @@ import sys
 from collections.abc import AsyncIterator
 from pathlib import Path
 
-# 确保 backend 与 agent_core 均可导入（兼容不同 pytest rootdir）
+# 确保 api_backend 与 agent_core 均可导入（兼容不同 pytest rootdir）
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 for _p in (_REPO_ROOT / "services" / "api", _REPO_ROOT / "services" / "agent"):
     _s = str(_p)
@@ -18,7 +18,7 @@ for _p in (_REPO_ROOT / "services" / "api", _REPO_ROOT / "services" / "agent"):
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-# 必须在导入 backend 之前设置；长度不少于 32 字节，满足启动校验
+# 必须在导入 api_backend 之前设置；长度不少于 32 字节，满足启动校验
 os.environ.setdefault("SECRET_KEY", "pytest-secret-key-do-not-use-in-prod")
 os.environ.setdefault("DEBUG", "false")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
@@ -27,17 +27,17 @@ os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 @pytest.fixture
 async def client(tmp_path) -> AsyncIterator[AsyncClient]:
     """每个测试用例使用独立 SQLite 文件。"""
-    from backend.config import get_settings
-    from backend.database import get_session_factory, init_db, reset_database
+    from api_backend.config import get_settings
+    from api_backend.database import get_session_factory, init_db, reset_database
 
     db_path = tmp_path / "pytest.db"
     os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
     get_settings.cache_clear()
     reset_database()
 
-    from backend.main import app
-    from backend.services.app_state_service import ensure_singleton_rows
-    from backend.services.seed_service import seed_preset_categories
+    from api_backend.main import app
+    from api_backend.services.app_state_service import ensure_singleton_rows
+    from api_backend.services.seed_service import seed_preset_categories
 
     await init_db()
     factory = get_session_factory()

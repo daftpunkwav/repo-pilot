@@ -2,11 +2,10 @@
 Agent 独立运行时入口。
 
 核心实现位于 agent_core（agents/llm/tools/memory）；
-共享持久化仍经 services/api 的 backend.database / models / agent_service。
+共享持久化仍经 services/api 的 api_backend.database / models / agent_service。
 """
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 from uuid import UUID
@@ -18,7 +17,7 @@ _AGENT_ROOT = Path(__file__).resolve().parents[1]
 _REPO = _AGENT_ROOT.parents[1]
 _API_ROOT = _REPO / "services" / "api"
 
-# §4.2.1 TODO: agent_core 与 backend 的循环依赖（17 处 from backend.* 反向
+# §4.2.1 TODO: agent_core 与 backend 的循环依赖（17 处 from api_backend.* 反向
 # import + 此处 sys.path hack）应通过 packages/py-shared 下沉共享模型/端口/安全
 # 工具来消除。中期重构，工作量大；本提交先保留 sys.path hack 并标注迁移路径，
 # 不破坏现有行为。参见 docs/review/REMEDIATION_PLAN_20260806.md §4.2.1。
@@ -27,15 +26,20 @@ for p in (_AGENT_ROOT, _API_ROOT):
     if s not in sys.path:
         sys.path.insert(0, s)
 
-os.environ.setdefault(
-    "SECRET_KEY", os.environ.get("SECRET_KEY", "agent-dev-secret-key-32bytes-min!!")
-)
-
 app = FastAPI(title="RepoPilot Agent Runtime", version="0.3.0")
+
+# 启动期 fail-fast：与主应用 api_backend.main 一致，禁止弱密钥 / 未配置密钥。
+# 此前曾用 setdefault 注入固定开发密钥，会静默绕过校验并导致 Fernet 落库
+# 密文可被公开密钥解密；删除后由调用方（scripts/dev.ps1 已自动生成）显式配置。
+from api_backend.config import get_settings  # noqa: E402
+
+_agent_secret = (get_settings().secret_key or "").encode("utf-8")
+if len(_agent_secret) < 32:
+    raise ValueError("SECRET_KEY 长度必须至少为 32 字节，请设置足够强度的随机密钥")
 
 
 def _require_internal_token(token: str | None) -> None:
-    from backend.config import get_settings
+    from api_backend.config import get_settings
 
     expected = (get_settings().agent_internal_token or "").strip()
     if not expected:
@@ -95,8 +99,8 @@ async def chat_session(
             ) from exc
 
     from agent_core.agents.stream_events import encode_stream_item
-    from backend.database import get_session_factory
-    from backend.services.agent_service import stream_chat
+    from api_backend.database import get_session_factory
+    from api_backend.services.agent_service import stream_chat
 
     factory = get_session_factory()
 

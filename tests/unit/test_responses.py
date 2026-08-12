@@ -1,5 +1,5 @@
 """响应包装单元测试"""
-from backend.core.responses import meta_ts, wrap_data, wrap_paginated
+from api_backend.core.responses import meta_ts, wrap_data, wrap_paginated
 
 
 def test_meta_ts_has_millisecond_timestamp():

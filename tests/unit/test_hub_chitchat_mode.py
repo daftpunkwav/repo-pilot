@@ -1,6 +1,6 @@
 """Hub 寒暄快路径：跳过 plan_execute，禁止复述编排规范"""
-from backend.agents.hub import apply_chitchat_mode, is_simple_chitchat
-from backend.agents.registry import AGENT_DEFINITIONS
+from api_backend.agents.hub import apply_chitchat_mode, is_simple_chitchat
+from api_backend.agents.registry import AGENT_DEFINITIONS
 
 
 def test_is_simple_chitchat_positive():

@@ -1,7 +1,7 @@
 """
 Agent 运行时占位包。
 
-v1.0 阶段 Agent 逻辑仍在 services/api/backend/agents/，
+v1.0 阶段 Agent 逻辑仍在 services/api/api_backend/agents/，
 待 API 与 Agent 进程边界稳定后，迁移至本服务：
 
 - Hub 路由与意图分类

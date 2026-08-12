@@ -1,5 +1,5 @@
 """CORS 配置单元测试"""
-from backend.config import Settings
+from api_backend.config import Settings
 
 
 def test_cors_origins_list_default_contains_dev_ports():

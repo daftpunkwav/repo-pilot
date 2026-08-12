@@ -8,7 +8,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 
-from backend.services.sse_stream import format_sse
+from api_backend.services.sse_stream import format_sse
 
 from agent_core.agents.question import _normalize_question
 from agent_core.agents.registry import AgentDefinition

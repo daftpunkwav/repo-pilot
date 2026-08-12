@@ -7,7 +7,7 @@ import threading  # §4.2.6 ensure_tools_loaded 锁
 from typing import Any
 from uuid import UUID
 
-from backend.models.project import Project
+from api_backend.models.project import Project
 
 from agent_core.tools.registry import tool
 
@@ -19,7 +19,7 @@ def _ports(context):
     ports = getattr(context, "ports", None)
     if ports is not None:
         return ports
-    from backend.ports.sqlalchemy_adapters import build_tool_ports
+    from api_backend.ports.sqlalchemy_adapters import build_tool_ports
 
     return build_tool_ports(context.db)
 
@@ -223,7 +223,7 @@ async def fetch_github_repo(
     )
     if not owner or not repo:
         return {"error": "需要合法的 owner/repo"}
-    from backend.services.github_client import fetch_repo_info
+    from api_backend.services.github_client import fetch_repo_info
 
     return await fetch_repo_info(owner, repo)
 
@@ -267,7 +267,7 @@ async def fetch_readme(
     )
     if not owner or not repo:
         return {"error": "需要合法的 owner/repo"}
-    from backend.services.github_client import fetch_readme_text
+    from api_backend.services.github_client import fetch_readme_text
 
     text = await fetch_readme_text(owner, repo)
     if text is None:
@@ -345,7 +345,7 @@ async def trigger_code_index(
     mode: str = "moderate",
     **kw,
 ):
-    from backend.services import index_pipeline as pipeline
+    from api_backend.services import index_pipeline as pipeline
 
     try:
         pid = UUID(project_id)
@@ -383,8 +383,8 @@ async def search_code_graph(
     offset: int = 0,
     **kw,
 ):
-    from backend.services import index_pipeline as pipeline
-    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from api_backend.services import index_pipeline as pipeline
+    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -434,8 +434,8 @@ async def search_code(
     limit: int = 50,
     **kw,
 ):
-    from backend.services import index_pipeline as pipeline
-    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from api_backend.services import index_pipeline as pipeline
+    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -486,8 +486,8 @@ async def trace_calls(
     kind: str = "calls",
     **kw,
 ):
-    from backend.services import index_pipeline as pipeline
-    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from api_backend.services import index_pipeline as pipeline
+    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -530,8 +530,8 @@ async def query_graph(
     limit: int = 1000,
     **kw,
 ):
-    from backend.services import index_pipeline as pipeline
-    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from api_backend.services import index_pipeline as pipeline
+    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -560,8 +560,8 @@ async def query_graph(
     allowed_agents=["atlas", "hub", "navigator", "scout"],
 )
 async def get_graph_schema_tool(context=None, project_id: str = "", **kw):
-    from backend.services import index_pipeline as pipeline
-    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from api_backend.services import index_pipeline as pipeline
+    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -588,8 +588,8 @@ async def get_graph_schema_tool(context=None, project_id: str = "", **kw):
     allowed_agents=["atlas", "hub", "scout", "navigator"],
 )
 async def get_project_architecture(context=None, project_id: str = "", **kw):
-    from backend.services import index_pipeline as pipeline
-    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from api_backend.services import index_pipeline as pipeline
+    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -624,8 +624,8 @@ async def get_code_snippet_from_graph(
     qualified_name: str = "",
     **kw,
 ):
-    from backend.services import index_pipeline as pipeline
-    from backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from api_backend.services import index_pipeline as pipeline
+    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -1021,7 +1021,7 @@ async def propose_memory(
     timeout_ms=5_000,
 )
 async def get_learner_info(fields: list[str] | None = None, context=None, **kw):
-    from backend.services.profile_service import (
+    from api_backend.services.profile_service import (
         LEARNER_INFO_FIELDS,
         get_user_profile,
         select_learner_info,
@@ -1716,7 +1716,7 @@ async def import_github_repos(
     repos: list | None = None,
     **kw,
 ):
-    from backend.schemas.project import ImportRepoItem
+    from api_backend.schemas.project import ImportRepoItem
 
     ports = _ports(context)
     items: list[ImportRepoItem] = []

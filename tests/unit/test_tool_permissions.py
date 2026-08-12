@@ -1,11 +1,9 @@
 """工具执行时 agent_permissions 校验"""
-import asyncio
 from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-
-from backend.tools.registry import ToolRegistry, ToolDefinition
+from api_backend.tools.registry import ToolDefinition, ToolRegistry
 
 
 @pytest.mark.asyncio

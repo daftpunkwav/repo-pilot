@@ -2,11 +2,10 @@
 import os
 
 import pytest
-
-from backend.config import get_settings
-from backend.database import get_session_factory, init_db, reset_database
-from backend.schemas.project import ImportRepoItem
-from backend.services.project_service import import_repos, project_stats
+from api_backend.config import get_settings
+from api_backend.database import get_session_factory, init_db, reset_database
+from api_backend.schemas.project import ImportRepoItem
+from api_backend.services.project_service import import_repos, project_stats
 
 
 @pytest.fixture

@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-**占位目录**，规划在 v1.4+（见产品 MVP）。Agent 工具当前在 `services/api/backend/tools/`，与 MCP 无关。
+**占位目录**，规划在 v1.4+（见产品 MVP）。Agent 工具当前在 `services/api/api_backend/tools/`，与 MCP 无关。
 
 实现进度总览：[`docs/development/PROGRESS_REPORT.md`](../../docs/development/PROGRESS_REPORT.md)。
 

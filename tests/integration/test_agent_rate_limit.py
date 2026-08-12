@@ -1,10 +1,9 @@
 """Agent SSE 端点限流验证（审查报告 §1.2）"""
 import uuid
 
+import api_backend.api.agent as agent_api
 import pytest
 from httpx import AsyncClient
-
-import backend.api.agent as agent_api
 
 
 @pytest.mark.asyncio
@@ -22,7 +21,7 @@ async def test_agent_chat_rate_limited_after_burst(
         yield 'event: done\ndata: {"usage": {"tokens": 0}}\n\n'
 
     monkeypatch.setattr(
-        "backend.services.agent_service.stream_chat", fake_stream_chat
+        "api_backend.services.agent_service.stream_chat", fake_stream_chat
     )
 
     sid = uuid.uuid4()

@@ -1,5 +1,5 @@
 """安全工具单元测试 —— at-rest 加密（已移除 JWT/密码哈希）。"""
-from backend.core.security import decrypt_secret, encrypt_secret
+from api_backend.core.security import decrypt_secret, encrypt_secret
 
 
 def test_encrypt_decrypt_secret_roundtrip():

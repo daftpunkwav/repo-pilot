@@ -1,17 +1,16 @@
 """专家空正文时 Hub 不得 skip_merge"""
 import pytest
+from api_backend.agents.hub import HubService
 
-from backend.agents.hub import HubService
 from tests.sse_util import join_sse
 
 
 @pytest.mark.asyncio
 async def test_empty_expert_passthrough_triggers_hub_rewrite(monkeypatch):
-    from backend.agents.hub import DispatchRoundOutcome
-    from backend.agents.react import EngineResult
+    from api_backend.agents.react import EngineResult
 
     service = HubService.__new__(HubService)
-    from backend.agents.types import AgentEngineConfig
+    from api_backend.agents.types import AgentEngineConfig
     service.config = AgentEngineConfig()
     service.registry = type("R", (), {"has": staticmethod(lambda aid: True)})()
 

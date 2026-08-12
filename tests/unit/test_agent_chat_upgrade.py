@@ -1,10 +1,10 @@
 """意图规则与 dispatch 枚举对齐"""
 import asyncio
 
-from backend.agents.intent import IntentClassifier
-from backend.agents.registry import AGENT_DEFINITIONS
-from backend.tools.builtin import ensure_tools_loaded
-from backend.tools.registry import global_registry
+from api_backend.agents.intent import IntentClassifier
+from api_backend.agents.registry import AGENT_DEFINITIONS
+from api_backend.tools.builtin import ensure_tools_loaded
+from api_backend.tools.registry import global_registry
 
 
 def _classify(msg: str):
@@ -53,7 +53,8 @@ def test_dispatch_agent_enum_includes_atlas():
 
 def test_plan_phase_branches_forbid_dispatch_for_experts():
     import inspect
-    from backend.agents import react as react_mod
+
+    from api_backend.agents import react as react_mod
 
     src = inspect.getsource(react_mod.ReActEngine._plan_phase_to_thinking)
     assert "dispatch_agent" in src

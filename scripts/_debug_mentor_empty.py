@@ -5,12 +5,12 @@ import asyncio
 import json
 from uuid import uuid4
 
-from backend.agents.react import ReActEngine
-from backend.agents.registry import get_registry
-from backend.llm.provider import LLMChunk, LLMCompleteResult, LLMProvider
-from backend.memory.context import AgentRunContext
-from backend.tools.builtin import ensure_tools_loaded
-from backend.tools.registry import global_registry
+from api_backend.agents.react import ReActEngine
+from api_backend.agents.registry import get_registry
+from api_backend.llm.provider import LLMChunk, LLMCompleteResult, LLMProvider
+from api_backend.memory.context import AgentRunContext
+from api_backend.tools.builtin import ensure_tools_loaded
+from api_backend.tools.registry import global_registry
 
 
 class FakeLLM(LLMProvider):

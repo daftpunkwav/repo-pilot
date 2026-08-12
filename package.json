@@ -30,11 +30,11 @@
     "export:openapi": "python scripts/export_openapi.py",
     "generate:types": "npm run export:openapi && npm run generate -w @repopilot/types",
     "lint:py": "ruff check services/",
-    "typecheck:py": "mypy services/api/backend",
+    "typecheck:py": "mypy services/api/api_backend",
     "audit:web": "npm audit --audit-level=high",
     "ci": "npm run generate:types && npm run lint:py && npm run typecheck:py && npm run test:api && npm run lint:web && npm run typecheck:web && npm run test:web && npm run audit:web",
-    "dev:api": "uvicorn backend.main:app --reload --host 127.0.0.1 --port 19878 --app-dir services/api",
-    "dev:agent": "uvicorn agent_runtime.main:app --reload --host 127.0.0.1 --port 19877 --app-dir services/agent"
+    "dev:api": "node scripts/dev-uvicorn.mjs api_backend.main:app 19878 services/api API_PORT",
+    "dev:agent": "node scripts/dev-uvicorn.mjs agent_runtime.main:app 19877 services/agent AGENT_PORT"
   },
   "devDependencies": {
     "husky": "^9.1.7",
@@ -47,7 +47,7 @@
     "services/api/**/*.py": [
       "ruff check --fix"
     ],
-    "services/graph_engine/python/**/*.py": [
+    "services/graph_engine/graph_engine_runtime/**/*.py": [
       "ruff check --fix"
     ],
     ".env": [

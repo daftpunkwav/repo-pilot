@@ -5,12 +5,11 @@
 import os
 
 import pytest
-
-from backend.config import get_settings as get_app_settings
-from backend.database import get_session_factory, init_db, reset_database
-from backend.schemas.settings import SettingsUpdate
-from backend.services.app_state_service import get_or_create_app_state
-from backend.services.settings_service import (
+from api_backend.config import get_settings as get_app_settings
+from api_backend.database import get_session_factory, init_db, reset_database
+from api_backend.schemas.settings import SettingsUpdate
+from api_backend.services.app_state_service import get_or_create_app_state
+from api_backend.services.settings_service import (
     AGENT_IDS,
     _mask_api_key,
     _normalize_agent_guidelines,

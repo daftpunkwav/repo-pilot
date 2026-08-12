@@ -12,7 +12,7 @@
 | `agent_core/memory` | 运行上下文与记忆服务 |
 | `agent_runtime` | FastAPI：`/health`、内部 SSE chat |
 
-API 侧 `services/api/backend/{agents,llm,tools,memory}` 为 **兼容 shim**（re-export `agent_core`），测试与 CRUD 服务可继续 `from backend.agents...`。
+API 侧 `services/api/api_backend/{agents,llm,tools,memory}` 为 **兼容 shim**（re-export `agent_core`），测试与 CRUD 服务可继续 `from api_backend.agents...`。
 
 ## 启动
 
@@ -27,4 +27,4 @@ npm run dev:agent
 ## 与 API 的边界
 
 - **API**：认证、CRUD、会话 HTTP、落库编排入口（可代理）
-- **Agent**：推理循环、工具、记忆、LLM；仍通过 `backend.models` / `backend.services` / `backend.database` 访问共享持久化层
+- **Agent**：推理循环、工具、记忆、LLM；仍通过 `api_backend.models` / `api_backend.services` / `api_backend.database` 访问共享持久化层

@@ -26,7 +26,7 @@ alembic upgrade head
 
 ```bash
 ruff check services/        # Python lint
-mypy services/api/backend   # Python 类型检查
+mypy services/api/api_backend   # Python 类型检查
 npm run lint:web            # 前端 ESLint
 npm run typecheck:web       # 前端类型检查
 pytest tests/unit -q        # 后端单测

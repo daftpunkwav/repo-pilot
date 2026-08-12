@@ -1,7 +1,6 @@
 """意图分类器单元测试"""
 import pytest
-
-from backend.agents.intent import IntentClassifier
+from api_backend.agents.intent import IntentClassifier
 
 
 @pytest.mark.asyncio

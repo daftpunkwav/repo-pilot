@@ -1,6 +1,6 @@
 """middleware CORS 与配置一致性测试"""
-from backend.config import Settings, get_settings
-from backend.core.middleware import cors_allow_origins, setup_middleware
+from api_backend.config import Settings, get_settings
+from api_backend.core.middleware import cors_allow_origins, setup_middleware
 from fastapi import FastAPI
 
 

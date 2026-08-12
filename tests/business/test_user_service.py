@@ -1,8 +1,8 @@
 """app_state_to_out 单元测试。"""
 from datetime import datetime
 
-from backend.models.app_state import AppState
-from backend.services.user_service import app_state_to_out
+from api_backend.models.app_state import AppState
+from api_backend.services.user_service import app_state_to_out
 
 
 def test_app_state_to_out_github_bound_false():

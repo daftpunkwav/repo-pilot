@@ -2,7 +2,7 @@
 
 > 报告日期：2026-08-06  
 > 代码版本：`2.0.0`（根 `package.json` / `apps/web/package.json` / `services/api` pyproject / FastAPI `version`）  
-> 报告范围：`services/api/backend/`、`services/agent/`（agent_core）、`apps/web/src/`、`packages/*`、`tests/`  
+> 报告范围：`services/api/api_backend/`、`services/agent/`（agent_core）、`apps/web/src/`、`packages/*`、`tests/`  
 > 上一版：2026-08-04  
 > 依据：最近一轮全量审查报告 [`docs/review/full-review-20260804.md`](../review/full-review-20260804.md) 与代码实况
 
@@ -12,17 +12,17 @@
 
 RepoPilot v1.0 的核心产品闭环已在代码层面跑通，并在 2026-07 下旬至 08 月初完成一轮 **Agent Chat 编排与写工具落库** 升级：
 
-- 后端 `services/api/backend/`：认证、项目/分类/标签/笔记/图谱/Overview CRUD、GitHub 集成、LLM BYOK、Hub + 6 专家、约 **24** 个内置工具、SSE 流式对话。
+- 后端 `services/api/api_backend/`：认证、项目/分类/标签/笔记/图谱/Overview CRUD、GitHub 集成、LLM BYOK、Hub + 6 专家、约 **24** 个内置工具、SSE 流式对话。
 - 前端 `apps/web/src/`：全部 MVP 页面与路由（含 `/agent/sessions/:sessionId`）、Mock/Real 双轨 API、Agent Chat 流式渲染与结果卡。
 - 开发默认：API **`:19878`**（与 Vite 代理一致）；`.env.development` 中 `VITE_USE_MOCK=false`。
 
-文档层（PRD / SPEC）仍大量停留在 v1.0 草案；`MVP_SCOPE.md` 已有部分与代码差异标注。**2026-08-03/04 已落地**：Alembic 迁移（取代 `create_all`）、`packages/types` OpenAPI 生成契约（`apps/web` 改用 `@repopilot/types`）、Agent 代码物理迁入 `services/agent/agent_core/`（API 侧保留 `backend.*` 兼容 shim）、独立 Agent 进程 seam（`agent_runtime` + `AGENT_BASE_URL` 代理）。MCP / Desktop 仍为占位。
+文档层（PRD / SPEC）仍大量停留在 v1.0 草案；`MVP_SCOPE.md` 已有部分与代码差异标注。**2026-08-03/04 已落地**：Alembic 迁移（取代 `create_all`）、`packages/types` OpenAPI 生成契约（`apps/web` 改用 `@repopilot/types`）、Agent 代码物理迁入 `services/agent/agent_core/`（API 侧保留 `api_backend.*` 兼容 shim）、独立 Agent 进程 seam（`agent_runtime` + `AGENT_BASE_URL` 代理）。MCP / Desktop 仍为占位。
 
 ---
 
 ## 2. 已实现功能
 
-### 2.1 后端（`services/api/backend/`）
+### 2.1 后端（`services/api/api_backend/`）
 
 | 模块 | 已实现能力 | 关键文件 |
 |------|-----------|---------|
@@ -33,7 +33,7 @@ RepoPilot v1.0 的核心产品闭环已在代码层面跑通，并在 2026-07 �
 | **Overview** | 活动、最近笔记、推荐、Trending 聚合 | `api/overview.py` |
 | **图谱** | TF-IDF + 语言/分类/名称重叠，实时力导向图 | `api/graph.py`、`services/graph_service.py` |
 | **LLM** | LiteLLM 流式/非流式、JSON、多 provider、连接测试 | `llm/provider.py`、`llm/config.py` |
-| **Agent** | 7 Agent 注册；Hub Plan-and-Execute、评估再调度、舞台直出专家结果；ReAct；反问；SSE。**权威实现在 `services/agent/agent_core/agents/`**，API 侧 `backend/agents/` 为兼容 shim | `services/agent/agent_core/agents/{registry,hub,react,intent}.py`、`api/agent.py` |
+| **Agent** | 7 Agent 注册；Hub Plan-and-Execute、评估再调度、舞台直出专家结果；ReAct；反问；SSE。**权威实现在 `services/agent/agent_core/agents/`**，API 侧 `api_backend/agents/` 为兼容 shim | `services/agent/agent_core/agents/{registry,hub,react,intent}.py`、`api/agent.py` |
 | **Memory** | 短期/长期、画像提案合并、压缩、上下文 | `memory/` |
 | **Tools** | **约 24 个**内置工具（含笔记/分类/标签/进度/导入写操作 + 调度/反问） | `tools/builtin.py`、`tools/registry.py` |
 | **安全** | CORS、限流、URL 校验、Fernet、XSS/调度上限等加固 | `core/` |
@@ -74,7 +74,7 @@ RepoPilot v1.0 的核心产品闭环已在代码层面跑通，并在 2026-07 �
 | 设置 | Agent 行为准则、清除记忆 |
 | 工程 | 忽略 `tmp/`，防止本地冒烟与密钥泄漏 |
 
-**未纳入 / 待办：** CrewAI 集成、Shell 类工具。`services/agent` 的 **agent_core 业务已实现**（agents/llm/tools/memory 均已迁入），但 `agent_runtime` 独立进程仍共享 `backend` 全栈（`agent_runtime/main.py` 实际调用 `backend.services.agent_service.stream_chat(force_local=True)`），即"部署层可独立、运行期仍同体"；MCP、Desktop 仍为占位。
+**未纳入 / 待办：** CrewAI 集成、Shell 类工具。`services/agent` 的 **agent_core 业务已实现**（agents/llm/tools/memory 均已迁入），但 `agent_runtime` 独立进程仍共享 `backend` 全栈（`agent_runtime/main.py` 实际调用 `api_backend.services.agent_service.stream_chat(force_local=True)`），即"部署层可独立、运行期仍同体"；MCP、Desktop 仍为占位。
 
 ---
 
@@ -94,7 +94,7 @@ Tool Registry + Memory + Graph
 
 - DB：**Alembic 迁移**（启动期 `init_db()` → `alembic upgrade head`；唯一迁移 `6096bed38e20_initial_schema`）。`migrations/schema_sync.py` 已废弃。
 - 表：**12 张** — `users`、`refresh_tokens`、`categories`、`tags`、`projects`、`notes`、`user_profiles`、`agent_sessions`、`agent_messages`、`project_analyses` + 关联 `project_tags`、`agent_session_projects`（SPEC 规划的 `user_settings`/`user_github_accounts`/`graph_cache` 分别以 JSON 字段 / 实时计算替代）。
-- Agent：权威实现在 `services/agent/agent_core/`（`AgentRegistry` 7 个；`HubService` 路由与派发；`ReActEngine` 工具循环）；`services/api/backend/{agents,llm,tools,memory}` 为 9 行转发 shim；工具经 `ports/` 协议层访问 ORM。
+- Agent：权威实现在 `services/agent/agent_core/`（`AgentRegistry` 7 个；`HubService` 路由与派发；`ReActEngine` 工具循环）；`services/api/api_backend/{agents,llm,tools,memory}` 为 9 行转发 shim；工具经 `ports/` 协议层访问 ORM。
 
 ### 4.2 前端
 
@@ -121,7 +121,7 @@ Vite + React 19 + Router + Zustand + TanStack Query → Mock/Real → SSE 解析
 | `/export`、`/search`、`/compare`、`/recommend`、部分 `/agent/config` 等 | **尚未实现**（见 `MVP_SCOPE.md`） |
 | `DEVELOPMENT_ROADMAP` Phase 复选框未勾 | 核心 Phase 能力大多已落地，路线图作历史计划保留 |
 | `packages/*` 为共享契约 | `types/` 已生成并被 `apps/web` 使用；其余仍占位 |
-| 历史文档端口 19876 / `backend/agents/*` 路径 | 现行开发 **19878**；Agent 权威路径 **`services/agent/agent_core/`** |
+| 历史文档端口 19876 / `api_backend/agents/*` 路径 | 现行开发 **19878**；Agent 权威路径 **`services/agent/agent_core/`** |
 
 ---
 
@@ -137,7 +137,7 @@ Vite + React 19 + Router + Zustand + TanStack Query → Mock/Real → SSE 解析
 
 | 目的 | 路径 |
 |---|---|
-| 后端入口 | `services/api/backend/main.py` |
+| 后端入口 | `services/api/api_backend/main.py` |
 | Agent API / Hub / Tools（权威实现） | `api/agent.py`、`services/agent/agent_core/agents/{hub,react}.py`、`services/agent/agent_core/tools/builtin.py` |
 | 前端入口 / Agent 状态 | `apps/web/src/App.tsx`、`stores/agentStore.ts`、`components/agent/StreamRenderer.tsx` |
 | 进度/路线图 | 本文件 · `DEVELOPMENT_ROADMAP.md` |

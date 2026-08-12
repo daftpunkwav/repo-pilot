@@ -2,7 +2,7 @@
 
 > **单一权威源**：本表。同步维护：
 > - `apps/web/src/utils/errorCodes.ts`
-> - `services/api/backend/core/error_codes.py`（常量）
+> - `services/api/api_backend/core/error_codes.py`（常量）
 >
 > 用户可凭码查此表定位排查；开发者据码判断故障域。新增码时三处都改。
 

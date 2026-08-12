@@ -1,6 +1,6 @@
 """设置 service 单元测试"""
-from backend.models.app_state import AppState
-from backend.services.settings_service import settings_to_out
+from api_backend.models.app_state import AppState
+from api_backend.services.settings_service import settings_to_out
 
 
 def test_settings_to_out_defaults():

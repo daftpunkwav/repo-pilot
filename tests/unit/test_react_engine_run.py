@@ -11,12 +11,12 @@
 - Hub 调度拦截(__dispatch__ → EngineResult.dispatches)
 - CoT 两阶段(thinking/text_delta 通道分流、usage 累加、phase1 失败中止)
 """
-import pytest
 
-from backend.agents.react import EngineResult, ReActEngine
-from backend.agents.registry import AgentDefinition
-from backend.llm.provider import LLMChunk, LLMCompleteResult
-from backend.memory.context import AgentRunContext
+from api_backend.agents.react import EngineResult, ReActEngine
+from api_backend.agents.registry import AgentDefinition
+from api_backend.llm.provider import LLMChunk, LLMCompleteResult
+from api_backend.memory.context import AgentRunContext
+
 from tests.sse_util import join_sse
 
 

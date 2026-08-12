@@ -1,13 +1,12 @@
 """自研图谱引擎：索引 / 搜索 / schema 冒烟。"""
 from __future__ import annotations
 
+import sys
 import tempfile
 from pathlib import Path
 
-import sys
-
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "services" / "graph_engine" / "python"))
+sys.path.insert(0, str(ROOT / "services" / "graph_engine" / "graph_engine_runtime"))
 
 from rp_graph import GraphEngine  # noqa: E402
 

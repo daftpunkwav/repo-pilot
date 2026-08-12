@@ -7,8 +7,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from backend.models.agent import AgentMessage, AgentSession
-from backend.services.profile_service import get_or_create_profile, profile_to_out
+from api_backend.models.agent import AgentMessage, AgentSession
+from api_backend.services.profile_service import get_or_create_profile, profile_to_out
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

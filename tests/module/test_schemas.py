@@ -1,13 +1,12 @@
 """Pydantic schema 模块测试"""
 import pytest
+from api_backend.schemas.category import CategoryCreate, CategoryUpdate
+from api_backend.schemas.note import NoteCreate
+from api_backend.schemas.profile import LearnerIdentityOut, LearnerIdentityUpdate
+from api_backend.schemas.project import ImportProjectsBody, ProjectCreate, ProjectUpdate
+from api_backend.schemas.settings import SettingsUpdate
+from api_backend.schemas.tag import TagCreate
 from pydantic import ValidationError
-
-from backend.schemas.category import CategoryCreate, CategoryUpdate
-from backend.schemas.note import NoteCreate
-from backend.schemas.project import ImportProjectsBody, ProjectCreate, ProjectUpdate
-from backend.schemas.settings import SettingsUpdate
-from backend.schemas.tag import TagCreate
-from backend.schemas.profile import LearnerIdentityOut, LearnerIdentityUpdate
 
 
 def test_learner_identity_defaults():
@@ -107,7 +106,7 @@ def test_settings_update_llm_api_base_rejects_dns_to_private(monkeypatch):
     """域名若解析到内网 IP，应拦截（防 SSRF）。"""
     import socket
 
-    import backend.core.url_safety as url_safety
+    import api_backend.core.url_safety as url_safety
 
     def fake_getaddrinfo(host, *args, **kwargs):
         assert host == "evil.example.com"
@@ -123,7 +122,7 @@ def test_settings_update_llm_api_base_rejects_dns_to_private(monkeypatch):
 def test_settings_update_llm_api_base_allows_public_dns(monkeypatch):
     import socket
 
-    import backend.core.url_safety as url_safety
+    import api_backend.core.url_safety as url_safety
 
     def fake_getaddrinfo(host, *args, **kwargs):
         return [

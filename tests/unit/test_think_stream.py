@@ -1,5 +1,5 @@
 """思考标记流式拆分单元测试"""
-from backend.agents.think_stream import (
+from api_backend.agents.think_stream import (
     THINK_END,
     THINK_START,
     ThinkStreamSplitter,

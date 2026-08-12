@@ -1,7 +1,7 @@
 # RepoPilot 现状快照(只读盘点 / 2026-08-04,2026-08-05 修订)
 
 > **体例**:每个论断附 `file_path:line`,可验证。区分 **[已核实]** = 亲自 Read 源码;**[仅文档]** = 仅文档声称。
-> **范围**:`services/api/backend/`、`services/agent/`、`apps/web/src/`、`tests/`、`docs/` 全部权威来源。
+> **范围**:`services/api/api_backend/`、`services/agent/`、`apps/web/src/`、`tests/`、`docs/` 全部权威来源。
 > **未覆盖**:`archive/` 旧代码逐字、`apps/web/src/api/real/index.ts` 全部 method body 逐字、`tests/integration/*.py` 全部逐字。本次为不修改模式,未做运行时实测。
 > **数字速查**:
 > - Agent 数(代码):**7**(`hub / scout / mentor / navigator / curator / scribe / atlas`)
@@ -32,12 +32,12 @@
 |---|---|---|
 | 项目名 | **RepoPilot** | `package.json:2` |
 | 定位 | AI-driven GitHub 开源项目学习平台(7 Agent + BYOK) | `docs/product/v2/PRD/PRD.md:17` |
-| 代码版本 | **2.0.0** | `package.json:4`、`apps/web/package.json:4`、`services/api/pyproject.toml:3`、`backend/main.py:95` |
+| 代码版本 | **2.0.0** | `package.json:4`、`apps/web/package.json:4`、`services/api/pyproject.toml:3`、`api_backend/main.py:95` |
 | Python 要求 | `>=3.11` | `services/api/pyproject.toml:5`、`pyproject.toml:5` |
 | Node 要求 | `>=20.11` | `apps/web/package.json:7` |
 | 包管理器 | `npm@10.9.0` | `apps/web/package.json:8` |
-| FastAPI 标题 | `RepoPilot` | `backend/main.py:95` |
-| FastAPI 版本 | `2.0.0` | `backend/main.py:95` |
+| FastAPI 标题 | `RepoPilot` | `api_backend/main.py:95` |
+| FastAPI 版本 | `2.0.0` | `api_backend/main.py:95` |
 | Monorepo 工具 | npm workspaces(`apps/*`、`packages/*`) | `package.json:6-8` |
 | Python workspace | `services/api`、`services/agent`、`services/mcp` | `pyproject.toml:7-8` |
 
@@ -61,7 +61,7 @@ RepoPilot/
 │   └── desktop/             # 仅 README 占位(`apps/desktop/README.md:1-19`)
 ├── services/
 │   ├── api/                 # FastAPI 主后端(已实现)
-│   │   ├── backend/         # 真实实现代码 + shim(agents/llm/memory/tools)
+│   │   ├── api_backend/         # 真实实现代码 + shim(agents/llm/memory/tools)
 │   │   └── migrations/alembic/versions/6096bed38e20_initial_schema.py
 │   ├── agent/               # 真实 Agent 实现所在
 │   │   ├── agent_core/      # 主实现(agents/llm/memory/tools)
@@ -92,15 +92,15 @@ RepoPilot/
 
 | 文件 | 声称 | 真实情况(已核实) |
 |---|---|---|
-| `docs/architecture/REPO_LAYOUT.md:51` | "Agent ✅ 核心已迁入 `services/agent/agent_core/`;`backend/{agents,llm,tools,memory}` 为兼容 shim;`agent_runtime` 可独立 SSE" | **事实正确** |
+| `docs/architecture/REPO_LAYOUT.md:51` | "Agent ✅ 核心已迁入 `services/agent/agent_core/`;`api_backend/{agents,llm,tools,memory}` 为兼容 shim;`agent_runtime` 可独立 SSE" | **事实正确** |
 | `docs/development/PROGRESS_REPORT.md:77` | "`services/agent` 的 **agent_core 业务已实现**(agents/llm/tools/memory 均已迁入),但 `agent_runtime` 独立进程仍共享 `backend` 全栈" | **事实正确**(2026-08-05 核实:PROGRESS_REPORT 已在提交 `5ff949c` 修正此前"仍为占位"的过期表述) |
-| 实际代码 | — | `services/agent/agent_core/{agents,llm,memory,tools}/*.py` 全部为真实业务(7 Agent、24 工具、Memory、LLM);`services/api/backend/{agents,llm,tools,memory}/*.py` 均为 9 行 `globals().update(...)` 转发 shim(`backend/agents/__init__.py:1-8`) |
+| 实际代码 | — | `services/agent/agent_core/{agents,llm,memory,tools}/*.py` 全部为真实业务(7 Agent、24 工具、Memory、LLM);`services/api/api_backend/{agents,llm,tools,memory}/*.py` 均为 9 行 `globals().update(...)` 转发 shim(`api_backend/agents/__init__.py:1-8`) |
 
 **结论**:**REPO_LAYOUT.md 与 PROGRESS_REPORT.md 现均正确描述** `agent_core` 已实现、`agent_runtime` 同体。本报告早先版本曾指控 PROGRESS_REPORT"已过期"(所引旧表述"独立 Agent 推理进程仍为占位"已不存在),该指控本身已过时,现予撤销。
 
 ---
 
-## 3. 后端能力盘点(`services/api/backend/`)
+## 3. 后端能力盘点(`services/api/api_backend/`)
 
 ### 3.1 入口 / 配置 / 数据库
 
@@ -109,7 +109,7 @@ RepoPilot/
 - **dev extras**:`pytest>=7.4.0`、`pytest-asyncio>=0.21.0`、`httpx>=0.25.0`、`ruff>=0.1.0`、`mypy>=1.7.0`
 - **构建后端**:`hatchling`,wheel 包名 `backend`
 
-#### 3.1.2 `backend/main.py`
+#### 3.1.2 `api_backend/main.py`
 - `main.py:13-25` 导入 11 个 router:`agent / auth / categories / github / graph / notes / overview / projects / settings / tags / user`(注意 `auth` 单独挂,其余 10 个走 `/api/v1`)
 - `main.py:39-40` 启动期校验 `SECRET_KEY` ≥32 字节,否则 `ValueError`
 - `main.py:41` 启动期 `await init_db()`(实际是 Alembic upgrade head)
@@ -120,7 +120,7 @@ RepoPilot/
 - `main.py:106-116` 路由 mount(11 个 router,共 **67** 个 `@router` 端点,详见 §3.8)
 - `main.py:119-121` `GET /health` 返回 `{"status":"ok","version":"2.0.0"}`
 
-#### 3.1.3 `backend/config.py`
+#### 3.1.3 `api_backend/config.py`
 - `config.py:12-22` `REPO_ROOT`:向上寻找同时含 `apps/` 与 `services/` 的目录;`DATA_DIR = REPO_ROOT/data`
 - `config.py:29-33` `Settings(BaseSettings)`:`env_file=".env"`、`env_file_encoding="utf-8"`、`extra="ignore"`
 - 21 个字段(`config.py:36-91`):
@@ -148,7 +148,7 @@ RepoPilot/
 - `config.py:94-105` `get_settings()` `@lru_cache()`,捕获 `ValidationError` 把"secret_key missing"翻译成中文 `ValueError`
 - **`config.py` 没有 `app_port` 字段** — 端口硬编码在 `npm run dev:api` 与 `vite.config.ts`
 
-#### 3.1.4 `backend/database.py`
+#### 3.1.4 `api_backend/database.py`
 - `database.py:16-17` 模块级单例 `_engine / _session_factory`
 - `database.py:20-24` `_async_database_url(url)`:将 `sqlite:///` 转 `sqlite+aiosqlite:///`
 - `database.py:27-30` `_ensure_data_dir(url)`:根据 URL 自动 mkdir
@@ -164,8 +164,8 @@ RepoPilot/
 
 **主注册表**:`services/agent/agent_core/agents/registry.py:176-437`
 **模块单例**:`AgentRegistry`(`registry.py:440-457`);`_registry = AgentRegistry()`(`registry.py:462`);导出 `get_registry()`(`registry.py:465-466`)
-**Catalog(静态档案)**:`services/api/backend/services/agent_catalog.py:4-53`,7 项 `AgentProfileOut`
-**Settings 校验白名单**:`services/api/backend/services/settings_service.py:12` `AGENT_IDS = ("hub","scout","mentor","navigator","curator","scribe","atlas")`
+**Catalog(静态档案)**:`services/api/api_backend/services/agent_catalog.py:4-53`,7 项 `AgentProfileOut`
+**Settings 校验白名单**:`services/api/api_backend/services/settings_service.py:12` `AGENT_IDS = ("hub","scout","mentor","navigator","curator","scribe","atlas")`
 
 #### 3.2.1 Agent 定义核心结构(`registry.py:11-38`)
 `@dataclass AgentDefinition` 18 字段:`id, name, description, tools, capabilities, system_prompt, soul, workflow, temperature, max_tokens, max_iterations, streaming, auto_trigger, priority, model_override, display_name, role_hint, serial, intent_patterns`。`workflow` 默认 `Workflow.REACT`(`:21`)。
@@ -430,11 +430,11 @@ plan_execute 模式下:
 | 12 | `agent_session_projects` | `:159-165` | 复合主键 + ON DELETE CASCADE(session_id FK + project_id FK) |
 
 #### 3.7.1 Ports(adapter pattern)
-- `services/api/backend/ports/__init__.py`:6 个 Protocol(`ProjectPort, NotePort, CategoryPort, TagPort, SessionPort, GraphPort`) + `ToolPorts`(聚合 + `commit()`)(`:8-120`)
-- `services/api/backend/ports/sqlalchemy_adapters.py`:`SqlAlchemyProjectPort / NotePort / CategoryPort / TagPort / SessionPort / GraphPort / ToolPorts` + `build_tool_ports(db)` 工厂
+- `services/api/api_backend/ports/__init__.py`:6 个 Protocol(`ProjectPort, NotePort, CategoryPort, TagPort, SessionPort, GraphPort`) + `ToolPorts`(聚合 + `commit()`)(`:8-120`)
+- `services/api/api_backend/ports/sqlalchemy_adapters.py`:`SqlAlchemyProjectPort / NotePort / CategoryPort / TagPort / SessionPort / GraphPort / ToolPorts` + `build_tool_ports(db)` 工厂
 - 设计意图:**Tool 接收的是 Protocol,不直接依赖 SQLAlchemy session**
 
-#### 3.7.2 预设分类种子(`services/api/backend/services/seed_service.py:9-15`)
+#### 3.7.2 预设分类种子(`services/api/api_backend/services/seed_service.py:9-15`)
 5 项:`前端 / 后端 / AI-ML / DevOps / 其他`(`main.py:31, 44` 启动期 `seed_preset_categories(session)`)
 
 #### 3.7.3 SPEC 14 表 vs 代码 12 表 差异
@@ -444,7 +444,7 @@ plan_execute 模式下:
 
 ### 3.8 路由表(67 端点 + `GET /health`)
 
-**路由 mount**(`backend/main.py:106-116`):`auth.router -> /api/v1/auth`,其余 10 个 router -> `/api/v1`。各 router 端点数:auth 7、github 5、projects 9、categories 4、tags 4、notes 6、graph 1、overview 4、user 5、settings 4、agent 18 = **67**。
+**路由 mount**(`api_backend/main.py:106-116`):`auth.router -> /api/v1/auth`,其余 10 个 router -> `/api/v1`。各 router 端点数:auth 7、github 5、projects 9、categories 4、tags 4、notes 6、graph 1、overview 4、user 5、settings 4、agent 18 = **67**。
 
 #### 3.8.1 Auth(7 端点,`api/auth.py:73, 107, 135, 170, 188, 193, 208`)
 | Method | Path | Limiter | Auth |
@@ -588,12 +588,12 @@ plan_execute 模式下:
 - 文件总行 129
 - `main.py:17-29` sys.path 注入 `services/agent` 与 `services/api`,`agent_core` + `backend` 双命名空间共存
 - `main.py:31` `FastAPI(title="RepoPilot Agent Runtime", version="0.3.0")`
-- `main.py:34-47` `_require_internal_token(token)` 从 `backend.config.get_settings().agent_internal_token` 读出;读不到 503,不匹配 401
+- `main.py:34-47` `_require_internal_token(token)` 从 `api_backend.config.get_settings().agent_internal_token` 读出;读不到 503,不匹配 401
 - 端点:
   - `GET /health`(`:50-62`)返回 `{status, service, version, mode, agents:[7 个 id]}`,`mode="agent_core"`
   - `POST /v1/sessions/{session_id}/chat`(`:65-128`)**唯一租户接口**;内部 SSE
-    - `agent_runtime/main.py:101-127` **实际调用** `backend.services.agent_service.stream_chat(..., force_local=True)` + 转 `encode_stream_item(chunk)`
-    - **没有自己的 `HubService`** — `__init__.py:8` 自述:"v1.0 阶段 Agent 逻辑仍在 services/api/backend/agents/"
+    - `agent_runtime/main.py:101-127` **实际调用** `api_backend.services.agent_service.stream_chat(..., force_local=True)` + 转 `encode_stream_item(chunk)`
+    - **没有自己的 `HubService`** — `__init__.py:8` 自述:"v1.0 阶段 Agent 逻辑仍在 services/api/api_backend/agents/"
 - "独立运行"的现实:**部署层独立(端口 + 内部 token),运行期共享 backend 全栈**
 
 ---
@@ -833,7 +833,7 @@ data: {json.dumps(data, ensure_ascii=False)}
 - 仅 `README.md:1-19`
 
 ### 5.9 `services/agent` vs `services/api` Agent 代码 [细节]
-- **shim 列表**(`backend/agents/`):`__init__.py` `hub.py` `registry.py` `react.py` `intent.py` `question.py` `stream_events.py` `think_stream.py` `types.py` — 每个文件 9 行 `globals().update(...)`
+- **shim 列表**(`api_backend/agents/`):`__init__.py` `hub.py` `registry.py` `react.py` `intent.py` `question.py` `stream_events.py` `think_stream.py` `types.py` — 每个文件 9 行 `globals().update(...)`
 - **shim filter 集合**:`__init__.py:7` 多过滤 `__path__`;子模块过滤 `__name__/__file__/__package__/__loader__/__spec__/__cached__/__builtins__`
 - **shim 单一类身份**:`is` 比较相等,所有调用方实际触达 `agent_core.agents` 同一对象
 
@@ -883,8 +883,8 @@ data: {json.dumps(data, ensure_ascii=False)}
 | PRD 主张 | 6 个(无 Atlas) | `docs/product/v1/PRD/PRD.md:13, 66-73` |
 | MVP 主张 | 7 个(含 Atlas) | `docs/product/v1/MVP/MVP_SCOPE.md:17, 49-54, 720` |
 | **代码实际** | **7 个** | `services/agent/agent_core/agents/registry.py:176-437` |
-| Catalog 静态档案 | 7 项 | `services/api/backend/services/agent_catalog.py:4-53` |
-| Settings 白名单 | 7 项 | `services/api/backend/services/settings_service.py:12` |
+| Catalog 静态档案 | 7 项 | `services/api/api_backend/services/agent_catalog.py:4-53` |
+| Settings 白名单 | 7 项 | `services/api/api_backend/services/settings_service.py:12` |
 | **结论** | **代码 7 个,PRD 描述 6 个已过时;MVP 自相一致** | — |
 
 ### 7.2 预设分类数
@@ -892,7 +892,7 @@ data: {json.dumps(data, ensure_ascii=False)}
 |---|---|---|
 | MVP 主张 | 5 个 | `docs/product/v1/MVP/MVP_SCOPE.md:38, 99, 743-749` |
 | **SPEC 附录 B 主张** | **12 个**(`is_preset=True`) | `docs/product/v1/SPEC/TECHNICAL_SPEC.md:2306-2319` |
-| **代码实际** | **5 个** | `services/api/backend/services/seed_service.py:9-15` |
+| **代码实际** | **5 个** | `services/api/api_backend/services/seed_service.py:9-15` |
 | **结论** | **代码 5 个;MVP 一致;SPEC 附录 B 内容过期** | — |
 
 ### 7.3 DB 表数
@@ -938,7 +938,7 @@ data: {json.dumps(data, ensure_ascii=False)}
   - `docs/architecture/PATH_MAPPING.md:68` 记录
   - `docs/development/guides/DEVELOPMENT_PROCESS.md:198` `APP_PORT=19878`
   - `package.json:26` `dev:api` 启动 19878
-  - `backend/config.py` **无 `app_port` Settings 字段**(端口硬编码在启动命令 / Vite proxy)
+  - `api_backend/config.py` **无 `app_port` Settings 字段**(端口硬编码在启动命令 / Vite proxy)
 
 ---
 
@@ -946,7 +946,7 @@ data: {json.dumps(data, ensure_ascii=False)}
 
 | 目的 | 路径 |
 |---|---|
-| API 入口 | `services/api/backend/main.py` |
+| API 入口 | `services/api/api_backend/main.py` |
 | 7 Agent 注册表 | `services/agent/agent_core/agents/registry.py:176-437` |
 | Hub 主对话入口 | `services/agent/agent_core/agents/hub.py:354-494` |
 | Hub Plan-and-Execute 核心 | `services/agent/agent_core/agents/hub.py:859-1126` |
@@ -958,14 +958,14 @@ data: {json.dumps(data, ensure_ascii=False)}
 | 意图分类 | `services/agent/agent_core/agents/intent.py:50-183` |
 | Memory 分层与合并 | `services/agent/agent_core/memory/{context.py,service.py}` |
 | LLM provider + 出站 SSRF | `services/agent/agent_core/llm/{provider.py,config.py}` |
-| 12 张表定义 | `services/api/backend/models/*.py` |
-| Alembic 初始迁移 | `services/api/backend/migrations/alembic/versions/6096bed38e20_initial_schema.py` |
-| API 路由 mount | `services/api/backend/main.py:106-116` |
-| Agent Chat 业务(1501 行) | `services/api/backend/services/agent_service.py` |
-| 鉴权(Bearer + Cookie + token_version) | `services/api/backend/api/deps.py:54-109` + `core/auth_cookies.py` |
-| CSRF | `services/api/backend/core/csrf.py` |
-| SSRF(url 安全) | `services/api/backend/core/url_safety.py` |
-| 限流键 | `services/api/backend/core/limiter.py` + `main.py:48-92` |
+| 12 张表定义 | `services/api/api_backend/models/*.py` |
+| Alembic 初始迁移 | `services/api/api_backend/migrations/alembic/versions/6096bed38e20_initial_schema.py` |
+| API 路由 mount | `services/api/api_backend/main.py:106-116` |
+| Agent Chat 业务(1501 行) | `services/api/api_backend/services/agent_service.py` |
+| 鉴权(Bearer + Cookie + token_version) | `services/api/api_backend/api/deps.py:54-109` + `core/auth_cookies.py` |
+| CSRF | `services/api/api_backend/core/csrf.py` |
+| SSRF(url 安全) | `services/api/api_backend/core/url_safety.py` |
+| 限流键 | `services/api/api_backend/core/limiter.py` + `main.py:48-92` |
 | Web 路由 | `apps/web/src/App.tsx:60-180` |
 | Web Mock/Real 切换 | `apps/web/src/api/client.ts:232-240` |
 | Web Agent 状态机 | `apps/web/src/stores/agentStore.ts:336-904` |
@@ -983,15 +983,15 @@ data: {json.dumps(data, ensure_ascii=False)}
 ## 9. 探查局限 / 已明确读过的范围
 
 ### 9.1 已明确读过的文件
-- 后端入口与配置:`backend/{main,config,database}.py` 全文件
-- 后端数据:`backend/models/{user,project,note,category,agent}.py`、`backend/migrations/alembic/{env.py, versions/*.py}`、`backend/ports/*` 全文件
-- 后端 schemas:`backend/schemas/*` 全文件清单与关键行
-- 后端 api:`backend/api/{auth,agent,categories,deps,github,graph,notes,overview,projects,settings,tags,user}.py` 全文件
-- 后端 services:`backend/services/{agent_service,auth_service,agent_catalog,agent_proxy,github_accounts,github_client,graph_service,project_service,overview_service,tag_service,profile_service,settings_service,seed_service,sse_stream}.py`
-- 后端 core:`backend/core/{security,csrf,limiter,url_safety,middleware,responses,exceptions,auth_cookies}.py`
-- 后端 ports:`backend/ports/{__init__,sqlalchemy_adapters}.py`
+- 后端入口与配置:`api_backend/{main,config,database}.py` 全文件
+- 后端数据:`api_backend/models/{user,project,note,category,agent}.py`、`api_backend/migrations/alembic/{env.py, versions/*.py}`、`api_backend/ports/*` 全文件
+- 后端 schemas:`api_backend/schemas/*` 全文件清单与关键行
+- 后端 api:`api_backend/api/{auth,agent,categories,deps,github,graph,notes,overview,projects,settings,tags,user}.py` 全文件
+- 后端 services:`api_backend/services/{agent_service,auth_service,agent_catalog,agent_proxy,github_accounts,github_client,graph_service,project_service,overview_service,tag_service,profile_service,settings_service,seed_service,sse_stream}.py`
+- 后端 core:`api_backend/core/{security,csrf,limiter,url_safety,middleware,responses,exceptions,auth_cookies}.py`
+- 后端 ports:`api_backend/ports/{__init__,sqlalchemy_adapters}.py`
 - Agent 真实实现:`services/agent/agent_core/{__init__,agents,llm,memory,tools}/**/*.py` 全文件
-- Agent shim:`services/api/backend/{agents,llm,memory,tools}/*.py` 全文件
+- Agent shim:`services/api/api_backend/{agents,llm,memory,tools}/*.py` 全文件
 - Agent runtime:`services/agent/agent_runtime/main.py`
 - 前端:`apps/web/{package.json, vite.config.ts, .env.development, .env}`、`apps/web/src/main.tsx`、`apps/web/src/App.tsx`、`apps/web/src/api/{client,types}.ts`、`apps/web/src/api/mock/{index,sse}.ts`、`apps/web/src/api/mock/data/*` 文件名清单、`apps/web/src/stores/agentStore.ts`、`apps/web/src/components/agent/StreamRenderer.tsx`、`apps/web/src/components/agent/*` 文件清单
 - 测试:`tests/conftest.py`、`tests/{unit,function,module,business,integration}/*.py` 文件清单
@@ -1000,7 +1000,7 @@ data: {json.dumps(data, ensure_ascii=False)}
 - 工程:`{package.json, pyproject.toml, alembic.ini, .env.example}` 全文件
 
 ### 9.2 未逐字读(本次探查未深入)
-- `services/api/backend/services/agent_service.py` 整体通读边界已过 1501 行,**部分全局通过引用知道每段做什么**,但**长流程方法**(`stream_chat`,`_orchestrate_multi`)未做逐字符跟踪
+- `services/api/api_backend/services/agent_service.py` 整体通读边界已过 1501 行,**部分全局通过引用知道每段做什么**,但**长流程方法**(`stream_chat`,`_orchestrate_multi`)未做逐字符跟踪
 - `apps/web/src/api/real/index.ts` 全部 method body 未逐字
 - `archive/` 旧 Flask / 原生 JS 代码(`README-archive.md` 已读)
 - `docs/design/{frontend/*, process/*, fix/*, review/*}` 实施期文档(仅清点文件清单)

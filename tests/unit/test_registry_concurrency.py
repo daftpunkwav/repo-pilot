@@ -1,6 +1,5 @@
 """§4.2.10: 并发注册不重复 / 不丢失"""
 import threading
-import time
 
 from agent_core.agents.registry import AgentDefinition, AgentRegistry
 from agent_core.tools.registry import ToolDefinition, ToolRegistry

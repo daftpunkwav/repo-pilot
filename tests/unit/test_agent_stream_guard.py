@@ -1,7 +1,7 @@
 """会话级 SSE 流控单元测试"""
 from uuid import uuid4
 
-from backend.services.agent_service import (
+from api_backend.services.agent_service import (
     _begin_session_stream,
     _end_session_stream,
     _session_stream_cancel,

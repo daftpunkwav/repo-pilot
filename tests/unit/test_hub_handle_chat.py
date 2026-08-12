@@ -3,13 +3,11 @@
 用假 registry/memory/context_builder + monkeypatch 配置加载与 _run_agent,
 不碰真实 LLM 与数据库。
 """
-import pytest
 
-from backend.agents.hub import HubService
-from backend.agents.react import EngineResult
-from backend.llm.provider import LLMProvider
-from backend.services.sse_stream import format_sse
-from tests.sse_util import join_sse
+from api_backend.agents.hub import HubService
+from api_backend.agents.react import EngineResult
+from api_backend.llm.provider import LLMProvider
+from api_backend.services.sse_stream import format_sse
 
 
 class FakeRegistry:

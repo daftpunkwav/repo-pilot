@@ -6,19 +6,18 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-
-from backend.agents.registry import AGENT_DEFINITIONS
-from backend.config import get_settings
-from backend.database import get_session_factory, init_db, reset_database
-from backend.models.project import Project
-from backend.tools.builtin import (
+from api_backend.agents.registry import AGENT_DEFINITIONS
+from api_backend.config import get_settings
+from api_backend.database import get_session_factory, init_db, reset_database
+from api_backend.models.project import Project
+from api_backend.tools.builtin import (
     create_note_tool,
     ensure_tools_loaded,
     set_project_category,
     set_project_tags_tool,
     update_project_progress,
 )
-from backend.tools.registry import global_registry
+from api_backend.tools.registry import global_registry
 
 
 @pytest.fixture
@@ -70,7 +69,7 @@ async def test_create_note_persists(tool_ctx):
 
     from uuid import UUID
 
-    from backend.models.note import Note
+    from api_backend.models.note import Note
 
     note = await ctx.db.get(Note, UUID(note_id))
     assert note is not None
@@ -152,7 +151,7 @@ async def test_set_project_tags_rejects_foreign_tag_id(tool_ctx):
     assert "error" in bad
     assert "未改动" in bad["error"]
 
-    from backend.services.tag_service import get_project_tag_ids
+    from api_backend.services.tag_service import get_project_tag_ids
 
     ids = await get_project_tag_ids(ctx.db, project.id)
     assert len(ids) == 1

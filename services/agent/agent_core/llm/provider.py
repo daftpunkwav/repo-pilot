@@ -94,7 +94,7 @@ class LLMProvider:
                 "::1",
             )
             if not is_local_ollama:
-                from backend.core.url_safety import assert_safe_outbound_https_url
+                from api_backend.core.url_safety import assert_safe_outbound_https_url
 
                 try:
                     api_base = assert_safe_outbound_https_url(api_base)
@@ -447,7 +447,7 @@ def _coerce_content(content: Any) -> str:
 def _normalize_usage(raw: Any) -> dict[str, int]:
     """将 LiteLLM / 厂商 usage 归一化为含命中字段的 dict。"""
     try:
-        from backend.services.llm_usage_parse import parse_usage_details
+        from api_backend.services.llm_usage_parse import parse_usage_details
 
         return parse_usage_details(raw)
     except Exception:
@@ -500,7 +500,7 @@ def _maybe_record_usage(
     if not usage:
         return
     try:
-        from backend.services.llm_usage_service import record_parsed_usage_fire_and_forget
+        from api_backend.services.llm_usage_service import record_parsed_usage_fire_and_forget
 
         display_model = _strip_litellm_model_prefix(model)
         prov = (provider or "").strip()

@@ -1,12 +1,11 @@
 """Hub 调度状态：短 thinking + 短正文说明，禁止完整 task 进正文"""
-from backend.agents.hub import (
+from api_backend.agents.hub import (
     format_dispatch_announce,
     format_dispatch_notice,
     format_dispatch_status,
     format_switch_reason,
     should_skip_hub_merge,
 )
-from backend.agents.registry import AGENT_DEFINITIONS
 
 
 def test_skip_merge_single_expert_any_length():
@@ -99,8 +98,8 @@ def test_format_dispatch_announce_aliases_status():
 
 
 def test_prefix_expert_thinking_sse_adds_attribution():
-    from backend.agents.hub import _prefix_expert_thinking_sse
-    from backend.services.sse_stream import encode_stream_item, format_sse
+    from api_backend.agents.hub import _prefix_expert_thinking_sse
+    from api_backend.services.sse_stream import encode_stream_item, format_sse
 
     raw = format_sse("thinking", {"content": "先列目录结构\n"}).to_sse()
     out = encode_stream_item(_prefix_expert_thinking_sse(raw, "Mentor"))
@@ -112,8 +111,8 @@ def test_prefix_expert_thinking_sse_adds_attribution():
 
 
 def test_prefix_expert_thinking_sse_ignores_non_thinking():
-    from backend.agents.hub import _prefix_expert_thinking_sse
-    from backend.services.sse_stream import format_sse
+    from api_backend.agents.hub import _prefix_expert_thinking_sse
+    from api_backend.services.sse_stream import format_sse
 
     raw = format_sse("text_delta", {"content": "正文"}).to_sse()
     assert _prefix_expert_thinking_sse(raw, "Mentor") == raw

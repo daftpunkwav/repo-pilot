@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-
 from agent_core.memory.context import ContextBuilder
 
 
@@ -35,7 +34,6 @@ class _FakeBuilder:
 
     async def load_chat_history(self, session_id, limit: int = 20):
         # 委托给真实的 ContextBuilder(用 mock 记忆)
-        from agent_core.memory.context import ContextBuilder
         builder = ContextBuilder(db=None, memory=_FakeMemory(self._msgs))  # type: ignore[arg-type]
         return await builder.load_chat_history(session_id, limit=limit)
 

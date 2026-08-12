@@ -4,7 +4,7 @@
 > 
 > 注：本文档版本 1.0.0 为文档自身版本；描述的 RepoPilot 代码版本为 2.0.0（对应 v1.0 产品闭环）。
 >
-> **仓库布局：** Monorepo（`apps/` · `services/` · `packages/`）。下文若出现 `frontend/`、`backend/`，对照 [`docs/architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)。**当前 UI 主开发在 `apps/web/`**；`docs/design/v1/frontend/` 仅为 v1 设计归档（只读参考）。
+> **仓库布局：** Monorepo（`apps/` · `services/` · `packages/`）。下文若出现 `frontend/`、`api_backend/`，对照 [`docs/architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)。**当前 UI 主开发在 `apps/web/`**；`docs/design/v1/frontend/` 仅为 v1 设计归档（只读参考）。
 
 ---
 
@@ -103,8 +103,8 @@ npm run test
 
 ```bash
 # Python（API + Agent）
-ruff check services/api/backend/ services/agent/agent_core/
-mypy services/api/backend/
+ruff check services/api/api_backend/ services/agent/agent_core/
+mypy services/api/api_backend/
 
 # TypeScript/React（apps/web，主应用）
 cd apps/web && npx eslint src/
@@ -177,7 +177,7 @@ SECRET_KEY=<random-64-char-hex>
 # 建议：与 JWT 分离的敏感字段 at-rest 加密密钥（Fernet 派生）
 # SECRETS_ENCRYPTION_KEY=
 
-# 数据库（默认仓库根 data/repopilot.db，由 backend/config.py 解析）
+# 数据库（默认仓库根 data/repopilot.db，由 api_backend/config.py 解析）
 # DATABASE_URL=sqlite:///./data/repopilot.db
 
 # 开发调试（生产务必 false）
@@ -214,7 +214,7 @@ APP_PORT=19878
 # API 服务（需 pip install -e "./services/api[dev]"）
 # 开发端口 19878，与 Vite 代理 / npm run dev:api 一致
 npm run dev:api
-# 或：uvicorn backend.main:app --reload --host 127.0.0.1 --port 19878 --app-dir services/api
+# 或：uvicorn api_backend.main:app --reload --host 127.0.0.1 --port 19878 --app-dir services/api
 
 # Web — Monorepo 正式应用（当前主流程）
 npm run dev:web   # 仓库根目录

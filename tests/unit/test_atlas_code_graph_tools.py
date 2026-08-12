@@ -1,7 +1,7 @@
 """Atlas 代码图谱工具注册冒烟。"""
+from agent_core.agents.registry import AGENT_DEFINITIONS
 from agent_core.tools.builtin import ensure_tools_loaded
 from agent_core.tools.registry import global_registry
-from agent_core.agents.registry import AGENT_DEFINITIONS
 
 
 def test_code_graph_tools_registered():

@@ -10,8 +10,8 @@ from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 from uuid import UUID
 
-from backend.services.app_state_service import get_or_create_app_state
-from backend.services.sse_stream import format_sse
+from api_backend.services.app_state_service import get_or_create_app_state
+from api_backend.services.sse_stream import format_sse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_core.agents.intent import IntentClassifier, IntentResult

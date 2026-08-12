@@ -5,9 +5,8 @@
 from uuid import uuid4
 
 import pytest
-
-from backend.models.project import Project
-from backend.services.graph_service import (
+from api_backend.models.project import Project
+from api_backend.services.graph_service import (
     _build_idf,
     _cluster_communities,
     _compute_foundation,
@@ -315,7 +314,7 @@ def test_cluster_communities_merges_strong_edges():
 
 
 def test_cluster_communities_caps_count_for_many_nodes():
-    from backend.services.graph_service import _target_cluster_count
+    from api_backend.services.graph_service import _target_cluster_count
 
     n = 232
     nodes = [f"n{i}" for i in range(n)]

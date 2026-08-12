@@ -2,11 +2,9 @@
 import json
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from backend.core.security import ensure_encrypted_secret, is_encrypted_secret
-from backend.models.app_state import AppState
-from backend.services.settings_service import get_settings
+from api_backend.core.security import ensure_encrypted_secret, is_encrypted_secret
+from api_backend.models.app_state import AppState
+from api_backend.services.settings_service import get_settings
 
 
 def test_ensure_encrypted_secret_migrates_plaintext():
@@ -28,10 +26,10 @@ def test_ensure_encrypted_secret_empty():
 async def test_get_settings_reencrypts_plain_llm_key(tmp_path, monkeypatch):
     import os
 
-    from backend.config import get_settings as gs
-    from backend.core.security import decrypt_secret
-    from backend.database import get_session_factory, init_db, reset_database
-    from backend.services.app_state_service import get_or_create_app_state
+    from api_backend.config import get_settings as gs
+    from api_backend.core.security import decrypt_secret
+    from api_backend.database import get_session_factory, init_db, reset_database
+    from api_backend.services.app_state_service import get_or_create_app_state
 
     os.environ["DATABASE_URL"] = f"sqlite:///{tmp_path / 'migrate.db'}"
     os.environ.setdefault("SECRET_KEY", "pytest-secret-key-do-not-use-in-prod")
@@ -55,8 +53,8 @@ async def test_get_settings_reencrypts_plain_llm_key(tmp_path, monkeypatch):
 
 
 def test_github_migrate_plaintext_pats():
-    from backend.core.security import decrypt_secret
-    from backend.services.github_accounts import load_accounts, migrate_plaintext_pats
+    from api_backend.core.security import decrypt_secret
+    from api_backend.services.github_accounts import load_accounts, migrate_plaintext_pats
 
     state = AppState(
         id=1,

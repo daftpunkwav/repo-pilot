@@ -26,7 +26,7 @@ jobs:
       - name: Python lint(ruff)
         run: uv run --project services/api ruff check services/
       - name: Python 类型检查(mypy)
-        run: uv run --project services/api mypy services/api/backend
+        run: uv run --project services/api mypy services/api/api_backend
       - name: Python 依赖审计
         # 从 uv.lock 导出 requirements 后由 pip-audit 扫描(仅生产依赖)
         run: uv export --frozen --no-dev | uvx pip-audit -r -

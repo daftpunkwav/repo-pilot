@@ -16,7 +16,7 @@ for _p in (ROOT / "services" / "api", ROOT / "services" / "agent"):
 os.environ.setdefault("SECRET_KEY", "openapi-export-secret-key-32bytes!!")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
-from backend.main import app  # noqa: E402
+from api_backend.main import app  # noqa: E402
 
 OUT = ROOT / "packages" / "contracts" / "openapi.json"
 

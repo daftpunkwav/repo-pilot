@@ -20,7 +20,7 @@ def _codes_from_ts(text: str) -> set[str]:
 
 
 def test_error_codes_python_ts_md_in_sync():
-    from backend.core.error_codes import ALL_ERROR_CODES
+    from api_backend.core.error_codes import ALL_ERROR_CODES
 
     md = (REPO_ROOT / "docs/architecture/decoupling/ERROR_CODES.md").read_text(
         encoding="utf-8"

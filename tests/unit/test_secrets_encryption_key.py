@@ -2,10 +2,9 @@
 import os
 
 import pytest
-
-from backend.config import get_settings
-from backend.core import security as security_mod
-from backend.core.security import decrypt_secret, encrypt_secret
+from api_backend.config import get_settings
+from api_backend.core import security as security_mod
+from api_backend.core.security import decrypt_secret, encrypt_secret
 
 
 @pytest.fixture(autouse=True)

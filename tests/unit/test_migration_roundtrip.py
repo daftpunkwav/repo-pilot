@@ -10,7 +10,7 @@ from alembic.config import Config
 def _make_alembic_config(db_path: str) -> Config:
     """构造指向临时 SQLite 的 alembic config。"""
     cfg = Config(str(Path(__file__).resolve().parents[2] / "alembic.ini") )
-    cfg.set_main_option("script_location", "services/api/backend/migrations/alembic")
+    cfg.set_main_option("script_location", "services/api/api_backend/migrations/alembic")
     os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
     return cfg
 
