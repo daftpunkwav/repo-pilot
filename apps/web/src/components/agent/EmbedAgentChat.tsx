@@ -81,7 +81,7 @@ export function EmbedAgentChat({
     setUnavailable(true);
     onUnavailable?.();
     addToast({
-      type: 'warning',
+      type: 'error',
       code,
       message: formatErrorToast(code, 'Agent 助手不可用，已切换手动模式'),
       duration: 5000,

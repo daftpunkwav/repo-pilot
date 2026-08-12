@@ -56,9 +56,13 @@ const INDEX_STATUS_LABELS: Record<string, string> = {
 };
 
 function CodeGraphIndexCard({ projectId }: { projectId: string }) {
+  const addToast = useUIStore((s) => s.addToast);
+  const onIndexOpError = (label: string) => (err: Error) => {
+    addToast({ type: 'error', message: `${label}失败：${err.message || '请检查后端服务'}` });
+  };
   const statusQ = useIndexStatus(projectId);
-  const trigger = useTriggerIndex(projectId);
-  const delIndex = useDeleteIndex(projectId);
+  const trigger = useTriggerIndex(projectId, { onError: onIndexOpError('触发索引') });
+  const delIndex = useDeleteIndex(projectId, { onError: onIndexOpError('删除索引') });
   const [mode, setMode] = useState<'fast' | 'moderate' | 'full'>('fast');
   const status = statusQ.data?.data;
 
@@ -66,6 +70,7 @@ function CodeGraphIndexCard({ projectId }: { projectId: string }) {
   const isBusy = ['QUEUED', 'CLONING', 'INDEXING'].includes(status?.status ?? '');
   const isFailed = ['CLONE_FAILED', 'INDEX_FAILED'].includes(status?.status ?? '');
   const canDelete = status && status.status !== 'NONE';
+  const graphUnavailable = statusQ.isError;
 
   return (
     <div className={OVERVIEW_OUTER_GLASS} style={{ marginTop: 12 }}>
@@ -98,6 +103,13 @@ function CodeGraphIndexCard({ projectId }: { projectId: string }) {
         </div>
       )}
 
+      {graphUnavailable && (
+        <div style={{ margin: '0 16px 8px', padding: 8, background: 'var(--error-bg, rgba(239,68,68,.08))', borderRadius: 6, fontSize: 12, color: 'var(--error)' }}>
+          图谱引擎不可用：{(statusQ.error as Error)?.message || '请检查后端服务'}
+        </div>
+      )}
+
+      {!graphUnavailable && (
       <div style={{ padding: '0 16px 12px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <select
           className="field input"
@@ -151,6 +163,7 @@ function CodeGraphIndexCard({ projectId }: { projectId: string }) {
           </Link>
         )}
       </div>
+      )}
     </div>
   );
 }

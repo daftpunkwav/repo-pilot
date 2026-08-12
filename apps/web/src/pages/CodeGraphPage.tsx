@@ -19,6 +19,7 @@ import {
 import { useCodeGraphStore } from '@/stores/codeGraphStore';
 import { getApi } from '@/api/client';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { useUIStore } from '@/stores/uiStore';
 import {
   loadDisplaySettings,
   saveDisplaySettings,
@@ -61,10 +62,15 @@ export function CodeGraphPage() {
   const status = statusQ.data?.data;
   const ready = status?.status === 'READY';
 
+  const addToast = useUIStore((s) => s.addToast);
+  const onIndexOpError = (label: string) => (err: Error) => {
+    addToast({ type: 'error', message: `${label}失败：${err.message || '请检查后端服务'}` });
+  };
+  const trigger = useTriggerIndex(id, { onError: onIndexOpError('触发索引') });
+  const refresh = useRefreshIndex(id, { onError: onIndexOpError('刷新索引') });
+  const delIndex = useDeleteIndex(id, { onError: onIndexOpError('删除索引') });
+
   const graphQ = useCodeGraph(id, { maxNodes: nodeBudget, enabled: Boolean(ready) });
-  const trigger = useTriggerIndex(id);
-  const refresh = useRefreshIndex(id);
-  const delIndex = useDeleteIndex(id);
 
   const projectQ = useQuery({
     queryKey: ['project', id],
@@ -212,7 +218,20 @@ export function CodeGraphPage() {
           statusSlot={statusSlot}
         />
 
-        {!ready && (
+        {statusQ.isError && (
+          <div
+            className="code-graph-empty glass-card glass-card--overview-inner"
+            style={{
+              border: '1px solid rgba(255,55,95,.28)',
+              background: 'var(--error-bg, rgba(239,68,68,.08))',
+            }}
+          >
+            <h2 style={{ color: 'var(--error)' }}>代码图谱服务不可用</h2>
+            <p>{(statusQ.error as Error)?.message || '无法获取索引状态'}</p>
+          </div>
+        )}
+
+        {!ready && !statusQ.isError && (
           <div className="code-graph-empty glass-card glass-card--overview-inner">
             <h2>尚未构建代码图谱</h2>
             <p>

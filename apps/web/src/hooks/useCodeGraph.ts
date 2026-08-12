@@ -41,7 +41,10 @@ export function useCodeGraph(
   });
 }
 
-export function useTriggerIndex(projectId: string | undefined) {
+export function useTriggerIndex(
+  projectId: string | undefined,
+  opts?: { onError?: (err: Error) => void },
+) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (mode: 'fast' | 'moderate' | 'full' = 'moderate') => {
@@ -51,10 +54,14 @@ export function useTriggerIndex(projectId: string | undefined) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['graph-index-status', projectId] });
     },
+    onError: opts?.onError,
   });
 }
 
-export function useRefreshIndex(projectId: string | undefined) {
+export function useRefreshIndex(
+  projectId: string | undefined,
+  opts?: { onError?: (err: Error) => void },
+) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (mode: 'fast' | 'moderate' | 'full' = 'moderate') => {
@@ -64,10 +71,14 @@ export function useRefreshIndex(projectId: string | undefined) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['graph-index-status', projectId] });
     },
+    onError: opts?.onError,
   });
 }
 
-export function useDeleteIndex(projectId: string | undefined) {
+export function useDeleteIndex(
+  projectId: string | undefined,
+  opts?: { onError?: (err: Error) => void },
+) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
@@ -79,6 +90,7 @@ export function useDeleteIndex(projectId: string | undefined) {
       qc.invalidateQueries({ queryKey: ['code-graph', projectId] });
       qc.invalidateQueries({ queryKey: ['graph-index-statuses'] });
     },
+    onError: opts?.onError,
   });
 }
 

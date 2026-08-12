@@ -230,7 +230,11 @@ export function ImportUrlsModal({ open, onClose }: ImportUrlsModalProps) {
             onSelectRepos={applyAgentSelection}
             onUnavailable={() => setAgentAvailable(false)}
           />
-        ) : undefined
+        ) : (
+          <div className="embed-msg embed-msg--error" role="alert" data-testid="import-agent-down">
+            导入助手不可用：Agent 服务未启用或不可用，请使用左侧手动导入
+          </div>
+        )
       }
     >
       <div className="import-biz-layout">

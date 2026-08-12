@@ -1765,6 +1765,18 @@
   color: #ff375f;
 }
 
+/* Agent 不可用/错误横幅：常驻红色提示（ChatPanel 输入区上方） */
+.error-banner {
+  margin: 8px 12px 0;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 55, 95, 0.1);
+  border: 1px solid rgba(255, 55, 95, 0.28);
+  color: #ff375f;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
 [data-theme='dark'] .embed-agent-chat__input {
   background: rgba(0, 0, 0, 0.2);
 }

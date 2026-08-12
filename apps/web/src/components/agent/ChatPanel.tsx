@@ -71,10 +71,13 @@ export function ChatPanel({
     [pendingQuestionRaw]
   );
 
-  const { data: profiles = [] } = useQuery({
+  const profilesQ = useQuery({
     queryKey: ['agentProfiles'],
     queryFn: async () => (await getApi().getAgentProfiles()).data,
   });
+  const profiles = profilesQ.data ?? [];
+  /** Agent 模块不可用（profiles 是 agent 域首个调用，503 即服务不可用） */
+  const agentDown = profilesQ.isError;
 
   const { data: sessionDetail } = useQuery({
     queryKey: ['agentSession', currentSessionId],
@@ -102,7 +105,7 @@ export function ChatPanel({
 
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || streaming || pendingQuestion) return;
+    if (!text || streaming || pendingQuestion || agentDown) return;
     setInput('');
     await sendMessage(text);
   };
@@ -232,6 +235,11 @@ export function ChatPanel({
           </div>
         )}
         {error && <div className="error-banner">{error}</div>}
+        {agentDown && (
+          <div className="error-banner" data-testid="agent-down-banner">
+            Agent 服务不可用：{(profilesQ.error as Error)?.message || '请检查后端服务'}
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
@@ -254,7 +262,7 @@ export function ChatPanel({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={streaming || Boolean(pendingQuestion) || !llmOk}
+            disabled={streaming || Boolean(pendingQuestion) || !llmOk || agentDown}
           />
           <div className="chat-toolbar">
             <span className={`ctx-chip ${boundCount > 0 ? 'active' : ''}`}>
@@ -271,7 +279,7 @@ export function ChatPanel({
               className="send-btn"
               title="发送 (Enter)"
               onClick={() => void handleSend()}
-              disabled={streaming || Boolean(pendingQuestion) || !llmOk}
+              disabled={streaming || Boolean(pendingQuestion) || !llmOk || agentDown}
             >
               <svg
                 viewBox="0 0 24 24"
