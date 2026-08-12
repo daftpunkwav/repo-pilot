@@ -42,7 +42,7 @@ function applyTheme(theme: Theme): void {
 
 export const useUIStore = create<UIState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       theme: 'light',
       sidebarCollapsed: false,
       fontScale: 1.0,
@@ -67,10 +67,6 @@ export const useUIStore = create<UIState>()(
         const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
         const newToast: Toast = { ...toast, id };
         set((state) => ({ toasts: [...state.toasts, newToast] }));
-        const duration = toast.duration ?? 3000;
-        setTimeout(() => {
-          get().removeToast(id);
-        }, duration);
       },
 
       removeToast: (id) => {

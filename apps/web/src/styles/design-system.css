@@ -1222,11 +1222,20 @@ textarea.field { height: auto; padding: 12px 14px; min-height: 80px; align-items
   font-size: 13px; font-weight: 600;
   z-index: var(--z-modal);
   box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-  animation: toast-in 0.4s var(--ease-spring);
+  animation: toast-in 0.35s var(--ease-spring);
+}
+.toast.toast--leaving {
+  /* 双类提高特异性：notes.css 的 .toast(animation: toast-in) 后加载，需压过它确保 toast-out 生效 */
+  animation: toast-out 0.28s var(--ease-out) forwards;
+  pointer-events: none;
 }
 @keyframes toast-in {
-  from { transform: translate(-50%, 20px); opacity: 0; }
-  to { transform: translate(-50%, 0); opacity: 1; }
+  from { transform: translate(-50%, 20px) scale(0.96); opacity: 0; }
+  to { transform: translate(-50%, 0) scale(1); opacity: 1; }
+}
+@keyframes toast-out {
+  from { transform: translate(-50%, 0) scale(1); opacity: 1; }
+  to { transform: translate(-50%, 14px) scale(0.97); opacity: 0; }
 }
 
 /* ==========================================================================
