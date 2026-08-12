@@ -209,10 +209,290 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Graph */
+        /**
+         * Get Graph
+         * @description L0 项目相似度图（不依赖代码索引引擎）。
+         */
         get: operations["get_graph_api_v1_graph__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/cross-edges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Cross Edges
+         * @description L0 跨仓边只读投影；引擎不可用时返回空列表，不影响相似度图。
+         */
+        get: operations["get_cross_edges_api_v1_graph_cross_edges_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/recommend-edges": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Recommend Edges
+         * @description Agent 推荐学习边（预留）。
+         *
+         *     约定：项目导入且索引稳定后，由 Agent 写入推荐关系；当前返回空列表，
+         *     前端已按 edge_type=recommend_learn 分色渲染。
+         */
+        get: operations["get_recommend_edges_api_v1_graph_recommend_edges_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/projects/{project_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Project Index Status */
+        get: operations["get_project_index_status_api_v1_graph_projects__project_id__status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/projects/{project_id}/index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trigger Project Index */
+        post: operations["trigger_project_index_api_v1_graph_projects__project_id__index_post"];
+        /** Delete Project Index */
+        delete: operations["delete_project_index_api_v1_graph_projects__project_id__index_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/projects/index-batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trigger Batch Index
+         * @description 批量入队索引（worker 池并行）；返回各项目状态快照。
+         */
+        post: operations["trigger_batch_index_api_v1_graph_projects_index_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/projects/{project_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Project Index */
+        post: operations["refresh_project_index_api_v1_graph_projects__project_id__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/projects/{project_id}/index/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Project Index
+         * @description 取消排队或进行中的索引。
+         */
+        post: operations["cancel_project_index_api_v1_graph_projects__project_id__index_cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/index-statuses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Project Index Statuses
+         * @description 图谱页索引进度条：全部项目索引状态快照。
+         */
+        get: operations["list_project_index_statuses_api_v1_graph_index_statuses_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/projects/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Code Graph */
+        get: operations["get_code_graph_api_v1_graph_projects__project_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/projects/{project_id}/architecture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Project Architecture */
+        get: operations["get_project_architecture_api_v1_graph_projects__project_id__architecture_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/projects/{project_id}/trace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Trace Project Symbol */
+        post: operations["trace_project_symbol_api_v1_graph_projects__project_id__trace_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/projects/{project_id}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Search Project Graph */
+        post: operations["search_project_graph_api_v1_graph_projects__project_id__search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/graph/projects/{project_id}/schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Project Graph Schema */
+        get: operations["get_project_graph_schema_api_v1_graph_projects__project_id__schema_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/usage/llm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Llm Usage */
+        get: operations["get_llm_usage_api_v1_usage_llm_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/usage/llm/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Llm Usage Event
+         * @description 内部/Agent 上报用量；失败由调用方忽略。
+         */
+        post: operations["post_llm_usage_event_api_v1_usage_llm_events_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -799,7 +1079,7 @@ export interface paths {
         put?: never;
         /**
          * Test Llm
-         * @description 对当前默认模型（或 body.model）发起一次真实补全请求。
+         * @description 对指定供应商模型（或默认供应商默认模型）发起一次真实补全请求。
          *     模型返回非空文本 → success=true。
          */
         post: operations["test_llm_api_v1_settings_test_llm_post"];
@@ -1127,11 +1407,25 @@ export interface components {
         ApiKeyIn: {
             /** Api Key */
             api_key: string;
+            /** Provider Id */
+            provider_id?: string | null;
         };
         /** ApiKeyOut */
         ApiKeyOut: {
             /** Masked */
             masked: string;
+            /** Provider Id */
+            provider_id?: string | null;
+        };
+        /** BatchIndexBody */
+        BatchIndexBody: {
+            /** Project Ids */
+            project_ids: string[];
+            /**
+             * Mode
+             * @default fast
+             */
+            mode: string;
         };
         /** BindGithubBody */
         BindGithubBody: {
@@ -1552,6 +1846,15 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        /** IndexTriggerBody */
+        IndexTriggerBody: {
+            /**
+             * Mode
+             * @default fast
+             * @enum {string}
+             */
+            mode: "fast" | "moderate" | "full" | "cross-repo-intelligence";
+        };
         /**
          * LearnerIdentityOut
          * @description 本机学习者主动填写的身份信息（供 Agent 按需读取）。
@@ -1623,12 +1926,83 @@ export interface components {
             bio?: string | null;
         };
         /**
+         * LlmProviderOut
+         * @description 对外暴露的供应商配置（不含明文 Key）。
+         */
+        LlmProviderOut: {
+            /** Id */
+            id: string;
+            /**
+             * Preset Id
+             * @default custom
+             */
+            preset_id: string;
+            /**
+             * Display Name
+             * @default
+             */
+            display_name: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Api Base */
+            api_base?: string | null;
+            /**
+             * Api Format
+             * @default openai
+             * @enum {string}
+             */
+            api_format: "openai" | "anthropic" | "google" | "ollama" | "custom";
+            /** Available Models */
+            available_models?: string[];
+            /**
+             * Default Model
+             * @default
+             */
+            default_model: string;
+            /** Api Key Masked */
+            api_key_masked?: string | null;
+            /**
+             * Configured
+             * @default false
+             */
+            configured: boolean;
+        };
+        /**
+         * LlmProviderUpdate
+         * @description 写入/更新单个供应商；api_key 仅写不回读。
+         */
+        LlmProviderUpdate: {
+            /** Id */
+            id?: string | null;
+            /** Preset Id */
+            preset_id?: string | null;
+            /** Display Name */
+            display_name?: string | null;
+            /** Enabled */
+            enabled?: boolean | null;
+            /** Api Format */
+            api_format?: string | null;
+            /** Api Base */
+            api_base?: string | null;
+            /** Available Models */
+            available_models?: string[] | null;
+            /** Default Model */
+            default_model?: string | null;
+            /** Api Key */
+            api_key?: string | null;
+        };
+        /**
          * LlmTestIn
-         * @description 可选：指定测试模型；默认使用 settings 中的默认模型。
+         * @description 可选：指定供应商与模型；默认使用默认供应商的默认模型。
          */
         LlmTestIn: {
             /** Model */
             model?: string | null;
+            /** Provider Id */
+            provider_id?: string | null;
         };
         /** LlmTestOut */
         LlmTestOut: {
@@ -1653,6 +2027,8 @@ export interface components {
              * @default
              */
             litellm_model: string;
+            /** Provider Id */
+            provider_id?: string | null;
         };
         /** MemoryItemOut */
         MemoryItemOut: {
@@ -1957,6 +2333,18 @@ export interface components {
              */
             recommended_by: "hub" | "scout" | "mentor" | "navigator" | "curator" | "scribe";
         };
+        /** SearchBody */
+        SearchBody: {
+            /** Query */
+            query: string;
+            /** Label */
+            label?: string | null;
+            /**
+             * Limit
+             * @default 20
+             */
+            limit: number;
+        };
         /** SessionUpdateBody */
         SessionUpdateBody: {
             /** Title */
@@ -2001,6 +2389,10 @@ export interface components {
              * @default JetBrains Mono
              */
             code_font: string;
+            /** Llm Providers */
+            llm_providers?: components["schemas"]["LlmProviderOut"][];
+            /** Llm Default Provider Id */
+            llm_default_provider_id?: string | null;
             /**
              * Llm Provider
              * @default openai
@@ -2060,6 +2452,10 @@ export interface components {
             font_scale?: number | null;
             /** Code Font */
             code_font?: string | null;
+            /** Llm Providers */
+            llm_providers?: components["schemas"]["LlmProviderUpdate"][] | null;
+            /** Llm Default Provider Id */
+            llm_default_provider_id?: string | null;
             /** Llm Provider */
             llm_provider?: string | null;
             /** Llm Provider Display Name */
@@ -2068,10 +2464,10 @@ export interface components {
             llm_default_model?: string | null;
             /** Llm Model */
             llm_model?: string | null;
-            /** Llm Api Base */
-            llm_api_base?: string | null;
             /** Llm Api Format */
             llm_api_format?: string | null;
+            /** Llm Api Base */
+            llm_api_base?: string | null;
             /** Llm Available Models */
             llm_available_models?: string[] | null;
             /** Llm Api Key */
@@ -2145,6 +2541,22 @@ export interface components {
              */
             count: number;
         };
+        /** TraceBody */
+        TraceBody: {
+            /** Symbol */
+            symbol: string;
+            /**
+             * Direction
+             * @default both
+             * @enum {string}
+             */
+            direction: "upstream" | "downstream" | "both";
+            /**
+             * Depth
+             * @default 3
+             */
+            depth: number;
+        };
         /** TrendingRepoOut */
         TrendingRepoOut: {
             /** Owner */
@@ -2181,6 +2593,56 @@ export interface components {
             stars?: number | null;
             /** Url */
             url?: string | null;
+        };
+        /** UsageRecordBody */
+        UsageRecordBody: {
+            /**
+             * Model
+             * @default
+             */
+            model: string;
+            /**
+             * Provider
+             * @default
+             */
+            provider: string;
+            /** Session Id */
+            session_id?: string | null;
+            /** Agent Id */
+            agent_id?: string | null;
+            /**
+             * Prompt Tokens
+             * @default 0
+             */
+            prompt_tokens: number;
+            /**
+             * Prompt Cached Tokens
+             * @default 0
+             */
+            prompt_cached_tokens: number;
+            /**
+             * Prompt Uncached Tokens
+             * @default 0
+             */
+            prompt_uncached_tokens: number;
+            /**
+             * Completion Tokens
+             * @default 0
+             */
+            completion_tokens: number;
+            /**
+             * Total Tokens
+             * @default 0
+             */
+            total_tokens: number;
+            /** Meta */
+            meta?: {
+                [key: string]: unknown;
+            } | null;
+            /** Raw Usage */
+            raw_usage?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * UserOut
@@ -2875,6 +3337,491 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cross_edges_api_v1_graph_cross_edges_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+        };
+    };
+    get_recommend_edges_api_v1_graph_recommend_edges_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+        };
+    };
+    get_project_index_status_api_v1_graph_projects__project_id__status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trigger_project_index_api_v1_graph_projects__project_id__index_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["IndexTriggerBody"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_project_index_api_v1_graph_projects__project_id__index_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trigger_batch_index_api_v1_graph_projects_index_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchIndexBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_project_index_api_v1_graph_projects__project_id__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["IndexTriggerBody"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_project_index_api_v1_graph_projects__project_id__index_cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_project_index_statuses_api_v1_graph_index_statuses_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+        };
+    };
+    get_code_graph_api_v1_graph_projects__project_id__get: {
+        parameters: {
+            query?: {
+                max_nodes?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_architecture_api_v1_graph_projects__project_id__architecture_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trace_project_symbol_api_v1_graph_projects__project_id__trace_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TraceBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_project_graph_api_v1_graph_projects__project_id__search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_graph_schema_api_v1_graph_projects__project_id__schema_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_llm_usage_api_v1_usage_llm_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_dict_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_llm_usage_event_api_v1_usage_llm_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UsageRecordBody"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

@@ -35,13 +35,15 @@ make -f Makefile -j$(nproc) graph-engine
 
 ## 运行
 
+C 引擎直接运行（不经 API）时读取 `ENGINE_CACHE_DIR` / `ENGINE_ALLOWED_ROOT`（源码内 getenv）：
+
 ```bash
-export GRAPH_CACHE_DIR="<repo>/data/graph-engine-cache"
-export GRAPH_ALLOWED_ROOT="<允许索引的根目录>"
+export ENGINE_CACHE_DIR="<repo>/data/graph-engine-cache"
+export ENGINE_ALLOWED_ROOT="<允许索引的根目录>"
 ./graph-engine --ui=true --port=9750
 ```
 
-Voyager API 通过环境变量对接：
+Voyager API 通过环境变量对接（API 侧 `graph_engine_runtime/sidecar.py` 会把 `GRAPH_*` 双写为 `ENGINE_*`）：
 
 - `GRAPH_ENGINE_URL=http://127.0.0.1:9750`
 - `GRAPH_ENGINE_BIN=<本目录构建出的可执行文件>`
