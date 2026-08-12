@@ -109,10 +109,12 @@ async def ensure_graph_engine_sidecar() -> bool:
     )
 
     env = os.environ.copy()
-    env["GRAPH_CACHE_DIR"] = str(cache_dir.resolve())
-    env["GRAPH_ALLOWED_ROOT"] = str(Path(allowed).resolve())
-    # 与 HTTP 索引边界一致
-    env.setdefault("GRAPH_ALLOWED_ROOT", env["GRAPH_ALLOWED_ROOT"])
+    # C 引擎读取 ENGINE_CACHE_DIR / ENGINE_ALLOWED_ROOT（源码内 getenv）；
+    # GRAPH_* 保留为对外契约名，双写保证两端一致
+    env["ENGINE_CACHE_DIR"] = str(cache_dir.resolve())
+    env["ENGINE_ALLOWED_ROOT"] = str(Path(allowed).resolve())
+    env.setdefault("GRAPH_CACHE_DIR", env["ENGINE_CACHE_DIR"])
+    env.setdefault("GRAPH_ALLOWED_ROOT", env["ENGINE_ALLOWED_ROOT"])
 
     cmd = [
         str(bin_path),

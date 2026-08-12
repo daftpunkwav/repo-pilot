@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from api_backend.services.index_data_adapter import adapt_layout
 from graph_engine_runtime.index_pipeline import (
+    _allowed_root,
     _build_credential_args,
     _git_pull,
     _git_shallow_clone,
@@ -218,3 +219,22 @@ def test_git_shallow_clone_rejects_ssrf(tmp_path: Path, url: str):
     with pytest.raises(AppException) as exc:
         asyncio.run(_git_shallow_clone(url, dest))
     assert exc.value.detail["code"] == EC.PROJECT_URL_INVALID
+
+
+def test_allowed_root_reads_graph_allowed_root(monkeypatch):
+    """改名回归：_allowed_root 必须读取 settings.graph_allowed_root。
+    修复前曾误读 graph_fallback_allowed_root（不存在）导致 Path(None) 崩溃。"""
+    from dataclasses import dataclass
+    from graph_engine_runtime.context import set_runtime_context, GraphRuntimeContext
+
+    @dataclass
+    class _FakeSettings:
+        graph_allowed_root: str = "/fake/data"
+
+    set_runtime_context(
+        GraphRuntimeContext(
+            settings=_FakeSettings(),
+            repo_root=Path("/fake/repo"),
+        )
+    )
+    assert _allowed_root() == Path("/fake/data")

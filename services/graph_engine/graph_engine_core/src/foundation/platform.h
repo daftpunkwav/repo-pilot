@@ -142,7 +142,7 @@ const char *engine_app_local_dir(void);
 /* ── Cache directory ────────────────────────────────────────────── */
 
 /* 解析图谱数据库缓存目录。
- * 优先级：环境变量 ENGINE_CACHE_DIR > ~/.cache/rp-graph-engine（默认）。
+ * 优先级：环境变量 ENGINE_CACHE_DIR > ~/.cache/graph-engine（默认）。
  * 返回静态缓冲，若 home 不可用则为 NULL。 */
 const char *engine_resolve_cache_dir(void);
 

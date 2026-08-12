@@ -330,7 +330,7 @@ def engine_project_name(owner: str, repo: str) -> str:
 def _allowed_root() -> Path:
     settings = get_runtime_context().settings
     return Path(
-        getattr(settings, "graph_fallback_allowed_root", None) 
+        getattr(settings, "graph_allowed_root", None)
     )
 
 
