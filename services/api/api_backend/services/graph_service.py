@@ -1007,8 +1007,8 @@ async def build_graph(
 
 async def build_cross_edges(db: AsyncSession) -> list[dict]:
     """从已 READY 项目跑/读取跨仓边；引擎不可用时返回空列表（不影响 L0 相似度）。"""
-    from api_backend.models.graph_index import GraphIndexStatus
-    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from graph_engine_runtime.client import RpGraphClient, RpGraphError
+    from repopilot_shared.models.graph_index import GraphIndexStatus
 
     result = await db.execute(
         select(GraphIndexStatus).where(GraphIndexStatus.status == "READY")

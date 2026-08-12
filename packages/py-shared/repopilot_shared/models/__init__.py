@@ -9,6 +9,7 @@ from repopilot_shared.models.agent import (
     agent_session_projects,
 )
 from repopilot_shared.models.app_state import APP_STATE_ID, AppState
+from repopilot_shared.models.graph_index import GraphIndexStatus
 from repopilot_shared.models.project import Project, Tag, project_tags
 
 __all__ = [
@@ -21,6 +22,7 @@ __all__ = [
     "agent_session_projects",
     "APP_STATE_ID",
     "AppState",
+    "GraphIndexStatus",
     "Project",
     "Tag",
     "project_tags",

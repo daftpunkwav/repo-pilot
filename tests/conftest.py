@@ -8,11 +8,12 @@ import sys
 from collections.abc import AsyncIterator
 from pathlib import Path
 
-# 确保 api_backend / agent_core / repopilot_shared 均可导入（兼容不同 pytest rootdir）
+# 确保 api_backend / agent_core / graph_engine_runtime / repopilot_shared 均可导入（兼容不同 pytest rootdir）
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 for _p in (
     _REPO_ROOT / "services" / "api",
     _REPO_ROOT / "services" / "agent",
+    _REPO_ROOT / "services" / "graph_engine",
     _REPO_ROOT / "packages" / "py-shared",
 ):
     _s = str(_p)

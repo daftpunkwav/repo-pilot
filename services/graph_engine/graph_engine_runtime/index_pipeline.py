@@ -16,15 +16,15 @@ from typing import Any, Optional
 from urllib.parse import urlparse
 from uuid import UUID
 
-from api_backend.config import get_settings
-from api_backend.core import error_codes as EC
-from api_backend.core.exceptions import AppException, NotFoundError
-from api_backend.models.graph_index import GraphIndexStatus
-from api_backend.models.project import Project
-from api_backend.services.github_accounts import primary_token
-from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
+from repopilot_shared import error_codes as EC
+from repopilot_shared.exceptions import AppException, NotFoundError
+from repopilot_shared.models.graph_index import GraphIndexStatus
+from repopilot_shared.models.project import Project
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from graph_engine_runtime.client import RpGraphClient, RpGraphError
+from graph_engine_runtime.context import get_runtime_context
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +104,14 @@ def _cache_root() -> Path:
     return root
 
 
+def _session_factory() -> Any:
+    """DB 会话工厂（宿主 api_backend 注入）；短会话写状态专用，避免长锁。"""
+    factory = get_runtime_context().get_session_factory
+    if factory is None:
+        raise RuntimeError("graph_engine_runtime 未注入 DB session factory")
+    return factory()
+
+
 def _is_under_dir(path: Path, root: Path) -> bool:
     try:
         path.resolve().relative_to(root.resolve())
@@ -135,7 +143,7 @@ async def _project_lock(project_id: UUID) -> asyncio.Lock:
 
 
 def _stale_age_sec() -> float:
-    settings = get_settings()
+    settings = get_runtime_context().settings
     return max(
         3600.0,
         float(settings.git_clone_timeout_sec)
@@ -152,7 +160,7 @@ async def start_index_worker() -> None:
         _INDEX_WORKERS = alive
         return
 
-    settings = get_settings()
+    settings = get_runtime_context().settings
     n = int(settings.index_concurrency)
     _INDEX_QUEUE = asyncio.Queue()
     _INDEX_WORKERS = []
@@ -320,7 +328,7 @@ def engine_project_name(owner: str, repo: str) -> str:
 
 
 def _allowed_root() -> Path:
-    settings = get_settings()
+    settings = get_runtime_context().settings
     return Path(
         getattr(settings, "rp_graph_allowed_root", None) or settings.cbm_allowed_root
     )
@@ -610,12 +618,10 @@ async def _patch_status(
     index_mode: str | None = None,
 ) -> str:
     """短会话写状态；job_gen 过期或已删除(NONE)时拒绝进度/READY 写回。"""
-    from api_backend.database import get_session_factory
-
     last: BaseException | None = None
     for i in range(8):
         try:
-            factory = get_session_factory()
+            factory = _session_factory()
             async with factory() as db:
                 row = await get_or_create_status(db, project_id)
                 prev = row.status
@@ -673,8 +679,6 @@ async def _run_pipeline(
     refresh: bool,
     job_gen: int,
 ) -> None:
-    from api_backend.database import get_session_factory
-
     # 队列中的过期/已取消任务直接丢弃
     if _job_gen(project_id) != job_gen:
         _CANCEL_REQUESTED.discard(project_id)
@@ -686,7 +690,7 @@ async def _run_pipeline(
         try:
             if _job_gen(project_id) != job_gen:
                 return
-            factory = get_session_factory()
+            factory = _session_factory()
             async with factory() as db:
                 project = await db.get(Project, project_id)
                 if not project:
@@ -716,7 +720,7 @@ async def _run_pipeline(
             )
         except BaseException as exc:
             try:
-                factory = get_session_factory()
+                factory = _session_factory()
                 async with factory() as db:
                     row = await get_or_create_status(db, project_id)
                     phase = row.status
@@ -789,7 +793,7 @@ async def _clone_and_index(
     job_gen: int,
 ) -> None:
     """clone + index：长耗时步骤在 DB 会话外执行，避免 SQLite 长时间锁。"""
-    settings = get_settings()
+    settings = get_runtime_context().settings
     cache_root = _cache_root()
     await asyncio.to_thread(_enforce_quota, cache_root, settings.repo_cache_quota_gb)
 
@@ -804,13 +808,14 @@ async def _clone_and_index(
 
     token: str | None = None
     try:
-        from api_backend.database import get_session_factory
-        from api_backend.services.app_state_service import get_or_create_app_state
-
-        factory = get_session_factory()
+        ctx = get_runtime_context()
+        if ctx.get_session_factory is None or ctx.app_state_service is None:
+            raise RuntimeError("未注入 DB/AppState 服务")
+        factory = ctx.get_session_factory()
         async with factory() as db:
-            state = await get_or_create_app_state(db)
-            _, token = primary_token(state)
+            state = await ctx.app_state_service.get_or_create_app_state(db)
+            if ctx.primary_token is not None:
+                _, token = ctx.primary_token(state)
     except Exception:
         token = None
 

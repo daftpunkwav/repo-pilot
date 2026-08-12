@@ -15,12 +15,14 @@ from pathlib import Path
 from typing import Any, Literal, Optional
 
 import httpx
-from api_backend.config import get_settings
-from api_backend.core import error_codes as EC
+from repopilot_shared import error_codes as EC
+
+from graph_engine_runtime.context import get_runtime_context
 
 logger = logging.getLogger(__name__)
 
-_ENGINE_PY = Path(__file__).resolve().parents[3] / "graph_engine" / "graph_engine_runtime"
+# client.py 位于 graph_engine_runtime 包根；插入该目录使 rp_graph（Python 回退实现）可顶层导入
+_ENGINE_PY = Path(__file__).resolve().parent
 if _ENGINE_PY.is_dir() and str(_ENGINE_PY) not in sys.path:
     sys.path.insert(0, str(_ENGINE_PY))
 
@@ -37,7 +39,7 @@ class RpGraphError(Exception):
 def _local_engine():
     from rp_graph import get_engine
 
-    settings = get_settings()
+    settings = get_runtime_context().settings
     root = getattr(settings, "rp_graph_allowed_root", None) or settings.cbm_allowed_root
     return get_engine(data_root=root)
 
@@ -77,7 +79,7 @@ class RpGraphClient:
     """统一引擎端口：sidecar（CBM C / rp_graph）或进程内引擎。"""
 
     def __init__(self, base_url: str | None = None, timeout: float = 300.0):
-        settings = get_settings()
+        settings = get_runtime_context().settings
         url = base_url
         if url is None:
             url = getattr(settings, "rp_graph_engine_url", None) or ""

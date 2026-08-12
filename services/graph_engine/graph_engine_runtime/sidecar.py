@@ -13,7 +13,8 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
-from api_backend.config import REPO_ROOT, get_settings
+
+from graph_engine_runtime.context import get_runtime_context
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,14 @@ _proc: Optional[subprocess.Popen] = None
 
 
 def _default_bin_candidates() -> list[Path]:
-    base = REPO_ROOT / "services" / "graph_engine" / "graph_engine_core" / "build" / "c"
+    base = (
+        get_runtime_context().repo_root
+        / "services"
+        / "graph_engine"
+        / "graph_engine_core"
+        / "build"
+        / "c"
+    )
     names = (
         "rp-graph-engine.exe",
         "rp-graph-engine",
@@ -33,7 +41,7 @@ def _default_bin_candidates() -> list[Path]:
 
 def resolve_engine_bin() -> Optional[Path]:
     """解析可执行文件：RP_GRAPH_ENGINE_BIN > 约定构建产物路径。"""
-    settings = get_settings()
+    settings = get_runtime_context().settings
     configured = (getattr(settings, "rp_graph_engine_bin", None) or "").strip()
     if configured:
         p = Path(configured)
@@ -75,7 +83,8 @@ async def sidecar_healthy(base_url: str, *, timeout: float = 2.0) -> bool:
 async def ensure_graph_engine_sidecar() -> bool:
     """若配置了引擎 URL 且不健康，尝试拉起本仓二进制。返回是否最终健康。"""
     global _proc
-    settings = get_settings()
+    ctx = get_runtime_context()
+    settings = ctx.settings
     url = (settings.rp_graph_engine_url or "").strip()
     if not url:
         return False
@@ -92,11 +101,11 @@ async def ensure_graph_engine_sidecar() -> bool:
     port = _port_from_url(url)
     cache_dir = Path(
         getattr(settings, "rp_graph_cache_dir", None)
-        or (REPO_ROOT / "data" / "graph-engine-cache")
+        or (ctx.repo_root / "data" / "graph-engine-cache")
     )
     cache_dir.mkdir(parents=True, exist_ok=True)
     allowed = getattr(settings, "rp_graph_allowed_root", None) or str(
-        REPO_ROOT / "data"
+        ctx.repo_root / "data"
     )
 
     env = os.environ.copy()

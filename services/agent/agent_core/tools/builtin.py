@@ -345,7 +345,7 @@ async def trigger_code_index(
     mode: str = "moderate",
     **kw,
 ):
-    from api_backend.services import index_pipeline as pipeline
+    from graph_engine_runtime import index_pipeline as pipeline
 
     try:
         pid = UUID(project_id)
@@ -383,8 +383,8 @@ async def search_code_graph(
     offset: int = 0,
     **kw,
 ):
-    from api_backend.services import index_pipeline as pipeline
-    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from graph_engine_runtime import index_pipeline as pipeline
+    from graph_engine_runtime.client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -434,8 +434,8 @@ async def search_code(
     limit: int = 50,
     **kw,
 ):
-    from api_backend.services import index_pipeline as pipeline
-    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from graph_engine_runtime import index_pipeline as pipeline
+    from graph_engine_runtime.client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -486,8 +486,8 @@ async def trace_calls(
     kind: str = "calls",
     **kw,
 ):
-    from api_backend.services import index_pipeline as pipeline
-    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from graph_engine_runtime import index_pipeline as pipeline
+    from graph_engine_runtime.client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -530,8 +530,8 @@ async def query_graph(
     limit: int = 1000,
     **kw,
 ):
-    from api_backend.services import index_pipeline as pipeline
-    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from graph_engine_runtime import index_pipeline as pipeline
+    from graph_engine_runtime.client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -560,8 +560,8 @@ async def query_graph(
     allowed_agents=["atlas", "hub", "navigator", "scout"],
 )
 async def get_graph_schema_tool(context=None, project_id: str = "", **kw):
-    from api_backend.services import index_pipeline as pipeline
-    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from graph_engine_runtime import index_pipeline as pipeline
+    from graph_engine_runtime.client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -588,8 +588,8 @@ async def get_graph_schema_tool(context=None, project_id: str = "", **kw):
     allowed_agents=["atlas", "hub", "scout", "navigator"],
 )
 async def get_project_architecture(context=None, project_id: str = "", **kw):
-    from api_backend.services import index_pipeline as pipeline
-    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from graph_engine_runtime import index_pipeline as pipeline
+    from graph_engine_runtime.client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)
@@ -624,8 +624,8 @@ async def get_code_snippet_from_graph(
     qualified_name: str = "",
     **kw,
 ):
-    from api_backend.services import index_pipeline as pipeline
-    from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
+    from graph_engine_runtime import index_pipeline as pipeline
+    from graph_engine_runtime.client import RpGraphClient, RpGraphError
 
     try:
         pid = UUID(project_id)

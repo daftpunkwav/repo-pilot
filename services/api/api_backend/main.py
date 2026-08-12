@@ -30,6 +30,16 @@ settings = get_settings()
 api = settings.api_v1_prefix
 
 
+class _AppStateServiceAdapter:
+    """将 api_backend.services.app_state_service 的函数包装为 AppStateServicePort 协议。"""
+
+    def __init__(self, fn):
+        self._fn = fn
+
+    async def get_or_create_app_state(self, db):
+        return await self._fn(db)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # 启动前校验密钥长度，防止使用弱密钥
@@ -45,37 +55,32 @@ async def lifespan(_app: FastAPI):
         await ensure_singleton_rows(session)
         # 中断的索引任务标记失败，供用户重试
         try:
-            from api_backend.services.index_pipeline import recover_interrupted_jobs
+            from graph_engine_runtime.index_pipeline import recover_interrupted_jobs
 
             await recover_interrupted_jobs(session)
         except Exception:
             pass
 
-    # 常驻索引 worker：在 lifespan 内 create_task，脱离 HTTP 请求 cancel scope
-    from api_backend.services.graph_engine_sidecar import (
-        ensure_graph_engine_sidecar,
-        stop_graph_engine_sidecar,
+    # Graph 运行层：注入上下文并常驻索引 worker（lifespan 内 create_task，脱离请求 cancel scope）
+    from api_backend.database import get_session_factory as _get_factory
+    from api_backend.services.app_state_service import get_or_create_app_state
+    from api_backend.services.github_accounts import primary_token
+    from graph_engine_runtime.context import GraphRuntimeContext
+    from graph_engine_runtime.runtime import EmbeddedGraphRuntime
+
+    graph_runtime = EmbeddedGraphRuntime(
+        context=GraphRuntimeContext(
+            settings=settings,
+            get_session_factory=_get_factory,
+            primary_token=primary_token,
+            app_state_service=_AppStateServiceAdapter(get_or_create_app_state),
+        )
     )
-    from api_backend.services.index_pipeline import start_index_worker, stop_index_worker
-
-    # 图谱 C 引擎 sidecar（迁入二进制）；失败则 RpGraphClient 回退 Python
-    if getattr(settings, "rp_graph_auto_start", True) and (
-        settings.rp_graph_engine_url or ""
-    ).strip():
-        try:
-            await ensure_graph_engine_sidecar()
-        except Exception:
-            pass
-
-    await start_index_worker()
     try:
+        await graph_runtime.start_worker()
         yield
     finally:
-        await stop_index_worker()
-        try:
-            await stop_graph_engine_sidecar()
-        except Exception:
-            pass
+        await graph_runtime.stop_worker()
 
 
 app = FastAPI(title=settings.app_name, version="2.0.0", lifespan=lifespan)

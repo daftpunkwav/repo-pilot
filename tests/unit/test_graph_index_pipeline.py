@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 from api_backend.services.index_data_adapter import adapt_layout
-from api_backend.services.index_pipeline import engine_project_name, parse_github_owner_repo
+from graph_engine_runtime.index_pipeline import engine_project_name, parse_github_owner_repo
 
 
 def test_parse_github_owner_repo():

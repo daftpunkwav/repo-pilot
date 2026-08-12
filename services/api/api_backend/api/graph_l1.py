@@ -12,10 +12,10 @@ from api_backend.core.responses import wrap_data
 from api_backend.models.project import Project
 from api_backend.schemas.common import DataResponse
 from api_backend.schemas.graph import IndexTriggerBody, SearchBody, TraceBody
-from api_backend.services import index_pipeline as pipeline
 from api_backend.services.index_data_adapter import adapt_layout
-from api_backend.services.rp_graph_client import RpGraphClient, RpGraphError
 from fastapi import APIRouter, Depends, Query
+from graph_engine_runtime import index_pipeline as pipeline
+from graph_engine_runtime.client import RpGraphClient, RpGraphError
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
