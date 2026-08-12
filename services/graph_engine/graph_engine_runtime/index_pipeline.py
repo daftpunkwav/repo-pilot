@@ -1049,25 +1049,24 @@ def _build_credential_args(token: str | None) -> tuple[list[str], dict | None]:
 async def _git_shallow_clone(
     url: str, dest: Path, *, token: str | None = None
 ) -> None:
-    # SSRF 防线：仅允许 github.com。有 token 时 clone_url 会被强制改写为
-    # https://github.com/...，但无 token 匿名 clone 原样透传 url，须在此拒绝
-    # 非 github.com host，防止服务器侧 git clone 打到内网/回环地址（SEC-007）。
+    # SSRF 防线：仅允许 https://github.com，并一律按 parsed.path 重构
+    # clone_url，丢弃用户原始 URL 的 scheme/userinfo/port/query/fragment。
+    # 此前匿名分支原样透传 url、仅靠 host 字符串校验兜底，与 token 分支
+    # （已重构 URL）不对称且脆弱（SEC-007 加固）。
     parsed = urlparse(url)
     host = (parsed.hostname or "").lower()
-    if host != "github.com":
+    if parsed.scheme != "https" or host != "github.com":
         raise AppException(
             400,
             EC.PROJECT_URL_INVALID,
-            f"仅支持 https://github.com 仓库: {url}",
+            "仅支持 https://github.com 仓库",
         )
 
     dest.parent.mkdir(parents=True, exist_ok=True)
-    clone_url = url
-    if token:
-        path = parsed.path or ""
-        clone_url = f"https://github.com{path}"
-        if not clone_url.endswith(".git"):
-            clone_url += ".git"
+    path = parsed.path or ""
+    clone_url = f"https://github.com{path}"
+    if not clone_url.endswith(".git"):
+        clone_url += ".git"
 
     credential_args, env = _build_credential_args(token)
     # 使用 -c 局部配置，避免污染用户全局 git config

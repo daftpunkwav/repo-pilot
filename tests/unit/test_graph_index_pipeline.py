@@ -187,16 +187,34 @@ def test_git_pull_passes_token_via_env(monkeypatch, tmp_path: Path):
     assert cmd.index("credential.helper=") < idx, "注入前必须先清空既有 helper"
 
 
-def test_git_shallow_clone_rejects_non_github_host(tmp_path: Path):
-    """SEC-007 回归：非 github.com host 在入口即被拒绝（SSRF 防线），
-    不执行 git clone。
-    """
+@pytest.mark.parametrize(
+    "url",
+    [
+        # 直接内网/元数据 IP
+        "https://169.254.169.254/github.com/foo/bar",
+        "https://10.0.0.1/foo/bar",
+        # userinfo 欺骗：host 实际是 evil.com
+        "https://github.com@evil.com/foo/bar",
+        # 后缀/前缀混淆
+        "https://github.com.evil.com/foo/bar",
+        "https://notgithub.com/foo/bar",
+        # 非 https scheme
+        "http://github.com/foo/bar",
+        "git://github.com/foo/bar",
+        # 回环 / IPv6 回环
+        "https://localhost/foo/bar",
+        "https://[::1]/foo/bar",
+        # 任意外部 host
+        "https://evil.com/foo/bar",
+    ],
+    ids=[
+        "meta-ip", "private-ip", "userinfo", "suffix", "prefix",
+        "http-scheme", "git-scheme", "localhost", "ipv6-loopback", "external",
+    ],
+)
+def test_git_shallow_clone_rejects_ssrf(tmp_path: Path, url: str):
+    """SEC-007 回归（参数化）：各类 SSRF 绕过变体在入口即被拒绝，不执行 git clone。"""
     dest = tmp_path / "repo"
     with pytest.raises(AppException) as exc:
-        asyncio.run(
-            _git_shallow_clone(
-                "https://169.254.169.254/github.com/foo/bar", dest
-            )
-        )
+        asyncio.run(_git_shallow_clone(url, dest))
     assert exc.value.detail["code"] == EC.PROJECT_URL_INVALID
-    assert "仅支持 https://github.com" in exc.value.detail["message"]

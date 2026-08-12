@@ -43,10 +43,36 @@ def test_import_repo_item_requires_github_domain():
         )
 
 
+def test_import_repo_item_rejects_github_suffix_bypass():
+    """endswith('github.com') 可被 notgithub.com 绕过；改用 == 后应拒绝。"""
+    with pytest.raises(ValidationError):
+        ImportProjectsBody(
+            repos=[{"owner": "o", "repo": "r", "url": "https://notgithub.com/o/r"}]
+        )
+
+
 def test_project_create_defaults():
     p = ProjectCreate(name="a/b", url="https://github.com/a/b")
     assert p.progress == "none"
     assert p.source == "manual"
+
+
+def test_project_create_github_source_rejects_suffix_bypass():
+    """source=github 时 endswith('github.com') 可被 notgithub.com 绕过；
+    改用 == 后应拒绝。
+    """
+    with pytest.raises(ValidationError):
+        ProjectCreate(
+            name="a/b", url="https://notgithub.com/a/b", source="github"
+        )
+
+
+def test_project_create_rejects_private_ip_url():
+    """项目 URL 含内网/回环 IP 字面量时应在 intake 层被拒（SSRF 纵深防御）。"""
+    for bad in ("https://10.0.0.1/a/b", "https://127.0.0.1/a/b",
+                "https://169.254.169.254/a/b", "https://[::1]/a/b"):
+        with pytest.raises(ValidationError):
+            ProjectCreate(name="a/b", url=bad)
 
 
 def test_project_create_name_too_long():

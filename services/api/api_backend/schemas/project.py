@@ -1,6 +1,7 @@
 """
 Pydantic schemas —— 项目相关请求/响应
 """
+import ipaddress
 from datetime import datetime
 from typing import Literal, Optional
 from urllib.parse import urlparse
@@ -8,13 +9,19 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from repopilot_shared.schemas.project import ImportRepoItem  # noqa: F401
+from repopilot_shared.security.url_safety import is_blocked_ip
 
 ProjectProgress = Literal["none", "learning", "learned", "mastered"]
 ProjectSource = Literal["github", "manual"]
 
 
 def _validate_http_url(v: str) -> str:
-    """项目 URL：仅 http(s)，拒绝空 host / 危险 scheme。"""
+    """项目 URL：仅 http(s)，拒绝空 host / 危险 scheme / 内网 IP 字面量。
+
+    仅对 IP 字面量做 SSRF 拦截（复用 canonical is_blocked_ip）；域名解析
+    后的内网地址由 clone 层 host 白名单（== github.com）兜底。不在 schema
+    层做 DNS 解析——项目 CRUD 不宜依赖网络可达性。
+    """
     raw = (v or "").strip()
     parsed = urlparse(raw)
     if parsed.scheme not in ("https", "http"):
@@ -22,6 +29,13 @@ def _validate_http_url(v: str) -> str:
     host = (parsed.hostname or "").lower()
     if not host:
         raise ValueError("URL 必须包含有效域名")
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        pass
+    else:
+        if is_blocked_ip(ip):
+            raise ValueError("不允许的内网/回环地址")
     return raw
 
 
@@ -46,7 +60,7 @@ class ProjectCreate(BaseModel):
         if self.source == "github":
             parsed = urlparse(self.url)
             host = (parsed.hostname or "").lower()
-            if parsed.scheme != "https" or not host.endswith("github.com"):
+            if parsed.scheme != "https" or host != "github.com":
                 raise ValueError("source=github 时 URL 必须是 https://github.com/...")
         return self
 

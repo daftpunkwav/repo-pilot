@@ -17,6 +17,6 @@ class ImportRepoItem(BaseModel):
         if parsed.scheme != "https":
             raise ValueError("仅支持 https 协议")
         host = (parsed.hostname or "").lower()
-        if not host or not host.endswith("github.com"):
+        if not host or host != "github.com":
             raise ValueError("仅支持 github.com 域名")
         return v
