@@ -25,7 +25,7 @@ Voyager/
 
 > **实现状态速览（截至 2026-08-12）：**
 > - `apps/web`、`services/api` 已实现核心页面与端点；Agent 权威代码在 `services/agent/agent_core/`（默认与 API 同进程，可经 `AGENT_BASE_URL` 独立部署）。开发环境（`.env.development`）默认 `VITE_USE_MOCK=false` 走真实后端；未设置时客户端默认 Mock。
-> - 图谱引擎在 `services/graph_engine/`：`graph_engine_core`（C sidecar `rp-graph-engine`）+ `graph_engine_runtime`（Python 回退 `rp_graph`）+ `layout`（可选 native 布局）。
+> - 图谱引擎在 `services/graph_engine/`：`graph_engine_core`（C sidecar `graph-engine`）+ `graph_engine_runtime`（Python 回退 `graph_fallback`）+ `layout`（可选 native 布局）。
 > - `packages/types` 已由 OpenAPI 生成契约并被 `apps/web` 使用（`types`）；`contracts/` 含 openapi.json；`ui` / `prompts` / `py-shared` / `config` 仍为占位。
 > - `services/mcp`、`apps/desktop` 仍为占位或规划。
 
@@ -34,7 +34,7 @@ Voyager/
 - API：`services/api` — FastAPI + SQLAlchemy 2.0 + SQLite + LiteLLM Multi-Agent
 - Web：`apps/web` — React 19 + TypeScript + Vite 7 + Zustand + React Query
 - Agent：**7 个 Agent**：Hub 统筹调度 + Scout/Mentor/Navigator/Curator/Scribe/Atlas（BYOK）；权威实现在 `services/agent/agent_core/`（api 直接 import），默认与 API 同进程
-- 图谱：`services/graph_engine` — C sidecar（`graph_engine_core` / `rp-graph-engine`）+ Python 回退（`graph_engine_runtime` / `rp_graph`）
+- 图谱：`services/graph_engine` — C sidecar（`graph_engine_core` / `graph-engine`）+ Python 回退（`graph_engine_runtime` / `graph_fallback`）
 - 桌面：`apps/desktop` — pywebview（规划中，尚未实现）
 
 ### 启用真实后端（关闭 Mock）
@@ -88,7 +88,7 @@ npm run dev:web
 .\scripts\dev.ps1 -All     # 四进程：+ 独立 Agent（:19877）+ 图谱 sidecar（:9750）
 ```
 
-`-All` 自动为 API 注入 `AGENT_BASE_URL` / `AGENT_INTERNAL_TOKEN` / `RP_GRAPH_ENGINE_URL`，使对话走独立 Agent 进程、图谱走独立引擎进程。图谱档位见 `scripts/start-graph-engine.ps1`（C 引擎 `rp-graph-engine.exe` 优先，未构建时回退 Python `rp_graph`）。
+`-All` 自动为 API 注入 `AGENT_BASE_URL` / `AGENT_INTERNAL_TOKEN` / `GRAPH_ENGINE_URL`，使对话走独立 Agent 进程、图谱走独立引擎进程。图谱档位见 `scripts/start-graph-engine.ps1`（C 引擎 `graph-engine.exe` 优先，未构建时回退 Python `graph_fallback`）。
 
 ## 端口与环境变量
 
@@ -97,9 +97,9 @@ npm run dev:web
 | Web（Vite dev） | 5173 | 127.0.0.1 | `VITE_PORT` |
 | API（uvicorn） | 19878 | 127.0.0.1（显式） | `API_PORT` |
 | Agent Runtime（uvicorn） | 19877 | 127.0.0.1（显式） | `AGENT_PORT` |
-| 图谱引擎 sidecar | 9750 | 127.0.0.1 | `RP_GRAPH_ENGINE_PORT` |
+| 图谱引擎 sidecar | 9750 | 127.0.0.1 | `GRAPH_ENGINE_PORT` |
 
-**进程拓扑**：默认两进程（API 进程内含 Agent 与进程内 `rp_graph`）；`npm run dev:agent` 或 `dev.ps1 -All` 拉起独立 Agent 进程（API 经 `AGENT_BASE_URL` 转发 SSE）；`dev.ps1 -All` / `-GraphEngine` 或 `scripts\start-graph-engine.ps1` 拉起图谱 sidecar（`build\c\rp-graph-engine.exe` 存在时用 C 引擎，否则回退 Python）。
+**进程拓扑**：默认两进程（API 进程内含 Agent 与进程内 `graph_fallback`）；`npm run dev:agent` 或 `dev.ps1 -All` 拉起独立 Agent 进程（API 经 `AGENT_BASE_URL` 转发 SSE）；`dev.ps1 -All` / `-GraphEngine` 或 `scripts\start-graph-engine.ps1` 拉起图谱 sidecar（`build\c\graph-engine.exe` 存在时用 C 引擎，否则回退 Python）。
 
 - **开发代理目标**：`apps/web/vite.config.ts`，默认 `http://127.0.0.1:19878`，可用 `VITE_API_TARGET` 覆盖；同时代理 `/api` 与 `/health`（后端健康检查）。
 - **Vite 端口占用**：已启用 `strictPort`，占用即报错，不会静默顺延；显式改端口请用 `VITE_PORT=xxxx npm run dev:web`。

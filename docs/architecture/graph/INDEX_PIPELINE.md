@@ -21,7 +21,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 三个已核实约束决定了方案空间：
 
 - **【引擎约束】引擎只吃本地路径**：`index_repository(repo_path=...)` 要求磁盘上的绝对路径，**不会自己 clone 远程仓库**【验证，参考项目文档】。
-- **【引擎约束】`CBM_ALLOWED_ROOT` 锁定索引目录**：引擎只索引该根目录下的路径，越界拒绝【验证】。这意味着 Voyager 的落盘目录必须落在该根下，或二者对齐。
+- **【引擎约束】`GRAPH_ALLOWED_ROOT` 锁定索引目录**：引擎只索引该根目录下的路径，越界拒绝【验证】。这意味着 Voyager 的落盘目录必须落在该根下，或二者对齐。
 - **【验证】Voyager 当前无任何本地代码落盘机制**：`import_repos`（`services/api/api_backend/services/project_service.py:179`）只拉 GitHub 元数据（语言/描述/stars）入库，从不 clone 代码；`projects` 表无本地路径字段（`models/project.py`）。
 
 因此 ①（云端→本地）**必须由 Voyager 自己解决**，引擎不代劳。
@@ -35,7 +35,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 | 沙箱类型 | 含义 | 本场景是否需要 |
 |---------|------|--------------|
 | 执行沙箱（Docker/容器/VM） | 隔离运行不可信代码 | **不需要**。索引是**静态解析**（Tree-sitter 语法解析 + 类 LSP 类型推断），不执行被索引项目的任何代码，无运行时安全风险。 |
-| 受管缓存目录 | 受配额治理、可清理、受 `CBM_ALLOWED_ROOT` 约束的本地克隆目录 | **需要**。这是落盘、增量、磁盘治理的载体。 |
+| 受管缓存目录 | 受配额治理、可清理、受 `GRAPH_ALLOWED_ROOT` 约束的本地克隆目录 | **需要**。这是落盘、增量、磁盘治理的载体。 |
 
 **结论：不需要容器级执行沙箱，需要一个"受管克隆缓存"目录。** 这比真沙箱快得多（省去容器启停与镜像），且索引只读不执行，安全模型简单。
 
@@ -50,7 +50,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 
 - **优点**：无 git 二进制依赖；不占 `.git` 磁盘。
 - **致命问题**：
-  - 引擎要的是**真实目录树**，仍需落盘到 `CBM_ALLOWED_ROOT` 下——本质没绕开落盘。
+  - 引擎要的是**真实目录树**，仍需落盘到 `GRAPH_ALLOWED_ROOT` 下——本质没绕开落盘。
   - 子模块（submodule）、二进制资源、Git LFS、大文件无解。
   - 匿名限流 60 req/h、认证 5000 req/h；多文件仓库逐个拉 `contents` 极慢且易触限。
   - 失去 `git log` / commit / branch 信息（引擎 schema 有 `Branch`/`HAS_BRANCH` 边，见下）。
@@ -111,7 +111,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 
 | 维度 | 方向 |
 |------|------|
-| 目录 | `data/repo-cache/<repo-owner>-<repo-name>-<sha7>/`；落在 `CBM_ALLOWED_ROOT` 下 |
+| 目录 | `data/repo-cache/<repo-owner>-<repo-name>-<sha7>/`；落在 `GRAPH_ALLOWED_ROOT` 下 |
 | 配额 | 缓存总上限（如 2 GB）+ 单仓上限（如 500 MB）；超限拒绝新克隆并提示 |
 | 清理 | LRU 清理：删除项目时清理其缓存；后台清理超期未访问 |
 | 隔离 | 纯本地单机，单用户独占本机，无需跨用户隔离；URL 经现有 `github.com` 校验（`schemas/project.py:49-50`） |
@@ -166,7 +166,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 |----|------|------|
 | URL 来源 | 仅 `github.com`（schema 强制） | ✅ 已有 `schemas/project.py:49-50` |
 | 私仓凭据 | GitHub token，Fernet 加密存储 | ✅ 已有 `core/security.py:99`、`github_client.py:33` |
-| 索引根目录 | 落盘目录必须在 `CBM_ALLOWED_ROOT` 下 | ⚠️ 需对齐 Voyager 缓存目录与引擎根配置 |
+| 索引根目录 | 落盘目录必须在 `GRAPH_ALLOWED_ROOT` 下 | ⚠️ 需对齐 Voyager 缓存目录与引擎根配置 |
 | 路径穿越 | clone 目标路径由 Voyager 计算（`<owner>-<repo>-<sha>`），不接受用户任意路径 | ⚠️ 新增，禁止用户传本地路径参数（本期） |
 | 不可信代码执行 | 索引只静态解析，不执行项目代码 | ✅ 引擎特性 |
 | 磁盘耗尽 | 配额 + LRU 清理 | ⚠️ 新增 |
@@ -205,7 +205,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 
 - 缓存配额具体阈值、LRU 触发条件。
 - 引擎 UI HTTP 9749 的多项目隔离方式（单机多项目如何区分索引实例）。
-- `CBM_ALLOWED_ROOT` 与 Voyager `data/repo-cache/` 的对齐策略（统一根 vs 子目录）。
+- `GRAPH_ALLOWED_ROOT` 与 Voyager `data/repo-cache/` 的对齐策略（统一根 vs 子目录）。
 - 引擎版本锁定与升级 checklist（直读 SQLite 降级路径依赖版本）。
 - Windows 长路径、符号链接实测结论（Phase 1）。
 - 增量更新的 diff 策略（全量重建 vs 引擎 watcher 增量）。

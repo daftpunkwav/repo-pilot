@@ -40,7 +40,7 @@ flowchart TB
     WEB -->|SSE| AGENT
     DESK --> WEB
     API -->|可选转发| AGENT
-    API -->|"RP_GRAPH_*"| GRAPH
+    API -->|"GRAPH_*"| GRAPH
     AGENT -->|读上下文| API
     EXT -->|MCP| MCP
     MCP --> API

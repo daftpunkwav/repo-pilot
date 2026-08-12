@@ -324,7 +324,7 @@ def parse_github_owner_repo(url: str) -> tuple[str, str]:
 
 def engine_project_name(owner: str, repo: str) -> str:
     safe = re.sub(r"[^A-Za-z0-9._-]+", "-", f"{owner}-{repo}").strip("-")
-    return f"rp-{safe}"[:200]
+    return f"graph-{safe}"[:200]
 
 
 def _allowed_root() -> Path:

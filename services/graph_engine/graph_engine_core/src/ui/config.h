@@ -10,7 +10,7 @@
 #include <stdbool.h>
 
 /* Default values */
-/* Voyager 默认 sidecar 端口（与 RP_GRAPH_ENGINE_URL 对齐） */
+/* 默认 sidecar 端口（API 侧经 GRAPH_ENGINE_URL 对接） */
 #define ENGINE_UI_DEFAULT_PORT 9750
 #define ENGINE_UI_DEFAULT_ENABLED false
 

@@ -89,7 +89,7 @@ HTTP 列为典型状态；SSE 流内错误固定走 `event: error`，HTTP 仍为
 |----|------|--------|------|---------|
 | `GRAPH_MODULE_DOWN` | 503 | warning | 图谱模块未就绪 | graph 域加载失败；不影响项目/笔记 |
 | `GRAPH_L1_MODULE_DOWN` | 503 | error | 图谱 L1 模块未就绪 | L1（索引/引擎）路由加载失败；查 `/health` 与 `graph_l1` |
-| `GRAPH_ENGINE_UNAVAILABLE` | 503 | error | 图谱引擎不可用 | 进程内 `rp_graph` 异常，或 sidecar `RP_GRAPH_ENGINE_URL` 不可达；查引擎进程与 `RP_GRAPH_ALLOWED_ROOT` |
+| `GRAPH_ENGINE_UNAVAILABLE` | 503 | error | 图谱引擎不可用 | 进程内 `graph_fallback` 异常，或 sidecar `GRAPH_ENGINE_URL` 不可达；查引擎进程与 `GRAPH_ALLOWED_ROOT` |
 | `GRAPH_NOT_INDEXED` | 409 | info | 项目尚未索引 | 先触发索引；见 `docs/architecture/graph/` |
 | `GRAPH_INDEX_FAILED` | 500 | error | 图谱索引失败 | 索引管线异常；查索引日志 |
 | `GRAPH_QUERY_FAILED` | 500 | error | 图谱查询失败 | 相似度/邻居查询异常 |

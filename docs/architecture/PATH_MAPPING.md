@@ -45,11 +45,11 @@ Voyager/
 | `backend/agents/hub.py` 等 | `services/agent/agent_core/agents/{hub,react,registry,intent,question,stream_events,...}.py` | 权威实现（2026-08-03 迁入；2026-08-12 移除 `api_backend` 兼容 shim，直接 import） |
 | `pyproject.toml`（根） | 根 + `services/api/pyproject.toml` | 根为 workspace；API 依赖在 `services/api/` |
 | `data/*.db` | `data/*.db`（仓库根） | 路径未变 |
-| 外挂 `codebase-memory-mcp` / 全局 CBM | `services/graph_engine/graph_engine_core/` | 源码已迁入；对外二进制 `rp-graph-engine`；内部符号可仍为 `cbm_*` |
+| 外挂 `codebase-memory-mcp` / 全局 CBM | `services/graph_engine/graph_engine_core/` | 源码已迁入；对外二进制 `graph-engine`；内部符号为 `engine_*` |
 | `services/graph_engine/c/` | `services/graph_engine/graph_engine_core/` | 2026-08-12 按 agent 的 `_core` 命名对齐 |
-| `services/graph_engine/python/` | `services/graph_engine/graph_engine_runtime/` | 同上，`_runtime`；import 仍为 `rp_graph` |
+| `services/graph_engine/python/` | `services/graph_engine/graph_engine_runtime/` | 同上，`_runtime`；import 仍为 `graph_fallback` |
 | `services/graph_engine/native/` | `services/graph_engine/layout/` | 布局加速 native 库 |
-| `~/.cache/codebase-memory-mcp/` | `data/graph-engine-cache` 或 `RP_GRAPH_CACHE_DIR` / `CBM_CACHE_DIR` | API sidecar 写入 C 引擎的图谱 SQLite 根 |
+| `~/.cache/codebase-memory-mcp/` | `data/graph-engine-cache` 或 `GRAPH_CACHE_DIR` / `GRAPH_CACHE_DIR` | API sidecar 写入 C 引擎的图谱 SQLite 根 |
 
 ---
 
@@ -74,7 +74,7 @@ Voyager/
 | Web | `apps/web` | 5173 |
 | API | `services/api` | **19878**（开发；Vite 代理目标。历史文档常写 19876） |
 | Agent | `services/agent` | 19877（`npm run dev:agent`；独立进程可选，API 设 `AGENT_BASE_URL` 后 SSE 代理） |
-| Graph Engine | `services/graph_engine` | **9750**（C sidecar `rp-graph-engine`；`RP_GRAPH_ENGINE_URL`） |
+| Graph Engine | `services/graph_engine` | **9750**（C sidecar `graph-engine`；`GRAPH_ENGINE_URL`） |
 | MCP | `services/mcp` | stdio / HTTP（规划） |
 
 ---
@@ -89,4 +89,4 @@ Voyager/
 | `uvicorn backend.main:app ...` | `npm run dev:api`（`:19878`）或 `uvicorn ... --port 19878 --app-dir services/api` |
 | `pytest backend/` | `pytest services/api/api_backend/` |
 | `ruff check backend/` | `ruff check services/api/api_backend/` |
-| 外挂 / 全局 `codebase-memory-mcp` | `.\services\graph_engine\graph_engine_core\scripts\build.ps1`；`RP_GRAPH_ENGINE_URL=http://127.0.0.1:9750` |
+| 外挂 / 全局 `codebase-memory-mcp` | `.\services\graph_engine\graph_engine_core\scripts\build.ps1`；`GRAPH_ENGINE_URL=http://127.0.0.1:9750` |

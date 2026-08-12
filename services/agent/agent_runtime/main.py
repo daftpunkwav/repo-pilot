@@ -34,6 +34,9 @@ app = FastAPI(title="Voyager Agent Runtime", version="0.3.0")
 # 密文可被公开密钥解密；删除后由调用方（scripts/dev.ps1 已自动生成）显式配置。
 from api_backend.config import get_settings  # noqa: E402
 
+# 产品名收敛到 app_name 配置（与 api_backend.main 一致），避免硬编码品牌名
+app.title = get_settings().app_name + " Agent Runtime"
+
 _agent_secret = (get_settings().secret_key or "").encode("utf-8")
 if len(_agent_secret) < 32:
     raise ValueError("SECRET_KEY 长度必须至少为 32 字节，请设置足够强度的随机密钥")

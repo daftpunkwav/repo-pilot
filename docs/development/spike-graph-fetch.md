@@ -39,7 +39,7 @@
 1. **主通路**：UI HTTP `/api/layout`，按 `max_nodes` 预算分页/分批（默认 5000）。
 2. **Agent**：走 MCP `/rpc`，不把 MCP 当 bulk 取数层。
 3. **SQLite**：禁止作为默认读路径；仅在 HTTP/MCP 不可用时降级，且接受 schema 漂移风险。
-4. **根目录**：`CBM_ALLOWED_ROOT` 指向仓库 `data/`。
+4. **根目录**：`GRAPH_ALLOWED_ROOT` 指向仓库 `data/`。
 5. **缓存**：本地图/克隆缓存落在 `data/repo-cache/`。
 
 ## 非目标

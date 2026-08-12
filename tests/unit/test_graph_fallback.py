@@ -20,16 +20,16 @@ def test_index_and_search_python_repo():
             encoding="utf-8",
         )
         eng = GraphEngine(data_root=root / "data")
-        out = eng.index_repository(str(root), mode="fast", name="rp-test", persistence=True)
+        out = eng.index_repository(str(root), mode="fast", name="graph-test", persistence=True)
         assert out["node_count"] > 0
-        schema = eng.get_graph_schema("rp-test")
+        schema = eng.get_graph_schema("graph-test")
         assert schema["node_labels"]
-        hits = eng.search_graph("rp-test", query="hello", limit=20)
+        hits = eng.search_graph("graph-test", query="hello", limit=20)
         assert hits["results"]
         assert hits["has_more"] is False or isinstance(hits["has_more"], bool)
-        layout = eng.fetch_layout("rp-test", max_nodes=100)
+        layout = eng.fetch_layout("graph-test", max_nodes=100)
         assert layout["nodes"]
-        arch = eng.get_architecture("rp-test")
+        arch = eng.get_architecture("graph-test")
         assert "packages" in arch
-        db = root / "data" / "graph-db" / "rp-test.db"
+        db = root / "data" / "graph-db" / "graph-test.db"
         assert db.exists()

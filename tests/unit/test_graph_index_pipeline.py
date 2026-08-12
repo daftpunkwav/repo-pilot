@@ -28,8 +28,9 @@ def test_parse_github_owner_repo():
 
 def test_engine_project_name():
     name = engine_project_name("Foo Org", "my repo!")
-    assert name.startswith("rp-")
+    assert name.startswith("graph-")
     assert " " not in name
+    assert "rp-" not in name
 
 
 def test_adapt_layout_maps_nodes_and_edges():
@@ -223,18 +224,22 @@ def test_git_shallow_clone_rejects_ssrf(tmp_path: Path, url: str):
 
 def test_allowed_root_reads_graph_allowed_root(monkeypatch):
     """改名回归：_allowed_root 必须读取 settings.graph_allowed_root。
-    修复前曾误读 graph_fallback_allowed_root（不存在）导致 Path(None) 崩溃。"""
+    修复前曾误读 graph_fallback_allowed_root（不存在）导致 Path(None) 崩溃。
+    用 monkeypatch 直接设置模块内 _global，测试后自动恢复原 context。"""
     from dataclasses import dataclass
-    from graph_engine_runtime.context import set_runtime_context, GraphRuntimeContext
+    import graph_engine_runtime.context as ctx_mod
+    from graph_engine_runtime.context import GraphRuntimeContext
 
     @dataclass
     class _FakeSettings:
         graph_allowed_root: str = "/fake/data"
 
-    set_runtime_context(
+    monkeypatch.setattr(
+        ctx_mod,
+        "_global",
         GraphRuntimeContext(
             settings=_FakeSettings(),
             repo_root=Path("/fake/repo"),
-        )
+        ),
     )
     assert _allowed_root() == Path("/fake/data")

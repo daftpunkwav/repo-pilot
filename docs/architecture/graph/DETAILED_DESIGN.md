@@ -42,7 +42,7 @@
 | 约束 | 来源 | 影响 |
 |------|------|------|
 | 引擎只索引本地路径 | 参考项目文档 | Voyager 必须自己 clone |
-| `CBM_ALLOWED_ROOT` 锁定索引根 | 参考项目文档 | 缓存目录须落在该根下 |
+| `GRAPH_ALLOWED_ROOT` 锁定索引根 | 参考项目文档 | 缓存目录须落在该根下 |
 | 引擎为 MCP stdio 服务 | 参考项目文档 | 集成走 MCP client/子进程 |
 | Voyager 当前无落盘/无任务基建 | `project_service.py:179`、无 celery/APScheduler | 需新建流水线与异步任务 |
 | 现有 L0 契约不可破坏 | `api/graph.py`、`types.ts:98` | L0 端点扩展不破坏 |
@@ -389,7 +389,7 @@ CodeGraphPage
 |----|------|------|
 | URL 来源 | 仅 github.com | ✅ `schemas/project.py:49` |
 | 私仓凭据 | token + Fernet | ✅ `core/security.py:99` |
-| 索引根 | 缓存目录落 `CBM_ALLOWED_ROOT` 下 | ⚠️ 新增对齐配置 |
+| 索引根 | 缓存目录落 `GRAPH_ALLOWED_ROOT` 下 | ⚠️ 新增对齐配置 |
 | 路径穿越 | 路径由 Voyager 计算，拒用户传参 | ⚠️ 新增 |
 | 不可信执行 | 索引只静态解析 | ✅ 引擎特性 |
 | 磁盘耗尽 | 配额 + LRU | ⚠️ 新增【SPEC 阈值】 |
@@ -450,7 +450,7 @@ CodeGraphPage
 ## 15. 开放问题
 
 1. 引擎 UI HTTP 9749 的多项目隔离方式（单机多项目区分索引实例）【SPEC】。
-2. `CBM_ALLOWED_ROOT` 与 `data/repo-cache/` 对齐策略【SPEC】。
+2. `GRAPH_ALLOWED_ROOT` 与 `data/repo-cache/` 对齐策略【SPEC】。
 3. 缓存配额阈值与 LRU 触发条件【SPEC】。
 4. 引擎版本锁定与升级 checklist（直读 SQLite 降级路径依赖版本）【SPEC】。
 5. 增量更新策略：全量重建 vs 引擎 watcher 增量【Phase 1 定】。

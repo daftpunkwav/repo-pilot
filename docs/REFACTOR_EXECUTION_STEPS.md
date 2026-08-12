@@ -1,5 +1,7 @@
 # Voyager 架构重构:详细执行步骤
 
+> ⚠️ **历史执行记录（2026-08 重构期）**:文中的 `Makefile.rp`、`rp_graph`、`rp_graph_client`、`cbm-with-ui` 等命名是执行时的旧名,已于 2026-08-13 品牌改名中中性化(现为 `Makefile`、`graph_fallback`、`graph_engine_runtime/client.py` 等)。本文档保留作过程存档,请勿照抄其中的命令/模块名——以当前代码为准。
+
 > **文档目的**:任何 AI agent(包括两年前的模型)只看本文档就能精确完成每个改动,无需猜测。
 > **前置阅读**:`docs/review/ARCHITECTURE_REFACTOR_REPORT/ARCHITECTURE_REFACTOR_REPORT.md`(背景与目标架构)
 > **验证基线**:每步完成后必须跑 `pytest tests/unit -q`(预期 171 passed, 1 failed 基线 `test_run_llm_error_yields_error_sse` 与本次无关)

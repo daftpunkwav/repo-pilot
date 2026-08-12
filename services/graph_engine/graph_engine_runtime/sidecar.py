@@ -33,8 +33,6 @@ def _default_bin_candidates() -> list[Path]:
     names = (
         "graph-engine.exe",
         "graph-engine",
-        "codebase-memory-mcp.exe",
-        "codebase-memory-mcp",
     )
     return [base / n for n in names]
 

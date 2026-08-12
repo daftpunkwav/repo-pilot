@@ -7,7 +7,7 @@
 
 - 许可证全文见 [`services/graph_engine/graph_engine_core/LICENSE`](services/graph_engine/graph_engine_core/LICENSE)
 - 归属说明见 [`services/graph_engine/graph_engine_core/NOTICE`](services/graph_engine/graph_engine_core/NOTICE)
-- 对外产物名：`rp-graph-engine`（内部符号可仍含 `cbm_*`）
+- 对外产物名：`graph-engine`（内部符号已中性化为 `engine_*`）
 - Voyager 通过本机 HTTP sidecar（默认 `127.0.0.1:9750`）调用；**不**依赖外部全局安装的 CBM
 
 ## Python 回退引擎
