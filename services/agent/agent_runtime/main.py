@@ -39,14 +39,15 @@ if len(_agent_secret) < 32:
     raise ValueError("SECRET_KEY 长度必须至少为 32 字节，请设置足够强度的随机密钥")
 
 # 注入 agent_core 业务服务契约（Embedded Adapter 由 api_backend 提供）
+from agent_core import services as _agent_services  # noqa: E402
 from api_backend.services.agent_services_bridge import build_agent_services  # noqa: E402
 
-from agent_runtime.runtime import EmbeddedAgentRuntime  # noqa: E402
-
-_ = EmbeddedAgentRuntime(services=build_agent_services())
+_agent_services.register_agent_services(build_agent_services())
 
 
 def _require_internal_token(token: str | None) -> None:
+    import hmac
+
     from api_backend.config import get_settings
 
     expected = (get_settings().agent_internal_token or "").strip()
@@ -55,7 +56,7 @@ def _require_internal_token(token: str | None) -> None:
             status.HTTP_503_SERVICE_UNAVAILABLE,
             detail={"code": "AGENT_TOKEN_UNSET", "message": "未配置 agent_internal_token"},
         )
-    if not token or token.strip() != expected:
+    if not token or not hmac.compare_digest(token.strip(), expected):
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             detail={"code": "AGENT_UNAUTHORIZED", "message": "无效内部令牌"},

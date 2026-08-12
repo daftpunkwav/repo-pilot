@@ -24,11 +24,19 @@ class _AppStateService:
 
 
 class _ProfileService:
-    def __init__(self, get_or_create_profile, profile_to_out, get_user_profile, select_learner_info):
+    def __init__(
+        self,
+        get_or_create_profile,
+        profile_to_out,
+        get_user_profile,
+        select_learner_info,
+        learner_info_fields,
+    ):
         self._get_or_create_profile = get_or_create_profile
         self._profile_to_out = profile_to_out
         self._get_user_profile = get_user_profile
         self._select_learner_info = select_learner_info
+        self.LEARNER_INFO_FIELDS = learner_info_fields
 
     async def get_or_create_profile(self, db: Any) -> Any:
         return await self._get_or_create_profile(db)
@@ -105,6 +113,7 @@ def build_agent_services() -> AgentServices:
         record_parsed_usage_fire_and_forget,
     )
     from api_backend.services.profile_service import (
+        LEARNER_INFO_FIELDS,
         get_or_create_profile,
         get_user_profile,
         profile_to_out,
@@ -115,7 +124,11 @@ def build_agent_services() -> AgentServices:
     svc = AgentServices()
     svc.app_state = _AppStateService(get_or_create_app_state, ensure_singleton_rows)
     svc.profile = _ProfileService(
-        get_or_create_profile, profile_to_out, get_user_profile, select_learner_info
+        get_or_create_profile,
+        profile_to_out,
+        get_user_profile,
+        select_learner_info,
+        LEARNER_INFO_FIELDS,
     )
     svc.settings = _SettingsService(ensure_providers)
     svc.github = _GitHubService(fetch_repo_info, fetch_readme_text)

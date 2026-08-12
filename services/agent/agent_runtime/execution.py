@@ -32,12 +32,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
-async def _append_message(*args: Any, **kwargs: Any) -> Any:
-    """经 api_backend.services.agent_service 调 append_message（保持可被测试 patch）。"""
-    from api_backend.services import agent_service as _agent_service_api
-    return await _agent_service_api.append_message(*args, **kwargs)
-
-
 ensure_tools_loaded()
 
 # 会话级流控：同 session 新流会 set 旧 Event，旧流停止 yield 与最终落库
@@ -233,9 +227,7 @@ def message_to_out(msg: AgentMessage) -> AgentMessageOut:
 
 async def list_sessions(db: AsyncSession) -> list[AgentSessionOut]:
     result = await db.execute(
-        select(AgentSession)
-        
-        .order_by(AgentSession.updated_at.desc())
+        select(AgentSession).order_by(AgentSession.updated_at.desc())
     )
     sessions = list(result.scalars().all())
     return [await session_to_out(db, s) for s in sessions]
@@ -528,7 +520,7 @@ class _AgentSegmentBuffer:
             meta["subagents"] = subs
         if self.usage:
             meta.setdefault("usage", self.usage)
-        await _append_message(
+        await append_message(
             db,
             session,
             role="assistant",
@@ -628,7 +620,6 @@ async def _apply_persistence_side_effects(
             buf.usage = data.get("usage") or {}
         elif event_kind == "question" and handle_question:
             session.status = "pending_question"
-            saw_question = True
             await buf.flush(db, session)
             intro = data.get("intro") or {}
             title = (
@@ -637,7 +628,7 @@ async def _apply_persistence_side_effects(
                 else None
             ) or data.get("title") or "结构化反问"
             title_plain = str(title).replace("**", "").strip() or "结构化反问"
-            await _append_message(
+            await append_message(
                 db,
                 session,
                 role="assistant",
@@ -646,8 +637,11 @@ async def _apply_persistence_side_effects(
                 content_type="question",
                 metadata=data,
             )
+            # 落库成功后才标记 saw_question，避免调用方据半态跳过最终 flush 丢消息
+            saw_question = True
     except Exception:
-        pass
+        # 落库副作用失败不应静默：记日志暴露 DB 锁/事务错误，流继续但用户可查日志定位
+        logger.exception("Agent 流事件落库副作用失败 event_kind=%s", event_kind)
     return saw_question
 
 
@@ -712,7 +706,7 @@ async def stream_chat(
             )
             return
 
-    await _append_message(db, session, role="user", content=message, agent_id="hub")
+    await append_message(db, session, role="user", content=message, agent_id="hub")
 
     cancel_ev = _begin_session_stream(session_id)
     # 跨 worker token：把本次流的标识写到 agent_session_cancel_tokens 表，
@@ -848,7 +842,7 @@ async def stream_question_answer(
         summary = f"已回答 {len(details)} 题"
 
     answer_text = "[跳过反问]" if skipped else f"[反问回答] {summary}"
-    await _append_message(
+    await append_message(
         db,
         session,
         role="user",
@@ -1003,7 +997,7 @@ async def stream_analyze(
             f"学习进度: {project.progress}\n"
             "请用中文简洁输出，可用 Markdown。禁止任何 emoji。"
         )
-        await _append_message(db, session, role="user", content=prompt, agent_id="hub")
+        await append_message(db, session, role="user", content=prompt, agent_id="hub")
 
         # agent_switch 由 handle_direct_agent 统一发送，避免重复
         yield encode_stream_item(format_sse(
@@ -1032,7 +1026,7 @@ async def stream_analyze(
 
         reply = "".join(collected)
         if reply:
-            await _append_message(db, session, role="assistant", content=reply, agent_id=resolved)
+            await append_message(db, session, role="assistant", content=reply, agent_id=resolved)
     except asyncio.CancelledError:
         raise
     except Exception as e:
@@ -1429,42 +1423,68 @@ async def stream_graph_guide(
         yield encode_stream_item(format_sse("done", {"usage": {"tokens": len(text)}, "iterations": 0}))
 
 
-async def stream_trending_scout(
+async def _run_direct_agent_stream(
     db: AsyncSession,
-    params: dict[str, Any],
+    *,
+    session_id: UUID,
+    agent_id: str,
+    prompt: str,
+    project_id: UUID | None = None,
+    error_code: str,
+    error_prefix: str,
 ) -> AsyncIterator[str]:
-    try:
-        session = AgentSession(
-                        title="Trending Scout",
-            active_agent="scout",
-        )
-        db.add(session)
-        await db.commit()
-        await db.refresh(session)
+    """统一"直接 agent 流"执行：Hub 单 agent 直答 + 异常转 error SSE。
 
-        name = params.get("full_name") or params.get("name") or "unknown"
-        prompt = (
-            f"用 Scout 风格快速介绍 trending 仓库 {name}。\n"
-            f"描述: {params.get('description') or '无'}\n"
-            f"语言: {params.get('language') or '未知'} Stars: {params.get('stars') or 0}\n"
-            f"URL: {params.get('url') or ''}\n"
-            "说明是否值得加入用户学习库。"
-        )
+    stream_trending_scout / stream_classify_project / stream_generate_note 共用。
+    """
+    try:
         hub = HubService(db)
         async for chunk in hub.handle_direct_agent(
-                        session_id=session.id,
-            agent_id="scout",
+            session_id=session_id,
+            agent_id=agent_id,
             message=prompt,
+            project_id=project_id,
         ):
             yield encode_stream_item(chunk)
     except asyncio.CancelledError:
         raise
     except Exception as e:
-        logger.exception("stream_trending_scout 失败: %s", e)
+        logger.exception("%s 失败: %s", error_prefix, e)
         yield encode_stream_item(format_sse(
             "error",
-            {"code": "AGENT_TRENDING_FAILED", "message": f"趋势扫描失败: {e}"},
+            {"code": error_code, "message": f"{error_prefix}失败: {e}"},
         ))
+
+
+async def stream_trending_scout(
+    db: AsyncSession,
+    params: dict[str, Any],
+) -> AsyncIterator[str]:
+    session = AgentSession(
+        title="Trending Scout",
+        active_agent="scout",
+    )
+    db.add(session)
+    await db.commit()
+    await db.refresh(session)
+
+    name = params.get("full_name") or params.get("name") or "unknown"
+    prompt = (
+        f"用 Scout 风格快速介绍 trending 仓库 {name}。\n"
+        f"描述: {params.get('description') or '无'}\n"
+        f"语言: {params.get('language') or '未知'} Stars: {params.get('stars') or 0}\n"
+        f"URL: {params.get('url') or ''}\n"
+        "说明是否值得加入用户学习库。"
+    )
+    async for chunk in _run_direct_agent_stream(
+        db,
+        session_id=session.id,
+        agent_id="scout",
+        prompt=prompt,
+        error_code="AGENT_TRENDING_FAILED",
+        error_prefix="趋势扫描",
+    ):
+        yield chunk
 
 
 async def stream_classify_project(
@@ -1474,42 +1494,35 @@ async def stream_classify_project(
     user_hint: str | None = None,
 ) -> AsyncIterator[str]:
     """Curator 分类落库入口（prompt 留在 service，路由不拼字符串）。"""
-    try:
-        project = await get_project(db, project_id)
-        if not project:
-            yield encode_stream_item(format_sse(
-                "error",
-                {"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
-            ))
-            return
-
-        session = await create_session(db, project_id=project_id, title=f"分类 {project.name}"
-        )
-        hint = user_hint or ""
-        prompt = (
-            f"请为项目 {project.name} ({project.url}) 完成分类并落库。"
-            f"描述: {project.description or ''} 语言: {project.language or ''}。"
-            f"用户提示: {hint}。"
-            f"project_id={project_id}。"
-            "必须调用 set_project_category（必要时 set_project_tags）真正写入，"
-            "不要只 suggest；最后用一两句话说明结果与分类名。"
-        )
-        hub = HubService(db)
-        async for chunk in hub.handle_direct_agent(
-                        session_id=session.id,
-            agent_id="curator",
-            message=prompt,
-            project_id=project_id,
-        ):
-            yield encode_stream_item(chunk)
-    except asyncio.CancelledError:
-        raise
-    except Exception as e:
-        logger.exception("stream_classify_project 失败: %s", e)
+    project = await get_project(db, project_id)
+    if not project:
         yield encode_stream_item(format_sse(
             "error",
-            {"code": "AGENT_CLASSIFY_FAILED", "message": f"分类失败: {e}"},
+            {"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
         ))
+        return
+
+    session = await create_session(db, project_id=project_id, title=f"分类 {project.name}"
+    )
+    hint = user_hint or ""
+    prompt = (
+        f"请为项目 {project.name} ({project.url}) 完成分类并落库。"
+        f"描述: {project.description or ''} 语言: {project.language or ''}。"
+        f"用户提示: {hint}。"
+        f"project_id={project_id}。"
+        "必须调用 set_project_category（必要时 set_project_tags）真正写入，"
+        "不要只 suggest；最后用一两句话说明结果与分类名。"
+    )
+    async for chunk in _run_direct_agent_stream(
+        db,
+        session_id=session.id,
+        agent_id="curator",
+        prompt=prompt,
+        project_id=project_id,
+        error_code="AGENT_CLASSIFY_FAILED",
+        error_prefix="分类",
+    ):
+        yield chunk
 
 
 async def stream_generate_note(
@@ -1520,42 +1533,35 @@ async def stream_generate_note(
     topic: str | None = None,
 ) -> AsyncIterator[str]:
     """Scribe 笔记生成落库入口。"""
-    try:
-        project = await get_project(db, project_id)
-        if not project:
-            yield encode_stream_item(format_sse(
-                "error",
-                {"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
-            ))
-            return
-
-        session = await create_session(db, project_id=project_id, title=f"笔记 {project.name}"
-        )
-        mode_norm = mode if mode in ("project", "standalone") else "project"
-        topic_text = topic or project.name
-        prompt = (
-            f"请以 Scribe {mode_norm} 模式为项目 {project.name} 生成学习笔记并保存到系统。"
-            f"主题: {topic_text}。URL: {project.url}。project_id={project_id}。"
-            f"{'检索相似已学项目做对比（仅当相似度高时），compare_project_ids 传入对比项' if mode_norm == 'project' else '独立成文，不对比'}。"
-            "必须调用 create_note 写入数据库（title + 完整 Markdown content），"
-            "不要只输出草稿；落库后简述笔记标题与已保存。"
-        )
-        hub = HubService(db)
-        async for chunk in hub.handle_direct_agent(
-                        session_id=session.id,
-            agent_id="scribe",
-            message=prompt,
-            project_id=project_id,
-        ):
-            yield encode_stream_item(chunk)
-    except asyncio.CancelledError:
-        raise
-    except Exception as e:
-        logger.exception("stream_generate_note 失败: %s", e)
+    project = await get_project(db, project_id)
+    if not project:
         yield encode_stream_item(format_sse(
             "error",
-            {"code": "AGENT_NOTE_FAILED", "message": f"笔记生成失败: {e}"},
+            {"code": "PROJECT_NOT_FOUND", "message": "项目不存在"},
         ))
+        return
+
+    session = await create_session(db, project_id=project_id, title=f"笔记 {project.name}"
+    )
+    mode_norm = mode if mode in ("project", "standalone") else "project"
+    topic_text = topic or project.name
+    prompt = (
+        f"请以 Scribe {mode_norm} 模式为项目 {project.name} 生成学习笔记并保存到系统。"
+        f"主题: {topic_text}。URL: {project.url}。project_id={project_id}。"
+        f"{'检索相似已学项目做对比（仅当相似度高时），compare_project_ids 传入对比项' if mode_norm == 'project' else '独立成文，不对比'}。"
+        "必须调用 create_note 写入数据库（title + 完整 Markdown content），"
+        "不要只输出草稿；落库后简述笔记标题与已保存。"
+    )
+    async for chunk in _run_direct_agent_stream(
+        db,
+        session_id=session.id,
+        agent_id="scribe",
+        prompt=prompt,
+        project_id=project_id,
+        error_code="AGENT_NOTE_FAILED",
+        error_prefix="笔记生成",
+    ):
+        yield chunk
 async def get_context_window(
     db: AsyncSession, session_id: UUID | None
 ) -> ContextWindowStatsOut:

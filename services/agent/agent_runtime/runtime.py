@@ -1,87 +1,23 @@
 """Agent Runtime Interface + Embedded 实现。
 
 api_backend 只依赖 AgentRuntimeInterface（经 get_agent_runtime() 获取）；
-EmbeddedAgentRuntime 在启动期（api_backend.main lifespan / agent_runtime 入口）
-构造并注入 agent_core 业务服务容器，委托到 agent_runtime.execution 与 agent_core。
+EmbeddedAgentRuntime 是无状态委托对象（委托到 agent_runtime.execution 与 agent_core），
+宿主（api_backend.main lifespan / agent_runtime 入口 / 测试 conftest）在启动期
+调用 register_agent_services() 注入 agent_core 业务服务容器。
 """
 from __future__ import annotations
 
-from typing import Any, AsyncIterator, Protocol
-from uuid import UUID
-
-from agent_core import services as _agent_services
-from agent_core.services import AgentServices
-
-from agent_runtime import execution
+from typing import Any, Protocol
 
 
 class AgentRuntimeInterface(Protocol):
-    """Agent 运行层统一接口（api_backend 只依赖此接口）。"""
+    """Agent 运行层统一接口（api_backend 只依赖此接口）。
 
-    # —— SSE 执行编排 ——
-    def stream_chat(
-        self,
-        db: Any,
-        session_id: UUID,
-        message: str,
-        *,
-        project_id: UUID | None = None,
-        force_local: bool = False,
-    ) -> AsyncIterator[str]: ...
+    注：SSE 流式入口（stream_chat 等）不在此接口——api/agent.py 经
+    agent_service re-export 壳直达 execution，无需多态；此接口仅承载
+    api_backend 需要注入/委托的非流式能力。
+    """
 
-    def stream_question_answer(
-        self,
-        db: Any,
-        session_id: UUID,
-        question_id: str,
-        answers: dict[str, Any],
-        *,
-        skipped: bool = False,
-    ) -> AsyncIterator[str]: ...
-
-    def stream_analyze(
-        self,
-        db: Any,
-        project_id: UUID,
-        *,
-        depth: str = "quick",
-        agent_id: str | None = None,
-    ) -> AsyncIterator[str]: ...
-
-    def stream_import_assist(
-        self, db: Any, message: str, context: dict[str, Any]
-    ) -> AsyncIterator[str]: ...
-
-    def stream_graph_guide(
-        self,
-        db: Any,
-        message: str,
-        *,
-        selected_node_id: str | None = None,
-    ) -> AsyncIterator[str]: ...
-
-    def stream_trending_scout(
-        self, db: Any, params: dict[str, Any]
-    ) -> AsyncIterator[str]: ...
-
-    def stream_classify_project(
-        self,
-        db: Any,
-        project_id: UUID,
-        *,
-        user_hint: str | None = None,
-    ) -> AsyncIterator[str]: ...
-
-    def stream_generate_note(
-        self,
-        db: Any,
-        project_id: UUID,
-        *,
-        mode: str = "project",
-        topic: str | None = None,
-    ) -> AsyncIterator[str]: ...
-
-    # —— LLM 测试 / 画像记忆 / Agent 清单 ——
     async def test_llm(
         self,
         db: Any,
@@ -102,95 +38,8 @@ class AgentRuntimeInterface(Protocol):
 
 
 class EmbeddedAgentRuntime:
-    """Embedded 实现（默认，同进程）。构造时注入 agent_core 业务服务容器。"""
-
-    def __init__(self, services: AgentServices | None = None):
-        if services is not None:
-            _agent_services.register_agent_services(services)
-        self._services = services
-
-    # —— SSE 执行编排（透传 execution，签名一致） ——
-    def stream_chat(
-        self,
-        db: Any,
-        session_id: UUID,
-        message: str,
-        *,
-        project_id: UUID | None = None,
-        force_local: bool = False,
-    ) -> AsyncIterator[str]:
-        return execution.stream_chat(
-            db, session_id, message, project_id=project_id, force_local=force_local
-        )
-
-    def stream_question_answer(
-        self,
-        db: Any,
-        session_id: UUID,
-        question_id: str,
-        answers: dict[str, Any],
-        *,
-        skipped: bool = False,
-    ) -> AsyncIterator[str]:
-        return execution.stream_question_answer(
-            db, session_id, question_id, answers, skipped=skipped
-        )
-
-    def stream_analyze(
-        self,
-        db: Any,
-        project_id: UUID,
-        *,
-        depth: str = "quick",
-        agent_id: str | None = None,
-    ) -> AsyncIterator[str]:
-        return execution.stream_analyze(
-            db, project_id, depth=depth, agent_id=agent_id
-        )
-
-    def stream_import_assist(
-        self, db: Any, message: str, context: dict[str, Any]
-    ) -> AsyncIterator[str]:
-        return execution.stream_import_assist(db, message, context)
-
-    def stream_graph_guide(
-        self,
-        db: Any,
-        message: str,
-        *,
-        selected_node_id: str | None = None,
-    ) -> AsyncIterator[str]:
-        return execution.stream_graph_guide(
-            db, message, selected_node_id=selected_node_id
-        )
-
-    def stream_trending_scout(
-        self, db: Any, params: dict[str, Any]
-    ) -> AsyncIterator[str]:
-        return execution.stream_trending_scout(db, params)
-
-    def stream_classify_project(
-        self,
-        db: Any,
-        project_id: UUID,
-        *,
-        user_hint: str | None = None,
-    ) -> AsyncIterator[str]:
-        return execution.stream_classify_project(
-            db, project_id, user_hint=user_hint
-        )
-
-    def stream_generate_note(
-        self,
-        db: Any,
-        project_id: UUID,
-        *,
-        mode: str = "project",
-        topic: str | None = None,
-    ) -> AsyncIterator[str]:
-        return execution.stream_generate_note(
-            db, project_id, mode=mode, topic=topic
-        )
+    """Embedded 实现（默认，同进程）。无实例状态，仅委托；服务容器经
+    register_agent_services() 全局注入（agent_core.services 承载状态）。"""
 
     # —— LLM 测试 / 画像记忆 / Agent 清单 ——
     async def test_llm(
@@ -250,13 +99,13 @@ class EmbeddedAgentRuntime:
         return list(get_registry().list_all())
 
 
-# 进程内单例：api_backend.main lifespan 构造（注入 services）后全局共享。
+# 进程内单例（lazy）：无状态委托对象，构造即返回。
 _agent_runtime: EmbeddedAgentRuntime | None = None
 
 
 def get_agent_runtime() -> AgentRuntimeInterface:
-    """返回已注入的运行时；未初始化则懒构造（不注入 services，供转发调用）。"""
+    """返回运行时委托对象（无状态；服务容器由 register_agent_services 注入）。"""
     global _agent_runtime
     if _agent_runtime is None:
-        _agent_runtime = EmbeddedAgentRuntime(services=None)
+        _agent_runtime = EmbeddedAgentRuntime()
     return _agent_runtime

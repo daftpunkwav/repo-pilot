@@ -335,9 +335,18 @@ def _allowed_root() -> Path:
 
 
 def cache_dir_for(owner: str, repo: str, sha7: str = "head") -> Path:
+    """构造 repo-cache 下的缓存目录（owner/repo 先 sanitize，防路径穿越）。
+
+    与 engine_project_name 同一套字符白名单：仅保留 [A-Za-z0-9._-]，
+    其余替换为 '-'，杜绝 Windows 下 '\\..' 跳出 cache_root（CWE-22）。
+    """
     root = _cache_root()
-    name = f"{owner}-{repo}-{sha7}"[:180]
-    return root / name
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "-", f"{owner}-{repo}-{sha7}").strip("-")
+    name = safe[:180] or "repo"
+    dest = root / name
+    if not _is_under_dir(dest, root):
+        raise ValueError(f"非法缓存目录: {name!r}")
+    return dest
 
 
 async def get_or_create_status(
@@ -1012,16 +1021,27 @@ async def _git_shallow_clone(
 ) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     clone_url = url
+    env: dict | None = None
     if token and "github.com" in url:
         parsed = urlparse(url)
         path = parsed.path or ""
-        clone_url = f"https://x-access-token:{token}@github.com{path}"
+        clone_url = f"https://github.com{path}"
         if not clone_url.endswith(".git"):
             clone_url += ".git"
+        # 经 credential helper + 子进程 env 注入 token，避免明文 PAT 出现在
+        # 命令行参数（Linux /proc/<pid>/cmdline 与 Windows 进程枚举均可见）。
+        env = os.environ.copy()
+        env["RP_GRAPH_GIT_TOKEN"] = token
+        helper = (
+            "!f() { echo username=x-access-token; "
+            "echo \"password=$RP_GRAPH_GIT_TOKEN\"; }; f"
+        )
 
     # 使用 -c 局部配置，避免污染用户全局 git config
     staging = dest.parent / f".clone-{uuid.uuid4().hex[:10]}"
     base = ["git", "-c", "core.longpaths=true", "-c", "core.symlinks=false"]
+    if env is not None:
+        base += ["-c", f"credential.helper={helper}"]
     attempts = [
         [
             *base,
@@ -1049,7 +1069,7 @@ async def _git_shallow_clone(
             if staging.exists():
                 await asyncio.to_thread(_safe_remove_dir, staging)
             try:
-                await _run_cmd(cmd)
+                await _run_cmd(cmd, env=env)
                 if dest.exists():
                     await asyncio.to_thread(_safe_remove_dir, dest)
                 staging.rename(dest)
@@ -1098,10 +1118,10 @@ async def _git_branch(dest: Path) -> str:
     return (out or "HEAD").strip() or "HEAD"
 
 
-def _run_cmd_sync(cmd: list[str], *, check: bool = True) -> str:
+def _run_cmd_sync(cmd: list[str], *, check: bool = True, env: dict | None = None) -> str:
     """线程内同步执行 git（部分 Windows 事件循环不支持 asyncio subprocess）。"""
     try:
-        completed = subprocess.run(cmd, capture_output=True, check=False)
+        completed = subprocess.run(cmd, capture_output=True, check=False, env=env)
     except FileNotFoundError as exc:
         raise RuntimeError(
             "未找到 git 可执行文件，请确认已安装 Git 且 API 进程 PATH 可用"
@@ -1111,25 +1131,28 @@ def _run_cmd_sync(cmd: list[str], *, check: bool = True) -> str:
             "utf-8", errors="replace"
         )[:1500]
         safe_cmd = [_TOKEN_IN_URL_RE.sub(r"\1***:***@", c) for c in cmd]
+        # stderr 也可能回显带凭据的 URL，一并脱敏再进异常消息
+        safe_err = _TOKEN_IN_URL_RE.sub(r"\1***:***@", err)
         raise RuntimeError(
-            f"命令失败 ({completed.returncode}): {' '.join(safe_cmd)}\n{err}"
+            f"命令失败 ({completed.returncode}): {' '.join(safe_cmd)}\n{safe_err}"
         )
     return (completed.stdout or b"").decode("utf-8", errors="replace")
 
 
-async def _run_cmd(cmd: list[str], *, check: bool = True) -> str:
+async def _run_cmd(cmd: list[str], *, check: bool = True, env: dict | None = None) -> str:
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            env=env,
         )
     except FileNotFoundError as exc:
         raise RuntimeError(
             "未找到 git 可执行文件，请确认已安装 Git 且 API 进程 PATH 可用"
         ) from exc
     except NotImplementedError:
-        return await asyncio.to_thread(_run_cmd_sync, cmd, check=check)
+        return await asyncio.to_thread(_run_cmd_sync, cmd, check=check, env=env)
 
     try:
         stdout, stderr = await proc.communicate()
@@ -1148,5 +1171,7 @@ async def _run_cmd(cmd: list[str], *, check: bool = True) -> str:
     if check and proc.returncode != 0:
         err = (stderr or stdout or b"").decode("utf-8", errors="replace")[:1500]
         safe_cmd = [_TOKEN_IN_URL_RE.sub(r"\1***:***@", c) for c in cmd]
-        raise RuntimeError(f"命令失败 ({proc.returncode}): {' '.join(safe_cmd)}\n{err}")
+        # stderr 也可能回显带凭据的 URL，一并脱敏再进异常消息
+        safe_err = _TOKEN_IN_URL_RE.sub(r"\1***:***@", err)
+        raise RuntimeError(f"命令失败 ({proc.returncode}): {' '.join(safe_cmd)}\n{safe_err}")
     return (stdout or b"").decode("utf-8", errors="replace")

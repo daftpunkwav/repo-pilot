@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
+from repopilot_shared.contracts.app_state import AppStateServicePort
+
 # services/graph_engine/graph_engine_runtime/context.py → parents[3] = 仓库根
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -36,10 +38,6 @@ class SessionFactoryProvider(Protocol):
 class GitHubTokenProvider(Protocol):
     def __call__(self, state: Any) -> tuple[str | None, str | None]:
         """从 AppState 读取首选 GitHub token，返回 (username, decrypted_pat)。"""
-
-
-class AppStateServicePort(Protocol):
-    async def get_or_create_app_state(self, db: Any) -> Any: ...
 
 
 @dataclass(frozen=True)

@@ -1,17 +1,12 @@
 """
-Agent 运行时占位包。
+Agent 运行时包。
 
-v1.0 阶段 Agent 逻辑仍在 services/api/api_backend/agents/，
-待 API 与 Agent 进程边界稳定后，迁移至本服务：
+阶段 4 起 Agent 执行逻辑（SSE 编排 / 流控 / 持久化副作用）已迁入 execution.py，
+EmbeddedAgentRuntime（runtime.py）作为 api_backend 的 Embedded Adapter 委托到
+agent_core（Hub/ReAct/记忆/工具）与本包 execution。
 
-- Hub 路由与意图分类
-- ReAct 引擎与 Tool 调用
-- 记忆系统（UserProfile / 会话压缩）
-- SSE 流式输出
-
-与 API 的通信方式（规划）：
-- 内网 HTTP / gRPC，或
-- 消息队列（若引入 worker）
+依赖方向：agent_core 只依赖 packages/py-shared 的 Protocol；本包（运行层）
+在宿主（api_backend / 独立进程入口）注入业务服务契约后运行。
 """
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"

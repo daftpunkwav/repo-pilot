@@ -29,10 +29,10 @@ os.environ.setdefault("DEBUG", "false")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 # 注入 agent_core 业务服务契约(与 api_backend.main lifespan 一致；agent_core 只依赖 Protocol)
-from agent_runtime.runtime import EmbeddedAgentRuntime  # noqa: E402
+from agent_core import services as _agent_services  # noqa: E402
 from api_backend.services.agent_services_bridge import build_agent_services  # noqa: E402
 
-_ = EmbeddedAgentRuntime(services=build_agent_services())
+_agent_services.register_agent_services(build_agent_services())
 
 
 @pytest.fixture

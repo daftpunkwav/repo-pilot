@@ -30,16 +30,6 @@ settings = get_settings()
 api = settings.api_v1_prefix
 
 
-class _AppStateServiceAdapter:
-    """将 api_backend.services.app_state_service 的函数包装为 AppStateServicePort 协议。"""
-
-    def __init__(self, fn):
-        self._fn = fn
-
-    async def get_or_create_app_state(self, db):
-        return await self._fn(db)
-
-
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     # 启动前校验密钥长度，防止使用弱密钥
@@ -62,25 +52,25 @@ async def lifespan(_app: FastAPI):
             pass
 
     # Graph 运行层：注入上下文并常驻索引 worker（lifespan 内 create_task，脱离请求 cancel scope）
+    # Agent/Graph 运行层：注入 api_backend 业务服务契约（agent_core 只依赖 Protocol）
+    from agent_core import services as _agent_services
     from api_backend.database import get_session_factory as _get_factory
-    from api_backend.services.app_state_service import get_or_create_app_state
+    from api_backend.services.agent_services_bridge import build_agent_services
     from api_backend.services.github_accounts import primary_token
     from graph_engine_runtime.context import GraphRuntimeContext
     from graph_engine_runtime.runtime import EmbeddedGraphRuntime
+
+    agent_services = build_agent_services()
+    _agent_services.register_agent_services(agent_services)
 
     graph_runtime = EmbeddedGraphRuntime(
         context=GraphRuntimeContext(
             settings=settings,
             get_session_factory=_get_factory,
             primary_token=primary_token,
-            app_state_service=_AppStateServiceAdapter(get_or_create_app_state),
+            app_state_service=agent_services.app_state,  # 复用 bridge 的 Embedded Adapter
         )
     )
-    # Agent 运行层：注入 api_backend 业务服务契约（agent_core 只依赖 Protocol）
-    from agent_runtime.runtime import EmbeddedAgentRuntime
-    from api_backend.services.agent_services_bridge import build_agent_services
-
-    _ = EmbeddedAgentRuntime(services=build_agent_services())
     try:
         await graph_runtime.start_worker()
         yield

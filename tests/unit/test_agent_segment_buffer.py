@@ -1,6 +1,6 @@
 """按 Agent 分段缓冲落库辅助逻辑"""
 import pytest
-from api_backend.services.agent_service import _AgentSegmentBuffer
+from agent_runtime.execution import _AgentSegmentBuffer
 
 
 @pytest.mark.asyncio
@@ -12,7 +12,7 @@ async def test_segment_buffer_switch_flushes(monkeypatch):
         return None
 
     monkeypatch.setattr(
-        "api_backend.services.agent_service.append_message",
+        "agent_runtime.execution.append_message",
         fake_append,
     )
 
@@ -37,7 +37,7 @@ async def test_segment_buffer_persists_thinking_on_switch(monkeypatch):
         return None
 
     monkeypatch.setattr(
-        "api_backend.services.agent_service.append_message",
+        "agent_runtime.execution.append_message",
         fake_append,
     )
 

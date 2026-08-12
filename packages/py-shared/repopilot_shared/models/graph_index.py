@@ -5,10 +5,11 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from repopilot_shared.database import Base
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
+
+from repopilot_shared.database import Base
 
 
 class GraphIndexStatus(Base):

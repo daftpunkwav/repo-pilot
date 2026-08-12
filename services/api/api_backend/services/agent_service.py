@@ -3,20 +3,10 @@
 本文件保留为 re-export 壳，兼容既有 import（api 路由 / sqlalchemy_adapters / 测试）。
 执行逻辑（流控 / SSE 编排 / 持久化副作用）统一由 agent_runtime.execution 提供，
 api_backend 经此壳或 AgentRuntimeInterface 调用，不再直接 import agent_core。
+注：仅 re-export 公共 API；下划线前缀内部符号请直接从 agent_runtime.execution 引用。
 """
 from agent_runtime.execution import (  # noqa: F401
-    _ANALYZE_PROMPTS,
-    _THINKING_META_MAX,
     MAX_SESSION_PROJECTS,
-    _AgentSegmentBuffer,
-    _apply_persistence_side_effects,
-    _begin_session_cancel_token,
-    _begin_session_stream,
-    _end_session_cancel_token,
-    _end_session_stream,
-    _format_answer_label,
-    _is_session_cancel_observed,
-    _session_stream_cancel,
     add_session_project,
     append_message,
     create_session,

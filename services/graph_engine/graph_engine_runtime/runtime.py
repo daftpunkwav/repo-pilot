@@ -121,29 +121,13 @@ _graph_runtime: EmbeddedGraphRuntime | None = None
 
 
 def get_graph_runtime() -> GraphRuntimeInterface:
-    """返回已注入的运行时；未初始化则用空上下文构造（供纯调用方）。"""
+    """返回已注入的运行时；未初始化则显式报错（对齐 get_runtime_context fast-fail）。
+
+    禁止静默降级为空配置：graph 操作有副作用（clone/索引），配置遗漏应在启动期暴露。
+    """
     global _graph_runtime
     if _graph_runtime is None:
-        _graph_runtime = EmbeddedGraphRuntime(
-            context=GraphRuntimeContext(settings=_empty_settings())  # type: ignore[arg-type]
+        raise RuntimeError(
+            "graph_engine_runtime 未初始化：请先构造 EmbeddedGraphRuntime 注入上下文"
         )
     return _graph_runtime
-
-
-class _EmptySettings:
-    """占位配置：仅当宿主未注入时使用，所有 graph 操作走回退路径。"""
-
-    rp_graph_allowed_root = ""
-    rp_graph_engine_url = ""
-    rp_graph_engine_bin = ""
-    rp_graph_cache_dir = ""
-    rp_graph_auto_start = False
-    cbm_allowed_root = ""
-    repo_cache_quota_gb = 2.0
-    index_concurrency = 4
-    git_clone_timeout_sec = 600.0
-    graph_index_timeout_sec = 900.0
-
-
-def _empty_settings() -> _EmptySettings:
-    return _EmptySettings()
