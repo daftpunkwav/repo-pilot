@@ -1,4 +1,4 @@
-# RepoPilot v1.0 — 开发路线图 (Development Roadmap)
+# Voyager v1.0 — 开发路线图 (Development Roadmap)
 
 > 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | **状态复核: 2026-08-04**
 >

@@ -10,7 +10,7 @@
 #include <stdbool.h>
 
 /* Default values */
-/* RepoPilot 默认 sidecar 端口（与 RP_GRAPH_ENGINE_URL 对齐） */
+/* Voyager 默认 sidecar 端口（与 RP_GRAPH_ENGINE_URL 对齐） */
 #define ENGINE_UI_DEFAULT_PORT 9750
 #define ENGINE_UI_DEFAULT_ENABLED false
 

@@ -1,4 +1,4 @@
-# RepoPilot Agent 核心审查报告
+# Voyager Agent 核心审查报告
 
 > ⚠️ **状态（2026-08-04）：** 本报告基线 `5ff949c`（2026-08-03）。此后：
 > - 报告指出的 P0–P3 整改已随 `9bd682c` 落地（限流、message 上限、`run()`/`_handle_dispatches` 拆分、`question.py`、`AgentEngineConfig`、调度指纹 sha1 等）；

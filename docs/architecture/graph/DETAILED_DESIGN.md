@@ -1,10 +1,10 @@
-# RepoPilot 两级图谱 —— 详细设计
+# Voyager 两级图谱 —— 详细设计
 
 > 版本： 2026-08-09 | 状态： **详细设计（待评审 → 升级 SPEC）**
 >
 > 本文是方向文档 `README.md` 的细化，回答"怎么设计"。索引流水线的方案论证见 `INDEX_PIPELINE.md`（本文引用其结论，不重复论证）。
 >
-> 本文基于对 codebase-memory-mcp 真实输出（RepoPilot 自身索引：7136 节点/22125 边/15 节点类型/20 边类型）、RepoPilot 现有代码、GitHub API 能力的核对。关键事实标【验证】；待 SPEC 定量项标【SPEC】。
+> 本文基于对 codebase-memory-mcp 真实输出（Voyager 自身索引：7136 节点/22125 边/15 节点类型/20 边类型）、Voyager 现有代码、GitHub API 能力的核对。关键事实标【验证】；待 SPEC 定量项标【SPEC】。
 
 ---
 
@@ -35,16 +35,16 @@
 - **两级图谱**：L0 项目宇宙图（项目间关系）+ L1 项目代码图谱（项目内结构），共用一套渲染与图契约。
 - **云端项目可索引**：GitHub URL 项目能进入 L1（核心难题，方案见 `INDEX_PIPELINE.md`）。
 - **Agent 可感知代码图**：Atlas 等专家获得代码级查询能力，与前端共用同一图谱服务。
-- **不重造引擎**：索引与图存储复用 codebase-memory-mcp（MIT），RepoPilot 只建"流水线 + 取数 + 渲染 + Agent 工具"。
+- **不重造引擎**：索引与图存储复用 codebase-memory-mcp（MIT），Voyager 只建"流水线 + 取数 + 渲染 + Agent 工具"。
 
 ### 1.2 硬约束（已核实）
 
 | 约束 | 来源 | 影响 |
 |------|------|------|
-| 引擎只索引本地路径 | 参考项目文档 | RepoPilot 必须自己 clone |
+| 引擎只索引本地路径 | 参考项目文档 | Voyager 必须自己 clone |
 | `CBM_ALLOWED_ROOT` 锁定索引根 | 参考项目文档 | 缓存目录须落在该根下 |
 | 引擎为 MCP stdio 服务 | 参考项目文档 | 集成走 MCP client/子进程 |
-| RepoPilot 当前无落盘/无任务基建 | `project_service.py:179`、无 celery/APScheduler | 需新建流水线与异步任务 |
+| Voyager 当前无落盘/无任务基建 | `project_service.py:179`、无 celery/APScheduler | 需新建流水线与异步任务 |
 | 现有 L0 契约不可破坏 | `api/graph.py`、`types.ts:98` | L0 端点扩展不破坏 |
 | 本地单机部署 | README（纯本地、安装即用） | 无多租户；并发先串行 |
 
@@ -73,7 +73,7 @@ flowchart TB
     end
 
     CACHE[("受管克隆缓存<br/>data/repo-cache/")]
-    RDB[("RepoPilot DB<br/>projects · graph_index_status（新）")]
+    RDB[("Voyager DB<br/>projects · graph_index_status（新）")]
 
     L0 -->|REST /api/v1/graph| GS
     L1 -->|REST /api/v1/graph/projects/:id| GS
@@ -97,16 +97,16 @@ flowchart TB
 
 ### 3.1 引擎原生 schema（实测，L1 数据基础）
 
-【验证：对 RepoPilot 自身索引 `get_graph_schema` + `get_architecture`】
+【验证：对 Voyager 自身索引 `get_graph_schema` + `get_architecture`】
 
 - **节点（15 类）**：Project(1) / Branch(1) / Folder(149) / File(673) / Module(668) / Section(2144) / Function(1669) / Method(567) / Class(207) / Interface(241) / Type(133) / Variable(581) / Route(79) / Decorator(16) / EnvVar(7)。
 - **边（20 类）**：DEFINES(8276) / CALLS(4616) / USAGE(3803) / IMPORTS(2079) / CONTAINS_FILE(673) / DEFINES_METHOD(562) / TESTS(474) / WRITES(416) / SIMILAR_TO(313) / DECORATES(305) / SEMANTICALLY_RELATED(237) / CONTAINS_FOLDER(140) / HANDLES(93) / FILE_CHANGES_WITH(92) / CONFIGURES(19) / INHERITS(18) / IMPLEMENTS(5) / RAISES(2) / HAS_BRANCH(1) / **HTTP_CALLS(1)**。
 - **节点携带属性**：复杂度（cyclomatic/cognitive/loop_depth）、入口点、导出、测试标记、路由 method/path、签名、参数等——是死代码判定、热点、调用链的数据基础。
-- **架构视图数据**：`get_architecture` 额外产出 packages / entry_points / routes / hotspots（fan_in 排序）/ boundaries（跨包调用）/ layers（api/core/entry/internal 分层）/ **clusters（Leiden 社区聚类，带 cohesion 与 top_nodes）**【验证：RepoPilot 产出 12 个 cluster，如 `apps`(244 成员,cohesion 0.94)、`services`(254 成员)】。
+- **架构视图数据**：`get_architecture` 额外产出 packages / entry_points / routes / hotspots（fan_in 排序）/ boundaries（跨包调用）/ layers（api/core/entry/internal 分层）/ **clusters（Leiden 社区聚类，带 cohesion 与 top_nodes）**【验证：Voyager 产出 12 个 cluster，如 `apps`(244 成员,cohesion 0.94)、`services`(254 成员)】。
 
-> 这些 cluster/boundary/layer 即用户所需"层级关系"的现成来源——引擎已算好，无需 RepoPilot 自研依赖层级分析。
+> 这些 cluster/boundary/layer 即用户所需"层级关系"的现成来源——引擎已算好，无需 Voyager 自研依赖层级分析。
 
-### 3.2 RepoPilot 统一图契约（L0/L1 共用）
+### 3.2 Voyager 统一图契约（L0/L1 共用）
 
 L0 现有契约（`types.ts:98`）只有 `{nodes,edges}`，节点字段面向项目（stars/language/category）。L1 节点字段面向代码（kind/qualified_name/file/lines/complexity）。两者抽象为统一契约，新增 `level` 与 `kind`：
 
@@ -121,7 +121,7 @@ GraphEdge { source, target, relation, weight?, reasons? }
 - 契约类型进 `packages/types`（沿用 OpenAPI 生成链路，`scripts/export_openapi.py`）。
 - **L0 旧端点 `GET /api/v1/graph/` 响应结构保持兼容**（只增字段不改语义），前端 `GraphNode` 旧字段保留。
 
-### 3.3 RepoPilot 侧持久化（新增）
+### 3.3 Voyager 侧持久化（新增）
 
 回应方向 README D3 / `graph_cache` 历史：
 
@@ -198,14 +198,14 @@ graph_index_status
 ### 5.1 渲染取数（HTTP 通路）
 
 - 引擎 UI HTTP 已存在（`--ui=true --port=9749`），有 `POST /api/index` 等【验证】。
-- `IndexDataAdapter` 将引擎响应映射为 RepoPilot 统一图契约（§3.2），前端不感知引擎 schema。
+- `IndexDataAdapter` 将引擎响应映射为 Voyager 统一图契约（§3.2），前端不感知引擎 schema。
 - 服务端预算：大图按节点预算分页（参考项目 UI 有"node budget 5000"机制），前端拉取预算内的子图。
 
 ### 5.2 Agent 取数（MCP 通路）
 
 Agent 工具直接映射引擎 MCP 工具，经 `GraphService` 调用（单一入口）：
 
-| RepoPilot 工具 | 引擎工具 | 用途 |
+| Voyager 工具 | 引擎工具 | 用途 |
 |---------------|---------|------|
 | `search_code_graph` | `search_graph` | BM25+语义找符号 |
 | `trace_calls` | `trace_path` | caller/callee/数据流 |
@@ -225,12 +225,12 @@ Agent 工具直接映射引擎 MCP 工具，经 `GraphService` 调用（单一�
 
 - **L1 必须 WebGL**：D3 SVG（现有 `ForceGraph.tsx`）在数百节点内流畅，L1 规模（实测起算 7k 节点）必然卡死。
 - **候选**：sigma.js（2D WebGL，graphology，生态成熟）/ Cosmograph（GPU 力导，十万级）/ Three.js 自研（3D，成本最高）。
-- **决策**：Phase 0 spike 用真实 RepoPilot 索引数据（7k+ 节点）对 sigma.js 与 Cosmograph 实测，按"帧率/内存/交互/维护性"选型【SPEC 拍板】。
+- **决策**：Phase 0 spike 用真实 Voyager 索引数据（7k+ 节点）对 sigma.js 与 Cosmograph 实测，按"帧率/内存/交互/维护性"选型【SPEC 拍板】。
 - **长期**：L0/L1 统一同一渲染引擎（L0 节点少，迁移无压力），交互一致、维护一份。
 
 ### 6.2 视觉与交互
 
-- 遵循 RepoPilot 现有设计体系（深色、玻璃拟态、分类色板），**不引入参考项目 3D/bloom 风格**。
+- 遵循 Voyager 现有设计体系（深色、玻璃拟态、分类色板），**不引入参考项目 3D/bloom 风格**。
 - L1 交互对齐参考项目功能清单（方向 README §3 借鉴表）：节点类型过滤、边类型过滤、搜索定位居中、目录树联动、节点预算提示、标签开关、调用链逐层展开、死代码标记、聚类着色视图、节点详情（签名/位置/度数/复杂度）。
 - 导航：L0 节点双击/详情按钮 → L1；L1 面包屑返回 L0。
 
@@ -290,7 +290,7 @@ READY → (远端新提交) → STALE → (更新) → CLONING(增量) → INDEX
 
 ### 8.2 异步执行
 
-- RepoPilot 当前无 celery/APScheduler【验证：grep 无结果】。
+- Voyager 当前无 celery/APScheduler【验证：grep 无结果】。
 - 本期方案：`asyncio.create_task`（进程内异步）+ DB 状态持久化 + 前端轮询/SSE 推送。
 - 并发：本地单用户先**串行**（全局 1 个索引槽），后续按资源评估放开。
 - 进程重启恢复：启动时扫 `graph_index_status` 中 `CLONING/INDEXING` 状态的任务标记为 `STALE` 或 `FAILED`（中途断电不续跑，用户重试）。
@@ -390,7 +390,7 @@ CodeGraphPage
 | URL 来源 | 仅 github.com | ✅ `schemas/project.py:49` |
 | 私仓凭据 | token + Fernet | ✅ `core/security.py:99` |
 | 索引根 | 缓存目录落 `CBM_ALLOWED_ROOT` 下 | ⚠️ 新增对齐配置 |
-| 路径穿越 | 路径由 RepoPilot 计算，拒用户传参 | ⚠️ 新增 |
+| 路径穿越 | 路径由 Voyager 计算，拒用户传参 | ⚠️ 新增 |
 | 不可信执行 | 索引只静态解析 | ✅ 引擎特性 |
 | 磁盘耗尽 | 配额 + LRU | ⚠️ 新增【SPEC 阈值】 |
 | 多用户隔离 | 纯本地单机，单用户独占，无需跨用户隔离 | ✅ 部署前提已免除 |

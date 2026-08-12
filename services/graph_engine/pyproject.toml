@@ -1,7 +1,7 @@
 [project]
 name = "graph-engine"
 version = "0.1.0"
-description = "RepoPilot 自研图谱引擎（Python 编排层与可选 HTTP sidecar）"
+description = "Voyager 自研图谱引擎（Python 编排层与可选 HTTP sidecar）"
 requires-python = ">=3.11"
 dependencies = []
 

@@ -15,7 +15,7 @@
 4. `tsconfig.json` 缺少 `exactOptionalPropertyTypes`、`verbatimModuleSyntax`
 5. 测试覆盖率极低（仅 1 个 store + 1 个 util）
 6. `dist/`、`*.log` 未被 `.gitignore` 显式排除（`dist` 已排除，但 `dev.log` 之类会泄漏）
-7. `git config user.email` 当前是 `agent@repopilot.local`，与要求不符
+7. `git config user.email` 当前是 `agent.local`，与要求不符
 
 ---
 
@@ -41,7 +41,7 @@
 
 ### S-4. `git config user.email` 与要求不符
 - 位置：仓库根 `git config`
-- 现状：`user.email=agent@repopilot.local`，但要求三个远端推送邮箱均为 `REDACTED-EMAIL`。
+- 现状：`user.email=agent.local`，但要求三个远端推送邮箱均为 `REDACTED-EMAIL`。
 - 建议：本次修复已切换为 `REDACTED-EMAIL`（已通过 `git config user.email` 修改），提交后推送三个远端都会用此邮箱。
 
 ### S-5. SSE 解析器无错误/取消传播

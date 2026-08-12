@@ -1,4 +1,4 @@
-# RepoPilot 修复执行报告（2026-08-06）
+# Voyager 修复执行报告（2026-08-06）
 
 > 本报告由 Codex 自动生成，跟踪 REMEDIATION_PLAN_20260806.md 的执行进度与结果。
 > 每一项独立可验证；✅=已落实（含验证方式）、⏳=部分落实/进行中、⚪=无需处理、⚠️=风险/阻塞。
@@ -29,7 +29,7 @@ $ git ls-tree -r HEAD archive/data/
 
 1. **建立备份 bundle**（本地事故回滚）：
    ```bash
-   git bundle create C:/Users/daftpunkwav/AppData/Local/Temp/repopilot.bundle --all
+   git bundle create C:/Users/daftpunkwav/AppData/Local/Temp/voyager.bundle --all
    ```
 2. **安装 git-filter-repo**：
    ```bash
@@ -37,22 +37,22 @@ $ git ls-tree -r HEAD archive/data/
    ```
 3. **构建 expressions 文件**（注意：文件保存为 ASCII，不要带 UTF-8 BOM，否则 filter-repo 会跳过）：
    ```
-   # repopilot-filter-expressions.txt
+   # voyager-filter-expressions.txt
    <REDACTED-EMAIL>==>REDACTED-EMAIL
    ```
    ⚠️ BOM 问题：Powershell `Set-Content -Encoding utf8` 默认加 BOM，必须用 `-Encoding ascii` 或 `-Encoding oem` 或 `-NoNewline`。
 4. **在 Bare Clone 中执行重写**：
    ```bash
-   git clone --bare <main-repo> /tmp/repopilot-rewrite.git
-   cd /tmp/repopilot-rewrite.git
+   git clone --bare <main-repo> /tmp/voyager-rewrite.git
+   cd /tmp/voyager-rewrite.git
    git filter-repo \
-     --replace-text /path/to/repopilot-filter-expressions.txt \
+     --replace-text /path/to/voyager-filter-expressions.txt \
      --invert-paths --path archive/data/stash_users.json \
      --force
    ```
 5. **将重写后的历史切换为本地 main**：
    ```bash
-   git remote add rewrite /tmp/repopilot-rewrite.git
+   git remote add rewrite /tmp/voyager-rewrite.git
    git fetch rewrite
    # 把所有本地分支指向 rewrite 等价分支
    for b in $(git branch --format='%(refname:short)' | grep -v '^main$'); do

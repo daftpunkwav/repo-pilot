@@ -13,7 +13,7 @@
   - `CROSS_HTTP_CALLS`
   - `CROSS_ASYNC_CALLS`
   - `CROSS_CHANNEL`
-- 仓内已有 `HTTP_CALLS`（RepoPilot 上约 74 条）——这是 **in-repo**，不是 cross-repo
+- 仓内已有 `HTTP_CALLS`（Voyager 上约 74 条）——这是 **in-repo**，不是 cross-repo
 
 ## 拍板
 

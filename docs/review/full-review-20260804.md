@@ -1,4 +1,4 @@
-# RepoPilot v2.0.0 全量代码审查报告(v2 · 完整版)
+# Voyager v2.0.0 全量代码审查报告(v2 · 完整版)
 
 > **审查日期**:2026-08-04
 > **审查模式**:**只读审查,已确认未对任何源文件进行修改**
@@ -279,7 +279,7 @@
 | D-05 | `versions/6096bed38e20_initial_schema.py:86` | `projects.url` 无 `UNIQUE(user_id, url)` | 🟠 P1 |
 | D-06 | `versions/6096bed38e20_initial_schema.py:50-59` | `refresh_tokens` 缺 `last_used_at` | 🟢 P3 |
 | D-07 | `env.py:46,56` | `render_as_batch=True` 应用于所有 dialect,PG 效率低 | 🟢 P3 |
-| D-08 | `alembic.ini:5` | `sqlalchemy.url = sqlite:///data/repopilot.db` 默认值应留空 | 🟢 P3 |
+| D-08 | `alembic.ini:5` | `sqlalchemy.url = sqlite:///data/voyager.db` 默认值应留空 | 🟢 P3 |
 
 ---
 
@@ -369,7 +369,7 @@
 | DEP-04 | `apps/web/package.json:39-62` | Vitest 4 + Vite 7 + jsdom 29 新生态,可能 React 19 兼容问题 | 🟠 P1 |
 | DEP-05 | 无 `uv.lock` / `poetry.lock` | Python 依赖无锁文件,无法保证可复现构建 | 🟠 P1 |
 | DEP-06 | 根 `pyproject.toml:6-8` | `[tool.uv.workspace] members` **没把 `packages/py-shared` 计入** | 🟠 P1 |
-| DEP-07 | `apps/web/package.json` | `@repopilot/types: "*"` workspaces 符号链接 + tsconfig paths 双重解析,迁移到 `dist/` 时需同步 | 🟢 P3 |
+| DEP-07 | `apps/web/package.json` | `types: "*"` workspaces 符号链接 + tsconfig paths 双重解析,迁移到 `dist/` 时需同步 | 🟢 P3 |
 
 ### 13.2 scripts/ 审查
 
@@ -454,7 +454,7 @@
 | 迁移 | Alembic 替代 `create_all` |
 | 段缓冲 | `_AgentSegmentBuffer` 按 agent_switch 切段落库设计正确 |
 | 常量集中 | `Workflow` 枚举 + `AgentEngineConfig` 显著减少魔数 |
-| 类型契约 | `apps/web/src/api/types.ts` 通过 `@repopilot/types` 65 个别名零 drift |
+| 类型契约 | `apps/web/src/api/types.ts` 通过 `types` 65 个别名零 drift |
 | 别名表 | `aliases.ts` 66 个 `Schemas['X']` 引用 100% 可解析 |
 | **前端 SSE 测试** | `sse-parser` / `agentSSEStream` / `runTrace` / `streamRenderer` 覆盖扎实 |
 | **Mock 隔离** | Playwright 强制 `VITE_USE_MOCK=true`,与生产配置干净隔离 |

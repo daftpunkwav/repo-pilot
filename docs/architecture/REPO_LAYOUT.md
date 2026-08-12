@@ -1,4 +1,4 @@
-# RepoPilot Monorepo 布局
+# Voyager Monorepo 布局
 
 > 版本: 2026-08-12 | 状态: `apps/web` + `services/api` + `services/agent`（agent_core）+ `services/graph_engine` 核心已落地；mcp/desktop 与部分 packages 仍为占位
 >
@@ -7,7 +7,7 @@
 ## 目录总览
 
 ```
-RepoPilot/
+Voyager/
 ├── apps/                    # 面向用户的客户端
 │   ├── web/                 # React Web SPA
 │   └── desktop/             # 桌面壳（pywebview → Tauri）
@@ -62,7 +62,7 @@ RepoPilot/
 | Graph Engine | ✅ 已落地 | `graph_engine_core/`（C sidecar `rp-graph-engine`）；`graph_engine_fallback/rp_graph` 回退；`graph_engine_runtime/` 运行层（job/C-py fallback/sidecar）；`layout/`（CMake：`rp_layout` + `rp-layout-cli`） |
 | MCP | ⬜ 占位 | `services/mcp/`（v1.4+ 规划） |
 | Desktop | ⬜ 占位 | `apps/desktop/`（规划中，尚未实现） |
-| Packages | 🟡 部分落地 | `types/` 已由 OpenAPI 生成并被 `apps/web` 使用（`@repopilot/types`）；`contracts/` 含 openapi.json；`ui/prompts/py-shared/config` 仍为占位 |
+| Packages | 🟡 部分落地 | `types/` 已由 OpenAPI 生成并被 `apps/web` 使用（`types`）；`contracts/` 含 openapi.json；`ui/prompts/py-shared/config` 仍为占位 |
 
 ## 默认运行拓扑（本地工具模式）
 
@@ -101,7 +101,7 @@ RepoPilot/
 |------|------|----------|
 | `services/worker` | 后台任务（GitHub 同步、图谱重建、定时任务） | 出现长耗时异步作业 |
 | `services/gateway` | 统一入口、路由、限流 | 多服务对外暴露且需统一域名 |
-| `apps/cli` | `repopilot` 命令行工具 | 需脚本化/运维命令 |
+| `apps/cli` | `voyager` 命令行工具 | 需脚本化/运维命令 |
 | `packages/sdk` | 对外发布的 JS/Python SDK | 开放第三方集成 |
 | `infra/` | Docker Compose、K8s、Terraform | 团队部署或多环境 |
 | `tests/e2e` | 跨服务端到端测试 | CI 覆盖主流程 |
@@ -110,10 +110,10 @@ RepoPilot/
 
 | 服务目录 | 发行名 / import | 说明 |
 |----------|-----------------|------|
-| `services/api` | 发行 `repopilot-api`；import `api_backend.*` | 包名已从 `backend` 对齐为 `api_backend`（与 agent_core/graph_engine_core/mcp_runtime 一致） |
-| `services/agent` | 发行 `repopilot-agent`；import `agent_core` / `agent_runtime` | 与目录名一致 |
-| `services/graph_engine` | 发行 `repopilot-graph-engine`；import `rp_graph` | 回退实现在 `graph_engine_fallback/rp_graph/`；运行层 `graph_engine_runtime/`（client/index_pipeline/sidecar/runtime）；C sidecar 二进制名仍为 `rp-graph-engine`（与发行包名区分） |
-| `services/mcp` | 发行 `repopilot-mcp`；import `mcp_runtime` | 占位（v1.4+） |
+| `services/api` | 发行 `voyager-api`；import `api_backend.*` | 包名已从 `backend` 对齐为 `api_backend`（与 agent_core/graph_engine_core/mcp_runtime 一致） |
+| `services/agent` | 发行 `voyager-agent`；import `agent_core` / `agent_runtime` | 与目录名一致 |
+| `services/graph_engine` | 发行 `voyager-graph-engine`；import `rp_graph` | 回退实现在 `graph_engine_fallback/rp_graph/`；运行层 `graph_engine_runtime/`（client/index_pipeline/sidecar/runtime）；C sidecar 二进制名仍为 `rp-graph-engine`（与发行包名区分） |
+| `services/mcp` | 发行 `voyager-mcp`；import `mcp_runtime` | 占位（v1.4+） |
 
 ## 数据目录
 

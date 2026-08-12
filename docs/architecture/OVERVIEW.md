@@ -1,4 +1,4 @@
-# RepoPilot 系统架构总览
+# Voyager 系统架构总览
 
 > 版本: 2026-08-12 | 状态: 现行有效
 >
@@ -8,14 +8,14 @@
 
 ## 1. 设计原则
 
-RepoPilot 不是单体 CRUD 网站，而是 **多客户端 + 多后端服务** 平台：
+Voyager 不是单体 CRUD 网站，而是 **多客户端 + 多后端服务** 平台：
 
 | 原则 | 说明 |
 |------|------|
 | 进程分离 | Web、API、Agent、Graph Engine、MCP 可独立启动与部署 |
 | 数据主权 | 持久化与 JWT 归 **API 服务**；Agent 通过 API 或共享契约读上下文 |
 | Mock 先行 | v1 UI 已在 `docs/design/v1/frontend/` 完成并迁入 `apps/web`；当前 `apps/web` 已可对接 `services/api` 真实后端 |
-| 共享契约 | **`packages/types` 已落地**：`scripts/export_openapi.py` 导出 `packages/contracts/openapi.json`，`apps/web` 经 `@repopilot/types` 引用（76 个别名零 drift）；`ui`/`prompts`/`py-shared`/`config` 仍为占位 |
+| 共享契约 | **`packages/types` 已落地**：`scripts/export_openapi.py` 导出 `packages/contracts/openapi.json`，`apps/web` 经 `types` 引用（76 个别名零 drift）；`ui`/`prompts`/`py-shared`/`config` 仍为占位 |
 
 ---
 

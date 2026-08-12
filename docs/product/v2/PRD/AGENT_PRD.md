@@ -1,4 +1,4 @@
-# RepoPilot v2 — Agent System Product Requirements (AGENT_PRD)
+# Voyager v2 — Agent System Product Requirements (AGENT_PRD)
 
 > 版本: 2.0.0 | 日期: 2026-07-04 | 状态: 草稿
 >
@@ -10,7 +10,7 @@
 
 ## 1. Agent 系统定位
 
-RepoPilot v2 的 Agent 系统从 v1 的"专业 Agent 协同网络"升级为 **Multi-Agent Learning Operating System（多智能体学习操作系统）**。它不再是聊天机器人、RAG 应用或 GitHub 分析工具的任一单品——而是一个完整的 Agent System，具备任务规划、多推理模式、记忆融合、上下文工程、自我评估等系统级能力。
+Voyager v2 的 Agent 系统从 v1 的"专业 Agent 协同网络"升级为 **Multi-Agent Learning Operating System（多智能体学习操作系统）**。它不再是聊天机器人、RAG 应用或 GitHub 分析工具的任一单品——而是一个完整的 Agent System，具备任务规划、多推理模式、记忆融合、上下文工程、自我评估等系统级能力。
 
 **v1 → v2 核心升级：**
 
@@ -993,9 +993,9 @@ type QuestionAnswer =
 
 ```
 ┌─────────────────────────────────────────────┐
-│  RepoPilot Agent v2                          │
+│  Voyager Agent v2                          │
 │  ┌─────────────────────────────────────────┐ │
-│  │ Hub: 你好！我是 RepoPilot 助手。        │ │
+│  │ Hub: 你好！我是 Voyager 助手。        │ │
 │  │ 我可以帮你分析项目、深度讲解、           │ │
 │  │ 规划学习路线。有什么想了解的？            │ │
 │  ├─────────────────────────────────────────┤ │
@@ -1180,7 +1180,7 @@ Evaluator 在 MVP 中不实现，但以下设计为 v2.1 实现提供完整的 P
 
 ### 10.2 MCP (Model Context Protocol) 接入
 
-预留接口，未来可让 RepoPilot Agent 通过 MCP 协议接入外部工具：
+预留接口，未来可让 Voyager Agent 通过 MCP 协议接入外部工具：
 
 - **GitHub MCP:** 直接操作仓库（创建 Issue、PR、Review）
 - **Documentation MCP:** 读取在线文档（ReadTheDocs、Notion）

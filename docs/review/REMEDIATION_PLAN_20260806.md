@@ -1,4 +1,4 @@
-# RepoPilot 审查问题整改执行报告
+# Voyager 审查问题整改执行报告
 
 > **生成日期**：2026-08-06
 > **基准 commit**：`f3efb48`（分支 main）
@@ -264,13 +264,13 @@ mock 实现把 token 落 localStorage，与 real 走 httpOnly cookie 的安全�
 
   ```bash
   # 0. 先备份仓库（git filter-repo 会重写历史，不可逆）
-  git clone --mirror <repo> repopilot-backup.git
+  git clone --mirror <repo> voyager-backup.git
 
   # 1. 安装 git-filter-repo
   pip install git-filter-repo
 
   # 2. 在镜像仓库中移除污染文件的全部历史
-  cd repopilot-backup.git
+  cd voyager-backup.git
   git filter-repo --path archive/data/stash_users.json --invert-paths
 
   # 3. （可选）同时移除其他含 PII 的历史文件，如 archive/data/stash_settings.json 若含敏感
@@ -443,7 +443,7 @@ mock 实现把 token 落 localStorage，与 real 走 httpOnly cookie 的安全�
   cd services/api
   alembic upgrade head
   # 用 sqlite cli 或 DB 工具确认索引存在：
-  # sqlite3 data/repopilot.db ".indexes" 应含 ix_categories_user_id 等
+  # sqlite3 data/voyager.db ".indexes" 应含 ix_categories_user_id 等
   # 跑迁移往返测试（见 §4.1.8 验证 + §4.2.x downgrade 测试）
   ```
 - **风险**：对已有数据的库建索引会锁表（SQLite 影响小，PostgreSQL 大表需 `CONCURRENTLY`）。若目标库是 PG，改用 `op.execute("CREATE INDEX CONCURRENTLY ...")` 但 alembic batch 模式下需注意。本项目当前 SQLite 为主，风险低。
@@ -620,9 +620,9 @@ mock 实现把 token 落 localStorage，与 real 走 httpOnly cookie 的安全�
 
   分步：
   1. **识别共享层**：`backend.models.*`（User/Project/AgentSession 等数据契约）、`backend.core.security`（加解密）、`backend.core.url_safety`、`backend.ports.*`（工具端口适配）、`backend.schemas.project`（ImportRepoItem 等契约）、`backend.services.github_client`/`agent_service` 的部分纯函数。
-  2. **下沉到 `packages/py-shared`**：把这些契约/纯函数迁入，重命名命名空间（如 `repopilot_shared.models`）。
+  2. **下沉到 `packages/py-shared`**：把这些契约/纯函数迁入，重命名命名空间（如 `py_shared.models`）。
   3. **更新 `pyproject.toml`**：把 `packages/py-shared` 加入 uv workspace（见 §4.2.x DEP-06），api 与 agent 都 `depends-on` 它。
-  4. **改 17 处 import**：`from backend.models.user import User` → `from repopilot_shared.models.user import User`。
+  4. **改 17 处 import**：`from backend.models.user import User` → `from py_shared.models.user import User`。
   5. **删除 sys.path hack**：`agent_runtime/main.py:22-25` 的 `sys.path.insert` 移除。
   6. **删除 backend/agents shim**：`services/api/backend/agents/*`（10行 shim）随循环依赖消除可删（确认无外部 import 后）。
 - **验证**：
@@ -1120,7 +1120,7 @@ mock 实现把 token 落 localStorage，与 real 走 httpOnly cookie 的安全�
 
 - **状态**：❌ 未修
 - **定位**：`alembic.ini:5`
-- **现状证据**：`sqlalchemy.url = sqlite:///data/repopilot.db`
+- **现状证据**：`sqlalchemy.url = sqlite:///data/voyager.db`
 - **目标改法**：改为空或占位，运行时由 env.py 覆盖：
   ```ini
   sqlalchemy.url =
@@ -1155,14 +1155,14 @@ mock 实现把 token 落 localStorage，与 real 走 httpOnly cookie 的安全�
 #### 4.3.8 【DEP-02】api/agent 依赖未收敛
 
 - **状态**：🟡 部分修
-- **目标改法**：在 §4.2.1 下沉 py-shared 后，把 api/agent 重合的 8 项依赖改为 `depends-on ["repopilot-shared"]`，消除版本重复声明。
+- **目标改法**：在 §4.2.1 下沉 py-shared 后，把 api/agent 重合的 8 项依赖改为 `depends-on ["voyager-shared"]`，消除版本重复声明。
 - **依赖**：§4.2.1。
 
-#### 4.3.9 【DEP-07】`@repopilot/types` 三重解析
+#### 4.3.9 【DEP-07】`types` 三重解析
 
 - **状态**：❌ 未修
 - **定位**：`apps/web/package.json:22`（`"*"`）+ `tsconfig.json:24-27`（paths）+ `vite.config.ts`（alias）
-- **目标改法**：保留 workspace 依赖（`"*"`），删除 tsconfig paths 与 vite alias 中的 `@repopilot/types` 映射（让 workspace symlink 生效）。或反之保留 paths 删 workspace。**统一为一种解析方式**。需确认 build（dist）时仍能解析。
+- **目标改法**：保留 workspace 依赖（`"*"`），删除 tsconfig paths 与 vite alias 中的 `types` 映射（让 workspace symlink 生效）。或反之保留 paths 删 workspace。**统一为一种解析方式**。需确认 build（dist）时仍能解析。
 - **风险**：中。改解析方式可能影响 build，需测 `npm run build`。
 
 ---
@@ -1210,7 +1210,7 @@ cd services/api
 pytest tests -q                          # 全量后端测试
 # 迁移相关（§4.1.8/4.1.9/4.3.x）
 alembic upgrade head
-sqlite3 data/repopilot.db ".indexes" | grep -E "ix_(categories|tags|projects|agent_sessions|notes|agent_messages|project_analyses)"
+sqlite3 data/voyager.db ".indexes" | grep -E "ix_(categories|tags|projects|agent_sessions|notes|agent_messages|project_analyses)"
 alembic downgrade -1 && alembic upgrade head   # 往返（§4.3.2）
 ```
 

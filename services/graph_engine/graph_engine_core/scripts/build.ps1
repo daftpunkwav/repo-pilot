@@ -1,4 +1,4 @@
-# RepoPilot：构建迁入的 C 图谱引擎（graph-engine）
+# Voyager：构建迁入的 C 图谱引擎（graph-engine）
 # 优先 WSL；否则尝试本机 MinGW make。
 
 param(

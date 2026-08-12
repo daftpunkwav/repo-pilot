@@ -4,7 +4,7 @@
 
 如果你的目标是 Agent开发实习甚至校招，那么它应该定位成：
 
-> RepoPilot —— 一个 Multi-Agent Driven GitHub Learning Operating System（多智能体驱动的GitHub学习操作系统）
+> Voyager —— 一个 Multi-Agent Driven GitHub Learning Operating System（多智能体驱动的GitHub学习操作系统）
 
 
 
@@ -36,11 +36,11 @@ Infrastructure Layer
 
 ---
 
-RepoPilot PRD（Product Requirement Document）
+Voyager PRD（Product Requirement Document）
 
 一、产品定位
 
-RepoPilot 是一个基于 Multi-Agent Architecture 的 GitHub 开源项目学习平台。
+Voyager 是一个基于 Multi-Agent Architecture 的 GitHub 开源项目学习平台。
 
 它能够帮助开发者：
 
@@ -59,7 +59,7 @@ RepoPilot 是一个基于 Multi-Agent Architecture 的 GitHub 开源项目学习
 长期追踪学习成长
 
 
-RepoPilot 不希望成为 Github Copilot。
+Voyager 不希望成为 Github Copilot。
 
 而是：
 
@@ -119,7 +119,7 @@ Teacher
 
 ---
 
-RepoPilot解决：
+Voyager解决：
 
 GitHub最大的痛点不是代码。
 
@@ -135,7 +135,7 @@ GitHub最大的痛点不是代码。
 
 与我以前学过的有什么关系？
 
-RepoPilot解决的是：
+Voyager解决的是：
 
 Learning Context。
 

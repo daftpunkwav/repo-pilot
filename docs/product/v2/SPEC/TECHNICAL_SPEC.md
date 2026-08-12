@@ -1,4 +1,4 @@
-# RepoPilot v2 — Technical Specification
+# Voyager v2 — Technical Specification
 
 > 版本: 2.0.0 | 日期: 2026-07-04 | 路径更新: 2026-07-05 | 状态: 草稿
 >

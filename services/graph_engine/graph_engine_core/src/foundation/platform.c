@@ -532,7 +532,7 @@ const char *engine_resolve_cache_dir(void) {
     if (!home) {
         return NULL;
     }
-    /* RepoPilot：默认缓存目录名（可用环境变量 ENGINE_CACHE_DIR 覆盖） */
+    /* Voyager：默认缓存目录名（可用环境变量 ENGINE_CACHE_DIR 覆盖） */
     int written = snprintf(buf, sizeof(buf), "%s/.cache/rp-graph-engine", home);
     if (written <= 0 || (size_t)written >= sizeof(buf)) {
         buf[0] = '\0';

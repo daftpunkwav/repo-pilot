@@ -14,4 +14,4 @@ npm run generate:types   # → packages/types/src/generated.ts
 工具链：`openapi-typescript`。CI 入口 `npm run ci` 含生成步骤。
 
 权威运行时 schema 仍是 FastAPI Pydantic；OpenAPI 为导出快照。
-手写 `apps/web/src/api/types.ts` 可逐步改为 `import type { ... } from '@repopilot/types'`。
+手写 `apps/web/src/api/types.ts` 可逐步改为 `import type { ... } from 'types'`。

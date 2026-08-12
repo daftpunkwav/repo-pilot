@@ -143,7 +143,7 @@
 ### §4.3.8 api/agent 依赖 (partial)
 - `services/agent/pyproject.toml` 加注释说明重复依赖，待 §4.2.1 重构完成后通过 py-shared 收敛。
 
-### §4.3.9 `@repopilot/types` 三重解析 (partial)
+### §4.3.9 `types` 三重解析 (partial)
 - `formatters.ts` 与原 `agentQuestion` 命名冲突修复（不再通过 `index.ts` re-export `formatters`）。
 - workspace `*` + tsconfig `paths` + vite alias 三者并存经测试验证可用，保留。
 

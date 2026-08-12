@@ -4,15 +4,15 @@
 >
 > 本文档专门回答方向 README（`README.md`）中遗留的核心难题：**GitHub 云端项目如何进入 L1 代码图谱**。对"是否需要沙箱""有无更快方法"做完整方案对比后敲定，是 `DETAILED_DESIGN.md` §索引流水线的依据。
 >
-> 所有结论基于对 codebase-memory-mcp 行为、RepoPilot 现有代码与 GitHub API 能力的核对，非推测。关键事实标注【验证】/【引擎约束】。
+> 所有结论基于对 codebase-memory-mcp 行为、Voyager 现有代码与 GitHub API 能力的核对，非推测。关键事实标注【验证】/【引擎约束】。
 >
-> **部署前提**：RepoPilot 是**纯本地单机应用，用户本机安装即用**——不发布云端、不考虑多用户隔离。本文所有方案（clone 到本机磁盘、本机引擎索引、本机取数）均基于此前提。引擎 per-machine 模型与单机部署天然契合，无多租户问题。
+> **部署前提**：Voyager 是**纯本地单机应用，用户本机安装即用**——不发布云端、不考虑多用户隔离。本文所有方案（clone 到本机磁盘、本机引擎索引、本机取数）均基于此前提。引擎 per-machine 模型与单机部署天然契合，无多租户问题。
 
 ---
 
 ## 1. 问题定义
 
-用户在 RepoPilot 导入的是 **GitHub 云端 URL**（`projects.url`，schema 强制 `github.com`，见 `services/api/api_backend/schemas/project.py:45-50`）。L1 代码图谱要求把项目内部的文件/类/函数/调用等结构化成图。中间必须经历：
+用户在 Voyager 导入的是 **GitHub 云端 URL**（`projects.url`，schema 强制 `github.com`，见 `services/api/api_backend/schemas/project.py:45-50`）。L1 代码图谱要求把项目内部的文件/类/函数/调用等结构化成图。中间必须经历：
 
 ```
 GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎索引  ──③──▶  可查询/可渲染
@@ -21,10 +21,10 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 三个已核实约束决定了方案空间：
 
 - **【引擎约束】引擎只吃本地路径**：`index_repository(repo_path=...)` 要求磁盘上的绝对路径，**不会自己 clone 远程仓库**【验证，参考项目文档】。
-- **【引擎约束】`CBM_ALLOWED_ROOT` 锁定索引目录**：引擎只索引该根目录下的路径，越界拒绝【验证】。这意味着 RepoPilot 的落盘目录必须落在该根下，或二者对齐。
-- **【验证】RepoPilot 当前无任何本地代码落盘机制**：`import_repos`（`services/api/api_backend/services/project_service.py:179`）只拉 GitHub 元数据（语言/描述/stars）入库，从不 clone 代码；`projects` 表无本地路径字段（`models/project.py`）。
+- **【引擎约束】`CBM_ALLOWED_ROOT` 锁定索引目录**：引擎只索引该根目录下的路径，越界拒绝【验证】。这意味着 Voyager 的落盘目录必须落在该根下，或二者对齐。
+- **【验证】Voyager 当前无任何本地代码落盘机制**：`import_repos`（`services/api/api_backend/services/project_service.py:179`）只拉 GitHub 元数据（语言/描述/stars）入库，从不 clone 代码；`projects` 表无本地路径字段（`models/project.py`）。
 
-因此 ①（云端→本地）**必须由 RepoPilot 自己解决**，引擎不代劳。
+因此 ①（云端→本地）**必须由 Voyager 自己解决**，引擎不代劳。
 
 ---
 
@@ -62,15 +62,15 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
   - 一次 clone 拿到完整代码与目录结构，引擎吃到**原生真实路径**（符合其约束）。
   - `--filter=blob:none`（部分克隆）只按需拉 blob，`--depth 1` 不拉历史，**显著快于全量 clone 且省磁盘**。
   - 增量更新廉价：`git fetch --depth 1 && git reset --hard origin/<branch>`。
-  - 私有仓复用 RepoPilot 现有 GitHub token（`github_client.py` 已支持 `Authorization: Bearer`，`services/api/api_backend/services/github_client.py:33-34`）。
-  - 保留引擎 Branch 语义：`git_common_dir`/`head_sha`/`branch` 等会被引擎写入 `Branch` 节点与 `HAS_BRANCH` 边【验证：RepoPilot 索引产出 `Branch`×1、`HAS_BRANCH`×1】。
+  - 私有仓复用 Voyager 现有 GitHub token（`github_client.py` 已支持 `Authorization: Bearer`，`services/api/api_backend/services/github_client.py:33-34`）。
+  - 保留引擎 Branch 语义：`git_common_dir`/`head_sha`/`branch` 等会被引擎写入 `Branch` 节点与 `HAS_BRANCH` 边【验证：Voyager 索引产出 `Branch`×1、`HAS_BRANCH`×1】。
 - **代价**：大仓磁盘占用；需磁盘治理（§5）。
 - **Windows 注意**：路径长度与符号链接（部分仓用）需在 `core.longpaths=true` 与 `git config --local core.symlinks false` 处理【待 Phase 1 实测】。
 
 #### 方案 C —— 远程沙箱（Codespaces / 云容器）
 在云端容器内运行引擎索引，结果回传。
 
-- **致命问题**：RepoPilot 是纯本地单机应用，引擎须在本机被直接调用；远程沙箱让引擎脱离本机、引入云端成本与认证，与部署前提冲突。否决。
+- **致命问题**：Voyager 是纯本地单机应用，引擎须在本机被直接调用；远程沙箱让引擎脱离本机、引入云端成本与认证，与部署前提冲突。否决。
 
 #### 方案 D —— GitHub tarball
 拉 `GET /repos/{o}/{r}/tarball/{ref}` 解压喂引擎。
@@ -140,7 +140,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
    └─▶ 可查询/可渲染（L1 图、Agent 工具）
 ```
 
-- 状态持久化于 RepoPilot DB（一张映射/状态表：`project_id ↔ 引擎 project 名 ↔ local_path ↔ head_sha ↔ status ↔ indexed_at ↔ error`）。这也回应了 SPEC 曾规划、后被实时计算替代的 `graph_cache` 表——v2 下持久化重新必要（方向 README §D3）。
+- 状态持久化于 Voyager DB（一张映射/状态表：`project_id ↔ 引擎 project 名 ↔ local_path ↔ head_sha ↔ status ↔ indexed_at ↔ error`）。这也回应了 SPEC 曾规划、后被实时计算替代的 `graph_cache` 表——v2 下持久化重新必要（方向 README §D3）。
 - 并发：本地单用户场景先**串行**（同时只 1 个索引任务），后续按资源评估放开有限并发。
 - 异步：索引分钟级，前端轮询或 SSE 推送状态（复用现有 SSE 能力，`services/api/api_backend/services/agent_service.py` 已有 SSE 基建）。
 
@@ -156,7 +156,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 | 用户主动"深度索引" | `full` | 产出语义边与聚类，解锁死代码/架构视图 |
 | 超大仓（>50k 文件） | `fast` + 节点预算 | 防内存峰值；渲染层服务端预算分页 |
 
-**规模实测参考**：RepoPilot 自身（TS+Python 混合，中等规模）moderate 索引产出 **7136 节点 / 22125 边**【验证，`get_architecture` 实测】，含 15 类节点、20 类边。L1 渲染按此规模起算，预留 5 万节点上限。
+**规模实测参考**：Voyager 自身（TS+Python 混合，中等规模）moderate 索引产出 **7136 节点 / 22125 边**【验证，`get_architecture` 实测】，含 15 类节点、20 类边。L1 渲染按此规模起算，预留 5 万节点上限。
 
 ---
 
@@ -166,8 +166,8 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 |----|------|------|
 | URL 来源 | 仅 `github.com`（schema 强制） | ✅ 已有 `schemas/project.py:49-50` |
 | 私仓凭据 | GitHub token，Fernet 加密存储 | ✅ 已有 `core/security.py:99`、`github_client.py:33` |
-| 索引根目录 | 落盘目录必须在 `CBM_ALLOWED_ROOT` 下 | ⚠️ 需对齐 RepoPilot 缓存目录与引擎根配置 |
-| 路径穿越 | clone 目标路径由 RepoPilot 计算（`<owner>-<repo>-<sha>`），不接受用户任意路径 | ⚠️ 新增，禁止用户传本地路径参数（本期） |
+| 索引根目录 | 落盘目录必须在 `CBM_ALLOWED_ROOT` 下 | ⚠️ 需对齐 Voyager 缓存目录与引擎根配置 |
+| 路径穿越 | clone 目标路径由 Voyager 计算（`<owner>-<repo>-<sha>`），不接受用户任意路径 | ⚠️ 新增，禁止用户传本地路径参数（本期） |
 | 不可信代码执行 | 索引只静态解析，不执行项目代码 | ✅ 引擎特性 |
 | 磁盘耗尽 | 配额 + LRU 清理 | ⚠️ 新增 |
 
@@ -194,7 +194,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 | P4 | 渲染取数 | 引擎 UI HTTP（9749）为主 | 专为批量渲染设计，已存在 |
 | P5 | Agent 取数 | MCP 工具（search_graph/trace_path/get_architecture） | 检索语义，天然适配工具调用 |
 | P6 | 降级取数 | 直读 SQLite（锁版本） | HTTP 不可用时备用 |
-| P7 | 状态持久化 | RepoPilot DB 映射/状态表 | 回应 `graph_cache` 历史决策 |
+| P7 | 状态持久化 | Voyager DB 映射/状态表 | 回应 `graph_cache` 历史决策 |
 | P8 | 并发 | 先串行 | 本地单用户，资源可控 |
 | P9 | 索引模式 | 首进 fast/moderate，深度 full | 平衡首响与深度 |
 | P10 | Agent 融合 | Atlas 获代码级工具，经同一图谱服务 | D7 单一入口 |
@@ -205,7 +205,7 @@ GitHub URL  ──①──▶  本地代码落盘  ──②──▶  引擎�
 
 - 缓存配额具体阈值、LRU 触发条件。
 - 引擎 UI HTTP 9749 的多项目隔离方式（单机多项目如何区分索引实例）。
-- `CBM_ALLOWED_ROOT` 与 RepoPilot `data/repo-cache/` 的对齐策略（统一根 vs 子目录）。
+- `CBM_ALLOWED_ROOT` 与 Voyager `data/repo-cache/` 的对齐策略（统一根 vs 子目录）。
 - 引擎版本锁定与升级 checklist（直读 SQLite 降级路径依赖版本）。
 - Windows 长路径、符号链接实测结论（Phase 1）。
 - 增量更新的 diff 策略（全量重建 vs 引擎 watcher 增量）。

@@ -320,7 +320,7 @@ ENGINE_TEST_BINARY="$WATCHDOG_BINARY" bash "$ROOT/tests/test_worker_error_respon
 #   make -f Makefile engine TEST_SEAMS=1 && bash tests/test_hook_conflict_notice.sh
 
 # Step 5e: `daemon start --open` 的 UI readiness 校验依赖 engine-with-ui 目标
-# 与 tests/fixtures/ui-readiness；前端资源服务已移除(RepoPilot 前端在 apps/web)，
+# 与 tests/fixtures/ui-readiness；前端资源服务已移除(Voyager 前端在 apps/web)，
 # 该步骤连同其依赖一并失效，注释保留上下文。
 # echo "=== Step 5e: daemon UI --open readiness ==="
 # make -j"$NPROC" -f Makefile engine-with-ui TEST_SEAMS=1 \

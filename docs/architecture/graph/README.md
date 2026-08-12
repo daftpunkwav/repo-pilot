@@ -1,10 +1,10 @@
-# RepoPilot 知识图谱 v2 —— 两级图谱总体开发文档
+# Voyager 知识图谱 v2 —— 两级图谱总体开发文档
 
 > 版本： 2026-08-09 | 状态： **方向性文档（草案，待评审）**
 >
 > **2026-08-12 更新**：C 索引引擎在 [`services/graph_engine/graph_engine_core`](../../../services/graph_engine/graph_engine_core)（MIT 源码迁自 codebase-memory-mcp），默认 sidecar `127.0.0.1:9750`；Python 回退在 `graph_engine_runtime/`。下文中「外挂 codebase-memory-mcp / :9749」或路径 `services/graph_engine/c` 视为历史方案。
 >
-> 本文档定义 RepoPilot 图谱子系统的**演进方向与关键决策**，是后续 PRD/SPEC 修订与开发实施的输入。
+> 本文档定义 Voyager 图谱子系统的**演进方向与关键决策**，是后续 PRD/SPEC 修订与开发实施的输入。
 > 本文档**不包含**接口定义、字段设计、组件实现等细节；落地前须按 `docs/README.md` §1 的权威性规则，将本文档的结论升级为 `product/` 层文档（PRD/SPEC）的修订。
 >
 > 阅读对象：维护者、接手开发的工程师与 Agent。
@@ -25,7 +25,7 @@
 
 ### 1.1 现状（已核对代码）
 
-RepoPilot 当前已有**一层**图谱：项目级相似度图。
+Voyager 当前已有**一层**图谱：项目级相似度图。
 
 | 层 | 现状 | 关键位置 |
 |----|------|---------|
@@ -65,7 +65,7 @@ L0 项目宇宙图（Project Universe）          L1 项目代码图谱（Code G
 
 ### 1.4 非目标（本期不做）
 
-- 不做多用户云端图谱服务。RepoPilot 是**纯本地单机应用，用户本机安装即用**：不发布云端、不考虑多用户隔离。本方案所有设计（clone 到本机、本机引擎索引、本机取数渲染）都基于此前提。
+- 不做多用户云端图谱服务。Voyager 是**纯本地单机应用，用户本机安装即用**：不发布云端、不考虑多用户隔离。本方案所有设计（clone 到本机、本机引擎索引、本机取数渲染）都基于此前提。
 - 不重造索引引擎（Tree-sitter 解析、调用链解析直接复用参考项目，见 §4-D1）。
 - 不照搬参考项目的 3D UI 与自带 Web 服务（我们自建渲染层，见 §4-D4）。
 - 不在本期改变 Project 的导入主流程（GitHub URL 导入保持不变；本地落盘是图谱子系统内部的事，见 §4-D6）。
@@ -115,8 +115,8 @@ L0 项目宇宙图（Project Universe）          L1 项目代码图谱（Code G
 | 索引 | 整体复用其索引引擎与 SQLite 图存储（MIT） | 不自研 Tree-sitter/LSP 解析 |
 | 数据模型 | 节点/边类型划分、Cypher 查询、社区聚类、死代码判定 | 不照搬其 per-account daemon 模型 |
 | 跨仓 | `cross-repo-intelligence` 的 CROSS_* 边 → L0 的新边类型 | — |
-| UI 交互 | 节点预算（node budget）、类型过滤、目录树、标签开关、搜索居中 | 不用其 3D 视觉与 bloom 风格（与 RepoPilot 设计体系不符）；不嵌入其自带 Web UI（9749 端口服务，集成度与多项目隔离都不满足） |
-| 集成 | 作为本地服务/库被 RepoPilot 调用 | 不让用户直接面对另一个产品的 UI/概念体系 |
+| UI 交互 | 节点预算（node budget）、类型过滤、目录树、标签开关、搜索居中 | 不用其 3D 视觉与 bloom 风格（与 Voyager 设计体系不符）；不嵌入其自带 Web UI（9749 端口服务，集成度与多项目隔离都不满足） |
+| 集成 | 作为本地服务/库被 Voyager 调用 | 不让用户直接面对另一个产品的 UI/概念体系 |
 
 ---
 
@@ -134,17 +134,17 @@ L0 项目宇宙图（Project Universe）          L1 项目代码图谱（Code G
 
 ### D2 集成方式：作为本地子服务接入，由图谱服务封装
 
-- **选项 A（推荐）**：RepoPilot 后端（图谱服务）以 MCP client / 子进程方式驱动 codebase-memory-mcp，对外只暴露 RepoPilot 自己的 REST 契约。`services/mcp` 占位进程是其自然落点（或先在 `services/api` 内以模块形式落地，进程拆分后置）。
+- **选项 A（推荐）**：Voyager 后端（图谱服务）以 MCP client / 子进程方式驱动 codebase-memory-mcp，对外只暴露 Voyager 自己的 REST 契约。`services/mcp` 占位进程是其自然落点（或先在 `services/api` 内以模块形式落地，进程拆分后置）。
 - 选项 B：前端直连 codebase-memory 的 HTTP UI 服务。跨域、认证、多项目隔离全部失控，否决。
 - 选项 C：把其 SQLite 当数据库直读（只读）。取数效率高，但与其内部 schema 强耦合。**作为 D3 取数通路的备选手段保留，不作为集成主方式。**
 - **方向**：对上层（前端/Agent）而言，"图谱服务"是唯一入口；codebase-memory 是实现细节，可替换。
 
-### D3 图谱数据取数与存储：引擎存储为主，RepoPilot 侧做投影缓存
+### D3 图谱数据取数与存储：引擎存储为主，Voyager 侧做投影缓存
 
 - 引擎侧：代码图本体存于 codebase-memory 的 SQLite（不复制一份真相）。
-- RepoPilot 侧需要解决两个问题：
+- Voyager 侧需要解决两个问题：
   1. **渲染取数**：前端渲染全图需要批量点边数据（数千~数万节点）。MCP 工具面向检索而非批量导出，须在 Phase 0 验证取数带宽（候选：Cypher 分页 / 直读 SQLite / 引擎批量导出能力）。这是**项目级技术风险点**。
-  2. **映射与元数据**：`projects.id ↔ 引擎内 project 名 ↔ 索引状态（未索引/索引中/就绪/失败/过期）` 需要 RepoPilot 侧持久化（一张映射/状态表即可；这也回应了当初 `graph_cache` 表被实时计算替代的历史决策——v2 下持久化重新变得必要）。
+  2. **映射与元数据**：`projects.id ↔ 引擎内 project 名 ↔ 索引状态（未索引/索引中/就绪/失败/过期）` 需要 Voyager 侧持久化（一张映射/状态表即可；这也回应了当初 `graph_cache` 表被实时计算替代的历史决策——v2 下持久化重新变得必要）。
 - L0 相似度边维持实时计算（项目数少）；跨仓边来自引擎，随索引刷新。
 
 ### D4 渲染引擎：L1 必须上 WebGL，L0 可保留 D3，方向是统一
@@ -152,7 +152,7 @@ L0 项目宇宙图（Project Universe）          L1 项目代码图谱（Code G
 - 现状 D3 SVG 在数百节点内流畅；L1 规模（5k~50k 节点）SVG 必然卡顿。
 - **推荐方向**：评估并选定一个 WebGL 图渲染库（候选：sigma.js（2D，生态成熟）、Cosmograph（GPU 力导，十万级）、自研 Three.js（3D，成本最高）），在 Phase 0 用真实索引数据做选型 spike。
 - L0 节点规模小（数十~数百），可暂留 D3；但**长期方向是两级同一渲染引擎**（交互一致、维护一份）。选型时按 L1 要求选，L0 迁移作为后续阶段。
-- 视觉：遵循 RepoPilot 现有设计体系（深色、玻璃拟态、分类色板），不引入参考项目的 3D 风格。
+- 视觉：遵循 Voyager 现有设计体系（深色、玻璃拟态、分类色板），不引入参考项目的 3D 风格。
 
 ### D5 索引触发与更新：显式触发 + 异步任务 + 状态可见
 
@@ -180,7 +180,7 @@ L0 项目宇宙图（Project Universe）          L1 项目代码图谱（Code G
 |---|------|---------|----------|
 | D1 | 索引引擎 | 复用 codebase-memory-mcp | MIT ✅；版本升级策略待定 |
 | D2 | 集成方式 | 后端封装为图谱服务，MCP/子进程驱动 | 不直读其库为主通路 |
-| D3 | 取数与存储 | 引擎存图，RepoPilot 存映射+状态；渲染取数待验证 | **取数带宽是 Phase 0 必验项** |
+| D3 | 取数与存储 | 引擎存图，Voyager 存映射+状态；渲染取数待验证 | **取数带宽是 Phase 0 必验项** |
 | D4 | 渲染 | L1 选 WebGL 库；长期两级统一 | 需真实数据 spike 选型 |
 | D5 | 索引触发 | 显式触发 + 异步 + 状态机 | 分钟级耗时需体验设计 |
 | D6 | 代码来源 | 受管浅克隆缓存 | 磁盘策略、私仓凭据 |
@@ -208,7 +208,7 @@ flowchart TB
     end
 
     CACHE[("受管仓库缓存<br/>data/repo-cache/")]
-    PDB[("RepoPilot DB<br/>projects · 图谱映射/状态表")]
+    PDB[("Voyager DB<br/>projects · 图谱映射/状态表")]
 
     L0UI -->|REST| GS
     L1UI -->|REST| GS
@@ -318,6 +318,6 @@ Phase 0 (spike)
 |------|------|
 | L0 / 项目宇宙图 | 项目级关系图（现有图谱的增强版） |
 | L1 / 代码图谱 | 单项目内部代码结构图（本期新建） |
-| 图谱服务 | RepoPilot 后端对内的统一图谱入口（封装引擎细节） |
+| 图谱服务 | Voyager 后端对内的统一图谱入口（封装引擎细节） |
 | 引擎 | codebase-memory-mcp（索引与查询引擎） |
 | 跨仓边 | 引擎 cross-repo-intelligence 产出的 CROSS_* 关系，L0 的新边类型 |

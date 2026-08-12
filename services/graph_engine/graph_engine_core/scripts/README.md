@@ -1,7 +1,7 @@
 # scripts/ — the canonical leg entries
 
-> **RepoPilot 入口：** 构建本仓 MCP 索引引擎请用 [`build.ps1`](build.ps1)（`make -f Makefile graph-engine`）。  
-> **上游遗留：** [`setup.sh`](setup.sh) / [`setup-windows.ps1`](setup-windows.ps1) 仍是 DeusData `graph-engine` 安装叙事，勿当作 RepoPilot 产品安装器。  
+> **Voyager 入口：** 构建本仓 MCP 索引引擎请用 [`build.ps1`](build.ps1)（`make -f Makefile graph-engine`）。  
+> **上游遗留：** [`setup.sh`](setup.sh) / [`setup-windows.ps1`](setup-windows.ps1) 仍是 DeusData `graph-engine` 安装叙事，勿当作 Voyager 产品安装器。  
 > Makefile：优先 `Makefile.rp`；`Makefile` 仅为兼容上游脚本的 `include` 别名。
 
 **The doctrine (enforced, not advisory):** *a venue may provision a machine;

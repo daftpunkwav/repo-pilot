@@ -1,6 +1,6 @@
 /*
  * http_server.c — 图谱引擎嵌入式 HTTP：路由与 /api、/rpc 处理器。
- * （RepoPilot 使用本服务作为 sidecar；可视化 UI 由 apps/web 负责。）
+ * （Voyager 使用本服务作为 sidecar；可视化 UI 由 apps/web 负责。）
  *
  * Transport (sockets, parsing, limits) lives in httpd.c; this file owns
  * the routes and their handlers:

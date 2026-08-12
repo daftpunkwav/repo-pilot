@@ -2,14 +2,14 @@
 
 > 版本: 2026-08-12 | 状态: 现行有效
 >
-> **用途：** 2026-07-05 起 RepoPilot 采用 Monorepo。历史文档中的 `frontend/`、`backend/` 等路径**按本表理解**，正文细节可逐步更新，不必一次性改完。
+> **用途：** 2026-07-05 起 Voyager 采用 Monorepo。历史文档中的 `frontend/`、`backend/` 等路径**按本表理解**，正文细节可逐步更新，不必一次性改完。
 
 ---
 
 ## 1. 顶层结构（现行）
 
 ```
-RepoPilot/
+Voyager/
 ├── apps/
 │   ├── web/                 # 正式 Web 应用（Monorepo 目标位）
 │   └── desktop/             # 桌面壳（规划中）

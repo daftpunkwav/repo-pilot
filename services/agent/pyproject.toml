@@ -1,7 +1,7 @@
 [project]
 name = "agent"
 version = "0.3.0"
-description = "RepoPilot Agent 运行时 — Hub / Scout / Mentor 等"
+description = "Voyager Agent 运行时 — Hub / Scout / Mentor 等"
 requires-python = ">=3.11"
 dependencies = [
     # §4.3.8: 与 api 重复的依赖（pydantic/sqlalchemy/httpx/fastapi/uvicorn/litellm/python-dotenv）

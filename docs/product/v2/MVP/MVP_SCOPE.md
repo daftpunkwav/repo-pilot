@@ -1,4 +1,4 @@
-# RepoPilot v2 — MVP Implementation Scope
+# Voyager v2 — MVP Implementation Scope
 
 > 版本: 2.0.0 | 日期: 2026-07-04 | 状态: 草稿
 >
@@ -232,10 +232,10 @@ v2.0 Settings 类在 v1 基础上新增以下字段:
 ```python
 class Settings(BaseSettings):
     # ── v1 保留 (不变) ──
-    app_name: str = "RepoPilot"
+    app_name: str = "Voyager"
     debug: bool = False
     api_prefix: str = "/api/v1"
-    database_url: str = "sqlite+aiosqlite:///./repopilot.db"
+    database_url: str = "sqlite+aiosqlite:///./voyager.db"
     jwt_secret_key: str            # >= 32 bytes
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 15
@@ -569,7 +569,7 @@ v2.0 发布前必须全部通过 7 条 E2E happy path:
 应用启动时在后端日志和前端 About 区域显示:
 
 ```
-RepoPilot v2.0.0
+Voyager v2.0.0
 Based on v2 PRD / SPEC / MVP_SCOPE
 Multi-Agent Driven GitHub Learning OS
 ```

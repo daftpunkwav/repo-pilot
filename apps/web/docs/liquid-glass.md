@@ -1,6 +1,6 @@
 # 液态玻璃（Liquid Glass）
 
-RepoPilot 前端 mock 的**液态玻璃唯一参考实现**位于：
+Voyager 前端 mock 的**液态玻璃唯一参考实现**位于：
 
 ```
 src/styles/liquid-glass.css

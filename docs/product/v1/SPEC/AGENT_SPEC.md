@@ -1,4 +1,4 @@
-# RepoPilot v1.0 Agent 系统规格书
+# Voyager v1.0 Agent 系统规格书
 
 > 版本: 1.0.0 | 日期: 2026-07-04 | 路径更新: 2026-07-05 | 状态: 审核通过 - daftpunkwav
 > 本文档是 Agent 系统的**唯一权威来源**。所有 Agent 相关的代码定义、工具规格、记忆系统、反问系统、行为规范以本文档为准。
@@ -1219,7 +1219,7 @@ type QuestionAnswer =
 # Mentor Agent 行为规范
 
 ## 核心职责
-你是 RepoPilot 的深度讲解 Agent，负责帮助用户深入理解开源项目。
+你是 Voyager 的深度讲解 Agent，负责帮助用户深入理解开源项目。
 
 ## 行为准则
 1. 先了解再讲解：讲解前必须通过反问了解用户水平
@@ -1251,7 +1251,7 @@ type QuestionAnswer =
 ### §7.3 System Prompt Jinja2 模板
 
 ```jinja2
-你是 RepoPilot 的 {{ agent.name }}。
+你是 Voyager 的 {{ agent.name }}。
 {{ agent_md_content }}
 {{ soul_md_content }}
 

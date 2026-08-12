@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "RepoPilot",
+    "title": "Voyager",
     "version": "2.0.0"
   },
   "paths": {
@@ -936,9 +936,10 @@
     "/api/v1/graph/": {
       "get": {
         "tags": [
-          "graph"
+          "graph-l0"
         ],
         "summary": "Get Graph",
+        "description": "L0 项目相似度图（不依赖代码索引引擎）。",
         "operationId": "get_graph_api_v1_graph__get",
         "parameters": [
           {
@@ -959,13 +960,703 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "maximum": 1000,
+              "maximum": 5000,
               "minimum": 1,
-              "default": 200,
+              "default": 1000,
               "title": "Max Edges"
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/cross-edges": {
+      "get": {
+        "tags": [
+          "graph-l0"
+        ],
+        "summary": "Get Cross Edges",
+        "description": "L0 跨仓边只读投影；引擎不可用时返回空列表，不影响相似度图。",
+        "operationId": "get_cross_edges_api_v1_graph_cross_edges_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/recommend-edges": {
+      "get": {
+        "tags": [
+          "graph-l0"
+        ],
+        "summary": "Get Recommend Edges",
+        "description": "Agent 推荐学习边（预留）。\n\n约定：项目导入且索引稳定后，由 Agent 写入推荐关系；当前返回空列表，\n前端已按 edge_type=recommend_learn 分色渲染。",
+        "operationId": "get_recommend_edges_api_v1_graph_recommend_edges_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/projects/{project_id}/status": {
+      "get": {
+        "tags": [
+          "graph-l1"
+        ],
+        "summary": "Get Project Index Status",
+        "operationId": "get_project_index_status_api_v1_graph_projects__project_id__status_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/projects/{project_id}/index": {
+      "post": {
+        "tags": [
+          "graph-l1"
+        ],
+        "summary": "Trigger Project Index",
+        "operationId": "trigger_project_index_api_v1_graph_projects__project_id__index_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/IndexTriggerBody"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "graph-l1"
+        ],
+        "summary": "Delete Project Index",
+        "operationId": "delete_project_index_api_v1_graph_projects__project_id__index_delete",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/projects/index-batch": {
+      "post": {
+        "tags": [
+          "graph-l1"
+        ],
+        "summary": "Trigger Batch Index",
+        "description": "批量入队索引（worker 池并行）；返回各项目状态快照。",
+        "operationId": "trigger_batch_index_api_v1_graph_projects_index_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchIndexBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/projects/{project_id}/refresh": {
+      "post": {
+        "tags": [
+          "graph-l1"
+        ],
+        "summary": "Refresh Project Index",
+        "operationId": "refresh_project_index_api_v1_graph_projects__project_id__refresh_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/IndexTriggerBody"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/projects/{project_id}/index/cancel": {
+      "post": {
+        "tags": [
+          "graph-l1"
+        ],
+        "summary": "Cancel Project Index",
+        "description": "取消排队或进行中的索引。",
+        "operationId": "cancel_project_index_api_v1_graph_projects__project_id__index_cancel_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/index-statuses": {
+      "get": {
+        "tags": [
+          "graph-l1"
+        ],
+        "summary": "List Project Index Statuses",
+        "description": "图谱页索引进度条：全部项目索引状态快照。",
+        "operationId": "list_project_index_statuses_api_v1_graph_index_statuses_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/projects/{project_id}": {
+      "get": {
+        "tags": [
+          "graph-l1"
+        ],
+        "summary": "Get Code Graph",
+        "operationId": "get_code_graph_api_v1_graph_projects__project_id__get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          },
+          {
+            "name": "max_nodes",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100000,
+              "minimum": 100,
+              "default": 5000,
+              "title": "Max Nodes"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/projects/{project_id}/architecture": {
+      "get": {
+        "tags": [
+          "graph-l1"
+        ],
+        "summary": "Get Project Architecture",
+        "operationId": "get_project_architecture_api_v1_graph_projects__project_id__architecture_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/projects/{project_id}/trace": {
+      "post": {
+        "tags": [
+          "graph-l1"
+        ],
+        "summary": "Trace Project Symbol",
+        "operationId": "trace_project_symbol_api_v1_graph_projects__project_id__trace_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TraceBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/projects/{project_id}/search": {
+      "post": {
+        "tags": [
+          "graph-l1"
+        ],
+        "summary": "Search Project Graph",
+        "operationId": "search_project_graph_api_v1_graph_projects__project_id__search_post",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/graph/projects/{project_id}/schema": {
+      "get": {
+        "tags": [
+          "graph-l1"
+        ],
+        "summary": "Get Project Graph Schema",
+        "operationId": "get_project_graph_schema_api_v1_graph_projects__project_id__schema_get",
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/usage/llm": {
+      "get": {
+        "tags": [
+          "llm-usage"
+        ],
+        "summary": "Get Llm Usage",
+        "operationId": "get_llm_usage_api_v1_usage_llm_get",
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 365,
+              "minimum": 1,
+              "default": 30,
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataResponse_dict_"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/usage/llm/events": {
+      "post": {
+        "tags": [
+          "llm-usage"
+        ],
+        "summary": "Post Llm Usage Event",
+        "description": "内部/Agent 上报用量；失败由调用方忽略。",
+        "operationId": "post_llm_usage_event_api_v1_usage_llm_events_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UsageRecordBody"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2485,7 +3176,7 @@
           "settings"
         ],
         "summary": "Test Llm",
-        "description": "对当前默认模型（或 body.model）发起一次真实补全请求。\n模型返回非空文本 → success=true。",
+        "description": "对指定供应商模型（或默认供应商默认模型）发起一次真实补全请求。\n模型返回非空文本 → success=true。",
         "operationId": "test_llm_api_v1_settings_test_llm_post",
         "requestBody": {
           "content": {
@@ -2742,6 +3433,17 @@
           "agent_id": {
             "type": "string",
             "title": "Agent Id"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id"
           },
           "model_override": {
             "anyOf": [
@@ -3265,6 +3967,17 @@
             "maxLength": 1024,
             "minLength": 1,
             "title": "Api Key"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id"
           }
         },
         "type": "object",
@@ -3278,6 +3991,17 @@
           "masked": {
             "type": "string",
             "title": "Masked"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id"
           }
         },
         "type": "object",
@@ -3285,6 +4009,30 @@
           "masked"
         ],
         "title": "ApiKeyOut"
+      },
+      "BatchIndexBody": {
+        "properties": {
+          "project_ids": {
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Project Ids"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode",
+            "default": "fast"
+          }
+        },
+        "type": "object",
+        "required": [
+          "project_ids"
+        ],
+        "title": "BatchIndexBody"
       },
       "BindGithubBody": {
         "properties": {
@@ -4284,6 +5032,23 @@
         ],
         "title": "ImportResult"
       },
+      "IndexTriggerBody": {
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "fast",
+              "moderate",
+              "full",
+              "cross-repo-intelligence"
+            ],
+            "title": "Mode",
+            "default": "fast"
+          }
+        },
+        "type": "object",
+        "title": "IndexTriggerBody"
+      },
       "LearnerIdentityOut": {
         "properties": {
           "preferred_name": {
@@ -4471,6 +5236,196 @@
         "type": "object",
         "title": "LearnerIdentityUpdate"
       },
+      "LlmProviderOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "preset_id": {
+            "type": "string",
+            "title": "Preset Id",
+            "default": "custom"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name",
+            "default": ""
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled",
+            "default": true
+          },
+          "api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Base"
+          },
+          "api_format": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "anthropic",
+              "google",
+              "ollama",
+              "custom"
+            ],
+            "title": "Api Format",
+            "default": "openai"
+          },
+          "available_models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Available Models"
+          },
+          "default_model": {
+            "type": "string",
+            "title": "Default Model",
+            "default": ""
+          },
+          "api_key_masked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key Masked"
+          },
+          "configured": {
+            "type": "boolean",
+            "title": "Configured",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "title": "LlmProviderOut",
+        "description": "对外暴露的供应商配置（不含明文 Key）。"
+      },
+      "LlmProviderUpdate": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "preset_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preset Id"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          },
+          "api_format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Format"
+          },
+          "api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Base"
+          },
+          "available_models": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available Models"
+          },
+          "default_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Model"
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1024
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Api Key"
+          }
+        },
+        "type": "object",
+        "title": "LlmProviderUpdate",
+        "description": "写入/更新单个供应商；api_key 仅写不回读。"
+      },
       "LlmTestIn": {
         "properties": {
           "model": {
@@ -4484,11 +5439,23 @@
               }
             ],
             "title": "Model"
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id"
           }
         },
         "type": "object",
         "title": "LlmTestIn",
-        "description": "可选：指定测试模型；默认使用 settings 中的默认模型。"
+        "description": "可选：指定供应商与模型；默认使用默认供应商的默认模型。"
       },
       "LlmTestOut": {
         "properties": {
@@ -4518,6 +5485,17 @@
             "type": "string",
             "title": "Litellm Model",
             "default": ""
+          },
+          "provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Id"
           }
         },
         "type": "object",
@@ -5357,6 +6335,38 @@
         ],
         "title": "RecommendedProjectOut"
       },
+      "SearchBody": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Query"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 20
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "SearchBody"
+      },
       "SessionUpdateBody": {
         "properties": {
           "title": {
@@ -5470,6 +6480,24 @@
             "type": "string",
             "title": "Code Font",
             "default": "JetBrains Mono"
+          },
+          "llm_providers": {
+            "items": {
+              "$ref": "#/components/schemas/LlmProviderOut"
+            },
+            "type": "array",
+            "title": "Llm Providers"
+          },
+          "llm_default_provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Default Provider Id"
           },
           "llm_provider": {
             "type": "string",
@@ -5622,6 +6650,31 @@
             ],
             "title": "Code Font"
           },
+          "llm_providers": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/LlmProviderUpdate"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Providers"
+          },
+          "llm_default_provider_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Default Provider Id"
+          },
           "llm_provider": {
             "anyOf": [
               {
@@ -5666,17 +6719,6 @@
             ],
             "title": "Llm Model"
           },
-          "llm_api_base": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Llm Api Base"
-          },
           "llm_api_format": {
             "anyOf": [
               {
@@ -5687,6 +6729,17 @@
               }
             ],
             "title": "Llm Api Format"
+          },
+          "llm_api_base": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Api Base"
           },
           "llm_available_models": {
             "anyOf": [
@@ -5894,6 +6947,37 @@
         ],
         "title": "TagOut"
       },
+      "TraceBody": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Symbol"
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "upstream",
+              "downstream",
+              "both"
+            ],
+            "title": "Direction",
+            "default": "both"
+          },
+          "depth": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Depth",
+            "default": 3
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol"
+        ],
+        "title": "TraceBody"
+      },
       "TrendingRepoOut": {
         "properties": {
           "owner": {
@@ -6037,6 +7121,93 @@
         },
         "type": "object",
         "title": "TrendingScoutBody"
+      },
+      "UsageRecordBody": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "default": ""
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider",
+            "default": ""
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Session Id"
+          },
+          "agent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Id"
+          },
+          "prompt_tokens": {
+            "type": "integer",
+            "title": "Prompt Tokens",
+            "default": 0
+          },
+          "prompt_cached_tokens": {
+            "type": "integer",
+            "title": "Prompt Cached Tokens",
+            "default": 0
+          },
+          "prompt_uncached_tokens": {
+            "type": "integer",
+            "title": "Prompt Uncached Tokens",
+            "default": 0
+          },
+          "completion_tokens": {
+            "type": "integer",
+            "title": "Completion Tokens",
+            "default": 0
+          },
+          "total_tokens": {
+            "type": "integer",
+            "title": "Total Tokens",
+            "default": 0
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          },
+          "raw_usage": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Raw Usage"
+          }
+        },
+        "type": "object",
+        "title": "UsageRecordBody"
       },
       "UserOut": {
         "properties": {

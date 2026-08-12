@@ -1,4 +1,4 @@
-# RepoPilot v2 — Product Requirements Document (PRD)
+# Voyager v2 — Product Requirements Document (PRD)
 
 > 版本: 2.0.0 | 日期: 2026-07-04 | 状态: 草稿
 >
@@ -10,7 +10,7 @@
 
 ## 1. 产品愿景
 
-RepoPilot v2 是一个 **Multi-Agent Driven GitHub Learning Operating System（多智能体驱动的 GitHub 学习操作系统）**。
+Voyager v2 是一个 **Multi-Agent Driven GitHub Learning Operating System（多智能体驱动的 GitHub 学习操作系统）**。
 
 相比 v1 的"AI 驱动的开源项目学习平台"定位，v2 完成了一次架构层面的跃迁：从单一路由式 Agent 系统升级为具备 **自主规划、记忆合并、上下文工程、知识图谱推理** 能力的多智能体操作系统。
 
@@ -28,7 +28,7 @@ RepoPilot v2 是一个 **Multi-Agent Driven GitHub Learning Operating System（�
 | 知识图谱 | 展示用（TF-IDF 力导向图） | 所有 Agent 共享的查询工具（Graph Query） |
 | 降级策略 | 无 LLM 时功能受限 | 完整的 Fallback Mode（无 Key 下仍可分析、分类、图谱浏览） |
 
-**核心差异化:** RepoPilot 不是 GitHub Copilot，不是 RAG 聊天机器人，不是单纯的 GitHub 分析工具。它是一个完整的 Agent System——每一个 Repository 都值得拥有一个 AI Mentor。
+**核心差异化:** Voyager 不是 GitHub Copilot，不是 RAG 聊天机器人，不是单纯的 GitHub 分析工具。它是一个完整的 Agent System——每一个 Repository 都值得拥有一个 AI Mentor。
 
 **一句话定位:** Every Repository deserves an AI Mentor.
 
@@ -99,7 +99,7 @@ v2 采用四层分层架构，每层职责清晰、接口标准化：
 
 #### 3.4.1 系统定位
 
-RepoPilot v2 的 Agent 系统是由 **7 个专业 Agent** 协同工作的开源项目学习专家网络。v2 中 Hub 从简单路由器升级为 **Chief Agent**，采用 **Plan-and-Execute Workflow** 统筹全局；新增 Evaluator Agent 定义（MVP 不含实现）。系统遵循五大核心原则：**BYOK（Bring Your Own Key）、深度优先、主动反问、有记忆、可配置**。
+Voyager v2 的 Agent 系统是由 **7 个专业 Agent** 协同工作的开源项目学习专家网络。v2 中 Hub 从简单路由器升级为 **Chief Agent**，采用 **Plan-and-Execute Workflow** 统筹全局；新增 Evaluator Agent 定义（MVP 不含实现）。系统遵循五大核心原则：**BYOK（Bring Your Own Key）、深度优先、主动反问、有记忆、可配置**。
 
 > Agent 系统的完整设计（核心原则详述、角色行为、Memory Architecture 详细设计、Memory Merge Protocol、Context Engineering Pipeline、工具集、交互协议、降级策略、个性定义）请参阅 **[AGENT_PRD.md](./AGENT_PRD.md)**。
 
@@ -375,7 +375,7 @@ GitHub API → TF-IDF → Keyword → Rule Engine → Graph
 
 ### US-01: 新用户入门 — 导入与自动分析
 
-> 作为一名开发者，我注册 RepoPilot 后绑定 GitHub 账号，一键导入 200+ Star 项目。Scout Agent 自动对每个项目执行快速分析（ReAct Workflow），Curator Agent 通过 Reflexion Workflow 自动建议分类并弹出确认面板。我看到一个基于 TF-IDF + Embedding 多源构建的知识图谱，发现我的 React 和 Vue 项目之间有很多相似的技术模式。Hub Agent 在后台执行首次 Memory Merge，将 Scout 和 Curator 的分析结果写入 Long Memory。
+> 作为一名开发者，我注册 Voyager 后绑定 GitHub 账号，一键导入 200+ Star 项目。Scout Agent 自动对每个项目执行快速分析（ReAct Workflow），Curator Agent 通过 Reflexion Workflow 自动建议分类并弹出确认面板。我看到一个基于 TF-IDF + Embedding 多源构建的知识图谱，发现我的 React 和 Vue 项目之间有很多相似的技术模式。Hub Agent 在后台执行首次 Memory Merge，将 Scout 和 Curator 的分析结果写入 Long Memory。
 
 ### US-02: 深度学习 — Mentor 定制化教学
 
@@ -494,7 +494,7 @@ GitHub API → TF-IDF → Keyword → Rule Engine → Graph
 
 ### 7.1 版本策略
 
-RepoPilot v2 采用 **v2.0 单版本完整发布** 策略。MVP_SCOPE.md 的范围即 v2.0 全部交付内容。
+Voyager v2 采用 **v2.0 单版本完整发布** 策略。MVP_SCOPE.md 的范围即 v2.0 全部交付内容。
 
 **v2.0 交付范围核心:**
 

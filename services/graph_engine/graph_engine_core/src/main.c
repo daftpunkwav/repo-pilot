@@ -1,5 +1,5 @@
 /*
- * main.c — RepoPilot 图谱 C 引擎入口（源码迁自 graph-engine，MIT）。
+ * main.c — Voyager 图谱 C 引擎入口（源码迁自 graph-engine，MIT）。
  *
  * 模式：
  *   （默认）            MCP：stdin/stdout JSON-RPC 2.0

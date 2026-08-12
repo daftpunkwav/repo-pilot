@@ -1,4 +1,4 @@
-# RepoPilot v1.0 — MVP 实施规格
+# Voyager v1.0 — MVP 实施规格
 
 > 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 差异标注复核: 2026-08-04 | 状态: 审核通过 - daftpunkwav（**本文档部分具体声明已随代码迭代过期，正在与代码对齐**）
 > 权威来源: `v1/PRD/PRD.md` (产品需求) · `v1/SPEC/TECHNICAL_SPEC.md` (技术规格)
@@ -12,7 +12,7 @@
 
 ## 1. v1.0 定位
 
-v1.0 是 RepoPilot 的**首个完整交付版本**，采用单版本发布策略（不再细分 v0.1~v0.6 子版本，详见 PRD §7.1）。
+v1.0 是 Voyager 的**首个完整交付版本**，采用单版本发布策略（不再细分 v0.1~v0.6 子版本，详见 PRD §7.1）。
 
 **v1.0 交付目标：** 让用户能够导入 GitHub Star 项目、手动管理项目库、使用关键词规则分类、查看项目关系图谱、撰写 Markdown 笔记，并通过 **7 个 Agent**（Hub + Scout / Mentor / Navigator / Curator / Scribe / Atlas）实现深度学习、对比、规划、分类、笔记辅助、图谱解读等高级能力。
 
@@ -393,12 +393,12 @@ v1.0 原计划是单版本完整发布，但实际开发中部分端点尚未实
 ```python
 class Settings(BaseSettings):
     # 应用
-    app_name: str = "RepoPilot"
+    app_name: str = "Voyager"
     debug: bool = False
     api_prefix: str = "/api/v1"
 
     # 数据库
-    database_url: str = "sqlite+aiosqlite:///./repopilot.db"
+    database_url: str = "sqlite+aiosqlite:///./voyager.db"
 
     # JWT
     jwt_secret_key: str  # 必填，从环境变量读取（决策 S-02 补全：≥ 32 字节 / 256-bit，启动时校验 len ≥ 32）
@@ -752,7 +752,7 @@ v1.0 单版本完整发布的建议开发顺序（不含时间预估）。每个
 应用启动时在后端日志和前端 About 区域显示：
 
 ```
-RepoPilot v1.0.0
+Voyager v1.0.0
 Based on v1 PRD / SPEC / MVP_SCOPE
 ```
 

@@ -1,4 +1,4 @@
-# RepoPilot — 产品需求文档 (PRD)
+# Voyager — 产品需求文档 (PRD)
 
 > 版本: 1.0.0 | 日期: 2026-07-03 | 状态: 审核通过 - daftpubkwav
 >
@@ -10,9 +10,9 @@
 
 ## 1. 产品愿景
 
-RepoPilot 是一个 **AI 驱动的开源项目学习平台**。它帮助用户管理 GitHub Star 项目，通过内置的多 Agent 协作系统深度解读开源项目，借助知识图谱可视化项目间的关联，让用户在多项目融合中高效学习。
+Voyager 是一个 **AI 驱动的开源项目学习平台**。它帮助用户管理 GitHub Star 项目，通过内置的多 Agent 协作系统深度解读开源项目，借助知识图谱可视化项目间的关联，让用户在多项目融合中高效学习。
 
-**核心差异化**: RepoPilot 不是一个简单的 GitHub Star 管理器。它的 AI Agent 系统由六个专业 Agent 组成——快速分析师、深度导师、学习规划师、分类管家、笔记助手、对话管家——各司其职，能够跨项目交叉分析、拆解架构、生成学习路径，帮助用户从「收藏了但没学」变成「系统性掌握」。
+**核心差异化**: Voyager 不是一个简单的 GitHub Star 管理器。它的 AI Agent 系统由六个专业 Agent 组成——快速分析师、深度导师、学习规划师、分类管家、笔记助手、对话管家——各司其职，能够跨项目交叉分析、拆解架构、生成学习路径，帮助用户从「收藏了但没学」变成「系统性掌握」。
 
 **一句话定位**: 你的 AI 开源项目学习领航员。
 
@@ -59,7 +59,7 @@ RepoPilot 是一个 **AI 驱动的开源项目学习平台**。它帮助用户�
 
 #### 3.3.1 系统定位
 
-RepoPilot 的 Agent 系统是由多个专业 Agent 协同工作的开源项目学习专家网络（Scout / Mentor / Navigator / Curator / Scribe / Hub），遵循 BYOK、深度优先、主动反问、有记忆、可配置五大核心原则。
+Voyager 的 Agent 系统是由多个专业 Agent 协同工作的开源项目学习专家网络（Scout / Mentor / Navigator / Curator / Scribe / Hub），遵循 BYOK、深度优先、主动反问、有记忆、可配置五大核心原则。
 
 > Agent 系统的完整设计（核心原则详述、角色行为、记忆系统、工具集、交互协议、降级策略、个性定义）请参阅 **[AGENT_PRD.md](./AGENT_PRD.md)**（F5-06 修正：同目录相对路径）。
 
@@ -149,7 +149,7 @@ RepoPilot 的 Agent 系统是由多个专业 Agent 协同工作的开源项目�
 
 ### US-01: 新用户入门
 
-> 作为一名开发者，我注册 RepoPilot 后绑定 GitHub 账号，一键导入 200+ Star 项目。Curator Agent 自动为它们建议分类并弹出确认面板，我看到一个漂亮的知识图谱，发现我的 React 和 Vue 项目之间有很多相似的技术模式。
+> 作为一名开发者，我注册 Voyager 后绑定 GitHub 账号，一键导入 200+ Star 项目。Curator Agent 自动为它们建议分类并弹出确认面板，我看到一个漂亮的知识图谱，发现我的 React 和 Vue 项目之间有很多相似的技术模式。
 
 ### US-02: 深度学习
 
@@ -179,7 +179,7 @@ RepoPilot 的 Agent 系统是由多个专业 Agent 协同工作的开源项目�
 
 ## 6. 未来扩展预留
 
-RepoPilot 预留了三个未来扩展方向：MCP 外部工具接入、即时通讯集成（飞书/微信/Telegram/Discord）、以及 Skill/插件市场。Agent 的工具和行为规范设计为可插拔架构（AGENT.md + SOUL.md 标准化配置 + JSON Schema 工具定义）。
+Voyager 预留了三个未来扩展方向：MCP 外部工具接入、即时通讯集成（飞书/微信/Telegram/Discord）、以及 Skill/插件市场。Agent 的工具和行为规范设计为可插拔架构（AGENT.md + SOUL.md 标准化配置 + JSON Schema 工具定义）。
 
 > 详细扩展预留方案请参阅 **[AGENT_PRD.md §9](./AGENT_PRD.md)**（F5-06 修正：同目录相对路径）。
 
@@ -189,7 +189,7 @@ RepoPilot 预留了三个未来扩展方向：MCP 外部工具接入、即时通
 
 ### 7.1 版本策略
 
-RepoPilot 采用 **v1.0 单版本完整发布** 策略。不再拆分 v0.1 Foundation、v0.2 Insight、v0.3 Connect、v0.4 Scholar、v0.5 Memory、v0.6 Polish 等子版本。
+Voyager 采用 **v1.0 单版本完整发布** 策略。不再拆分 v0.1 Foundation、v0.2 Insight、v0.3 Connect、v0.4 Scholar、v0.5 Memory、v0.6 Polish 等子版本。
 
 **理由:**
 

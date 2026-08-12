@@ -1,6 +1,6 @@
-﻿# RepoPilot 文档中心 (Documentation Hub)
+﻿# Voyager 文档中心 (Documentation Hub)
 
-> RepoPilot 所有文档、记录、变更、问题跟踪的统一入口。
+> Voyager 所有文档、记录、变更、问题跟踪的统一入口。
 > 文档按**维度**（产品/架构/开发/接口/调试）组织，避免按"随意分类"导致后期失控。
 
 ---
@@ -24,7 +24,7 @@
 
 ## 2. 5 层文档模型
 
-RepoPilot 文档按**维度**组织：
+Voyager 文档按**维度**组织：
 
 ```
 docs/

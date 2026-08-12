@@ -1,4 +1,4 @@
-# RepoPilot 架构重构:详细执行步骤
+# Voyager 架构重构:详细执行步骤
 
 > **文档目的**:任何 AI agent(包括两年前的模型)只看本文档就能精确完成每个改动,无需猜测。
 > **前置阅读**:`docs/review/ARCHITECTURE_REFACTOR_REPORT/ARCHITECTURE_REFACTOR_REPORT.md`(背景与目标架构)
@@ -47,12 +47,12 @@ cd services/graph_engine/graph_engine_core && make -f Makefile.rp rp-graph-engin
 
 ## 阶段 1:C 引擎前端遗留清理
 
-**目标**:删除 RepoPilot 不需要的 C 前端资源服务(asset_pack),消除 src/ui/ 的前后端混合。
+**目标**:删除 Voyager 不需要的 C 前端资源服务(asset_pack),消除 src/ui/ 的前后端混合。
 **风险**:极低(asset_pack 在默认构建中本就不编译)。
 
 ### 步骤 1.1:删除前端资源文件
 
-删除以下 3 个文件(它们是上游 CBM 的 React graph-ui 资源托管,RepoPilot 前端在 apps/web,不需要):
+删除以下 3 个文件(它们是上游 CBM 的 React graph-ui 资源托管,Voyager 前端在 apps/web,不需要):
 
 ```
 services/graph_engine/graph_engine_core/src/ui/asset_pack.c        # 892 行,前端资源服务
@@ -75,7 +75,7 @@ services/graph_engine/graph_engine_core/src/ui/asset_manifest_stub.c  # 6 行,�
 | 1067-1080 | `ifeq ($(UI_ASSET_PREBUILT),1) ... endif` 整个 UI asset 构建块 | 删除 |
 | 1071 | `PROD_SRCS_WITH_ASSETS = $(subst src/ui/asset_pack_stub.c,src/ui/asset_pack.c $(UI_ASSET_MANIFEST),$(PROD_SRCS))` | 删除 |
 
-**注意**:删除前先搜索 `PROD_SRCS_WITH_ASSETS` 和 `UI_ASSET_MANIFEST` 是否被其他 target 引用。如果只被 `cbm-with-ui` target(:1085)引用,而 RepoPilot 不构建 `cbm-with-ui`(只构建 `rp-graph-engine`),则安全删除。
+**注意**:删除前先搜索 `PROD_SRCS_WITH_ASSETS` 和 `UI_ASSET_MANIFEST` 是否被其他 target 引用。如果只被 `cbm-with-ui` target(:1085)引用,而 Voyager 不构建 `cbm-with-ui`(只构建 `rp-graph-engine`),则安全删除。
 
 ### 步骤 1.3:移除 sidecar 的 --ui=true 参数
 
@@ -100,7 +100,7 @@ cmd = [
 
 文件:`services/graph_engine/graph_engine_core/README.md`
 
-在开头描述区补充:"C 引擎只提供功能 API(/api/layout、/rpc),前端可视化由 RepoPilot `apps/web` 负责。asset_pack 前端资源服务已移除。"
+在开头描述区补充:"C 引擎只提供功能 API(/api/layout、/rpc),前端可视化由 Voyager `apps/web` 负责。asset_pack 前端资源服务已移除。"
 
 ### 步骤 1.5:验证
 
@@ -127,7 +127,7 @@ PYTHONPATH=. uv run --project services/api python -c "import api_backend.service
 ```
 packages/py-shared/
 ├── pyproject.toml              # 已存在,需确认 dependencies 含 sqlalchemy、pydantic、cryptography
-├── repopilot_shared/
+├── py_shared/
 │   ├── __init__.py             # 已存在(空)
 │   ├── database.py             # 新建:Base = DeclarativeBase
 │   ├── models/                 # 新建
@@ -151,7 +151,7 @@ packages/py-shared/
 
 **关键**:`api_backend/database.py:79` 的 `class Base(DeclarativeBase)` 是所有 model 的基类。它不含业务配置,是纯 SQLAlchemy 基类。
 
-1. 在 `packages/py-shared/repopilot_shared/database.py` 创建:
+1. 在 `packages/py-shared/py_shared/database.py` 创建:
 ```python
 """共享数据库基类(api_backend / agent_core 共用)。"""
 from sqlalchemy.orm import DeclarativeBase
@@ -167,26 +167,26 @@ class Base(DeclarativeBase):
     pass
 
 # 改后
-from repopilot_shared.database import Base  # noqa: F401
+from py_shared.database import Base  # noqa: F401
 ```
 
-3. 同步 `services/api/pyproject.toml` 的 dependencies 加入 `repopilot-py-shared`(workspace 内部包)
+3. 同步 `services/api/pyproject.toml` 的 dependencies 加入 `py-shared`(workspace 内部包)
 
 ### 步骤 2.3:models 下沉(project / app_state / agent)
 
 对 `models/project.py`、`models/app_state.py`、`models/agent.py` 三个文件:
 
-1. 移到 `packages/py-shared/repopilot_shared/models/`
-2. 每个文件改 `from api_backend.database import Base` -> `from repopilot_shared.database import Base`
+1. 移到 `packages/py-shared/py_shared/models/`
+2. 每个文件改 `from api_backend.database import Base` -> `from py_shared.database import Base`
 3. `api_backend/models/` 下保留 re-export(避免 breaking 其他 import):
 ```python
 # api_backend/models/project.py(改为 re-export)
-from repopilot_shared.models.project import *  # noqa: F401, F403
-from repopilot_shared.models.project import Project, Tag  # 显式
+from py_shared.models.project import *  # noqa: F401, F403
+from py_shared.models.project import Project, Tag  # 显式
 ```
 4. `api_backend/models/__init__.py` 保持不变(它 re-export 子模块)
 
-**注意**:models 互相依赖(project 引用 Tag、agent 引用 AgentSession 等)。移到 py-shared 后,内部 import 改为 `from repopilot_shared.models.xxx import`。
+**注意**:models 互相依赖(project 引用 Tag、agent 引用 AgentSession 等)。移到 py-shared 后,内部 import 改为 `from py_shared.models.xxx import`。
 
 ### 步骤 2.4:security 参数化(处理循环依赖)
 
@@ -195,7 +195,7 @@ from repopilot_shared.models.project import Project, Tag  # 显式
 **解法**:移到 py-shared 时,把 `secret_key` 改为参数:
 
 ```python
-# packages/py-shared/repopilot_shared/security/crypto.py
+# packages/py-shared/py_shared/security/crypto.py
 from cryptography.fernet import Fernet, InvalidToken
 import base64, hashlib
 from functools import lru_cache
@@ -225,7 +225,7 @@ def encrypt_secret(plain: str, key_material: str) -> str:
 `api_backend/core/security.py` 保留为**薄封装**(注入 `get_settings().secret_key`):
 ```python
 # api_backend/core/security.py(保留,薄封装)
-from repopilot_shared.security.crypto import decrypt_secret as _decrypt, ...
+from py_shared.security.crypto import decrypt_secret as _decrypt, ...
 from api_backend.config import get_settings
 
 def decrypt_secret(value: str | None) -> str | None:
@@ -236,24 +236,24 @@ def decrypt_secret(value: str | None) -> str | None:
 
 agent_core 的 4 处 `from api_backend.core.security import decrypt_secret/is_encrypted_secret` 改为:
 ```python
-from repopilot_shared.security.crypto import decrypt_secret, is_encrypted_secret
+from py_shared.security.crypto import decrypt_secret, is_encrypted_secret
 # 调用时传入 key_material(由 Contract 注入)
 ```
 
 ### 步骤 2.5:url_safety 下沉
 
-`core/url_safety.py` 是**纯函数**(只依赖 ipaddress/socket/urllib),无 api_backend 依赖。直接移到 `packages/py-shared/repopilot_shared/security/url_safety.py`。
+`core/url_safety.py` 是**纯函数**(只依赖 ipaddress/socket/urllib),无 api_backend 依赖。直接移到 `packages/py-shared/py_shared/security/url_safety.py`。
 
-agent_core 的 1 处 `from api_backend.core.url_safety import assert_safe_outbound_https_url` 改为 `from repopilot_shared.security.url_safety import assert_safe_outbound_https_url`。
+agent_core 的 1 处 `from api_backend.core.url_safety import assert_safe_outbound_https_url` 改为 `from py_shared.security.url_safety import assert_safe_outbound_https_url`。
 
 ### 步骤 2.6:ports Protocol 下沉
 
 `ports/__init__.py`(7 个 Protocol)只依赖 `typing.Protocol` + `uuid.UUID`,无 api_backend 依赖。
 
-1. 移到 `packages/py-shared/repopilot_shared/ports/__init__.py`
+1. 移到 `packages/py-shared/py_shared/ports/__init__.py`
 2. `api_backend/ports/__init__.py` 改为 re-export:
 ```python
-from repopilot_shared.ports import *  # noqa: F401, F403
+from py_shared.ports import *  # noqa: F401, F403
 ```
 3. `ports/sqlalchemy_adapters.py` **留在 api_backend**(它是 Embedded Adapter,依赖具体 ORM)
 
@@ -261,9 +261,9 @@ agent_core 的 2 处 `from api_backend.ports.sqlalchemy_adapters import build_to
 
 ### 步骤 2.7:Schema 下沉
 
-`schemas/project.py` 的 `ImportRepoItem`(行 98-101)是纯 Pydantic 模型。移到 `packages/py-shared/repopilot_shared/schemas/project.py`。
+`schemas/project.py` 的 `ImportRepoItem`(行 98-101)是纯 Pydantic 模型。移到 `packages/py-shared/py_shared/schemas/project.py`。
 
-agent_core 的 1 处 `from api_backend.schemas.project import ImportRepoItem` 改为 `from repopilot_shared.schemas.project import ImportRepoItem`。
+agent_core 的 1 处 `from api_backend.schemas.project import ImportRepoItem` 改为 `from py_shared.schemas.project import ImportRepoItem`。
 
 ### 步骤 2.8:删除 SSE 假依赖
 
@@ -294,7 +294,7 @@ candidates = (
     _SERVICES_ROOT.parent / "packages" / "py-shared",  # 新增
 )
 ```
-3. `services/api/pyproject.toml` dependencies 加入 `"repopilot-py-shared"`,或确认 uv workspace 自动解析
+3. `services/api/pyproject.toml` dependencies 加入 `"py-shared"`,或确认 uv workspace 自动解析
 4. `tests/conftest.py` 和 `tests/pytest.ini` 的 pythonpath 确认含 `packages/py-shared`(或靠 path_setup 注入)
 
 ### 步骤 2.10:验证
@@ -460,7 +460,7 @@ PYTHONPATH=. uv run --project services/api pytest tests/unit -q
 
 ### 步骤 4.1:定义 6 个业务服务 Contract(放 py-shared)
 
-`packages/py-shared/repopilot_shared/contracts/`:
+`packages/py-shared/py_shared/contracts/`:
 
 ```python
 # contracts/app_state.py

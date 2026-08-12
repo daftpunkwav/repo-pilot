@@ -1,4 +1,4 @@
-# RepoPilot
+# Voyager
 
 AI 驱动的开源项目学习平台。
 
@@ -7,7 +7,7 @@ AI 驱动的开源项目学习平台。
 ## Monorepo 结构
 
 ```
-RepoPilot/
+Voyager/
 ├── apps/
 │   ├── web/          # React Web 前端
 │   └── desktop/      # 桌面壳（规划中）
@@ -26,7 +26,7 @@ RepoPilot/
 > **实现状态速览（截至 2026-08-12）：**
 > - `apps/web`、`services/api` 已实现核心页面与端点；Agent 权威代码在 `services/agent/agent_core/`（默认与 API 同进程，可经 `AGENT_BASE_URL` 独立部署）。开发环境（`.env.development`）默认 `VITE_USE_MOCK=false` 走真实后端；未设置时客户端默认 Mock。
 > - 图谱引擎在 `services/graph_engine/`：`graph_engine_core`（C sidecar `rp-graph-engine`）+ `graph_engine_runtime`（Python 回退 `rp_graph`）+ `layout`（可选 native 布局）。
-> - `packages/types` 已由 OpenAPI 生成契约并被 `apps/web` 使用（`@repopilot/types`）；`contracts/` 含 openapi.json；`ui` / `prompts` / `py-shared` / `config` 仍为占位。
+> - `packages/types` 已由 OpenAPI 生成契约并被 `apps/web` 使用（`types`）；`contracts/` 含 openapi.json；`ui` / `prompts` / `py-shared` / `config` 仍为占位。
 > - `services/mcp`、`apps/desktop` 仍为占位或规划。
 
 ## 技术栈
@@ -123,7 +123,7 @@ npm run dev:web
 3. **防火墙与暴露面**：不要直接把 uvicorn 端口（19878/19877/9750）暴露到公网；由反向代理统一对外（HTTPS），内部服务仅监听 127.0.0.1。
 4. **HTTPS**：公网访问必须启用 TLS（反向代理终结），并保持 `AUTH_COOKIE_SECURE=true`、`AUTH_COOKIE_SAMESITE=lax`。
 5. **依赖安全**：CI 自动执行 `npm audit` / `pip-audit`；依赖更新由 Dependabot（`.github/dependabot.yml`）接管。
-6. **数据备份**：SQLite 数据库位于 `data/repopilot.db`，请纳入常规备份（`data/*.db` 与备份文件均已被 .gitignore 排除）。
+6. **数据备份**：SQLite 数据库位于 `data/voyager.db`，请纳入常规备份（`data/*.db` 与备份文件均已被 .gitignore 排除）。
 
 > ⚠️ 本项目当前无用户鉴权体系（本地单机假设）。暴露到不可信网络前，必须先加反向代理层鉴权（如 Basic Auth / 应用内 SSO）。
 

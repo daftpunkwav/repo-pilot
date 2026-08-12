@@ -1,4 +1,4 @@
-﻿# RepoPilot 开发进度报告
+﻿# Voyager 开发进度报告
 
 > 报告日期：2026-08-06  
 > 代码版本：`2.0.0`（根 `package.json` / `apps/web/package.json` / `services/api` pyproject / FastAPI `version`）  
@@ -10,13 +10,13 @@
 
 ## 1. 总体结论
 
-RepoPilot v1.0 的核心产品闭环已在代码层面跑通，并在 2026-07 下旬至 08 月初完成一轮 **Agent Chat 编排与写工具落库** 升级：
+Voyager v1.0 的核心产品闭环已在代码层面跑通，并在 2026-07 下旬至 08 月初完成一轮 **Agent Chat 编排与写工具落库** 升级：
 
 - 后端 `services/api/api_backend/`：认证、项目/分类/标签/笔记/图谱/Overview CRUD、GitHub 集成、LLM BYOK、Hub + 6 专家、约 **24** 个内置工具、SSE 流式对话。
 - 前端 `apps/web/src/`：全部 MVP 页面与路由（含 `/agent/sessions/:sessionId`）、Mock/Real 双轨 API、Agent Chat 流式渲染与结果卡。
 - 开发默认：API **`:19878`**（与 Vite 代理一致）；`.env.development` 中 `VITE_USE_MOCK=false`。
 
-文档层（PRD / SPEC）仍大量停留在 v1.0 草案；`MVP_SCOPE.md` 已有部分与代码差异标注。**2026-08-03/04 已落地**：Alembic 迁移（取代 `create_all`）、`packages/types` OpenAPI 生成契约（`apps/web` 改用 `@repopilot/types`）、Agent 代码物理迁入 `services/agent/agent_core/`（API 侧保留 `api_backend.*` 兼容 shim）、独立 Agent 进程 seam（`agent_runtime` + `AGENT_BASE_URL` 代理）。MCP / Desktop 仍为占位。
+文档层（PRD / SPEC）仍大量停留在 v1.0 草案；`MVP_SCOPE.md` 已有部分与代码差异标注。**2026-08-03/04 已落地**：Alembic 迁移（取代 `create_all`）、`packages/types` OpenAPI 生成契约（`apps/web` 改用 `types`）、Agent 代码物理迁入 `services/agent/agent_core/`（API 侧保留 `api_backend.*` 兼容 shim）、独立 Agent 进程 seam（`agent_runtime` + `AGENT_BASE_URL` 代理）。MCP / Desktop 仍为占位。
 
 ---
 
@@ -52,7 +52,7 @@ RepoPilot v1.0 的核心产品闭环已在代码层面跑通，并在 2026-07 �
 
 ### 2.3 共享包（`packages/*`）
 
-- `types/`：✅ 已生成 — `scripts/export_openapi.py` 导出 `packages/contracts/openapi.json`，`packages/types` 经 openapi-typescript 生成 `src/generated.ts`；`apps/web` 已全面改用 `@repopilot/types` 作为 API 契约类型源（`apps/web/src/api/types.ts` 为再导出 + 前端专属类型）。
+- `types/`：✅ 已生成 — `scripts/export_openapi.py` 导出 `packages/contracts/openapi.json`，`packages/types` 经 openapi-typescript 生成 `src/generated.ts`；`apps/web` 已全面改用 `types` 作为 API 契约类型源（`apps/web/src/api/types.ts` 为再导出 + 前端专属类型）。
 - `contracts/`：含 OpenAPI 3.1 导出（version 2.0.0）。
 - `ui/`、`prompts/`、`py-shared/`、`config/`：仍为占位（`packages/prompts` 仅 README，真实 Soul 在 `agent_core/agents/registry.py`）。
 

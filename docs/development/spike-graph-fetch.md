@@ -1,7 +1,7 @@
 # Spike: 图谱取数通路
 
 **状态：** 已拍板  
-**范围：** 图数据如何进入 RepoPilot（不含渲染）
+**范围：** 图数据如何进入 Voyager（不含渲染）
 
 ## 结论
 
@@ -32,7 +32,7 @@
 
 - MCP：`POST /rpc`（JSON-RPC）适合 Agent 工具调用，**不适合**大批量拉全图
 - SQLite：`~/.cache/codebase-memory-mcp/` — schema 耦合，仅作 fallback
-- RepoPilot 索引规模约 **7400 nodes / 20k+ edges**；带 budget 的 layout（5000）是设计路径
+- Voyager 索引规模约 **7400 nodes / 20k+ edges**；带 budget 的 layout（5000）是设计路径
 
 ## 拍板
 

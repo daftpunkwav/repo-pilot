@@ -1,4 +1,4 @@
-# RepoPilot 第二轮整改报告(2026-08-07)
+# Voyager 第二轮整改报告(2026-08-07)
 
 > **报告路径**:`docs/review/REMEDIATION_CONTINUATION_REPORT_20260807.md`
 > **生成日期**:2026-08-07
@@ -287,7 +287,7 @@ npm run build
 9. **`load_chat_history` 仍依赖短记忆摘要补偿** — 真正彻底修复需 `AgentMessage` 加 `tool_call_id` 列 + alembic 迁移(涉及 schema 演进)
 10. **`AgentApi` 258 行**(api/real 子类)— 仍可拆为 `agent-sessions.ts` + `agent-stream.ts` + `agent-profile.ts`
 11. **`CODE_OF_CONDUCT.md` 邮箱占位符**(`open-source@example.com`)— 合并前请补上实际维护者邮箱或换成 GitHub Discussions
-12. **`@repopilot/types` 三重解析**(workspace + tsconfig + vite alias)— README 需注明"清 dist / re-run tsc"
+12. **`types` 三重解析**(workspace + tsconfig + vite alias)— README 需注明"清 dist / re-run tsc"
 13. **`formatters.ts` 旧行为与原文件不一致**(已删) — 后续注意不要双份维护
 14. **`isAskUserShapedText` 行为差异** — 本轮拆分时改成轻量正则预筛,与原行为有语义差异(grep 未被外部引用,安全)
 

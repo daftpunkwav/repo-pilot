@@ -89,7 +89,7 @@ def test_handle_chat_normal_hub_flow(monkeypatch):
     chunks = []
     async def iterate():
         async for c in service.handle_chat(
-            session_id="s1", message="帮我分析一下 RepoPilot"
+            session_id="s1", message="帮我分析一下 Voyager"
         ):
             chunks.append(c)
     import asyncio

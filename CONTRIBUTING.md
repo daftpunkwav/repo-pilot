@@ -1,6 +1,6 @@
-# Contributing to RepoPilot
+# Contributing to Voyager
 
-感谢你考虑为 RepoPilot 贡献代码！本文档整理了本地开发、提交规范、PR 流程的要点。
+感谢你考虑为 Voyager 贡献代码！本文档整理了本地开发、提交规范、PR 流程的要点。
 完整开发流程见 [`docs/development/guides/DEVELOPMENT_PROCESS.md`](docs/development/guides/DEVELOPMENT_PROCESS.md)，
 任务分配与里程碑见 [`docs/development/DEVELOPMENT_ROADMAP.md`](docs/development/DEVELOPMENT_ROADMAP.md)。
 

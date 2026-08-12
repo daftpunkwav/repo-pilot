@@ -1,4 +1,4 @@
-# RepoPilot 现状快照(只读盘点 / 2026-08-04,2026-08-05 修订)
+# Voyager 现状快照(只读盘点 / 2026-08-04,2026-08-05 修订)
 
 > **体例**:每个论断附 `file_path:line`,可验证。区分 **[已核实]** = 亲自 Read 源码;**[仅文档]** = 仅文档声称。
 > **范围**:`services/api/api_backend/`、`services/agent/`、`apps/web/src/`、`tests/`、`docs/` 全部权威来源。
@@ -30,13 +30,13 @@
 
 | 维度 | 值 | 引用 |
 |---|---|---|
-| 项目名 | **RepoPilot** | `package.json:2` |
+| 项目名 | **Voyager** | `package.json:2` |
 | 定位 | AI-driven GitHub 开源项目学习平台(7 Agent + BYOK) | `docs/product/v2/PRD/PRD.md:17` |
 | 代码版本 | **2.0.0** | `package.json:4`、`apps/web/package.json:4`、`services/api/pyproject.toml:3`、`api_backend/main.py:95` |
 | Python 要求 | `>=3.11` | `services/api/pyproject.toml:5`、`pyproject.toml:5` |
 | Node 要求 | `>=20.11` | `apps/web/package.json:7` |
 | 包管理器 | `npm@10.9.0` | `apps/web/package.json:8` |
-| FastAPI 标题 | `RepoPilot` | `api_backend/main.py:95` |
+| FastAPI 标题 | `Voyager` | `api_backend/main.py:95` |
 | FastAPI 版本 | `2.0.0` | `api_backend/main.py:95` |
 | Monorepo 工具 | npm workspaces(`apps/*`、`packages/*`) | `package.json:6-8` |
 | Python workspace | `services/api`、`services/agent`、`services/mcp` | `pyproject.toml:7-8` |
@@ -55,7 +55,7 @@
 ### 2.2 顶层目录清单(盘后)
 
 ```
-RepoPilot/
+Voyager/
 ├── apps/
 │   ├── web/                 # React 19 SPA,已实现
 │   └── desktop/             # 仅 README 占位(`apps/desktop/README.md:1-19`)
@@ -124,10 +124,10 @@ RepoPilot/
 - `config.py:12-22` `REPO_ROOT`:向上寻找同时含 `apps/` 与 `services/` 的目录;`DATA_DIR = REPO_ROOT/data`
 - `config.py:29-33` `Settings(BaseSettings)`:`env_file=".env"`、`env_file_encoding="utf-8"`、`extra="ignore"`
 - 21 个字段(`config.py:36-91`):
-  - `app_name="RepoPilot"` `:36`
+  - `app_name="Voyager"` `:36`
   - `debug=False` `:37`
   - `api_v1_prefix="/api/v1"` `:38`
-  - `database_url="sqlite:///{DATA_DIR/'repopilot.db'}"` `:41`
+  - `database_url="sqlite:///{DATA_DIR/'voyager.db'}"` `:41`
   - `secret_key`(必填)`:44-47`
   - `secrets_encryption_key: Optional[str]` `:49-52`
   - `access_token_expire_minutes=60` `:54`
@@ -587,7 +587,7 @@ plan_execute 模式下:
 ### 3.11 独立 Agent 进程(`services/agent/agent_runtime/main.py`)
 - 文件总行 129
 - `main.py:17-29` sys.path 注入 `services/agent` 与 `services/api`,`agent_core` + `backend` 双命名空间共存
-- `main.py:31` `FastAPI(title="RepoPilot Agent Runtime", version="0.3.0")`
+- `main.py:31` `FastAPI(title="Voyager Agent Runtime", version="0.3.0")`
 - `main.py:34-47` `_require_internal_token(token)` 从 `api_backend.config.get_settings().agent_internal_token` 读出;读不到 503,不匹配 401
 - 端点:
   - `GET /health`(`:50-62`)返回 `{status, service, version, mode, agents:[7 个 id]}`,`mode="agent_core"`
@@ -616,13 +616,13 @@ plan_execute 模式下:
   - `mermaid: ^11.16.0`(`:28`)
   - `highlight.js: ^11.11.1`(`:27`)
   - `dompurify: ^3.4.12`(`:26`)
-  - `@repopilot/types: "*"`(workspace 链接,`:22`)
+  - `types: "*"`(workspace 链接,`:22`)
 - devDeps:vitest 4.1.9、playwright 1.61.1、@testing-library、ts 5.9.3、vite 7.1.9、@vitejs/plugin-react 5.0.4
 
 #### 4.1.2 `vite.config.ts`
 - Dev server `host: '127.0.0.1', port: 5173`(`:22-32`)
 - 代理 `/api → http://127.0.0.1:19878, changeOrigin: true`(`:25-31`),注释明文"19876 在部分 Windows 环境会幽灵 LISTENING;开发暂用 19878"
-- 别名(`:13-19`):`@ → ./src`,`@repopilot/types → ../../packages/types/src/index.ts`,`react / react-dom` 显式指向防止 monorepo hoist
+- 别名(`:13-19`):`@ → ./src`,`types → ../../packages/types/src/index.ts`,`react / react-dom` 显式指向防止 monorepo hoist
 - `dedupe: ['react', 'react-dom', '@tanstack/react-query']`(`:20`)
 - `test`(`:33-38`):`globals: true, environment: 'jsdom', setupFiles: './tests/setup.ts', include: ['tests/unit/**/*.test.{ts,tsx}']`
 
@@ -808,7 +808,7 @@ data: {json.dumps(data, ensure_ascii=False)}
 ### 5.1 `packages/types/` [已生成]
 - `package.json:8-10` `generate` 脚本从 `packages/contracts/openapi.json` 生成 `src/generated.ts`,经 `write-index.mjs` 写入 `src/index.ts`
 - `src/generated.ts` 由 openapi-typescript 输出,`src/aliases.ts` 为手写别名
-- 前端 `apps/web/vite.config.ts:16-19` 将 `@repopilot/types` alias 直解析 `packages/types/src/index.ts`
+- 前端 `apps/web/vite.config.ts:16-19` 将 `types` alias 直解析 `packages/types/src/index.ts`
 
 ### 5.2 `packages/contracts/`
 - `openapi.json` 由 `scripts/export_openapi.py`(`:1-29`)生成,OpenAPI 3.1.0,version 2.0.0
@@ -817,8 +817,8 @@ data: {json.dumps(data, ensure_ascii=False)}
 - 仅 README;真实 Soul 仍在 `services/agent/agent_core/agents/registry.py:42-134`
 
 ### 5.4 `packages/py-shared/`
-- `pyproject.toml` 包名 `repopilot-py-shared`,依赖 `pydantic>=2.5.0`
-- `repopilot_shared/__init__.py` 占位,`__version__="0.1.0"`
+- `pyproject.toml` 包名 `py-shared`,依赖 `pydantic>=2.5.0`
+- `py_shared/__init__.py` 占位,`__version__="0.1.0"`
 
 ### 5.5 `packages/config/`
 - `tsconfig.base.json`(ES2022、ESNext、bundler、strict、JSX、unused locals),ESLint/Tailwind 配置缺失

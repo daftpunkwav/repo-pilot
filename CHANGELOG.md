@@ -1,9 +1,21 @@
 # Changelog
 
-RepoPilot 的所有重要变更都会记录在此文件。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
+Voyager 的所有重要变更都会记录在此文件。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
 ## [Unreleased]
+
+### 改名（2026-08-13）
+- 产品名定为 **Voyager**，展示层文案收敛 `APP_NAME` 配置（config.py 默认值，可 env 覆盖）
+- 代码标识符全面去品牌中性化：
+  - Python 包 `repopilot_shared`→`py_shared`，发行名 `repopilot-*`→`api`/`agent`/`graph-engine`/`mcp`/`py-shared`
+  - npm 去 `@repopilot` scope：`web`/`types`/`ui`/`config`
+  - C 引擎 `cbm_*`/`CBM_*`/`CBMCamelCase` → `engine_*`/`ENGINE_*`/`EngineCamelCase`（55,373 处）
+  - 目录 `internal/cbm/`→`internal/engine/`，二进制 `rp-graph-engine`→`graph-engine`
+  - 环境变量 `RP_*`/`CBM_*`→`GRAPH_*`/`AGENT_*`（破坏性，旧 .env 需迁移）
+  - flavor 字面量 `"cbm"`/`"rp_graph"`→`"native"`/`"fallback"`（C=默认实现、py=降级实现）
+- 历史评审文档（docs/review/ARCHITECTURE_REFACTOR_REPORT/）文件名保留原名作存档
+- 上游 MIT 归属（THIRD_PARTY.md / LICENSE / NOTICE / vendored）完整保留
 
 ### Added
 - §4.1.1 跨 worker 会话流取消信号（agent_session_cancel_tokens 表 + 流循环每 8 chunk 轮询）

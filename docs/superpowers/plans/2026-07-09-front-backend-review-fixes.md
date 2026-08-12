@@ -2,7 +2,7 @@
 
 ## 目标
 
-对 RepoPilot 的 front（`apps/web`、`packages/ui`、`packages/types`）与 backend（`services/api`、`services/mcp`、`packages/py-shared`、`packages/contracts`）进行安全、现代化、规范、可维护、可拓展审查，修复发现的 Critical / High 级别问题，确保功能与业务逻辑正确，最终提交并推送到三个远端仓库。
+对 Voyager 的 front（`apps/web`、`packages/ui`、`packages/types`）与 backend（`services/api`、`services/mcp`、`packages/py-shared`、`packages/contracts`）进行安全、现代化、规范、可维护、可拓展审查，修复发现的 Critical / High 级别问题，确保功能与业务逻辑正确，最终提交并推送到三个远端仓库。
 
 ## 范围
 

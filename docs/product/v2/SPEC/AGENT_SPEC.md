@@ -1,4 +1,4 @@
-# RepoPilot v2 — Agent System Specification
+# Voyager v2 — Agent System Specification
 
 > 版本: 2.0.0 | 日期: 2026-07-04 | 路径更新: 2026-07-05 | 状态: 草稿
 >
@@ -38,7 +38,7 @@
 
 ### §1.1 Agent Layer 在四层架构中的定位
 
-RepoPilot v2 采用四层架构。Agent Layer 是系统的核心智能层，位于 Presentation Layer 与 Knowledge Layer 之间，承担所有推理、规划、调度和协作职责。
+Voyager v2 采用四层架构。Agent Layer 是系统的核心智能层，位于 Presentation Layer 与 Knowledge Layer 之间，承担所有推理、规划、调度和协作职责。
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐

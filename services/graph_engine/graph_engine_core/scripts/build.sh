@@ -148,7 +148,7 @@ verify_compiler "$CC"
 engine_remove_build_dir "$ROOT" "$BUILD_DIR"
 
 # Step 2: Build (Makefile applies $ARCHFLAGS for the target arch on macOS)
-# UI asset 服务已移除(RepoPilot 前端在 apps/web),--with-ui 不再有独立构建目标。
+# UI asset 服务已移除(Voyager 前端在 apps/web),--with-ui 不再有独立构建目标。
 if $WITH_UI; then
     echo "build.sh: warning: --with-ui 已弃用(前端资源服务已移除),按标准目标构建" >&2
 fi

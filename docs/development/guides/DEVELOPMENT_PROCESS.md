@@ -1,8 +1,8 @@
-# RepoPilot — 开发流程文档
+# Voyager — 开发流程文档
 
 > 版本: 1.0.0 | 日期: 2026-07-03 | 路径更新: 2026-07-05 | 复核: 2026-08-05
 > 
-> 注：本文档版本 1.0.0 为文档自身版本；描述的 RepoPilot 代码版本为 2.0.0（对应 v1.0 产品闭环）。
+> 注：本文档版本 1.0.0 为文档自身版本；描述的 Voyager 代码版本为 2.0.0（对应 v1.0 产品闭环）。
 >
 > **仓库布局：** Monorepo（`apps/` · `services/` · `packages/`）。下文若出现 `frontend/`、`api_backend/`，对照 [`docs/architecture/PATH_MAPPING.md`](../architecture/PATH_MAPPING.md)。**当前 UI 主开发在 `apps/web/`**；`docs/design/v1/frontend/` 仅为 v1 设计归档（只读参考）。
 
@@ -47,7 +47,7 @@ npm run test:api
 npm run test:web
 
 # 前端 E2E（apps/web，Playwright，强制 VITE_USE_MOCK=true）
-npm run test:e2e -w @repopilot/web
+npm run test:e2e -w /web
 
 # 全量测试
 npm run test
@@ -177,8 +177,8 @@ SECRET_KEY=<random-64-char-hex>
 # 建议：与 JWT 分离的敏感字段 at-rest 加密密钥（Fernet 派生）
 # SECRETS_ENCRYPTION_KEY=
 
-# 数据库（默认仓库根 data/repopilot.db，由 api_backend/config.py 解析）
-# DATABASE_URL=sqlite:///./data/repopilot.db
+# 数据库（默认仓库根 data/voyager.db，由 api_backend/config.py 解析）
+# DATABASE_URL=sqlite:///./data/voyager.db
 
 # 开发调试（生产务必 false）
 DEBUG=false
@@ -233,7 +233,7 @@ cd docs/design/v1/frontend && npm run dev   # 已停用：归档沙盒制品已�
 
 ## 5. 版本发布
 
-RepoPilot 采用 **v1.0 单版本完整发布** 策略，不按 Phase 递增 MINOR 版本号。
+Voyager 采用 **v1.0 单版本完整发布** 策略，不按 Phase 递增 MINOR 版本号。
 
 | 版本号 | 规则 |
 |--------|------|

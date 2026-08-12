@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>RepoPilot v2.0.0 全量代码审查报告 v2 · 2026-08-04</title>
+<title>Voyager v2.0.0 全量代码审查报告 v2 · 2026-08-04</title>
 <style>
   :root {
     --bg-0: #0B0E14; --bg-1: #11151E; --bg-2: #161B25; --bg-3: #1D2330;
@@ -310,7 +310,7 @@
 
 <div class="topbar">
   <div class="topbar-inner">
-    <div class="topbar-logo"><b>$</b> repopilot / <span class="accent">audit</span> v2.0 --since 2026-08-04</div>
+    <div class="topbar-logo"><b>$</b> voyager / <span class="accent">audit</span> v2.0 --since 2026-08-04</div>
     <div class="topbar-meta">
       <span><span class="dot crit"></span> v1 → v2 deltas</span>
       <span class="muted">12 sections</span>
@@ -739,7 +739,7 @@
         <tr><td><code>D-05</code></td><td>initial_schema.py:86</td><td><code>projects.url</code> 无 <code>UNIQUE(user_id, url)</code></td><td><span class="sev-pill p1">P1</span></td></tr>
         <tr><td><code>D-06</code></td><td>initial_schema.py:50-59</td><td><code>refresh_tokens</code> 缺 <code>last_used_at</code></td><td><span class="sev-pill p3">P3</span></td></tr>
         <tr><td><code>D-07</code></td><td>env.py:46,56</td><td><code>render_as_batch=True</code> 应用于所有 dialect,PG 效率低</td><td><span class="sev-pill p3">P3</span></td></tr>
-        <tr><td><code>D-08</code></td><td>alembic.ini:5</td><td><code>sqlalchemy.url = sqlite:///data/repopilot.db</code> 默认值应留空</td><td><span class="sev-pill p3">P3</span></td></tr>
+        <tr><td><code>D-08</code></td><td>alembic.ini:5</td><td><code>sqlalchemy.url = sqlite:///data/voyager.db</code> 默认值应留空</td><td><span class="sev-pill p3">P3</span></td></tr>
       </table>
     </section>
 
@@ -831,7 +831,7 @@
         <tr><td><code>DEP-04</code></td><td><code>apps/web/package.json:39-62</code></td><td>Vitest 4 + Vite 7 + jsdom 29 新生态,可能 React 19 兼容问题</td><td><span class="sev-pill p1">P1</span></td></tr>
         <tr><td><code>DEP-05</code></td><td>无 <code>uv.lock</code> / <code>poetry.lock</code></td><td>Python 依赖无锁文件,无法保证可复现构建</td><td><span class="sev-pill p1">P1</span></td></tr>
         <tr><td><code>DEP-06</code></td><td>根 <code>pyproject.toml:6-8</code></td><td><code>[tool.uv.workspace] members</code> <b>没把 <code>packages/py-shared</code> 计入</b></td><td><span class="sev-pill p1">P1</span></td></tr>
-        <tr><td><code>DEP-07</code></td><td><code>apps/web/package.json</code></td><td><code>@repopilot/types: "*"</code> workspaces 符号链接 + tsconfig paths 双重解析</td><td><span class="sev-pill p3">P3</span></td></tr>
+        <tr><td><code>DEP-07</code></td><td><code>apps/web/package.json</code></td><td><code>types: "*"</code> workspaces 符号链接 + tsconfig paths 双重解析</td><td><span class="sev-pill p3">P3</span></td></tr>
       </table>
     </section>
 
@@ -922,7 +922,7 @@
         <tr><td>迁移</td><td>Alembic 替代 <code>create_all</code></td></tr>
         <tr><td>段缓冲</td><td><code>_AgentSegmentBuffer</code> 按 agent_switch 切段落库设计正确</td></tr>
         <tr><td>常量集中</td><td><code>Workflow</code> 枚举 + <code>AgentEngineConfig</code> 显著减少魔数</td></tr>
-        <tr><td>类型契约</td><td><code>apps/web/src/api/types.ts</code> 通过 <code>@repopilot/types</code> 65 个别名零 drift</td></tr>
+        <tr><td>类型契约</td><td><code>apps/web/src/api/types.ts</code> 通过 <code>types</code> 65 个别名零 drift</td></tr>
         <tr><td>别名表</td><td><code>aliases.ts</code> 66 个 <code>Schemas['X']</code> 引用 100% 可解析</td></tr>
         <tr><td>前端 SSE 测试</td><td><code>sse-parser</code> / <code>agentSSEStream</code> / <code>runTrace</code> / <code>streamRenderer</code> 覆盖扎实</td></tr>
         <tr><td>Mock 隔离</td><td>Playwright 强制 <code>VITE_USE_MOCK=true</code>,与生产配置干净隔离</td></tr>
