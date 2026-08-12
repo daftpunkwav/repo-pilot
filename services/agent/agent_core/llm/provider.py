@@ -94,7 +94,9 @@ class LLMProvider:
                 "::1",
             )
             if not is_local_ollama:
-                from api_backend.core.url_safety import assert_safe_outbound_https_url
+                from repopilot_shared.security.url_safety import (
+                    assert_safe_outbound_https_url,
+                )
 
                 try:
                     api_base = assert_safe_outbound_https_url(api_base)

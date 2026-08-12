@@ -8,11 +8,9 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator
 
-from api_backend.services.sse_stream import format_sse
-
 from agent_core.agents.question import _normalize_question
 from agent_core.agents.registry import AgentDefinition
-from agent_core.agents.stream_events import StreamEvent
+from agent_core.agents.stream_events import StreamEvent, format_sse
 from agent_core.agents.types import AgentEngineConfig, Messages, Workflow
 from agent_core.llm.provider import LLMCompleteResult, LLMProvider
 from agent_core.memory.context import AgentRunContext

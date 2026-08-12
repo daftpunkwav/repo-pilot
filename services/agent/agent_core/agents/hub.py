@@ -11,13 +11,12 @@ from typing import Any, AsyncIterator
 from uuid import UUID
 
 from api_backend.services.app_state_service import get_or_create_app_state
-from api_backend.services.sse_stream import format_sse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_core.agents.intent import IntentClassifier, IntentResult
 from agent_core.agents.react import EngineResult, ReActEngine
 from agent_core.agents.registry import AgentDefinition, get_registry
-from agent_core.agents.stream_events import StreamEvent
+from agent_core.agents.stream_events import StreamEvent, format_sse
 from agent_core.agents.types import AgentEngineConfig, Messages
 from agent_core.llm.config import (
     LLMConfig,

@@ -9,6 +9,7 @@ from typing import Any, AsyncIterator
 from uuid import UUID
 
 from agent_core.agents.hub import HubService
+from agent_core.agents.stream_events import StreamEvent, encode_stream_item, format_sse
 from agent_core.llm.config import build_llm_config_from_user
 from agent_core.memory.service import MemoryService
 from agent_core.tools.builtin import ensure_tools_loaded
@@ -22,7 +23,6 @@ from api_backend.schemas.agent import (
     ContextWindowStatsOut,
 )
 from api_backend.services.project_service import get_project
-from api_backend.services.sse_stream import StreamEvent, encode_stream_item, format_sse
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1048,12 +1048,12 @@ async def stream_import_assist(
 
     from agent_core.agents.react import EngineResult, ReActEngine
     from agent_core.agents.registry import get_registry
+    from agent_core.agents.stream_events import format_sse
     from agent_core.llm.config import build_llm_config_from_user
     from agent_core.llm.provider import LLMProvider
     from agent_core.memory.context import ContextBuilder
     from agent_core.memory.service import MemoryService
     from agent_core.tools.registry import ToolRegistry, global_registry
-    from api_backend.services.sse_stream import format_sse
 
     available = list(context.get("available_repo_keys") or [])
     selected = list(context.get("selected_repo_keys") or [])
@@ -1369,7 +1369,7 @@ async def stream_graph_guide(
     *,
     selected_node_id: str | None = None,
 ) -> AsyncIterator[str]:
-    from api_backend.services.sse_stream import format_sse
+    from agent_core.agents.stream_events import format_sse
 
     session = AgentSession(
                 title="图谱向导",

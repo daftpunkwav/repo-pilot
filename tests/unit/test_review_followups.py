@@ -1,7 +1,7 @@
 """SSE 解析与项目 URL 校验等审查跟进单测"""
 import pytest
+from agent_core.agents.stream_events import format_sse, parse_sse_chunk
 from api_backend.schemas.project import ProjectCreate, ProjectUpdate
-from api_backend.services.sse_stream import format_sse, parse_sse_chunk
 from pydantic import ValidationError
 
 

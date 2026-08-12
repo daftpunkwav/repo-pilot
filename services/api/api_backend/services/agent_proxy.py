@@ -42,7 +42,7 @@ async def proxy_agent_chat_sse(
             if resp.status_code >= 400:
                 body = (await resp.aread()).decode("utf-8", errors="replace")[:500]
                 logger.error("agent proxy HTTP %s: %s", resp.status_code, body)
-                from api_backend.services.sse_stream import format_sse
+                from agent_core.agents.stream_events import format_sse
 
                 yield format_sse(
                     "error",

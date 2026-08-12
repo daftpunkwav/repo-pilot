@@ -9,6 +9,8 @@
 - JSON-RPC：`POST /rpc`（`tools/call`：`search_graph`、`get_graph_schema`、`trace_path` 等）
 - **不含**上游 React `graph-ui`；可视化由 RepoPilot `apps/web` 负责
 
+> C 引擎只提供功能 API（`/api/layout`、`/rpc`），前端可视化由 RepoPilot `apps/web` 负责。asset_pack 前端资源服务已移除。
+
 ## 构建
 
 依赖（WSL/Ubuntu 示例）：`build-essential`、`make`、`zlib1g-dev`、`python3`。

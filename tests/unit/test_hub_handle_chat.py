@@ -6,8 +6,8 @@
 
 from agent_core.agents.hub import HubService
 from agent_core.agents.react import EngineResult
+from agent_core.agents.stream_events import format_sse
 from agent_core.llm.provider import LLMProvider
-from api_backend.services.sse_stream import format_sse
 
 
 class FakeRegistry:

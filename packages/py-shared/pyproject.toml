@@ -5,6 +5,8 @@ description = "API / Agent / MCP 共享的 Python 模型与工具"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.5.0",
+    "sqlalchemy>=2.0.0",
+    "cryptography>=41.0.0",
 ]
 
 [build-system]

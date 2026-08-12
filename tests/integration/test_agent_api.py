@@ -32,7 +32,7 @@ async def test_agent_analyze_accepts_agent_id(client: AsyncClient, auth_headers:
     project_id = create.json()["data"]["id"]
 
     async def fake_direct(*_a, **_k):
-        from api_backend.services.sse_stream import format_sse
+        from agent_core.agents.stream_events import format_sse
 
         yield format_sse("thinking", {"content": "plan…"})
         yield format_sse("text_delta", {"content": "分析完成"})

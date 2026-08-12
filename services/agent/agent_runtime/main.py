@@ -16,12 +16,13 @@ from fastapi.responses import StreamingResponse
 _AGENT_ROOT = Path(__file__).resolve().parents[1]
 _REPO = _AGENT_ROOT.parents[1]
 _API_ROOT = _REPO / "services" / "api"
+_PY_SHARED_ROOT = _REPO / "packages" / "py-shared"
 
 # §4.2.1 TODO: agent_core 与 backend 的循环依赖（17 处 from api_backend.* 反向
 # import + 此处 sys.path hack）应通过 packages/py-shared 下沉共享模型/端口/安全
 # 工具来消除。中期重构，工作量大；本提交先保留 sys.path hack 并标注迁移路径，
 # 不破坏现有行为。参见 docs/review/REMEDIATION_PLAN_20260806.md §4.2.1。
-for p in (_AGENT_ROOT, _API_ROOT):
+for p in (_AGENT_ROOT, _API_ROOT, _PY_SHARED_ROOT):
     s = str(p)
     if s not in sys.path:
         sys.path.insert(0, s)

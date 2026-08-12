@@ -5,13 +5,13 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 
 from api_backend.config import get_settings
+from repopilot_shared.database import Base  # noqa: F401
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import DeclarativeBase
 
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
@@ -74,10 +74,6 @@ def reset_database() -> None:
     global _engine, _session_factory
     _engine = None
     _session_factory = None
-
-
-class Base(DeclarativeBase):
-    pass
 
 
 async def get_session() -> AsyncIterator[AsyncSession]:

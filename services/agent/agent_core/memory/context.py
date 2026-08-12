@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
-from api_backend.models.project import Project
+from repopilot_shared.models.project import Project
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agent_core.llm.config import LLMConfig

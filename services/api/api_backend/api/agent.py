@@ -3,6 +3,7 @@ Agent API —— 会话管理、对话 SSE、反问、分析、专用入口
 """
 from uuid import UUID
 
+from agent_core.agents.stream_events import encode_stream_item, format_sse
 from api_backend.api.deps import get_db
 from api_backend.config import get_settings
 from api_backend.core.limiter import limiter
@@ -45,7 +46,6 @@ from api_backend.services.agent_service import (
     update_session,
 )
 from api_backend.services.project_service import get_project
-from api_backend.services.sse_stream import encode_stream_item, format_sse
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from fastapi.responses import StreamingResponse
 from slowapi.util import get_remote_address

@@ -107,7 +107,6 @@ async def ensure_graph_engine_sidecar() -> bool:
 
     cmd = [
         str(bin_path),
-        "--ui=true",
         f"--port={port}",
     ]
     logger.info("启动图谱 C 引擎：%s（port=%s cache=%s）", bin_path, port, cache_dir)
