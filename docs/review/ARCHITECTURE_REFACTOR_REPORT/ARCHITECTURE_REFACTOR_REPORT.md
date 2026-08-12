@@ -88,7 +88,8 @@ GitHub 源码只是知识的一种来源。未来可能支持新闻、技术文�
      └──────────┍             (core)       (fallback)
 
   Contract 层(packages/py-shared):
-    models / schemas / ports(Protocol) / security / sse_utils / contracts
+    models / schemas / ports(Protocol) / security / contracts
+    (SSE format_sse 留在 agent_core/agents/stream_events，非跨服务契约)
 ```
 
 ### 2.4 部署模式

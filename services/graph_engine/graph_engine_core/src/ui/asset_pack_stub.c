@@ -43,6 +43,15 @@ bool cbm_ui_assets_install(const char *install_dir, bool dry_run, char *err, siz
     (void)err_sz;
     return true;
 }
+
+/* Test seams: stub 构建无前端资源，testing 接口为 no-op。 */
+void cbm_ui_assets_set_manifest_for_testing(const char *name, const char *sha256, uint64_t size) {
+    (void)name;
+    (void)sha256;
+    (void)size;
+}
+
+void cbm_ui_assets_reset_for_testing(void) {}
 #endif
 
 bool cbm_ui_assets_remove(const char *install_dir, bool dry_run, char *err, size_t err_sz) {

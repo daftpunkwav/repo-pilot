@@ -5,6 +5,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -14,11 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 logger = logging.getLogger(__name__)
 
 
+@lru_cache(maxsize=1)
 def _key_material() -> str:
     """与 api_backend Settings 同源的密钥材料（SECRETS_ENCRYPTION_KEY 优先，回退 SECRET_KEY）。
 
     阶段 2 过渡：优先环境变量，兜底仓库根 .env（与 Settings.env_file 同源），
     避免 .env-only 部署下 agent 侧拿到空密钥导致 LLM Key 解密失败；
+    进程启动时一次性加载并缓存（lru_cache），避免运行时 .env 被篡改影响解密；
     阶段 4 由 Contract 注入统一管理。
     """
 

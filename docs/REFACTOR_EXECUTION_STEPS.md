@@ -205,10 +205,10 @@ def _fernet(key_material: str) -> Fernet:
     digest = hashlib.sha256(key_material.encode("utf-8")).digest()
     return Fernet(base64.urlsafe_b64encode(digest))
 
-def is_encrypted_secret(value: str | None, key_material: str) -> bool:
+def is_encrypted_secret(value: str | None) -> bool:
+    """纯前缀判断，与密钥无关（is_encrypted_secret 不需要 key_material）。"""
     if not value or not value.startswith("enc:"):
         return False
-    try:
         _fernet(key_material).decrypt(value[4:].encode())
         return True
     except (InvalidToken, Exception):
@@ -303,7 +303,8 @@ candidates = (
 # A/B/C/D/G 类依赖消除验证(预期 0)
 grep -rnE 'from api_backend\.models' services/agent/agent_core/ --include='*.py' | grep -v '/__pycache__/' | wc -l
 grep -rnE 'from api_backend\.core\.(security|url_safety)' services/agent/agent_core/ --include='*.py' | grep -v '/__pycache__/' | wc -l
-grep -rnE 'from api_backend\.ports' services/agent/agent_core/ --include='*.py' | grep -v '/__pycache__/' | wc -l
+# ports Protocol 已下沉;sqlalchemy_adapters Adapter 按设计保留(阶段 4 Contract 化时处理)
+grep -rnE 'from api_backend\.ports' services/agent/agent_core/ --include='*.py' | grep -v '/__pycache__/' | grep -v 'sqlalchemy_adapters' | wc -l
 grep -rnE 'from api_backend\.schemas' services/agent/agent_core/ --include='*.py' | grep -v '/__pycache__/' | wc -l
 grep -rnE 'from api_backend\.services\.sse_stream' services/agent/agent_core/ --include='*.py' | grep -v '/__pycache__/' | wc -l
 # 以上全部应为 0
