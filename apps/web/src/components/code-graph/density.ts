@@ -1,7 +1,7 @@
 /* Visual density compensation for L1 graph.
  *
  * White-blob failure is dominated by additive EDGES (~80k lines crossing the
- * center). RepoPilot ribbon edges + glass nodes + bloom stack harder than CBM
+ * center). Voyager ribbon edges + glass nodes + bloom stack harder than CBM
  * thin lines, so we ease earlier and harder than upstream CBM defaults.
  *
  * Manual DisplaySettings (?????) ride ON TOP of these scales: 1.00� = auto.

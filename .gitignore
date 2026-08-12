@@ -81,7 +81,7 @@ data/repo-cache/
 data/graph-db/
 data/graph-engine-cache/
 data/*.bak*
-data/repopilot.db.bak*
+data/app.db.bak*
 data/*.db-shm
 data/*.db-wal
 

@@ -1242,7 +1242,7 @@ async def stream_import_assist(
         ensure_ascii=False,
     )
     prompt = (
-        "你是 RepoPilot **导入助手**。用中文简洁回复。\n"
+        "你是 Voyager **导入助手**。用中文简洁回复。\n"
         "你掌握：① 用户 Stars/搜索候选 ② 左侧勾选 ③ 已导入项目与学习进度 ④ 用户名。\n"
         "能力：\n"
         "- 回答「star 了哪些类型 / 语言分布」：基于 stars_language_distribution 与 available_repos_sample。\n"

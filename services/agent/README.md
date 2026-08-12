@@ -1,4 +1,4 @@
-# RepoPilot Agent 服务
+# Voyager Agent 服务
 
 相对独立的 **AI Agent 运行时**：核心逻辑在 `agent_core/`，HTTP 入口在 `agent_runtime/`。
 

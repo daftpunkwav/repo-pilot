@@ -37,7 +37,7 @@ async def _request(
 
     headers = {
         "Accept": accept,
-        "User-Agent": "RepoPilot/2.0",
+        "User-Agent": "Voyager/2.0",
         "X-GitHub-Api-Version": "2022-11-28",
     }
     if token:

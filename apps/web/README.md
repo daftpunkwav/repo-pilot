@@ -1,4 +1,4 @@
-# RepoPilot Web（`@repopilot/web`）
+# Voyager Web（`web`）
 
 React 19 + Vite 7 + TypeScript 前端。版本 `2.0.0`。
 

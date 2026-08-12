@@ -1,4 +1,4 @@
-# RepoPilot Desktop
+# Voyager Desktop
 
 桌面端应用壳层（**规划占位，尚未实现**）。
 

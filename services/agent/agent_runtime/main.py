@@ -27,7 +27,7 @@ for p in (_AGENT_ROOT, _API_ROOT, _PY_SHARED_ROOT):
     if s not in sys.path:
         sys.path.insert(0, s)
 
-app = FastAPI(title="RepoPilot Agent Runtime", version="0.3.0")
+app = FastAPI(title="Voyager Agent Runtime", version="0.3.0")
 
 # 启动期 fail-fast：与主应用 api_backend.main 一致，禁止弱密钥 / 未配置密钥。
 # 此前曾用 setdefault 注入固定开发密钥，会静默绕过校验并导致 Fernet 落库

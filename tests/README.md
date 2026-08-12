@@ -1,4 +1,4 @@
-# RepoPilot 测试
+# Voyager 测试
 
 后端 Python 测试目录（前端测试见 `apps/web/tests/`，Vitest + Playwright）。
 

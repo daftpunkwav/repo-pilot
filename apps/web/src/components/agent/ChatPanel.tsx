@@ -258,7 +258,7 @@ export function ChatPanel({
             className="chat-textarea"
             data-testid="chat-input"
             rows={2}
-            placeholder="问 RepoPilot 任何关于开源项目的问题..."
+            placeholder="问 Voyager 任何关于开源项目的问题..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}

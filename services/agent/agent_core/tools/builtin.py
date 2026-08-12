@@ -324,7 +324,7 @@ async def query_knowledge_graph(
 
 @tool(
     name="trigger_code_index",
-    description="触发项目代码图谱索引（浅克隆 + RepoPilot 自研引擎）。返回索引状态。学习场景请先索引再 search/architecture/trace。",
+    description="触发项目代码图谱索引（浅克隆 + Voyager 自研引擎）。返回索引状态。学习场景请先索引再 search/architecture/trace。",
     parameters={
         "type": "object",
         "properties": {

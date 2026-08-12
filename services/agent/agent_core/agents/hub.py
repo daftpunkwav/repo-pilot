@@ -280,7 +280,7 @@ def apply_chitchat_mode(agent_def: AgentDefinition) -> AgentDefinition:
         max_iterations=1,
         max_tokens=min(320, getattr(agent_def, "max_tokens", 2048) or 2048),
         system_prompt=(
-            "你是 RepoPilot Hub 对话管家。"
+            "你是 Voyager Hub 对话管家。"
             "用户只是在打招呼或寒暄。"
             "用一两句自然语言友好回复；可简短询问想做什么"
             "（例如学习某个项目、解读仓库、规划学习路径）。"

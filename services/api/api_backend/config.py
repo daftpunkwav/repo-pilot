@@ -33,8 +33,8 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # 应用
-    app_name: str = "RepoPilot"
+    # 应用（产品名；可通过 APP_NAME 环境变量覆盖，代码不硬编码品牌）
+    app_name: str = "Voyager"
     debug: bool = False
     api_v1_prefix: str = "/api/v1"
 

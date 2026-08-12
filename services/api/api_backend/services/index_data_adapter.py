@@ -1,4 +1,4 @@
-"""引擎 layout/响应 → RepoPilot 统一图契约。"""
+"""引擎 layout/响应 → Voyager 统一图契约。"""
 from __future__ import annotations
 
 from typing import Any

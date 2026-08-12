@@ -1,4 +1,4 @@
-# RepoPilot API 服务
+# Voyager API 服务
 
 传统后端：**用户认证、项目管理、笔记、图谱、Overview、设置**。  
 Agent 对话 HTTP 入口与推理逻辑暂在本服务（`api_backend/api/agent.py`、`api_backend/agents/`）。

@@ -36,12 +36,12 @@ export function Sidebar({ activePage }: SidebarProps) {
   return (
     <aside className={`sidebar${collapsed ? ' is-collapsed' : ''}`}>
       <div className="sidebar-brand">
-        <div className="sidebar-logo" title="RepoPilot">
+        <div className="sidebar-logo" title="Voyager">
           RP
         </div>
         {!collapsed && (
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-            <span className="sidebar-name">RepoPilot</span>
+            <span className="sidebar-name">Voyager</span>
             <span style={{ fontSize: 10, color: 'var(--text-400)', letterSpacing: '0.06em' }}>
               v1.0.0
             </span>

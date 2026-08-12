@@ -57,7 +57,7 @@ export function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'repopilot-projects.json';
+    a.download = 'projects-export.json';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -68,7 +68,7 @@ export function SettingsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'repopilot-notes.json';
+    a.download = 'notes-export.json';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -240,7 +240,7 @@ export function SettingsPage() {
 
         {section === 'about' && (
           <section className="settings-section glass-card glass-card--overview-outer">
-            <h2>关于 RepoPilot</h2>
+            <h2>关于 Voyager</h2>
             <div className="about-row">
               <span className="k">版本</span>
               <span>v1.0.0</span>
