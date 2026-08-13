@@ -614,6 +614,64 @@ class GraphEngine:
         with self._lock:
             return list(self._cross_edges)
 
+    def call(self, name: str, args: dict[str, Any]) -> Any:
+        """统一工具分派入口（client._sync_call 与 HTTP server._dispatch 共用）。
+
+        新增工具只需在此加一个分支，避免在 client.py 与 server.py 同步三处映射。
+        """
+        if name == "index_repository":
+            return self.index_repository(
+                args.get("repo_path") or ".",
+                mode=args.get("mode") or "moderate",
+                name=args.get("name"),
+                target_projects=args.get("target_projects"),
+                persistence=bool(args.get("persistence", True)),
+            )
+        if name == "search_graph":
+            return self.search_graph(
+                args["project"],
+                query=args.get("query") or "",
+                name_pattern=args.get("name_pattern") or "",
+                semantic_query=args.get("semantic_query") or "",
+                label=args.get("label"),
+                limit=int(args.get("limit") or 200),
+                offset=int(args.get("offset") or 0),
+            )
+        if name == "search_code":
+            return self.search_code(
+                args["project"],
+                pattern=args.get("pattern") or args.get("query") or "",
+                limit=int(args.get("limit") or 50),
+            )
+        if name == "get_code_snippet":
+            return self.get_code_snippet(
+                args["project"], args.get("qualified_name") or ""
+            )
+        if name == "trace_path":
+            return self.trace_path(
+                args["project"],
+                start=args.get("start") or args.get("symbol") or "",
+                symbol=args.get("symbol") or "",
+                direction=args.get("direction") or "both",
+                depth=int(args.get("depth") or 3),
+                kind=args.get("kind") or args.get("type") or "calls",
+            )
+        if name == "query_graph":
+            return self.query_graph(
+                args.get("project") or "",
+                args.get("query") or "",
+                limit=int(args.get("limit") or 100_000),
+            )
+        if name == "get_graph_schema":
+            return self.get_graph_schema(args["project"])
+        if name == "get_architecture":
+            return self.get_architecture(
+                args["project"], aspects=args.get("aspects")
+            )
+        if name == "drop_project":
+            return self.drop_project(args.get("project") or args.get("name") or "")
+        raise ValueError(f"unknown tool: {name}")
+
 
 def _eval_where_node(n, where: str) -> bool:
     w = where.strip()

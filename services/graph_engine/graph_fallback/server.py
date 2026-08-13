@@ -108,34 +108,8 @@ def _dispatch(eng, name: str, args: dict):
     if name == "index_repository":
         repo_path = args.get("repo_path") or "."
         _assert_within_allowed_root(repo_path)
-        return eng.index_repository(
-            repo_path,
-            mode=args.get("mode") or "moderate",
-            name=args.get("name"),
-            target_projects=args.get("target_projects"),
-            persistence=bool(args.get("persistence", True)),
-        )
-    if name == "search_graph":
-        return eng.search_graph(args["project"], **{k: v for k, v in args.items() if k != "project"})
-    if name == "search_code":
-        return eng.search_code(
-            args["project"],
-            pattern=args.get("pattern") or args.get("query") or "",
-            limit=int(args.get("limit") or 50),
-        )
-    if name == "get_code_snippet":
-        return eng.get_code_snippet(args["project"], args.get("qualified_name") or "")
-    if name == "trace_path":
-        return eng.trace_path(args["project"], **{k: v for k, v in args.items() if k != "project"})
-    if name == "query_graph":
-        return eng.query_graph(args.get("project") or "", args.get("query") or "")
-    if name == "get_graph_schema":
-        return eng.get_graph_schema(args["project"])
-    if name == "get_architecture":
-        return eng.get_architecture(args["project"], aspects=args.get("aspects"))
-    if name == "drop_project":
-        return eng.drop_project(args.get("project") or args.get("name") or "")
-    raise ValueError(f"unknown tool: {name}")
+    # 统一经 GraphEngine.call 分发（与 client._sync_call 共用同一映射）
+    return eng.call(name, args)
 
 
 def _assert_within_allowed_root(repo_path: str) -> None:

@@ -143,58 +143,8 @@ class GraphEngineClient:
         eng = _local_engine()
 
         def _sync_call() -> Any:
-            if name == "index_repository":
-                return eng.index_repository(
-                    args.get("repo_path") or ".",
-                    mode=args.get("mode") or "moderate",
-                    name=args.get("name"),
-                    target_projects=args.get("target_projects"),
-                    persistence=bool(args.get("persistence", True)),
-                )
-            if name == "search_graph":
-                return eng.search_graph(
-                    args["project"],
-                    query=args.get("query") or "",
-                    name_pattern=args.get("name_pattern") or "",
-                    semantic_query=args.get("semantic_query") or "",
-                    label=args.get("label"),
-                    limit=int(args.get("limit") or 200),
-                    offset=int(args.get("offset") or 0),
-                )
-            if name == "search_code":
-                return eng.search_code(
-                    args["project"],
-                    pattern=args.get("pattern") or args.get("query") or "",
-                    limit=int(args.get("limit") or 50),
-                )
-            if name == "get_code_snippet":
-                return eng.get_code_snippet(
-                    args["project"], args.get("qualified_name") or ""
-                )
-            if name == "trace_path":
-                return eng.trace_path(
-                    args["project"],
-                    start=args.get("start") or args.get("symbol") or "",
-                    symbol=args.get("symbol") or "",
-                    direction=args.get("direction") or "both",
-                    depth=int(args.get("depth") or 3),
-                    kind=args.get("kind") or args.get("type") or "calls",
-                )
-            if name == "query_graph":
-                return eng.query_graph(
-                    args.get("project") or "",
-                    args.get("query") or "",
-                    limit=int(args.get("limit") or 100_000),
-                )
-            if name == "get_graph_schema":
-                return eng.get_graph_schema(args["project"])
-            if name == "get_architecture":
-                return eng.get_architecture(
-                    args["project"], aspects=args.get("aspects")
-                )
-            if name == "drop_project":
-                return eng.drop_project(args.get("project") or args.get("name") or "")
-            raise GraphEngineError(f"未知工具：{name}", code=EC.GRAPH_QUERY_FAILED)
+            # 统一经 GraphEngine.call 分发（与 HTTP server._dispatch 共用同一映射）
+            return eng.call(name, args)
 
         try:
             return await asyncio.to_thread(_sync_call)
