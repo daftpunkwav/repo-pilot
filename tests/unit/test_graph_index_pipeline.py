@@ -227,6 +227,7 @@ def test_allowed_root_reads_graph_allowed_root(monkeypatch):
     修复前曾误读 graph_fallback_allowed_root（不存在）导致 Path(None) 崩溃。
     用 monkeypatch 直接设置模块内 _global，测试后自动恢复原 context。"""
     from dataclasses import dataclass
+
     import graph_engine_runtime.context as ctx_mod
     from graph_engine_runtime.context import GraphRuntimeContext
 
