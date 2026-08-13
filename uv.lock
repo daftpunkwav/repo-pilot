@@ -1006,6 +1006,20 @@ wheels = [
 name = "graph-engine"
 version = "0.1.0"
 source = { editable = "services/graph_engine" }
+dependencies = [
+    { name = "httpx" },
+    { name = "py-shared" },
+    { name = "pydantic" },
+    { name = "sqlalchemy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.25.0" },
+    { name = "py-shared", editable = "packages/py-shared" },
+    { name = "pydantic", specifier = ">=2.5.0" },
+    { name = "sqlalchemy", specifier = ">=2.0.0" },
+]
 
 [[package]]
 name = "greenlet"

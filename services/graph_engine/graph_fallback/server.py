@@ -1,22 +1,45 @@
 """
 可选 HTTP sidecar：python -m graph_fallback.server
 供独立进程托管（P5 / 大规模索引）。
+
+安全边界（与 C 引擎 http_server.c 的 HTTP 安全门对齐）：
+- 仅绑定 127.0.0.1；拒绝非本机 Host 头（防 DNS rebinding）
+- POST 要求 Content-Type: application/json（防 form-CSRF 免预检注入）
+- index_repository 强制 repo_path 位于 GRAPH_ALLOWED_ROOT 下（越界拒绝）
 """
 from __future__ import annotations
 
 import json
 import os
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from .engine import get_engine
 
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1", "[::1]"}
+
 
 class Handler(BaseHTTPRequestHandler):
     eng = None
+    allowed_root: str | None = None
 
     def log_message(self, fmt: str, *args) -> None:  # noqa: A003
         return
+
+    def _reject(self, code: int, message: str) -> None:
+        self._json(code, {"error": message})
+
+    def _host_allowed(self) -> bool:
+        host = (self.headers.get("Host") or "").strip()
+        if not host:
+            return False
+        hostname = host.rsplit(":", 1)[0].strip("[]")
+        return hostname in _LOCAL_HOSTS
+
+    def _content_type_ok(self) -> bool:
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        return ctype == "application/json"
 
     def _json(self, code: int, payload: dict) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
@@ -27,6 +50,9 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self) -> None:  # noqa: N802
+        if not self._host_allowed():
+            self._reject(403, "forbidden")
+            return
         eng = Handler.eng
         parsed = urlparse(self.path)
         if parsed.path == "/health":
@@ -44,6 +70,12 @@ class Handler(BaseHTTPRequestHandler):
         self._json(404, {"error": "not_found"})
 
     def do_POST(self) -> None:  # noqa: N802
+        if not self._host_allowed():
+            self._reject(403, "forbidden")
+            return
+        if not self._content_type_ok():
+            self._reject(415, "unsupported_media_type")
+            return
         eng = Handler.eng
         length = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(length) if length else b"{}"
@@ -74,8 +106,10 @@ class Handler(BaseHTTPRequestHandler):
 
 def _dispatch(eng, name: str, args: dict):
     if name == "index_repository":
+        repo_path = args.get("repo_path") or "."
+        _assert_within_allowed_root(repo_path)
         return eng.index_repository(
-            args.get("repo_path") or ".",
+            repo_path,
             mode=args.get("mode") or "moderate",
             name=args.get("name"),
             target_projects=args.get("target_projects"),
@@ -104,10 +138,22 @@ def _dispatch(eng, name: str, args: dict):
     raise ValueError(f"unknown tool: {name}")
 
 
+def _assert_within_allowed_root(repo_path: str) -> None:
+    """索引边界强制：repo_path 必须位于 GRAPH_ALLOWED_ROOT 之下，越界拒绝。"""
+    root = Handler.allowed_root
+    if not root:
+        return  # 未配置 allowed_root 时不设边界（与 C 引擎未配置时行为一致）
+    root_resolved = Path(root).resolve()
+    target = Path(repo_path).resolve()
+    if target != root_resolved and root_resolved not in target.parents:
+        raise ValueError(f"repo_path 越界：{repo_path} 不在允许根 {root} 之下")
+
+
 def main() -> None:
     root = os.environ.get("GRAPH_ALLOWED_ROOT")
     port = int(os.environ.get("GRAPH_ENGINE_PORT") or "9750")
     Handler.eng = get_engine(data_root=root)
+    Handler.allowed_root = root
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     print(f"graph-engine listening on 127.0.0.1:{port}", flush=True)
     server.serve_forever()
