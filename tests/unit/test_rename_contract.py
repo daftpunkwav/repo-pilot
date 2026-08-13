@@ -4,7 +4,7 @@
 1. config.Settings 的 graph_*/agent_disabled 字段存在且类型正确
 2. GRAPH_*/AGENT_* 环境变量 → Settings 字段映射
 3. start_worker 尊重 graph_auto_start（修复前误读 graph_fallback_auto_start）
-4. sidecar 启动注入 ENGINE_* + GRAPH_* 双写（C 引擎读 ENGINE_*）
+4. sidecar 启动注入 ENGINE_*（C 引擎读 ENGINE_* 唯一权威名，GRAPH_* 是应用层配置契约）
 """
 from __future__ import annotations
 
@@ -126,7 +126,7 @@ async def _async_noop():
     return None
 
 
-# ── 4. sidecar env 双写（ENGINE_* + GRAPH_*）────────────────────────────
+# ── 4. sidecar env 注入（ENGINE_* 唯一权威名）────────────────────────────
 @pytest.mark.asyncio
 async def test_sidecar_env_writes_engine_only(monkeypatch, tmp_path: Path):
     """改名回归：C 引擎读 ENGINE_CACHE_DIR/ENGINE_ALLOWED_ROOT（源码 getenv，唯一
