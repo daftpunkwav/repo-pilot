@@ -13,22 +13,22 @@ from uuid import UUID
 from fastapi import FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 
-_AGENT_ROOT = Path(__file__).resolve().parents[1]
-_REPO = _AGENT_ROOT.parents[1]
-_API_ROOT = _REPO / "services" / "api"
-_GRAPH_ROOT = _REPO / "services" / "graph_engine"
-_PY_SHARED_ROOT = _REPO / "packages" / "py-shared"
+# 最小引导：仅定位 py-shared（服务路径清单单一权威在 py_shared.repo_paths）。
+# services/agent/agent_runtime/main.py → parents[3] = 仓库根
+_PY_SHARED = Path(__file__).resolve().parents[3] / "packages" / "py-shared"
+_PY_SHARED_STR = str(_PY_SHARED)
+if _PY_SHARED_STR not in sys.path:
+    sys.path.insert(0, _PY_SHARED_STR)
+
+from py_shared.repo_paths import ensure_service_paths  # noqa: E402
 
 # §4.2.1 TODO: agent_core 与 backend 的循环依赖（阶段 2 已下沉共享模型/端口/安全
 # 工具到 packages/py-shared，A/B/C/G 类反向依赖清零；剩余 E/F 类业务服务与
-# graph 客户端依赖仍经此处 sys.path hack）应通过 Contract 注入消除。参见
+# graph 客户端依赖仍经此 sys.path 注入）应通过 Contract 注入消除。参见
 # docs/review/ARCHITECTURE_REFACTOR_REPORT/ARCHITECTURE_REFACTOR_REPORT.md 阶段 4。
 # 注：services/graph_engine 必须包含（agent_core/tools/builtin.py 的图谱工具懒加载
 # graph_engine_runtime），否则 AGENT_BASE_URL 独立进程模式下调用会 ModuleNotFoundError。
-for p in (_AGENT_ROOT, _API_ROOT, _GRAPH_ROOT, _PY_SHARED_ROOT):
-    s = str(p)
-    if s not in sys.path:
-        sys.path.insert(0, s)
+ensure_service_paths()
 
 # 启动期 fail-fast：与主应用 api_backend.main 一致，禁止弱密钥 / 未配置密钥。
 # 此前曾用 setdefault 注入固定开发密钥，会静默绕过校验并导致 Fernet 落库
