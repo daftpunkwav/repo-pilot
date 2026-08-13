@@ -22,6 +22,7 @@ extend-select = ["I"]  # 未排序导入
 "services/api/api_backend/main.py" = ["E402"]
 "services/agent/agent_runtime/main.py" = ["E402"]
 "services/api/api_backend/migrations/alembic/env.py" = ["E402"]
+"tests/conftest.py" = ["E402"]  # sys.path 注入必须在 api_backend import 之前，属有意为之
 
 [tool.mypy]
 python_version = "3.11"

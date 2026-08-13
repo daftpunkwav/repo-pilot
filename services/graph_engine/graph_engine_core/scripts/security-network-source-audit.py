@@ -16,7 +16,6 @@ import re
 import sys
 from typing import Sequence
 
-
 RAW_FUNCTIONS = ("socket", "connect", "sendto")
 CALL_RE = re.compile(
     r"(?<![A-Za-z0-9_])(?P<name>" + "|".join(RAW_FUNCTIONS) + r")[\t\r\n ]*\("

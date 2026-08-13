@@ -31,11 +31,10 @@ Regenerate a hash after an intentional edit with:
 """
 
 import hashlib
+import os
 import re
 import sys
 from pathlib import Path
-
-import os
 
 WHITELIST = Path(os.environ.get(
     "LINT_MEM_WHITELIST",
@@ -125,7 +124,7 @@ def function_spans(path):
                             d += clean[j].count("{") - clean[j].count("}")
                             end = j
                         yield (name_match.group(1), body_start + 1, end + 1,
-                               "\n".join(l.rstrip() for l in lines[body_start:end + 1]))
+                               "\n".join(line.rstrip() for line in lines[body_start:end + 1]))
         depth += opened - closed
         if depth < 0:
             depth = 0

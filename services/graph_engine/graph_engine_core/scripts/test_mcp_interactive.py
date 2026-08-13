@@ -19,7 +19,6 @@ import threading
 import time
 from typing import Any, BinaryIO, Optional
 
-
 INITIALIZE_PARAMS = {
     "protocolVersion": "2024-11-05",
     "capabilities": {},

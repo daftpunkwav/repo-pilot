@@ -21,7 +21,6 @@ One-time extraction. ~2-3h on GPU, ~6-10h on M3 Pro CPU (float16, ~14GB RAM).
 """
 
 import argparse
-import json
 import os
 import re
 import struct
@@ -39,8 +38,7 @@ torch.set_num_interop_threads(max(NUM_THREADS // 2, 1))
 os.environ.setdefault("OMP_NUM_THREADS", str(NUM_THREADS))
 os.environ.setdefault("MKL_NUM_THREADS", str(NUM_THREADS))
 
-from transformers import AutoModel, AutoTokenizer
-
+from transformers import AutoModel, AutoTokenizer  # noqa: E402  # 前置 os.environ 设置线程数
 
 # ── Configuration ──────────────────────────────────────────────────────
 
@@ -496,7 +494,7 @@ def main():
     write_tokens_txt(str(out_dir / "code_tokens.txt"), filtered_tokens)
     write_tokens_h(str(out_dir / "code_tokens.h"), filtered_tokens)
 
-    incbin_path = f"vendored/nomic/code_vectors.bin"
+    incbin_path = "vendored/nomic/code_vectors.bin"
     write_vectors_h(str(out_dir / "code_vectors.h"), len(filtered_tokens), dim, incbin_path)
     write_blob_s(str(out_dir / "code_vectors_blob.S"), incbin_path)
     print()
@@ -519,9 +517,9 @@ def main():
     print("=" * 60)
     print()
     print("next steps:")
-    print(f"  1. update Makefile: change UNIXCODER_BLOB_SRC path to vendored/nomic/")
-    print(f"  2. update #include in semantic.c: \"vendored/nomic/code_vectors.h\"")
-    print(f"  3. arch -arm64 make -j12 -f Makefile clean-c && arch -arm64 make -j12 -f Makefile")
+    print("  1. update Makefile: change UNIXCODER_BLOB_SRC path to vendored/nomic/")
+    print("  2. update #include in semantic.c: \"vendored/nomic/code_vectors.h\"")
+    print("  3. arch -arm64 make -j12 -f Makefile clean-c && arch -arm64 make -j12 -f Makefile")
 
 
 if __name__ == "__main__":

@@ -13,9 +13,9 @@ Exit codes:
     1 - FAIL
 """
 
+import os
 import subprocess
 import sys
-import os
 
 TIMEOUT_S = 5
 

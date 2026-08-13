@@ -20,7 +20,6 @@ import sys
 import time
 from dataclasses import dataclass
 
-
 SUITE_NAME = re.compile(r"^[a-z0-9_]+$")
 SUMMARY = re.compile(r"^  (?P<passed>[0-9]+) passed")
 FAILED = re.compile(r"(?:^|, )(?P<failed>[0-9]+) failed")

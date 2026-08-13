@@ -46,7 +46,6 @@ async def test_reject_memory_proposal(client: AsyncClient, auth_headers: dict):
     from agent_core.memory.service import MemoryService
     from api_backend.database import get_session_factory
 
-    me = await client.get("/api/v1/user/me", headers=auth_headers)
     factory = get_session_factory()
     async with factory() as db:
         mem = MemoryService(db)

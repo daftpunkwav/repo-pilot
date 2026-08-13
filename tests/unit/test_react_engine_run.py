@@ -407,7 +407,6 @@ def test_run_cot_two_phase_channels():
     engine = ReActEngine()
     chunks, result, _ = _collect(engine, agent_def, fake)
 
-    joined = join_sse(chunks)
     # 思路进 thinking 通道
     think_events = [c for c in chunks if "event: thinking" in c and "思路要点" in c]
     assert think_events
