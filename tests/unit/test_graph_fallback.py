@@ -44,7 +44,6 @@ def test_index_respects_engineignore():
         eng = GraphEngine(data_root=root / "data")
         out = eng.index_repository(str(root), mode="fast", name="ei-test", persistence=True)
         assert out["node_count"] > 0
-        schema = eng.get_graph_schema("ei-test")
         # skip_me/ 与 *.tmp 的内容不应进图
         hits = eng.search_graph("ei-test", query="kept", limit=20)
         assert hits["results"], "keep.py 应被索引"
