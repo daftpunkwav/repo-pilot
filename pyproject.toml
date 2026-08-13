@@ -25,7 +25,7 @@ extend-select = ["I"]  # 未排序导入
 
 [tool.mypy]
 python_version = "3.11"
-mypy_path = ["services/api", "services/agent", "services/graph_engine/graph_engine_runtime", "services/graph_engine/graph_engine_fallback", "packages/py-shared"]
+mypy_path = ["services/api", "services/agent", "services/graph_engine", "packages/py-shared"]
 explicit_package_bases = true
 namespace_packages = true
 plugins = ["pydantic.mypy"]

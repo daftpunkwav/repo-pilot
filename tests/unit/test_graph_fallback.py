@@ -1,14 +1,10 @@
 """自研图谱引擎：索引 / 搜索 / schema 冒烟。"""
 from __future__ import annotations
 
-import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "services" / "graph_engine" / "graph_engine_fallback"))
-
-from graph_fallback import GraphEngine  # noqa: E402
+from graph_fallback import GraphEngine
 
 
 def test_index_and_search_python_repo():

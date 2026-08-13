@@ -9,7 +9,6 @@ mkdir -p "$DATA_ROOT"
 
 export GRAPH_ALLOWED_ROOT="$DATA_ROOT"
 export GRAPH_ENGINE_PORT="${GRAPH_ENGINE_PORT:-9750}"
-export PYTHONPATH="$ROOT/services/graph_engine/graph_engine_fallback${PYTHONPATH:+:$PYTHONPATH}"
 
 echo "graph-engine sidecar → 127.0.0.1:${GRAPH_ENGINE_PORT}"
 echo "GRAPH_ALLOWED_ROOT=${GRAPH_ALLOWED_ROOT}"

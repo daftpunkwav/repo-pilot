@@ -30,17 +30,9 @@ if (Test-Path $cExe) {
     exit $LASTEXITCODE
 }
 
-# 档位二：Python 回退 graph_fallback（跨平台，装即用）
-$pyPath = Join-Path $Root "services\graph_engine\graph_engine_fallback"
-if ($env:PYTHONPATH) {
-    $env:PYTHONPATH = "$pyPath;$env:PYTHONPATH"
-} else {
-    $env:PYTHONPATH = $pyPath
-}
-
+# 档位二：Python 回退 graph_fallback（跨平台，装即用；包已顶层化，无需 PYTHONPATH hack）
 Write-Host "graph-engine (Python) sidecar → 127.0.0.1:$($env:GRAPH_ENGINE_PORT)" -ForegroundColor Cyan
 Write-Host "GRAPH_ALLOWED_ROOT=$($env:GRAPH_ALLOWED_ROOT)"
-Write-Host "PYTHONPATH=$($env:PYTHONPATH)"
 
 Set-Location $Root
 python -m graph_fallback.server

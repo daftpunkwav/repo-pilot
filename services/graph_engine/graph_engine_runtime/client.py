@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import sys
 import time
 from pathlib import Path
 from typing import Any, Literal, Optional
@@ -20,11 +19,6 @@ from py_shared import error_codes as EC
 from graph_engine_runtime.context import get_runtime_context
 
 logger = logging.getLogger(__name__)
-
-# graph_fallback（Python 回退实现）位于 graph_engine_fallback 包；运行层与回退层同目录插入 sys.path
-_ENGINE_PY = Path(__file__).resolve().parent.parent / "graph_engine_fallback"
-if _ENGINE_PY.is_dir() and str(_ENGINE_PY) not in sys.path:
-    sys.path.insert(0, str(_ENGINE_PY))
 
 EngineFlavor = Literal["native", "fallback", "unknown"]
 

@@ -11,4 +11,4 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel.sources]
 "graph_engine_runtime" = ""
-"graph_engine_fallback" = ""
+"graph_fallback" = ""
