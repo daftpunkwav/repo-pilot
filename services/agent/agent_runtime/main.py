@@ -27,17 +27,17 @@ for p in (_AGENT_ROOT, _API_ROOT, _PY_SHARED_ROOT):
     if s not in sys.path:
         sys.path.insert(0, s)
 
-app = FastAPI(title="Voyager Agent Runtime", version="0.3.0")
-
 # 启动期 fail-fast：与主应用 api_backend.main 一致，禁止弱密钥 / 未配置密钥。
 # 此前曾用 setdefault 注入固定开发密钥，会静默绕过校验并导致 Fernet 落库
 # 密文可被公开密钥解密；删除后由调用方（scripts/dev.ps1 已自动生成）显式配置。
 from api_backend.config import get_settings  # noqa: E402
 
-# 产品名收敛到 app_name 配置（与 api_backend.main 一致），避免硬编码品牌名
-app.title = get_settings().app_name + " Agent Runtime"
+_settings = get_settings()
 
-_agent_secret = (get_settings().secret_key or "").encode("utf-8")
+# 产品名收敛到 app_name 配置（与 api_backend.main 一致），避免硬编码品牌名
+app = FastAPI(title=_settings.app_name + " Agent Runtime", version="0.3.0")
+
+_agent_secret = (_settings.secret_key or "").encode("utf-8")
 if len(_agent_secret) < 32:
     raise ValueError("SECRET_KEY 长度必须至少为 32 字节，请设置足够强度的随机密钥")
 
