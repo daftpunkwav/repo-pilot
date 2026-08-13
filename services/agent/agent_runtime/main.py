@@ -16,13 +16,16 @@ from fastapi.responses import StreamingResponse
 _AGENT_ROOT = Path(__file__).resolve().parents[1]
 _REPO = _AGENT_ROOT.parents[1]
 _API_ROOT = _REPO / "services" / "api"
+_GRAPH_ROOT = _REPO / "services" / "graph_engine"
 _PY_SHARED_ROOT = _REPO / "packages" / "py-shared"
 
 # §4.2.1 TODO: agent_core 与 backend 的循环依赖（阶段 2 已下沉共享模型/端口/安全
 # 工具到 packages/py-shared，A/B/C/G 类反向依赖清零；剩余 E/F 类业务服务与
 # graph 客户端依赖仍经此处 sys.path hack）应通过 Contract 注入消除。参见
 # docs/review/ARCHITECTURE_REFACTOR_REPORT/ARCHITECTURE_REFACTOR_REPORT.md 阶段 4。
-for p in (_AGENT_ROOT, _API_ROOT, _PY_SHARED_ROOT):
+# 注：services/graph_engine 必须包含（agent_core/tools/builtin.py 的图谱工具懒加载
+# graph_engine_runtime），否则 AGENT_BASE_URL 独立进程模式下调用会 ModuleNotFoundError。
+for p in (_AGENT_ROOT, _API_ROOT, _GRAPH_ROOT, _PY_SHARED_ROOT):
     s = str(p)
     if s not in sys.path:
         sys.path.insert(0, s)

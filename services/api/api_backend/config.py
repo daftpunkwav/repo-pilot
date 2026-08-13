@@ -42,12 +42,15 @@ class Settings(BaseSettings):
     database_url: str = f"sqlite:///{DATA_DIR / 'app.db'}"
 
     # 密钥：SECRET_KEY 必填；敏感字段 at-rest 加密可另设 SECRETS_ENCRYPTION_KEY
+    # 长度约束在配置层强制（get_settings() 即 fail-fast），不依赖 lifespan 校验路径
     secret_key: str = Field(
         ...,
+        min_length=32,
         description="应用密钥，必须通过 SECRET_KEY 环境变量设置，长度不少于 32 字节",
     )
     secrets_encryption_key: Optional[str] = Field(
         default=None,
+        min_length=32,
         description="Fernet 派生用密钥，环境变量 SECRETS_ENCRYPTION_KEY；未设则回退 SECRET_KEY",
     )
 

@@ -21,7 +21,9 @@ if (-not (Test-Path $cacheDir)) { New-Item -ItemType Directory -Force -Path $cac
 $cExe = Join-Path $Root "services\graph_engine\graph_engine_core\build\c\graph-engine.exe"
 if (Test-Path $cExe) {
     $env:ENGINE_CACHE_DIR = $cacheDir
-    $env:ENGINE_ALLOWED_ROOT = $dataRoot
+    # ENGINE_ALLOWED_ROOT 取 GRAPH_ALLOWED_ROOT 覆盖值(第 12 行已归一化)，
+    # 保证操作员收窄索引边界时 C 引擎遵守，不被默认 dataRoot 静默扩大
+    $env:ENGINE_ALLOWED_ROOT = $env:GRAPH_ALLOWED_ROOT
     Write-Host "graph-engine (C) sidecar → 127.0.0.1:$($env:GRAPH_ENGINE_PORT)" -ForegroundColor Cyan
     Write-Host "ENGINE_CACHE_DIR=$($env:ENGINE_CACHE_DIR)"
     Write-Host "ENGINE_ALLOWED_ROOT=$($env:ENGINE_ALLOWED_ROOT)"
@@ -30,9 +32,9 @@ if (Test-Path $cExe) {
     exit $LASTEXITCODE
 }
 
-# 档位二：Python 回退 graph_fallback（跨平台，装即用；包已顶层化，无需 PYTHONPATH hack）
+# 档位二：Python 回退 graph_fallback（跨平台，装即用；包位于 services/graph_engine/ 下）
 Write-Host "graph-engine (Python) sidecar → 127.0.0.1:$($env:GRAPH_ENGINE_PORT)" -ForegroundColor Cyan
 Write-Host "GRAPH_ALLOWED_ROOT=$($env:GRAPH_ALLOWED_ROOT)"
 
-Set-Location $Root
+Set-Location (Join-Path $Root "services\graph_engine")
 python -m graph_fallback.server
