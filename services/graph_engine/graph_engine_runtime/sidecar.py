@@ -40,7 +40,7 @@ def _default_bin_candidates() -> list[Path]:
 def resolve_engine_bin() -> Optional[Path]:
     """解析可执行文件：GRAPH_ENGINE_BIN > 约定构建产物路径。"""
     settings = get_runtime_context().settings
-    configured = (getattr(settings, "graph_engine_bin", None) or "").strip()
+    configured = (settings.graph_engine_bin or "").strip()
     if configured:
         p = Path(configured)
         if p.is_file():
@@ -98,11 +98,11 @@ async def ensure_graph_engine_sidecar() -> bool:
 
     port = _port_from_url(url)
     cache_dir = Path(
-        getattr(settings, "graph_cache_dir", None)
+        settings.graph_cache_dir
         or (ctx.repo_root / "data" / "graph-engine-cache")
     )
     cache_dir.mkdir(parents=True, exist_ok=True)
-    allowed = getattr(settings, "graph_allowed_root", None) or str(
+    allowed = settings.graph_allowed_root or str(
         ctx.repo_root / "data"
     )
 

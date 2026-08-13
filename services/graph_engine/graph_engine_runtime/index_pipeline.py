@@ -329,9 +329,7 @@ def engine_project_name(owner: str, repo: str) -> str:
 
 def _allowed_root() -> Path:
     settings = get_runtime_context().settings
-    return Path(
-        getattr(settings, "graph_allowed_root", None)
-    )
+    return Path(settings.graph_allowed_root)
 
 
 def cache_dir_for(owner: str, repo: str, sha7: str = "head") -> Path:

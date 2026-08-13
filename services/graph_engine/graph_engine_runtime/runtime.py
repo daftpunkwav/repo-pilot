@@ -99,7 +99,7 @@ class EmbeddedGraphRuntime:
     async def start_worker(self) -> None:
         """拉起 C sidecar（可选）并启动常驻索引 worker 池。"""
         settings = self._ctx.settings
-        if self._auto_start_sidecar and getattr(settings, "graph_auto_start", True) and (
+        if self._auto_start_sidecar and settings.graph_auto_start and (
             (settings.graph_engine_url or "").strip()
         ):
             try:

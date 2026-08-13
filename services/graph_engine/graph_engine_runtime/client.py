@@ -40,7 +40,7 @@ def _local_engine():
     from graph_fallback import get_engine
 
     settings = get_runtime_context().settings
-    root = getattr(settings, "graph_allowed_root", None)
+    root = settings.graph_allowed_root
     return get_engine(data_root=root)
 
 
@@ -82,7 +82,7 @@ class GraphEngineClient:
         settings = get_runtime_context().settings
         url = base_url
         if url is None:
-            url = getattr(settings, "graph_engine_url", None) or ""
+            url = settings.graph_engine_url
         self.base_url = (url or "").rstrip("/")
         self.timeout = timeout
         self._rpc_id = 0
