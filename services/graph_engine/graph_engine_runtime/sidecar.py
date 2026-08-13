@@ -107,12 +107,11 @@ async def ensure_graph_engine_sidecar() -> bool:
     )
 
     env = os.environ.copy()
-    # C 引擎读取 ENGINE_CACHE_DIR / ENGINE_ALLOWED_ROOT（源码内 getenv）；
-    # GRAPH_* 保留为对外契约名，双写保证两端一致
+    # C 引擎源码内 getenv 读取 ENGINE_CACHE_DIR / ENGINE_ALLOWED_ROOT（唯一权威名）。
+    # GRAPH_* 是应用层配置契约（config.py / .env），由本适配器在"应用配置 → 引擎
+    # 进程 env"边界翻译为 ENGINE_*；不做双写，避免两套名字漂移失配。
     env["ENGINE_CACHE_DIR"] = str(cache_dir.resolve())
     env["ENGINE_ALLOWED_ROOT"] = str(Path(allowed).resolve())
-    env.setdefault("GRAPH_CACHE_DIR", env["ENGINE_CACHE_DIR"])
-    env.setdefault("GRAPH_ALLOWED_ROOT", env["ENGINE_ALLOWED_ROOT"])
 
     cmd = [
         str(bin_path),

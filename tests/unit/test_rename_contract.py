@@ -128,9 +128,10 @@ async def _async_noop():
 
 # ── 4. sidecar env 双写（ENGINE_* + GRAPH_*）────────────────────────────
 @pytest.mark.asyncio
-async def test_sidecar_env_dual_write(monkeypatch, tmp_path: Path):
-    """改名回归：C 引擎读 ENGINE_CACHE_DIR/ENGINE_ALLOWED_ROOT（源码 getenv），
-    sidecar 必须双写 ENGINE_* + GRAPH_* 两端一致，否则 C sidecar 收不到配置。"""
+async def test_sidecar_env_writes_engine_only(monkeypatch, tmp_path: Path):
+    """改名回归：C 引擎读 ENGINE_CACHE_DIR/ENGINE_ALLOWED_ROOT（源码 getenv，唯一
+    权威名），sidecar 只写 ENGINE_*、不再双写 GRAPH_*（GRAPH_* 是应用层配置契约，
+    由 sidecar 在边界翻译为 ENGINE_*）。"""
     import subprocess as sp
 
     import graph_engine_runtime.sidecar as sc_mod
@@ -195,8 +196,9 @@ async def test_sidecar_env_dual_write(monkeypatch, tmp_path: Path):
     env = captured.get("env", {})
     assert env.get("ENGINE_CACHE_DIR") == str((tmp_path / "cache").resolve())
     assert env.get("ENGINE_ALLOWED_ROOT") == str(tmp_path.resolve())
-    assert env.get("GRAPH_CACHE_DIR") == env.get("ENGINE_CACHE_DIR")
-    assert env.get("GRAPH_ALLOWED_ROOT") == env.get("ENGINE_ALLOWED_ROOT")
+    # ENGINE_* 是 C 引擎唯一权威名，不再双写 GRAPH_*
+    assert env.get("GRAPH_CACHE_DIR") is None
+    assert env.get("GRAPH_ALLOWED_ROOT") is None
     # 旧二进制候选已移除
     names = [p.name for p in _default_bin_candidates()]
     assert "graph-engine" in names
