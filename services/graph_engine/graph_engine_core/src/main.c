@@ -2364,6 +2364,22 @@ int main(int argc, char **argv) {
     engine_profile_init();
     engine_log_init_from_env();
 
+    /* SEC-003: 未声明索引边界时打醒目警告。fail-closed 在
+     * engine_workspace_root_allowed 层强制——未设置 ENGINE_ALLOWED_ROOT 且无
+     * allow-root grant 时索引请求一律拒绝。此警告让手动启动的操作员立刻
+     * 知道边界缺失，而不是等索引被拒后才排查。 */
+    {
+        char allowed_scratch[MAIN_PATH_CAP];
+        const char *allowed = engine_safe_getenv("ENGINE_ALLOWED_ROOT", allowed_scratch,
+                                                 sizeof(allowed_scratch), NULL);
+        if (!allowed || !allowed[0]) {
+            (void)fprintf(stderr,
+                          "warning: ENGINE_ALLOWED_ROOT 未设置——索引边界未声明，"
+                          "索引请求将被拒绝（fail-closed）。设置该变量或运行 "
+                          "graph-engine allow-root <path> 以声明可索引根。\n");
+        }
+    }
+
     engine_mcp_tool_profile_t tool_profile = ENGINE_MCP_TOOL_PROFILE_ALL;
     if (role == ENGINE_DAEMON_PROCESS_MCP_CLIENT &&
         engine_mcp_parse_tool_profile_args(argc, (const char *const *)argv, &tool_profile) != 0) {

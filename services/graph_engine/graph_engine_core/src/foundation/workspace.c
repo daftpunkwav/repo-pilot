@@ -512,6 +512,21 @@ bool engine_workspace_root_allowed(const char *canonical_path, const char *home_
      * then applies to paths that ARE inside the declared root but are still too
      * broad to index as one unit. */
     bool boundary_declared = grants > 0 || configured;
+
+    /* Fail closed when no boundary has been declared at all. Without
+     * ENGINE_ALLOWED_ROOT or an allow-root grant, the engine would otherwise
+     * fall through to the heuristic breadth check (depth >= 2) below and
+     * silently index anywhere on the machine. An operator must explicitly
+     * declare what is indexable — either by setting ENGINE_ALLOWED_ROOT or by
+     * recording an allow-root grant. */
+    if (!boundary_declared) {
+        if (err) {
+            snprintf(err, err_sz,
+                     "no index boundary declared: set ENGINE_ALLOWED_ROOT or run "
+                     "graph-engine allow-root <path>");
+        }
+        return false;
+    }
     /* No manifest consultation here, deliberately.
      *
      * A project's manifest authorizes outside roots FOR THAT PROJECT, so the
