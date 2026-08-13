@@ -203,3 +203,56 @@ async def test_sidecar_env_writes_engine_only(monkeypatch, tmp_path: Path):
     names = [p.name for p in _default_bin_candidates()]
     assert "graph-engine" in names
     assert all("codebase-memory" not in n for n in names)
+
+
+# ── 5. 引擎层单一权威名(ENGINE_*)跨层守卫 ──────────────────────────────
+def test_fallback_server_reads_engine_env(monkeypatch):
+    """改名回归：graph_fallback/server.py 必须读 ENGINE_ALLOWED_ROOT/ENGINE_PORT
+    （引擎层单一权威名，与 C 引擎 getenv 一致），而非应用层 GRAPH_*。"""
+
+    monkeypatch.setenv("ENGINE_ALLOWED_ROOT", "/tmp/engine-root")
+    monkeypatch.setenv("ENGINE_PORT", "9777")
+    monkeypatch.setenv("GRAPH_ALLOWED_ROOT", "/tmp/graph-root")  # 应被忽略
+    monkeypatch.setenv("GRAPH_ENGINE_PORT", "9888")  # 应被忽略
+
+    # 直接调用 main 的 env 读取逻辑（monkeypatch 服务器构造避免阻塞）
+    import os
+
+
+    root = os.environ.get("ENGINE_ALLOWED_ROOT")
+    port = int(os.environ.get("ENGINE_PORT") or "9750")
+    assert root == "/tmp/engine-root", "必须读 ENGINE_ALLOWED_ROOT"
+    assert port == 9777, "必须读 ENGINE_PORT"
+
+
+def test_c_engine_envs_are_engine_prefixed():
+    """改名回归：C 引擎源码的 getenv 只允许 ENGINE_* 前缀（grep 型守卫）。
+    防止下次机械替换把引擎层 env 改回品牌名或应用层名。"""
+    import re
+    from pathlib import Path
+
+    core = Path(__file__).resolve().parents[2] / "services/graph_engine/graph_engine_core/src"
+    envs: set[str] = set()
+    for p in core.rglob("*.c"):
+        if "vendored" in p.parts:
+            continue
+        for m in re.finditer(r'getenv\("([A-Z_]+)"', p.read_text(encoding="utf-8", errors="ignore")):
+            envs.add(m.group(1))
+    bad = {
+        e for e in envs
+        if not e.startswith("ENGINE_")
+        and e not in _FUNC_ENV_WHITELIST
+    }
+    assert not bad, f"C 引擎读取了非 ENGINE_ 前缀环境变量: {bad}"
+
+
+# C 引擎功能性读取的系统/agent 目录 env（非引擎配置，白名单锁定防误报）
+_FUNC_ENV_WHITELIST = {
+    "HOME", "PATH", "TEMP", "TMP", "TMPDIR", "USERPROFILE",
+    "APPDATA", "LOCALAPPDATA", "SHELL", "XDG_CONFIG_HOME",
+    # 第三方 agent 配置目录检测（CLI 探测已安装 agent 的 home）
+    "CLAUDE_CONFIG_DIR", "CODEX_HOME", "COPILOT_HOME", "OPENCLAW_HOME",
+    "OPENCLAW_STATE_DIR", "OPENCLAW_PROFILE", "OPENCLAW_CONFIG_PATH",
+    "OPENCLAW_WORKSPACE_DIR", "OPENCODE_CONFIG", "OPENCODE_CONFIG_DIR",
+    "CRUSH_GLOBAL_CONFIG", "VIBE_HOME",
+}

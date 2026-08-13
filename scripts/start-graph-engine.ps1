@@ -33,8 +33,11 @@ if (Test-Path $cExe) {
 }
 
 # 档位二：Python 回退 graph_fallback（跨平台，装即用；包位于 services/graph_engine/ 下）
-Write-Host "graph-engine (Python) sidecar → 127.0.0.1:$($env:GRAPH_ENGINE_PORT)" -ForegroundColor Cyan
-Write-Host "GRAPH_ALLOWED_ROOT=$($env:GRAPH_ALLOWED_ROOT)"
+# 引擎层统一读 ENGINE_*（与 C 引擎命名面一致），此处由应用层 GRAPH_* 翻译
+$env:ENGINE_ALLOWED_ROOT = $env:GRAPH_ALLOWED_ROOT
+$env:ENGINE_PORT = $env:GRAPH_ENGINE_PORT
+Write-Host "graph-engine (Python) sidecar → 127.0.0.1:$($env:ENGINE_PORT)" -ForegroundColor Cyan
+Write-Host "ENGINE_ALLOWED_ROOT=$($env:ENGINE_ALLOWED_ROOT)"
 
 Set-Location (Join-Path $Root "services\graph_engine")
 python -m graph_fallback.server

@@ -29,8 +29,11 @@ if [ -x "$C_BIN" ]; then
 fi
 
 # 档位二：Python 回退 graph_fallback（跨平台，装即用；包位于 services/graph_engine/ 下）
-echo "graph-engine (Python) sidecar → 127.0.0.1:${GRAPH_ENGINE_PORT}"
-echo "GRAPH_ALLOWED_ROOT=${GRAPH_ALLOWED_ROOT}"
+# 引擎层统一读 ENGINE_*（与 C 引擎命名面一致），此处由应用层 GRAPH_* 翻译
+export ENGINE_ALLOWED_ROOT="$GRAPH_ALLOWED_ROOT"
+export ENGINE_PORT="${GRAPH_ENGINE_PORT}"
+echo "graph-engine (Python) sidecar → 127.0.0.1:${ENGINE_PORT}"
+echo "ENGINE_ALLOWED_ROOT=${ENGINE_ALLOWED_ROOT}"
 
 cd "$ROOT/services/graph_engine"
 exec python -m graph_fallback.server

@@ -150,8 +150,10 @@ def _assert_within_allowed_root(repo_path: str) -> None:
 
 
 def main() -> None:
-    root = os.environ.get("GRAPH_ALLOWED_ROOT")
-    port = int(os.environ.get("GRAPH_ENGINE_PORT") or "9750")
+    # 引擎层统一读 ENGINE_*(与 C 引擎 getenv 单一权威名一致)；
+    # GRAPH_* 是应用层配置契约,由启动器(start-graph-engine.ps1/.sh)翻译。
+    root = os.environ.get("ENGINE_ALLOWED_ROOT")
+    port = int(os.environ.get("ENGINE_PORT") or "9750")
     Handler.eng = get_engine(data_root=root)
     Handler.allowed_root = root
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)

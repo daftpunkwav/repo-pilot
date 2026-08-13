@@ -53,31 +53,34 @@ class EmbeddedGraphRuntime:
         set_runtime_context(context)
         self._ctx = context
         self._auto_start_sidecar = auto_start_sidecar
+        # 单例 client：GraphEngineClient 的 flavor 探测结果缓存在实例内，
+        # 每次 new 会让 _flavor 缓存失效、每个请求重做最多 3 次 HTTP 探测
+        self._client = GraphEngineClient()
 
-    # —— 引擎访问（透传 GraphEngineClient） ——
+    # —— 引擎访问（透传 GraphEngineClient 单例） ——
     async def health(self) -> bool:
-        return await GraphEngineClient().health()
+        return await self._client.health()
 
     async def fetch_layout(self, project: str, **kwargs: Any) -> dict[str, Any]:
-        return await GraphEngineClient().fetch_layout(project, **kwargs)
+        return await self._client.fetch_layout(project, **kwargs)
 
     async def index_repository(self, repo_path: str, **kwargs: Any) -> Any:
-        return await GraphEngineClient().index_repository(repo_path, **kwargs)
+        return await self._client.index_repository(repo_path, **kwargs)
 
     async def search_graph(self, project: str, **kwargs: Any) -> Any:
-        return await GraphEngineClient().search_graph(project, **kwargs)
+        return await self._client.search_graph(project, **kwargs)
 
     async def trace_path(self, project: str, **kwargs: Any) -> Any:
-        return await GraphEngineClient().trace_path(project, **kwargs)
+        return await self._client.trace_path(project, **kwargs)
 
     async def drop_project(self, project: str) -> Any:
-        return await GraphEngineClient().drop_project(project)
+        return await self._client.drop_project(project)
 
     async def list_cross_edges(self) -> list[dict[str, Any]]:
-        return await GraphEngineClient().list_cross_edges()
+        return await self._client.list_cross_edges()
 
     async def call_tool(self, name: str, arguments: dict[str, Any] | None = None) -> Any:
-        return await GraphEngineClient().call_tool(name, arguments)
+        return await self._client.call_tool(name, arguments)
 
     # —— 索引 job 状态机（透传 index_pipeline） ——
     async def trigger_index(self, db: Any, project_id: Any, **kwargs: Any) -> dict:
